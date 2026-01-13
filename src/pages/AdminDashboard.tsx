@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import VehicleTrackingMap from "@/components/tracking/VehicleTrackingMap";
 
 const stats = [
   { label: "Active Vehicles", value: "156", icon: Car, color: "text-accent" },
@@ -60,12 +61,23 @@ const AdminDashboard = () => {
             ))}
           </div>
 
-          <Tabs defaultValue="approvals" className="space-y-6">
+          <Tabs defaultValue="tracking" className="space-y-6">
             <TabsList>
+              <TabsTrigger value="tracking">Vehicle Tracking</TabsTrigger>
               <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
               <TabsTrigger value="defaults">Payment Defaults</TabsTrigger>
-              <TabsTrigger value="tracking">Vehicle Tracking</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="tracking">
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Live Vehicle Tracking</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Monitor vehicles across DMV states (USA) and Nigeria (Lagos, Abuja, Port Harcourt). 
+                  Click on markers to view details and send remote commands.
+                </p>
+                <VehicleTrackingMap />
+              </Card>
+            </TabsContent>
 
             <TabsContent value="approvals">
               <Card className="p-6">
@@ -117,19 +129,6 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   ))}
-                </div>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="tracking">
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Vehicle Tracking</h3>
-                <div className="h-64 rounded-lg bg-muted flex items-center justify-center">
-                  <div className="text-center text-muted-foreground">
-                    <MapPin className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>GPS tracking map integration</p>
-                    <p className="text-sm">Connect to tracking service to enable</p>
-                  </div>
                 </div>
               </Card>
             </TabsContent>

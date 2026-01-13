@@ -4,6 +4,26 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
 
+/* Leaflet Map Styles */
+.leaflet-container {
+  font-family: 'Inter', system-ui, sans-serif;
+  z-index: 0;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px -8px hsla(220, 60%, 20%, 0.2);
+}
+
+.leaflet-popup-content {
+  margin: 0.75rem;
+}
+
+.vehicle-marker {
+  background: transparent;
+  border: none;
+}
+
 @layer base {
   :root {
     /* Rentmaikar Brand Colors - Professional & Trustworthy */
