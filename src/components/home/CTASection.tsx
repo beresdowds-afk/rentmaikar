@@ -1,8 +1,13 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Building, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRegion } from "@/contexts/RegionContext";
+import { getCTAContent } from "@/lib/localized-content";
 
 const CTASection = () => {
+  const { country } = useRegion();
+  const content = getCTAContent(country);
+
   return (
     <section className="py-20 bg-background">
       <div className="container mx-auto px-4">
@@ -17,15 +22,15 @@ const CTASection = () => {
               </div>
               
               <h3 className="text-2xl md:text-3xl font-display font-bold mb-4">
-                Ready to Start Driving?
+                {content.driver.title}
               </h3>
               <p className="text-white/80 mb-6 max-w-md">
-                Join thousands of drivers earning with quality vehicles. Quick approval, flexible terms, and 24/7 support.
+                {content.driver.description}
               </p>
               
               <Link to="/driver/register">
                 <Button variant="heroOutline" size="lg" className="gap-2 group-hover:bg-white group-hover:text-primary transition-colors">
-                  Register as Driver
+                  {content.driver.cta}
                   <ArrowRight className="w-5 h-5" />
                 </Button>
               </Link>
@@ -42,15 +47,15 @@ const CTASection = () => {
               </div>
               
               <h3 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-4">
-                Have a Vehicle to Rent?
+                {content.owner.title}
               </h3>
               <p className="text-muted-foreground mb-6 max-w-md">
-                List your vehicle and earn passive income. We handle driver verification, payments, and support.
+                {content.owner.description}
               </p>
               
               <Link to="/owner/register">
                 <Button variant="hero" size="lg" className="gap-2">
-                  List Your Vehicle
+                  {content.owner.cta}
                   <ArrowRight className="w-5 h-5" />
                 </Button>
               </Link>

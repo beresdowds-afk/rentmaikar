@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Car, User, Building, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import RegionSwitcher from "@/components/home/RegionSwitcher";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -51,6 +52,7 @@ const Header = () => {
 
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center gap-3">
+            <RegionSwitcher />
             <Link to="/driver/register">
               <Button variant="outline" size="sm" className="gap-2">
                 <User className="w-4 h-4" />
@@ -83,6 +85,12 @@ const Header = () => {
         {isMenuOpen && (
           <div className="lg:hidden py-4 border-t border-border animate-slide-up">
             <nav className="flex flex-col gap-2">
+              {/* Region Switcher for Mobile */}
+              <div className="px-4 py-2 flex items-center justify-between border-b border-border mb-2 pb-4">
+                <span className="text-sm text-muted-foreground">Region</span>
+                <RegionSwitcher />
+              </div>
+              
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
