@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
 import { MessageCircle, Phone, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRegion } from "@/contexts/RegionContext";
+import { getHeroContent } from "@/lib/localized-content";
 import heroCar from "@/assets/hero-car.jpg";
 
 const HeroSection = () => {
-  const whatsappNumber = "12025550123";
-  const smsNumber = "12025550123";
+  const { country, whatsappNumber, smsNumber } = useRegion();
+  const content = getHeroContent(country);
 
   return (
     <section className="relative min-h-[90vh] flex items-center">
@@ -23,30 +25,29 @@ const HeroSection = () => {
       <div className="relative z-10 container mx-auto px-4 py-20 pt-32">
         <div className="max-w-2xl animate-slide-up">
           <span className="inline-block px-4 py-2 rounded-full bg-accent/20 text-accent text-sm font-medium mb-6 backdrop-blur-sm">
-            USA 🇺🇸 & Nigeria 🇳🇬
+            {content.badge}
           </span>
           
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white mb-6 leading-tight">
-            Rent Quality Vehicles for{" "}
-            <span className="text-accent">Rideshare</span> Success
+            {content.headline}{" "}
+            <span className="text-accent">{content.highlightedWord}</span>
           </h1>
           
           <p className="text-lg md:text-xl text-white/80 mb-8 leading-relaxed">
-            Connect with trusted vehicle owners. Drive for Uber, Lyft, Bolt & more. 
-            Flexible weekly rentals starting from $250/week.
+            {content.description}
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-wrap gap-4 mb-8">
             <Link to="/driver/register">
               <Button variant="hero" size="xl" className="gap-2">
-                Start Driving Today
+                {content.primaryCta}
                 <ArrowRight className="w-5 h-5" />
               </Button>
             </Link>
             <Link to="/owner/register">
               <Button variant="heroOutline" size="xl">
-                List Your Vehicle
+                {content.secondaryCta}
               </Button>
             </Link>
           </div>
@@ -60,13 +61,13 @@ const HeroSection = () => {
             >
               <Button variant="whatsapp" size="lg" className="gap-2">
                 <MessageCircle className="w-5 h-5" />
-                WhatsApp Us
+                {content.whatsappCta}
               </Button>
             </a>
             <a href={`sms:${smsNumber}`}>
               <Button variant="sms" size="lg" className="gap-2">
                 <Phone className="w-5 h-5" />
-                Send SMS
+                {content.smsCta}
               </Button>
             </a>
           </div>

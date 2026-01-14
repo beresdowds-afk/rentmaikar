@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Calendar, DollarSign } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowRight, DollarSign } from "lucide-react";
+import { useRegion } from "@/contexts/RegionContext";
+import { getCategoryContent } from "@/lib/localized-content";
 import categoryBudget from "@/assets/category-budget.jpg";
 import categoryStandard from "@/assets/category-standard.jpg";
 import categoryPremium from "@/assets/category-premium.jpg";
@@ -13,6 +14,7 @@ interface CategoryCardProps {
   image: string;
   link: string;
   variant: "budget" | "standard" | "premium";
+  viewCta: string;
 }
 
 const CategoryCard = ({
@@ -23,6 +25,7 @@ const CategoryCard = ({
   image,
   link,
   variant,
+  viewCta,
 }: CategoryCardProps) => {
   const borderColors = {
     budget: "border-l-category-budget",
@@ -75,7 +78,7 @@ const CategoryCard = ({
           </div>
           
           <div className={`flex items-center gap-1 ${textColors[variant]} group-hover:gap-2 transition-all`}>
-            <span className="text-sm font-medium">View Cars</span>
+            <span className="text-sm font-medium">{viewCta}</span>
             <ArrowRight className="w-4 h-4" />
           </div>
         </div>
@@ -85,30 +88,33 @@ const CategoryCard = ({
 };
 
 const CategoryCards = () => {
+  const { country } = useRegion();
+  const content = getCategoryContent(country);
+
   const categories = [
     {
-      title: "Budget Friendly",
+      title: content.budget.title,
       years: "2015 - 2016",
-      price: "Up to $250",
-      description: "Reliable, fuel-efficient vehicles perfect for starting your rideshare journey. Great value for new drivers.",
+      price: content.budget.priceLabel,
+      description: content.budget.description,
       image: categoryBudget,
       link: "/catalogue/budget",
       variant: "budget" as const,
     },
     {
-      title: "Standard Selection",
+      title: content.standard.title,
       years: "2017 - 2020",
-      price: "Up to $300",
-      description: "Modern vehicles with updated features. Ideal balance of comfort, reliability, and earnings potential.",
+      price: content.standard.priceLabel,
+      description: content.standard.description,
       image: categoryStandard,
       link: "/catalogue/standard",
       variant: "standard" as const,
     },
     {
-      title: "Premium Fleet",
+      title: content.premium.title,
       years: "2021 - 2025",
-      price: "Up to $350",
-      description: "Latest models with premium features. Maximize your earnings with UberX Comfort and Lyft Lux rides.",
+      price: content.premium.priceLabel,
+      description: content.premium.description,
       image: categoryPremium,
       link: "/catalogue/premium",
       variant: "premium" as const,
@@ -121,20 +127,24 @@ const CategoryCards = () => {
         {/* Section Header */}
         <div className="text-center mb-12">
           <span className="inline-block px-4 py-2 rounded-full bg-accent/10 text-accent text-sm font-medium mb-4">
-            Vehicle Categories
+            {content.sectionBadge}
           </span>
           <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
-            Find Your Perfect Ride
+            {content.sectionTitle}
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Browse our curated selection of rideshare-ready vehicles, organized by year and price range to match your budget and goals.
+            {content.sectionDescription}
           </p>
         </div>
 
         {/* Category Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {categories.map((category) => (
-            <CategoryCard key={category.variant} {...category} />
+            <CategoryCard 
+              key={category.variant} 
+              {...category} 
+              viewCta={content.viewCta}
+            />
           ))}
         </div>
       </div>
