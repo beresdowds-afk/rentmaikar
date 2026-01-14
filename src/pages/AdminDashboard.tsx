@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import VehicleTrackingMap from "@/components/tracking/VehicleTrackingMap";
+import { PaymentDefaultAlert } from "@/components/payment/PaymentDefaultAlert";
+import { PaymentBreakdownCard } from "@/components/payment/PaymentBreakdownCard";
+import { type PaymentDefault } from "@/lib/payment-config";
+import { toast } from "sonner";
 
 const stats = [
   { label: "Active Vehicles", value: "156", icon: Car, color: "text-accent" },
@@ -21,9 +25,49 @@ const pendingApprovals = [
   { id: 3, type: "Driver", name: "Sarah M.", location: "Abuja", status: "pending" },
 ];
 
-const defaultAlerts = [
-  { id: 1, driver: "Mike T.", vehicle: "Honda Accord", daysOverdue: 2, amount: 96 },
-  { id: 2, driver: "Grace O.", vehicle: "Toyota Corolla", daysOverdue: 1, amount: 48 },
+// Mock payment defaults with proper structure
+const paymentDefaults: PaymentDefault[] = [
+  { 
+    id: "DEF-001",
+    driverId: "DRV-001",
+    vehicleId: "VEH-001",
+    rentalId: "RNT-001",
+    amountDue: 96,
+    currency: "USD",
+    daysOverdue: 2,
+    notificationsSent: 2,
+    lastNotificationAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    deactivationEligible: false,
+    status: "active",
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+  },
+  { 
+    id: "DEF-002",
+    driverId: "DRV-002",
+    vehicleId: "VEH-002",
+    rentalId: "RNT-002",
+    amountDue: 48000,
+    currency: "NGN",
+    daysOverdue: 3,
+    notificationsSent: 3,
+    lastNotificationAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
+    deactivationEligible: true,
+    status: "active",
+    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+  },
+  { 
+    id: "DEF-003",
+    driverId: "DRV-003",
+    vehicleId: "VEH-003",
+    rentalId: "RNT-003",
+    amountDue: 72,
+    currency: "USD",
+    daysOverdue: 1,
+    notificationsSent: 1,
+    deactivationEligible: false,
+    status: "active",
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+  },
 ];
 
 const AdminDashboard = () => {
@@ -62,10 +106,11 @@ const AdminDashboard = () => {
           </div>
 
           <Tabs defaultValue="tracking" className="space-y-6">
-            <TabsList>
+            <TabsList className="flex-wrap">
               <TabsTrigger value="tracking">Vehicle Tracking</TabsTrigger>
               <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
               <TabsTrigger value="defaults">Payment Defaults</TabsTrigger>
+              <TabsTrigger value="fees">Fee Structure</TabsTrigger>
             </TabsList>
 
             <TabsContent value="tracking">
@@ -105,30 +150,99 @@ const AdminDashboard = () => {
             </TabsContent>
 
             <TabsContent value="defaults">
+              <div className="space-y-4">
+                <Card className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                    <h3 className="text-lg font-semibold">Payment Defaults ({paymentDefaults.length})</h3>
+                  </div>
+                  <div className="p-3 mb-4 rounded-lg bg-muted text-sm space-y-1">
+                    <p><strong>Payment Default Protocol:</strong></p>
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                      <li>Auto-debit runs daily at 12:01 AM</li>
+                      <li>3-day notification sequence (SMS/WhatsApp)</li>
+                      <li>Vehicle deactivation eligible after 3rd notification</li>
+                      <li>Deactivation only when vehicle is parked (speed &lt; 2 mph)</li>
+                    </ul>
+                  </div>
+                </Card>
+                
+                {paymentDefaults.map((paymentDefault) => (
+                  <PaymentDefaultAlert
+                    key={paymentDefault.id}
+                    paymentDefault={paymentDefault}
+                    onInitiateDeactivation={() => {
+                      toast.info("Deactivation request initiated", {
+                        description: `Vehicle ${paymentDefault.vehicleId} will be deactivated when safely parked.`,
+                      });
+                    }}
+                    onContactSupport={() => {
+                      toast.info("Contacting driver...", {
+                        description: "Opening communication channel.",
+                      });
+                    }}
+                  />
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="fees">
               <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Payment Defaults</h3>
-                <div className="space-y-3">
-                  {defaultAlerts.map((alert) => (
-                    <div key={alert.id} className="flex items-center justify-between p-4 rounded-lg bg-destructive/5 border border-destructive/20">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
-                          <AlertTriangle className="w-5 h-5 text-destructive" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{alert.driver} - {alert.vehicle}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {alert.daysOverdue} day(s) overdue • ${alert.amount} owed
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline">Contact</Button>
-                        <Button size="sm" variant="destructive" className="gap-1">
-                          <Power className="w-4 h-4" /> Disable
-                        </Button>
-                      </div>
+                <div className="flex items-center gap-3 mb-6">
+                  <Wallet className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-semibold">Fee Structure & Payment Gateways</h3>
+                </div>
+                
+                <div className="grid md:grid-cols-2 gap-6 mb-6">
+                  {/* USA - PayPal */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🇺🇸</span>
+                      <h4 className="font-semibold">USA (PayPal)</h4>
                     </div>
-                  ))}
+                    <PaymentBreakdownCard
+                      baseAmount={48}
+                      currency="USD"
+                      gateway="paypal"
+                    />
+                    <PaymentBreakdownCard
+                      baseAmount={48}
+                      currency="USD"
+                      gateway="paypal"
+                      showOwnerView
+                    />
+                  </div>
+
+                  {/* Nigeria - Paystack */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🇳🇬</span>
+                      <h4 className="font-semibold">Nigeria (Paystack)</h4>
+                    </div>
+                    <PaymentBreakdownCard
+                      baseAmount={25000}
+                      currency="NGN"
+                      gateway="paystack"
+                    />
+                    <PaymentBreakdownCard
+                      baseAmount={25000}
+                      currency="NGN"
+                      gateway="paystack"
+                      showOwnerView
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-lg bg-muted space-y-2">
+                  <h5 className="font-semibold flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Payment Schedule
+                  </h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• <strong>Daily Auto-Debit:</strong> 12:01 AM local time</li>
+                    <li>• <strong>Owner Payouts:</strong> Every Friday (weekly)</li>
+                    <li>• <strong>Platform Fee:</strong> 40% total (20% admin + 20% management)</li>
+                  </ul>
                 </div>
               </Card>
             </TabsContent>
