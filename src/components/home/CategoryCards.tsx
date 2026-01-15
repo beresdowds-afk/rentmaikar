@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, DollarSign } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
+import { useUserType } from "@/contexts/UserTypeContext";
 import { getCategoryContent } from "@/lib/localized-content";
 import categoryBudget from "@/assets/category-budget.jpg";
 import categoryStandard from "@/assets/category-standard.jpg";
@@ -89,7 +90,14 @@ const CategoryCard = ({
 
 const CategoryCards = () => {
   const { country } = useRegion();
+  const { userType } = useUserType();
   const content = getCategoryContent(country);
+
+  // Only show CategoryCards for drivers (or when no type selected)
+  // Owners don't need to browse rental categories
+  if (userType === "owner") {
+    return null;
+  }
 
   const categories = [
     {

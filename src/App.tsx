@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { RegionProvider } from "@/contexts/RegionContext";
+import { UserTypeProvider } from "@/contexts/UserTypeContext";
 import Index from "./pages/Index";
 import DriverRegistration from "./pages/DriverRegistration";
 import OwnerRegistration from "./pages/OwnerRegistration";
@@ -16,20 +17,22 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <RegionProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/driver/register" element={<DriverRegistration />} />
-            <Route path="/owner/register" element={<OwnerRegistration />} />
-            <Route path="/catalogue/:category" element={<Catalogue />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <UserTypeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/driver/register" element={<DriverRegistration />} />
+              <Route path="/owner/register" element={<OwnerRegistration />} />
+              <Route path="/catalogue/:category" element={<Catalogue />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </UserTypeProvider>
     </RegionProvider>
   </QueryClientProvider>
 );
