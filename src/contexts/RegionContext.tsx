@@ -1,10 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { detectCountryFromIP, detectCountryFromTimezone } from "@/lib/ip-geolocation";
 
 export type Country = "USA" | "Nigeria";
+export type RegionMode = "auto" | "manual";
 
 interface RegionContextType {
   country: Country;
   setCountry: (country: Country) => void;
+  regionMode: RegionMode;
+  setRegionMode: (mode: RegionMode) => void;
+  isDetecting: boolean;
   currency: string;
   currencySymbol: string;
   phonePrefix: string;
@@ -31,35 +36,54 @@ const regionConfig = {
   },
 };
 
-// Detect country from timezone or browser language
-const detectCountry = (): Country => {
-  try {
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (timezone.startsWith("Africa/Lagos") || timezone.startsWith("Africa/")) {
-      return "Nigeria";
-    }
-    
-    const language = navigator.language || navigator.languages?.[0] || "";
-    if (language.includes("NG") || language.includes("ng")) {
-      return "Nigeria";
-    }
-    
-    return "USA";
-  } catch {
-    return "USA";
-  }
-};
-
 export const RegionProvider = ({ children }: { children: ReactNode }) => {
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [regionMode, setRegionMode] = useState<RegionMode>(() => {
+    const saved = localStorage.getItem("region-mode");
+    if (saved === "auto" || saved === "manual") return saved;
+    return "auto";
+  });
+  
   const [country, setCountry] = useState<Country>(() => {
     const saved = localStorage.getItem("preferred-country");
     if (saved === "USA" || saved === "Nigeria") return saved;
-    return detectCountry();
+    // Initial fallback to timezone while IP detection runs
+    return detectCountryFromTimezone();
   });
 
+  // IP-based detection on mount when in auto mode
   useEffect(() => {
-    localStorage.setItem("preferred-country", country);
-  }, [country]);
+    const detectRegion = async () => {
+      if (regionMode === "auto") {
+        setIsDetecting(true);
+        try {
+          const result = await detectCountryFromIP();
+          if (result.detected) {
+            setCountry(result.country);
+            localStorage.setItem("preferred-country", result.country);
+          }
+        } catch (error) {
+          console.warn("IP detection failed:", error);
+        } finally {
+          setIsDetecting(false);
+        }
+      }
+    };
+
+    detectRegion();
+  }, [regionMode]);
+
+  // Save region mode preference
+  useEffect(() => {
+    localStorage.setItem("region-mode", regionMode);
+  }, [regionMode]);
+
+  // Save country preference only in manual mode
+  useEffect(() => {
+    if (regionMode === "manual") {
+      localStorage.setItem("preferred-country", country);
+    }
+  }, [country, regionMode]);
 
   const config = regionConfig[country];
 
@@ -68,6 +92,9 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
       value={{
         country,
         setCountry,
+        regionMode,
+        setRegionMode,
+        isDetecting,
         ...config,
       }}
     >

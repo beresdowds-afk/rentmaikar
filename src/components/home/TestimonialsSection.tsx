@@ -1,10 +1,18 @@
 import { useRegion } from "@/contexts/RegionContext";
+import { useUserType } from "@/contexts/UserTypeContext";
 import { getTestimonialContent } from "@/lib/localized-content";
 import { Quote, Star } from "lucide-react";
 
 const TestimonialsSection = () => {
   const { country } = useRegion();
+  const { userType } = useUserType();
   const content = getTestimonialContent(country);
+
+  // Only show driver testimonials for drivers (or when no type selected)
+  // Owners see a different value proposition
+  if (userType === "owner") {
+    return null;
+  }
 
   return (
     <section className="py-20 bg-muted/30">

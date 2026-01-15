@@ -2,12 +2,18 @@ import { Link } from "react-router-dom";
 import { MessageCircle, Phone, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRegion } from "@/contexts/RegionContext";
+import { useUserType } from "@/contexts/UserTypeContext";
 import { getHeroContent } from "@/lib/localized-content";
 import heroCar from "@/assets/hero-car.jpg";
 
 const HeroSection = () => {
   const { country, whatsappNumber, smsNumber } = useRegion();
+  const { userType } = useUserType();
   const content = getHeroContent(country);
+
+  // Filter CTAs based on user type
+  const showDriverCTA = userType === null || userType === "driver";
+  const showOwnerCTA = userType === null || userType === "owner";
 
   return (
     <section className="relative min-h-[90vh] flex items-center">
@@ -37,19 +43,24 @@ const HeroSection = () => {
             {content.description}
           </p>
 
-          {/* CTA Buttons */}
+          {/* CTA Buttons - Filtered by user type */}
           <div className="flex flex-wrap gap-4 mb-8">
-            <Link to="/driver/register">
-              <Button variant="hero" size="xl" className="gap-2">
-                {content.primaryCta}
-                <ArrowRight className="w-5 h-5" />
-              </Button>
-            </Link>
-            <Link to="/owner/register">
-              <Button variant="heroOutline" size="xl">
-                {content.secondaryCta}
-              </Button>
-            </Link>
+            {showDriverCTA && (
+              <Link to="/driver/register">
+                <Button variant="hero" size="xl" className="gap-2">
+                  {content.primaryCta}
+                  <ArrowRight className="w-5 h-5" />
+                </Button>
+              </Link>
+            )}
+            {showOwnerCTA && (
+              <Link to="/owner/register">
+                <Button variant={showDriverCTA ? "heroOutline" : "hero"} size="xl" className="gap-2">
+                  {content.secondaryCta}
+                  {!showDriverCTA && <ArrowRight className="w-5 h-5" />}
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* Contact Buttons */}

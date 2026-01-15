@@ -1,15 +1,19 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import VehicleTrackingMap from "@/components/tracking/VehicleTrackingMap";
 import { PaymentDefaultAlert } from "@/components/payment/PaymentDefaultAlert";
 import { PaymentBreakdownCard } from "@/components/payment/PaymentBreakdownCard";
 import { type PaymentDefault } from "@/lib/payment-config";
+import { useRegion, type Country } from "@/contexts/RegionContext";
 import { toast } from "sonner";
 
 const stats = [
@@ -71,6 +75,8 @@ const paymentDefaults: PaymentDefault[] = [
 ];
 
 const AdminDashboard = () => {
+  const { country, setCountry, regionMode, setRegionMode, isDetecting } = useRegion();
+  
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -111,6 +117,7 @@ const AdminDashboard = () => {
               <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
               <TabsTrigger value="defaults">Payment Defaults</TabsTrigger>
               <TabsTrigger value="fees">Fee Structure</TabsTrigger>
+              <TabsTrigger value="settings">Region Settings</TabsTrigger>
             </TabsList>
 
             <TabsContent value="tracking">
@@ -243,6 +250,120 @@ const AdminDashboard = () => {
                     <li>• <strong>Owner Payouts:</strong> Every Friday (weekly)</li>
                     <li>• <strong>Platform Fee:</strong> 40% total (20% admin + 20% management)</li>
                   </ul>
+                </div>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="settings">
+              <Card className="p-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <Settings className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-semibold">Region Detection Settings</h3>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Auto vs Manual Toggle */}
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                    <div className="space-y-1">
+                      <Label htmlFor="region-mode" className="text-base font-medium">
+                        Automatic Region Detection
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        {regionMode === "auto" 
+                          ? "Region is detected automatically using IP address geolocation"
+                          : "Region is manually selected by users or admins"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Manual</span>
+                      <Switch
+                        id="region-mode"
+                        checked={regionMode === "auto"}
+                        onCheckedChange={(checked) => {
+                          setRegionMode(checked ? "auto" : "manual");
+                          toast.success(`Region detection set to ${checked ? "automatic" : "manual"}`);
+                        }}
+                      />
+                      <span className="text-sm text-muted-foreground">Auto</span>
+                    </div>
+                  </div>
+
+                  {/* Current Region Status */}
+                  <div className="p-4 rounded-lg border border-border">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Globe className="h-5 w-5 text-accent" />
+                      <h4 className="font-medium">Current Region Status</h4>
+                      {isDetecting && (
+                        <span className="px-2 py-1 text-xs rounded-full bg-warning/10 text-warning animate-pulse">
+                          Detecting...
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Active Region</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-2xl">{country === "USA" ? "🇺🇸" : "🇳🇬"}</span>
+                          <span className="font-semibold">{country}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Detection Mode</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`w-2 h-2 rounded-full ${regionMode === "auto" ? "bg-green-500" : "bg-yellow-500"}`} />
+                          <span className="font-medium capitalize">{regionMode}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Manual Override (only in manual mode) */}
+                  {regionMode === "manual" && (
+                    <div className="p-4 rounded-lg border border-accent/30 bg-accent/5">
+                      <Label className="text-sm font-medium mb-2 block">Manual Region Override</Label>
+                      <Select
+                        value={country}
+                        onValueChange={(value: Country) => {
+                          setCountry(value);
+                          toast.success(`Region changed to ${value}`);
+                        }}
+                      >
+                        <SelectTrigger className="w-full md:w-64">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="USA">
+                            <span className="flex items-center gap-2">
+                              <span>🇺🇸</span> United States (USD)
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="Nigeria">
+                            <span className="flex items-center gap-2">
+                              <span>🇳🇬</span> Nigeria (NGN)
+                            </span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        This will override the detected region for all users visiting the platform.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Info Box */}
+                  <div className="p-4 rounded-lg bg-muted space-y-2">
+                    <h5 className="font-semibold flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      How Region Detection Works
+                    </h5>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• <strong>Automatic Mode:</strong> Uses IP geolocation (ip-api.com) to detect user's country</li>
+                      <li>• <strong>Manual Mode:</strong> Users can select their region, or admin can override for all</li>
+                      <li>• <strong>Fallback:</strong> If IP detection fails, timezone is used as backup</li>
+                      <li>• <strong>Supported Regions:</strong> USA (PayPal/USD) and Nigeria (Paystack/NGN)</li>
+                    </ul>
+                  </div>
                 </div>
               </Card>
             </TabsContent>
