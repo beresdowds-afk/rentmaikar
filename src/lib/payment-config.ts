@@ -9,6 +9,10 @@ export const PAYMENT_CONFIG = {
   ADMIN_FEE_PERCENT: 20, // Driver pays base + 20%
   MANAGEMENT_FEE_PERCENT: 20, // Owner receives base - 20%
   PLATFORM_FEE_PERCENT: 40, // Total platform earnings
+  DAILY_PAYMENT_FINE_PERCENT: 10, // 10% fine for daily payment option
+  
+  // Payment frequency settings
+  MINIMUM_DOWN_PAYMENT_DAYS: 2, // Minimum 2 days down payment required
   
   // Payment schedule
   DAILY_DEBIT_TIME: '00:01', // 12:01 AM
@@ -23,7 +27,33 @@ export const PAYMENT_CONFIG = {
     USD: { symbol: '$', decimals: 2, minAmount: 1 },
     NGN: { symbol: '₦', decimals: 2, minAmount: 100 },
   },
+  
+  // Payment methods
+  PAYMENT_METHODS: {
+    USA: ['paypal', 'bank_transfer'] as const,
+    NIGERIA: ['paystack', 'bank_transfer'] as const,
+  },
+  
+  // Bank details for manual transfers
+  BANK_ACCOUNTS: {
+    USA: {
+      bankName: 'Chase Bank',
+      accountName: 'RideShare Platform LLC',
+      accountNumber: 'XXXX-XXXX-1234',
+      routingNumber: '021000021',
+      accountType: 'Business Checking',
+    },
+    NIGERIA: {
+      bankName: 'GTBank',
+      accountName: 'RideShare Nigeria Ltd',
+      accountNumber: '0123456789',
+      bankCode: '058',
+    },
+  },
 } as const;
+
+export type PaymentMethod = 'paypal' | 'paystack' | 'bank_transfer';
+export type PaymentFrequency = 'daily' | 'weekly';
 
 export interface PaymentBreakdown {
   baseAmount: number;
@@ -33,6 +63,13 @@ export interface PaymentBreakdown {
   ownerPayout: number;
   platformEarnings: number;
   currency: 'USD' | 'NGN';
+  // Extended breakdown for daily payments
+  dailyRate?: number;
+  dailyFine?: number;
+  effectiveDailyRate?: number;
+  frequency?: PaymentFrequency;
+  downPaymentAmount?: number;
+  downPaymentDays?: number;
 }
 
 export interface PaymentTransaction {
@@ -73,20 +110,61 @@ export interface PaymentDefault {
  */
 export function calculatePaymentBreakdown(
   baseAmount: number,
-  currency: 'USD' | 'NGN'
+  currency: 'USD' | 'NGN',
+  frequency: PaymentFrequency = 'weekly',
+  downPaymentDays: number = PAYMENT_CONFIG.MINIMUM_DOWN_PAYMENT_DAYS
 ): PaymentBreakdown {
   const adminFee = baseAmount * (PAYMENT_CONFIG.ADMIN_FEE_PERCENT / 100);
   const managementFee = baseAmount * (PAYMENT_CONFIG.MANAGEMENT_FEE_PERCENT / 100);
   
+  // Calculate daily rates
+  const dailyRate = baseAmount / 7;
+  const dailyFine = frequency === 'daily' 
+    ? dailyRate * (PAYMENT_CONFIG.DAILY_PAYMENT_FINE_PERCENT / 100)
+    : 0;
+  const effectiveDailyRate = dailyRate + dailyFine;
+  
+  // Calculate totals based on frequency
+  const weeklyWithFine = effectiveDailyRate * 7;
+  const driverBase = frequency === 'daily' ? weeklyWithFine : baseAmount;
+  const driverAdminFee = driverBase * (PAYMENT_CONFIG.ADMIN_FEE_PERCENT / 100);
+  
+  // Down payment calculation
+  const downPaymentBase = effectiveDailyRate * downPaymentDays;
+  const downPaymentAmount = downPaymentBase * (1 + PAYMENT_CONFIG.ADMIN_FEE_PERCENT / 100);
+  
   return {
     baseAmount,
     adminFee,
-    driverTotal: baseAmount + adminFee,
+    driverTotal: driverBase + driverAdminFee,
     managementFee,
     ownerPayout: baseAmount - managementFee,
-    platformEarnings: adminFee + managementFee,
+    platformEarnings: driverAdminFee + managementFee,
     currency,
+    dailyRate,
+    dailyFine,
+    effectiveDailyRate,
+    frequency,
+    downPaymentAmount: frequency === 'daily' ? downPaymentAmount : undefined,
+    downPaymentDays: frequency === 'daily' ? downPaymentDays : undefined,
   };
+}
+
+/**
+ * Calculate payment breakdown for a specific number of days
+ */
+export function calculateDailyPaymentBreakdown(
+  weeklyBaseAmount: number,
+  currency: 'USD' | 'NGN',
+  days: number
+): { dailyRate: number; fine: number; total: number; withAdminFee: number } {
+  const dailyRate = weeklyBaseAmount / 7;
+  const fine = dailyRate * (PAYMENT_CONFIG.DAILY_PAYMENT_FINE_PERCENT / 100);
+  const effectiveRate = dailyRate + fine;
+  const total = effectiveRate * days;
+  const withAdminFee = total * (1 + PAYMENT_CONFIG.ADMIN_FEE_PERCENT / 100);
+  
+  return { dailyRate, fine: fine * days, total, withAdminFee };
 }
 
 /**
