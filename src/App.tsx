@@ -8,6 +8,8 @@ import { UserTypeProvider } from "@/contexts/UserTypeContext";
 import Index from "./pages/Index";
 import DriverRegistration from "./pages/DriverRegistration";
 import OwnerRegistration from "./pages/OwnerRegistration";
+import DriverDashboard from "./pages/DriverDashboard";
+import OwnerDashboard from "./pages/OwnerDashboard";
 import Catalogue from "./pages/Catalogue";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
@@ -25,7 +27,9 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/driver/register" element={<DriverRegistration />} />
+              <Route path="/driver/dashboard" element={<DriverDashboard />} />
               <Route path="/owner/register" element={<OwnerRegistration />} />
+              <Route path="/owner/dashboard" element={<OwnerDashboard />} />
               <Route path="/catalogue/:category" element={<Catalogue />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="*" element={<NotFound />} />

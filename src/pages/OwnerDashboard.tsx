@@ -1,0 +1,676 @@
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
+import { useRegion } from '@/contexts/RegionContext';
+import { formatCurrency, PAYMENT_CONFIG } from '@/lib/payment-config';
+import {
+  Car,
+  Plus,
+  DollarSign,
+  TrendingUp,
+  Calendar,
+  MapPin,
+  Users,
+  Wallet,
+  ArrowDownToLine,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  Building2,
+  FileText,
+  Settings,
+  Eye,
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+// Mock data for owner dashboard
+const mockVehicles = [
+  {
+    id: 'v-001',
+    make: 'Toyota',
+    model: 'Camry',
+    year: 2021,
+    plateNumber: 'ABC-123',
+    category: 'Top Earner',
+    status: 'rented' as const,
+    driver: { name: 'John Doe', id: 'd-001' },
+    weeklyRate: 300,
+    earnings: { total: 2400, available: 1920 },
+    image: '/placeholder.svg',
+  },
+  {
+    id: 'v-002',
+    make: 'Honda',
+    model: 'Accord',
+    year: 2019,
+    plateNumber: 'DEF-456',
+    category: 'Earnings Optimizer',
+    status: 'rented' as const,
+    driver: { name: 'Jane Smith', id: 'd-002' },
+    weeklyRate: 280,
+    earnings: { total: 2240, available: 1792 },
+    image: '/placeholder.svg',
+  },
+  {
+    id: 'v-003',
+    make: 'Hyundai',
+    model: 'Elantra',
+    year: 2016,
+    plateNumber: 'GHI-789',
+    category: 'Smart Start',
+    status: 'available' as const,
+    driver: null,
+    weeklyRate: 220,
+    earnings: { total: 0, available: 0 },
+    image: '/placeholder.svg',
+  },
+];
+
+const mockWithdrawals = [
+  { id: 'w-001', amount: 1500, status: 'completed', date: '2025-01-10', method: 'bank_transfer' },
+  { id: 'w-002', amount: 1200, status: 'pending', date: '2025-01-15', method: 'bank_transfer' },
+];
+
+const vehicleCategories = [
+  { value: 'smart-start', label: 'Smart Start (2015-2016)', maxWeekly: 250 },
+  { value: 'earnings-optimizer', label: 'Earnings Optimizer (2017-2020)', maxWeekly: 300 },
+  { value: 'top-earner', label: 'Top Earner (2021-2025)', maxWeekly: 350 },
+];
+
+export default function OwnerDashboard() {
+  const { country, currency, currencySymbol } = useRegion();
+  const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+
+  const isUSA = country === 'USA';
+  const multiplier = isUSA ? 1 : 500; // Exchange rate approximation
+
+  // Calculate totals
+  const totalEarnings = mockVehicles.reduce((sum, v) => sum + v.earnings.total, 0) * multiplier;
+  const availableBalance = mockVehicles.reduce((sum, v) => sum + v.earnings.available, 0) * multiplier;
+  const activeVehicles = mockVehicles.filter(v => v.status === 'rented').length;
+
+  const handleAddVehicle = () => {
+    toast.success('Vehicle added successfully! Pending admin verification.');
+    setIsAddVehicleOpen(false);
+  };
+
+  const handleWithdraw = () => {
+    const amount = parseFloat(withdrawAmount);
+    if (!selectedVehicle) {
+      toast.error('Please select a vehicle');
+      return;
+    }
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+    
+    const vehicle = mockVehicles.find(v => v.id === selectedVehicle);
+    if (vehicle && amount > vehicle.earnings.available * multiplier) {
+      toast.error('Insufficient available balance for this vehicle');
+      return;
+    }
+
+    toast.success(`Withdrawal of ${formatCurrency(amount, currency)} initiated!`);
+    setIsWithdrawOpen(false);
+    setWithdrawAmount('');
+    setSelectedVehicle(null);
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      
+      <main className="pt-24 pb-16">
+        <div className="container mx-auto px-4">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+              <h1 className="text-3xl font-display font-bold">Owner Dashboard</h1>
+              <p className="text-muted-foreground flex items-center gap-2 mt-1">
+                <MapPin className="h-4 w-4" />
+                {country} Region • {isUSA ? '🇺🇸' : '🇳🇬'} {currency}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <ArrowDownToLine className="h-4 w-4" />
+                    Withdraw Funds
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Withdraw Funds</DialogTitle>
+                    <DialogDescription>
+                      Withdraw earnings from your vehicle rentals. 
+                      Withdrawals are limited to earnings from your vehicles only.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <Label>Select Vehicle</Label>
+                      <Select value={selectedVehicle || ''} onValueChange={setSelectedVehicle}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a vehicle" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {mockVehicles.filter(v => v.earnings.available > 0).map(vehicle => (
+                            <SelectItem key={vehicle.id} value={vehicle.id}>
+                              {vehicle.make} {vehicle.model} - Available: {formatCurrency(vehicle.earnings.available * multiplier, currency)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Amount ({currency})</Label>
+                      <Input 
+                        type="number" 
+                        placeholder="Enter amount"
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Withdrawal Method</Label>
+                      <Select defaultValue="bank_transfer">
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="bank_transfer">
+                            {isUSA ? 'Bank Transfer (ACH)' : 'Bank Transfer'}
+                          </SelectItem>
+                          {isUSA && <SelectItem value="paypal">PayPal</SelectItem>}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Alert>
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        Withdrawals are processed on Fridays. 
+                        Management fee (20%) has already been deducted.
+                      </AlertDescription>
+                    </Alert>
+                    <Button onClick={handleWithdraw} className="w-full">
+                      Request Withdrawal
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              
+              <Dialog open={isAddVehicleOpen} onOpenChange={setIsAddVehicleOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Vehicle
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Add New Vehicle</DialogTitle>
+                    <DialogDescription>
+                      List a new vehicle for rent. Subject to admin approval.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Make</Label>
+                        <Input placeholder="e.g. Toyota" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Model</Label>
+                        <Input placeholder="e.g. Camry" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Year</Label>
+                        <Input type="number" placeholder="e.g. 2021" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Plate Number</Label>
+                        <Input placeholder="e.g. ABC-123" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Category</Label>
+                      <Select>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category based on year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {vehicleCategories.map(cat => (
+                            <SelectItem key={cat.value} value={cat.value}>
+                              {cat.label} - Up to {formatCurrency(cat.maxWeekly * multiplier, currency)}/week
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Vehicle Photos</Label>
+                      <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                        <p className="text-sm text-muted-foreground">
+                          Click to upload or drag and drop vehicle photos
+                        </p>
+                      </div>
+                    </div>
+                    <Button onClick={handleAddVehicle} className="w-full">
+                      Submit Vehicle for Approval
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Vehicles</p>
+                    <p className="text-2xl font-bold">{mockVehicles.length}</p>
+                  </div>
+                  <Car className="h-8 w-8 text-primary" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Active Rentals</p>
+                    <p className="text-2xl font-bold">{activeVehicles}</p>
+                  </div>
+                  <Users className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Earnings</p>
+                    <p className="text-2xl font-bold">{formatCurrency(totalEarnings, currency)}</p>
+                  </div>
+                  <TrendingUp className="h-8 w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Available Balance</p>
+                    <p className="text-2xl font-bold text-green-600">{formatCurrency(availableBalance, currency)}</p>
+                  </div>
+                  <Wallet className="h-8 w-8 text-orange-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Tabs defaultValue="vehicles" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
+              <TabsTrigger value="vehicles">My Vehicles</TabsTrigger>
+              <TabsTrigger value="earnings">Earnings</TabsTrigger>
+              <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+            </TabsList>
+
+            {/* Vehicles Tab */}
+            <TabsContent value="vehicles" className="space-y-6">
+              <div className="grid gap-6">
+                {mockVehicles.map(vehicle => (
+                  <Card key={vehicle.id}>
+                    <CardContent className="p-6">
+                      <div className="flex flex-col lg:flex-row gap-6">
+                        {/* Vehicle Image */}
+                        <div className="w-full lg:w-48 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                          <img 
+                            src={vehicle.image} 
+                            alt={`${vehicle.make} ${vehicle.model}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        
+                        {/* Vehicle Info */}
+                        <div className="flex-1 space-y-4">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="text-xl font-bold">
+                                {vehicle.make} {vehicle.model} ({vehicle.year})
+                              </h3>
+                              <p className="text-muted-foreground">{vehicle.plateNumber}</p>
+                            </div>
+                            <Badge className={vehicle.status === 'rented' ? 'bg-green-500' : 'bg-blue-500'}>
+                              {vehicle.status === 'rented' ? 'Rented' : 'Available'}
+                            </Badge>
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Category</p>
+                              <p className="font-medium">{vehicle.category}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Weekly Rate</p>
+                              <p className="font-medium">{formatCurrency(vehicle.weeklyRate * multiplier, currency)}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Current Driver</p>
+                              <p className="font-medium">{vehicle.driver?.name || 'None'}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Available Earnings</p>
+                              <p className="font-medium text-green-600">
+                                {formatCurrency(vehicle.earnings.available * multiplier, currency)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" className="gap-1">
+                              <Eye className="h-4 w-4" />
+                              View Details
+                            </Button>
+                            <Button variant="outline" size="sm" className="gap-1">
+                              <Settings className="h-4 w-4" />
+                              Manage
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <Button 
+                variant="outline" 
+                className="w-full py-8 border-dashed"
+                onClick={() => setIsAddVehicleOpen(true)}
+              >
+                <Plus className="h-6 w-6 mr-2" />
+                Add Another Vehicle
+              </Button>
+            </TabsContent>
+
+            {/* Earnings Tab */}
+            <TabsContent value="earnings" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Earnings Overview</CardTitle>
+                  <CardDescription>
+                    Your earnings after platform management fee (20%)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {/* Earnings Summary */}
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div className="p-4 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground">Gross Earnings</p>
+                        <p className="text-2xl font-bold">{formatCurrency(totalEarnings * 1.25, currency)}</p>
+                      </div>
+                      <div className="p-4 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground">Management Fee (20%)</p>
+                        <p className="text-2xl font-bold text-destructive">
+                          -{formatCurrency(totalEarnings * 0.25, currency)}
+                        </p>
+                      </div>
+                      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <p className="text-sm text-muted-foreground">Net Earnings</p>
+                        <p className="text-2xl font-bold text-green-600">{formatCurrency(totalEarnings, currency)}</p>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Per Vehicle Earnings */}
+                    <div>
+                      <h4 className="font-semibold mb-4">Earnings by Vehicle</h4>
+                      <div className="space-y-4">
+                        {mockVehicles.filter(v => v.earnings.total > 0).map(vehicle => (
+                          <div key={vehicle.id} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div className="flex items-center gap-4">
+                              <div className="h-12 w-12 bg-muted rounded-lg flex items-center justify-center">
+                                <Car className="h-6 w-6" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{vehicle.make} {vehicle.model}</p>
+                                <p className="text-sm text-muted-foreground">{vehicle.plateNumber}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold">{formatCurrency(vehicle.earnings.total * multiplier, currency)}</p>
+                              <p className="text-sm text-green-600">
+                                Available: {formatCurrency(vehicle.earnings.available * multiplier, currency)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Earnings Calculator */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Earnings Calculator</CardTitle>
+                  <CardDescription>Estimate your potential weekly earnings</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Vehicle Category</Label>
+                        <Select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vehicleCategories.map(cat => (
+                              <SelectItem key={cat.value} value={cat.value}>
+                                {cat.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Weekly Rental Rate ({currency})</Label>
+                        <Input type="number" placeholder={isUSA ? '300' : '150000'} />
+                      </div>
+                    </div>
+                    <div className="p-4 bg-muted rounded-lg">
+                      <h4 className="font-semibold mb-4">Estimated Weekly Payout</h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span>Weekly Rate</span>
+                          <span>{formatCurrency(300 * multiplier, currency)}</span>
+                        </div>
+                        <div className="flex justify-between text-destructive">
+                          <span>Management Fee (20%)</span>
+                          <span>-{formatCurrency(60 * multiplier, currency)}</span>
+                        </div>
+                        <Separator />
+                        <div className="flex justify-between font-bold text-lg">
+                          <span>You Receive</span>
+                          <span className="text-green-600">{formatCurrency(240 * multiplier, currency)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Withdrawals Tab */}
+            <TabsContent value="withdrawals" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Withdrawal History</CardTitle>
+                  <CardDescription>
+                    Self-service withdrawals from your vehicle earnings only
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {mockWithdrawals.map(withdrawal => (
+                      <div 
+                        key={withdrawal.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                            withdrawal.status === 'completed' 
+                              ? 'bg-green-100' 
+                              : 'bg-yellow-100'
+                          }`}>
+                            {withdrawal.status === 'completed' 
+                              ? <CheckCircle className="h-5 w-5 text-green-600" />
+                              : <Clock className="h-5 w-5 text-yellow-600" />
+                            }
+                          </div>
+                          <div>
+                            <p className="font-medium">Withdrawal Request</p>
+                            <p className="text-sm text-muted-foreground">{withdrawal.date}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">{formatCurrency(withdrawal.amount * multiplier, currency)}</p>
+                          <Badge variant={withdrawal.status === 'completed' ? 'default' : 'secondary'}>
+                            {withdrawal.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Alert className="mt-6">
+                    <Building2 className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Payout Schedule:</strong> Withdrawals are processed every Friday. 
+                      {isUSA 
+                        ? ' Funds are sent via ACH to your registered bank account.'
+                        : ' Funds are transferred to your registered Nigerian bank account.'
+                      }
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+
+              {/* Payout Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Payout Settings</CardTitle>
+                  <CardDescription>Configure your withdrawal preferences</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Bank Name</Label>
+                      <Input value={isUSA ? 'Chase Bank' : 'GTBank'} disabled />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Account Number</Label>
+                      <Input value="****1234" disabled />
+                    </div>
+                  </div>
+                  <Button variant="outline">Update Bank Details</Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Settings Tab */}
+            <TabsContent value="settings" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Account Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Full Name</Label>
+                      <Input placeholder="John Doe" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input type="email" placeholder="john@example.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Phone Number</Label>
+                      <Input placeholder={isUSA ? '+1 (555) 123-4567' : '+234 801 234 5678'} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Region</Label>
+                      <Input value={country} disabled />
+                    </div>
+                  </div>
+                  <Button>Save Changes</Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Document Verification</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5" />
+                        <div>
+                          <p className="font-medium">Government ID</p>
+                          <p className="text-sm text-muted-foreground">
+                            {isUSA ? 'Driver\'s License or Passport' : 'NIN or Passport'}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge className="bg-green-500">Verified</Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5" />
+                        <div>
+                          <p className="font-medium">Proof of Vehicle Ownership</p>
+                          <p className="text-sm text-muted-foreground">Vehicle registration documents</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-green-500">Verified</Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
