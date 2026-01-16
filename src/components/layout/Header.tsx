@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Car, User, Building, Shield } from "lucide-react";
+import { Menu, X, Car, User, Building, Shield, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import RegionSwitcher from "@/components/home/RegionSwitcher";
+import { useUserType } from "@/contexts/UserTypeContext";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const { userType } = useUserType();
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -53,18 +55,37 @@ const Header = () => {
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center gap-3">
             <RegionSwitcher />
-            <Link to="/driver/register">
-              <Button variant="outline" size="sm" className="gap-2">
-                <User className="w-4 h-4" />
-                Driver Sign Up
-              </Button>
-            </Link>
-            <Link to="/owner/register">
-              <Button variant="default" size="sm" className="gap-2">
-                <Building className="w-4 h-4" />
-                List Your Car
-              </Button>
-            </Link>
+            {userType === 'driver' ? (
+              <>
+                <Link to="/driver/dashboard">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <LayoutDashboard className="w-4 h-4" />
+                    My Dashboard
+                  </Button>
+                </Link>
+                <Link to="/driver/register">
+                  <Button variant="default" size="sm" className="gap-2">
+                    <User className="w-4 h-4" />
+                    Driver Sign Up
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/owner/dashboard">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <LayoutDashboard className="w-4 h-4" />
+                    My Dashboard
+                  </Button>
+                </Link>
+                <Link to="/owner/register">
+                  <Button variant="default" size="sm" className="gap-2">
+                    <Building className="w-4 h-4" />
+                    List Your Car
+                  </Button>
+                </Link>
+              </>
+            )}
             <Link to="/admin">
               <Button variant="ghost" size="icon">
                 <Shield className="w-5 h-5" />
@@ -107,18 +128,37 @@ const Header = () => {
                 </Link>
               ))}
               <div className="flex flex-col gap-2 pt-4 border-t border-border mt-2">
-                <Link to="/driver/register" onClick={() => setIsMenuOpen(false)}>
-                  <Button variant="outline" className="w-full gap-2">
-                    <User className="w-4 h-4" />
-                    Driver Sign Up
-                  </Button>
-                </Link>
-                <Link to="/owner/register" onClick={() => setIsMenuOpen(false)}>
-                  <Button variant="default" className="w-full gap-2">
-                    <Building className="w-4 h-4" />
-                    List Your Car
-                  </Button>
-                </Link>
+                {userType === 'driver' ? (
+                  <>
+                    <Link to="/driver/dashboard" onClick={() => setIsMenuOpen(false)}>
+                      <Button variant="outline" className="w-full gap-2">
+                        <LayoutDashboard className="w-4 h-4" />
+                        My Dashboard
+                      </Button>
+                    </Link>
+                    <Link to="/driver/register" onClick={() => setIsMenuOpen(false)}>
+                      <Button variant="default" className="w-full gap-2">
+                        <User className="w-4 h-4" />
+                        Driver Sign Up
+                      </Button>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/owner/dashboard" onClick={() => setIsMenuOpen(false)}>
+                      <Button variant="outline" className="w-full gap-2">
+                        <LayoutDashboard className="w-4 h-4" />
+                        My Dashboard
+                      </Button>
+                    </Link>
+                    <Link to="/owner/register" onClick={() => setIsMenuOpen(false)}>
+                      <Button variant="default" className="w-full gap-2">
+                        <Building className="w-4 h-4" />
+                        List Your Car
+                      </Button>
+                    </Link>
+                  </>
+                )}
                 <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
                   <Button variant="ghost" className="w-full gap-2">
                     <Shield className="w-4 h-4" />

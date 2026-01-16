@@ -3,6 +3,7 @@ import { detectCountryFromIP, detectCountryFromTimezone } from "@/lib/ip-geoloca
 
 export type Country = "USA" | "Nigeria";
 export type RegionMode = "auto" | "manual";
+export type Currency = "USD" | "NGN";
 
 interface RegionContextType {
   country: Country;
@@ -10,7 +11,7 @@ interface RegionContextType {
   regionMode: RegionMode;
   setRegionMode: (mode: RegionMode) => void;
   isDetecting: boolean;
-  currency: string;
+  currency: Currency;
   currencySymbol: string;
   phonePrefix: string;
   whatsappNumber: string;
@@ -19,7 +20,15 @@ interface RegionContextType {
 
 const RegionContext = createContext<RegionContextType | undefined>(undefined);
 
-const regionConfig = {
+interface RegionConfig {
+  currency: Currency;
+  currencySymbol: string;
+  phonePrefix: string;
+  whatsappNumber: string;
+  smsNumber: string;
+}
+
+const regionConfig: Record<Country, RegionConfig> = {
   USA: {
     currency: "USD",
     currencySymbol: "$",
