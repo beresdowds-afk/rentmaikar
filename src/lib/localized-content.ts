@@ -230,17 +230,17 @@ const nigeriaCategoryContent: CategoryContent = {
   budget: {
     title: "The Smart Start",
     description: "Perfect for wise starters. Keep your costs low and your profits high with these reliable, fuel-saving champions.",
-    priceLabel: "From ₦180,000",
+    priceLabel: "From ₦60,000",
   },
   standard: {
     title: "The Profit Builder",
     description: "Boost your ratings and attract better rides. Modern comfort that passengers appreciate and reward with tips.",
-    priceLabel: "From ₦220,000",
+    priceLabel: "From ₦73,000",
   },
   premium: {
     title: "The Top Earner",
     description: "Command premium fares and VIP rides. Drive the latest models that passengers request by name.",
-    priceLabel: "From ₦280,000",
+    priceLabel: "From ₦93,000",
   },
   viewCta: "View Cars",
 };
