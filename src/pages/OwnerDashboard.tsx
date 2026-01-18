@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,10 @@ import Footer from '@/components/layout/Footer';
 import { useRegion } from '@/contexts/RegionContext';
 import { formatCurrency, PAYMENT_CONFIG } from '@/lib/payment-config';
 import { OwnerPriceNegotiation } from '@/components/negotiation/OwnerPriceNegotiation';
+import { PhoneVerification } from '@/components/phone/PhoneVerification';
+import { NotificationPreferences } from '@/components/phone/NotificationPreferences';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Car,
   Plus,
@@ -92,12 +96,30 @@ const vehicleCategories = [
 
 export default function OwnerDashboard() {
   const { country, currency, currencySymbol } = useRegion();
+  const { user } = useAuth();
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
 
   const isUSA = country === 'USA';
+
+  // Fetch phone verification status
+  useEffect(() => {
+    const fetchPhoneStatus = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('phone_verified')
+        .eq('user_id', user.id)
+        .single();
+      if (data) {
+        setPhoneVerified(data.phone_verified || false);
+      }
+    };
+    fetchPhoneStatus();
+  }, [user]);
   const multiplier = isUSA ? 1 : 500; // Exchange rate approximation
 
   // Calculate totals
@@ -633,10 +655,6 @@ export default function OwnerDashboard() {
                       <Input type="email" placeholder="john@example.com" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Phone Number</Label>
-                      <Input placeholder={isUSA ? '+1 (555) 123-4567' : '+234 801 234 5678'} />
-                    </div>
-                    <div className="space-y-2">
                       <Label>Region</Label>
                       <Input value={country} disabled />
                     </div>
@@ -644,6 +662,12 @@ export default function OwnerDashboard() {
                   <Button>Save Changes</Button>
                 </CardContent>
               </Card>
+
+              {/* Phone Verification */}
+              <PhoneVerification onVerified={() => setPhoneVerified(true)} />
+
+              {/* Notification Preferences */}
+              <NotificationPreferences phoneVerified={phoneVerified} />
 
               <Card>
                 <CardHeader>
