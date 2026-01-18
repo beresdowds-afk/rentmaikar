@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Car, Mail, Phone, MapPin } from "lucide-react";
+import { Mail, Phone, MapPin } from "lucide-react";
+import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 
 const Footer = () => {
   return (
@@ -8,13 +9,12 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="space-y-4">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
-                <Car className="w-6 h-6 text-accent-foreground" />
-              </div>
-              <span className="text-xl font-display font-bold">
-                Rent<span className="text-accent">maikar</span>
-              </span>
+            <Link to="/" className="block">
+              <img 
+                src={rentmaikarLogo} 
+                alt="Rentmaikar" 
+                className="h-12 w-auto object-contain bg-white rounded-lg p-1"
+              />
             </Link>
             <p className="text-primary-foreground/70 text-sm">
               Connecting rideshare drivers with quality vehicles across the USA and Nigeria.
@@ -94,7 +94,7 @@ const Footer = () => {
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4" />
-                +1 (202) 555-0123
+                +1 (240) 393-0081
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4" />
