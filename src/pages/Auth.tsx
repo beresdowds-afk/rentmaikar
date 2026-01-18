@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Car, Loader2, AlertCircle, User, Shield, Users, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
+import { Car, Loader2, AlertCircle, User, Shield, Users, ArrowLeft, Mail, CheckCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 const loginSchema = z.object({
@@ -45,6 +45,10 @@ const Auth = () => {
   const { user, signIn, signUp, isLoading: authLoading, userRole } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string>('');
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
+  const [verificationResent, setVerificationResent] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
@@ -95,14 +99,17 @@ const Auth = () => {
   const handleLogin = async (data: LoginFormData) => {
     setIsSubmitting(true);
     setError(null);
+    setShowEmailVerification(false);
 
     const { error } = await signIn(data.email, data.password);
 
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
         setError('Invalid email or password. Please try again.');
-      } else if (error.message.includes('Email not confirmed')) {
-        setError('Please confirm your email before logging in.');
+      } else if (error.message.includes('Email not confirmed') || error.message.includes('email_not_confirmed')) {
+        setUnverifiedEmail(data.email);
+        setShowEmailVerification(true);
+        setVerificationResent(false);
       } else {
         setError(error.message);
       }
@@ -111,6 +118,45 @@ const Auth = () => {
     }
 
     setIsSubmitting(false);
+  };
+
+  const handleResendVerification = async () => {
+    if (!unverifiedEmail) return;
+    
+    setIsResendingVerification(true);
+    
+    try {
+      const redirectUrl = `${window.location.origin}/auth`;
+      
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: unverifiedEmail,
+        options: {
+          emailRedirectTo: redirectUrl,
+        },
+      });
+
+      if (error) {
+        toast.error('Failed to resend verification email', {
+          description: error.message,
+        });
+      } else {
+        setVerificationResent(true);
+        toast.success('Verification email sent!', {
+          description: 'Please check your inbox and spam folder.',
+        });
+      }
+    } catch (err: any) {
+      toast.error('Failed to resend verification email');
+    }
+    
+    setIsResendingVerification(false);
+  };
+
+  const handleBackFromVerification = () => {
+    setShowEmailVerification(false);
+    setUnverifiedEmail('');
+    setVerificationResent(false);
   };
 
   const handleSignup = async (data: SignupFormData) => {
@@ -173,6 +219,91 @@ const Auth = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Email Verification Required View
+  if (showEmailVerification) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center mb-4">
+              <Mail className="w-6 h-6 text-warning" />
+            </div>
+            <CardTitle className="text-2xl font-display">Verify Your Email</CardTitle>
+            <CardDescription>
+              Your email address needs to be verified before you can log in
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <Alert className="border-warning/50 bg-warning/10">
+              <Mail className="h-4 w-4 text-warning" />
+              <AlertDescription className="text-warning-foreground">
+                We sent a verification link to <strong>{unverifiedEmail}</strong>. 
+                Please check your inbox and click the link to verify your account.
+              </AlertDescription>
+            </Alert>
+
+            {verificationResent ? (
+              <Alert className="border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  A new verification email has been sent! Check your inbox and spam folder.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="text-center space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Didn't receive the email? Check your spam folder or request a new one.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={handleResendVerification}
+                  disabled={isResendingVerification}
+                  className="gap-2"
+                >
+                  {isResendingVerification ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4" />
+                      Resend Verification Email
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            <div className="pt-4 border-t border-border">
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p className="font-medium">Tips:</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>Check your spam or junk folder</li>
+                  <li>Make sure you entered the correct email address</li>
+                  <li>Verification links expire after 24 hours</li>
+                  <li>Add our email to your contacts to prevent spam filtering</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+          
+          <CardFooter>
+            <Button 
+              variant="ghost" 
+              className="w-full gap-2" 
+              onClick={handleBackFromVerification}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Login
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }
