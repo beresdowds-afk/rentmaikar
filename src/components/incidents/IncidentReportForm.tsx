@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { mqttTracker, IoTTelemetrySnapshot } from '@/lib/mqtt-client';
 import { 
   AlertTriangle, 
   Wrench, 
@@ -23,7 +24,9 @@ import {
   Info,
   Upload,
   X,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Cpu,
+  CheckCircle2
 } from 'lucide-react';
 
 type IncidentType = 'accident' | 'maintenance' | 'breakdown' | 'theft' | 'other';
@@ -73,11 +76,54 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
   const [location, setLocation] = useState('');
   const [estimatedDowntime, setEstimatedDowntime] = useState('');
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
+  const [iotSnapshot, setIotSnapshot] = useState<IoTTelemetrySnapshot | null>(null);
+  const [isCapturingIoT, setIsCapturingIoT] = useState(false);
 
   // Check if report would be late (more than 1 hour after occurrence)
   const isLateReport = occurredAt ? 
     (new Date().getTime() - new Date(occurredAt).getTime()) / (1000 * 60 * 60) > 1 : 
     false;
+
+  // Incident types that trigger automatic IoT data capture
+  const iotCaptureTypes: IncidentType[] = ['maintenance', 'breakdown'];
+
+  // Capture IoT telemetry when maintenance/breakdown is selected
+  useEffect(() => {
+    if (incidentType && iotCaptureTypes.includes(incidentType) && !iotSnapshot) {
+      captureIoTData();
+    }
+  }, [incidentType]);
+
+  const captureIoTData = async () => {
+    if (!vehicleId) return;
+    
+    setIsCapturingIoT(true);
+    try {
+      // Request fresh diagnostic data from IoT device
+      await mqttTracker.requestDiagnosticReport(vehicleId);
+      
+      // Small delay to allow device to respond
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Capture the telemetry snapshot
+      const snapshot = mqttTracker.captureIoTSnapshot(vehicleId);
+      setIotSnapshot(snapshot);
+      
+      // Auto-fill location if available
+      if (snapshot.location && !location) {
+        setLocation(`${snapshot.location.latitude.toFixed(6)}, ${snapshot.location.longitude.toFixed(6)}`);
+      }
+      
+      toast.success('IoT data captured', {
+        description: 'Vehicle telemetry has been logged for this incident.',
+      });
+    } catch (error) {
+      console.error('[IncidentReport] IoT capture error:', error);
+      toast.error('Could not capture IoT data');
+    } finally {
+      setIsCapturingIoT(false);
+    }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -199,23 +245,34 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
       // Upload photos first
       const photoUrls = await uploadPhotos();
 
-      // Insert incident record
+      // Insert incident record with IoT data
+      const insertData: any = {
+        vehicle_id: vehicleId,
+        driver_id: user.id,
+        owner_id: ownerId || null,
+        incident_type: incidentType,
+        severity,
+        title: title.trim(),
+        description: description.trim(),
+        occurred_at: new Date(occurredAt).toISOString(),
+        location_address: location.trim() || null,
+        estimated_downtime_hours: estimatedDowntime ? parseInt(estimatedDowntime) : null,
+        is_iot_detected: false,
+        photos: photoUrls.length > 0 ? photoUrls : null,
+      };
+
+      // Add IoT telemetry data if captured (for maintenance/breakdown)
+      if (iotSnapshot) {
+        insertData.location_lat = iotSnapshot.location?.latitude || null;
+        insertData.location_lng = iotSnapshot.location?.longitude || null;
+        insertData.iot_data = iotSnapshot;
+        insertData.iot_trigger_type = 'driver_report';
+        insertData.iot_triggered_at = iotSnapshot.capturedAt;
+      }
+
       const { data: incident, error: insertError } = await supabase
         .from('vehicle_incidents')
-        .insert({
-          vehicle_id: vehicleId,
-          driver_id: user.id,
-          owner_id: ownerId || null,
-          incident_type: incidentType,
-          severity,
-          title: title.trim(),
-          description: description.trim(),
-          occurred_at: new Date(occurredAt).toISOString(),
-          location_address: location.trim() || null,
-          estimated_downtime_hours: estimatedDowntime ? parseInt(estimatedDowntime) : null,
-          is_iot_detected: false,
-          photos: photoUrls.length > 0 ? photoUrls : null,
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -260,6 +317,7 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
       setEstimatedDowntime('');
       setSeverity('medium');
       setPhotos([]);
+      setIotSnapshot(null);
 
       onSuccess?.();
     } catch (error) {
@@ -306,6 +364,35 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
               <AlertDescription>
                 <strong>Late Report Warning:</strong> This incident occurred more than 1 hour ago. 
                 Your report will be flagged as late.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* IoT Data Capture Notification */}
+          {iotCaptureTypes.includes(incidentType as IncidentType) && (
+            <Alert className={`${iotSnapshot ? 'bg-green-500/10 border-green-500/30' : 'bg-blue-500/10 border-blue-500/30'}`}>
+              <Cpu className={`h-4 w-4 ${iotSnapshot ? 'text-green-600' : 'text-blue-500'}`} />
+              <AlertDescription className={iotSnapshot ? 'text-green-700' : 'text-blue-700'}>
+                {isCapturingIoT ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Capturing vehicle telemetry data...
+                  </span>
+                ) : iotSnapshot ? (
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <strong>IoT data captured</strong> - Vehicle parameters logged at {new Date(iotSnapshot.capturedAt).toLocaleTimeString()}
+                    {iotSnapshot.motion && (
+                      <Badge variant="outline" className="ml-2">
+                        {iotSnapshot.motion.isParked ? 'Parked' : `${Math.round(iotSnapshot.motion.speed)} mph`}
+                      </Badge>
+                    )}
+                  </span>
+                ) : (
+                  <span>
+                    <strong>IoT data will be captured</strong> - Vehicle system parameters, location, and diagnostic codes will be automatically logged.
+                  </span>
+                )}
               </AlertDescription>
             </Alert>
           )}
