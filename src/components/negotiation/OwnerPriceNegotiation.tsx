@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   DollarSign, 
   Send, 
@@ -27,25 +28,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRegion } from '@/contexts/RegionContext';
-
-interface OwnerNegotiation {
-  id: string;
-  vehicleId: string;
-  vehicleMake: string;
-  vehicleModel: string;
-  vehicleYear: number;
-  vehicleCategory: 'budget' | 'standard' | 'premium';
-  requestedWeeklyRate: number;
-  adminCounterOffer: number | null;
-  finalWeeklyRate: number | null;
-  currency: 'USD' | 'NGN';
-  status: 'pending' | 'counter_offer' | 'approved' | 'rejected' | 'locked';
-  isLocked: boolean;
-  ownerMessage: string;
-  adminResponse: string | null;
-  rejectionReason: string | null;
-  createdAt: string;
-}
+import { usePriceNegotiations, useOwnerVehicles, type PriceNegotiation } from '@/hooks/usePriceNegotiations';
 
 const requestSchema = z.object({
   vehicleId: z.string().min(1, 'Please select a vehicle'),
@@ -62,56 +45,16 @@ const modificationRequestSchema = z.object({
 
 type ModificationRequestData = z.infer<typeof modificationRequestSchema>;
 
-// Mock data for demonstration
-const mockVehicles = [
-  { id: 'v-001', make: 'Toyota', model: 'Camry', year: 2021, category: 'premium' as const },
-  { id: 'v-002', make: 'Honda', model: 'Accord', year: 2019, category: 'standard' as const },
-  { id: 'v-003', make: 'Hyundai', model: 'Elantra', year: 2016, category: 'budget' as const },
-];
-
-const mockNegotiations: OwnerNegotiation[] = [
-  {
-    id: '1',
-    vehicleId: 'v-001',
-    vehicleMake: 'Toyota',
-    vehicleModel: 'Camry',
-    vehicleYear: 2021,
-    vehicleCategory: 'premium',
-    requestedWeeklyRate: 320,
-    adminCounterOffer: 300,
-    finalWeeklyRate: null,
-    currency: 'USD',
-    status: 'counter_offer',
-    isLocked: false,
-    ownerMessage: 'This vehicle is in excellent condition with low mileage.',
-    adminResponse: 'We can offer $300/week based on current market rates.',
-    rejectionReason: null,
-    createdAt: '2024-01-18T10:00:00Z',
-  },
-  {
-    id: '2',
-    vehicleId: 'v-002',
-    vehicleMake: 'Honda',
-    vehicleModel: 'Accord',
-    vehicleYear: 2019,
-    vehicleCategory: 'standard',
-    requestedWeeklyRate: 280,
-    adminCounterOffer: null,
-    finalWeeklyRate: 280,
-    currency: 'USD',
-    status: 'locked',
-    isLocked: true,
-    ownerMessage: 'Well-maintained vehicle with full service history.',
-    adminResponse: 'Approved at requested rate.',
-    rejectionReason: null,
-    createdAt: '2024-01-15T14:30:00Z',
-  },
-];
-
 const PRICE_CEILINGS = {
   budget: { min: 2015, max: 2016, ceiling: 250, label: 'Smart Start' },
   standard: { min: 2017, max: 2020, ceiling: 300, label: 'Earnings Optimizer' },
   premium: { min: 2021, max: 2025, ceiling: 350, label: 'Top Earner' },
+};
+
+const getVehicleCategory = (year: number): 'budget' | 'standard' | 'premium' => {
+  if (year >= 2021) return 'premium';
+  if (year >= 2017) return 'standard';
+  return 'budget';
 };
 
 export const OwnerPriceNegotiation = () => {
@@ -119,10 +62,19 @@ export const OwnerPriceNegotiation = () => {
   const currency = country === 'Nigeria' ? 'NGN' : 'USD';
   const currencySymbol = currency === 'NGN' ? '₦' : '$';
   
-  const [negotiations, setNegotiations] = useState<OwnerNegotiation[]>(mockNegotiations);
+  const { vehicles, isLoading: vehiclesLoading } = useOwnerVehicles();
+  const { 
+    negotiations, 
+    isLoading, 
+    createNegotiation, 
+    acceptCounterOffer,
+    createModificationRequest,
+    refetch 
+  } = usePriceNegotiations('owner');
+  
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
   const [isModificationOpen, setIsModificationOpen] = useState(false);
-  const [selectedNegotiation, setSelectedNegotiation] = useState<OwnerNegotiation | null>(null);
+  const [selectedNegotiation, setSelectedNegotiation] = useState<PriceNegotiation | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const requestForm = useForm<RequestFormData>({
@@ -143,114 +95,155 @@ export const OwnerPriceNegotiation = () => {
   });
 
   const selectedVehicleId = requestForm.watch('vehicleId');
-  const selectedVehicle = mockVehicles.find(v => v.id === selectedVehicleId);
-  const categoryInfo = selectedVehicle ? PRICE_CEILINGS[selectedVehicle.category] : null;
+  const selectedVehicle = vehicles.find(v => v.id === selectedVehicleId);
+  const selectedCategory = selectedVehicle ? getVehicleCategory(selectedVehicle.year) : null;
+  const categoryInfo = selectedCategory ? PRICE_CEILINGS[selectedCategory] : null;
+
+  // Get vehicles that don't have active negotiations
+  const availableVehicles = vehicles.filter(
+    v => !negotiations.some(n => n.vehicle_id === v.id && !['rejected'].includes(n.status || ''))
+  );
 
   const handleNewRequest = async (data: RequestFormData) => {
     setIsSubmitting(true);
     
-    const vehicle = mockVehicles.find(v => v.id === data.vehicleId);
+    const vehicle = vehicles.find(v => v.id === data.vehicleId);
     if (!vehicle) {
       toast.error('Please select a valid vehicle');
       setIsSubmitting(false);
       return;
     }
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const category = getVehicleCategory(vehicle.year);
     
-    const newNegotiation: OwnerNegotiation = {
-      id: Date.now().toString(),
-      vehicleId: data.vehicleId,
-      vehicleMake: vehicle.make,
-      vehicleModel: vehicle.model,
-      vehicleYear: vehicle.year,
-      vehicleCategory: vehicle.category,
-      requestedWeeklyRate: data.requestedWeeklyRate,
-      adminCounterOffer: null,
-      finalWeeklyRate: null,
-      currency,
-      status: 'pending',
-      isLocked: false,
-      ownerMessage: data.ownerMessage || '',
-      adminResponse: null,
-      rejectionReason: null,
-      createdAt: new Date().toISOString(),
-    };
-
-    setNegotiations([newNegotiation, ...negotiations]);
-    setIsNewRequestOpen(false);
-    requestForm.reset();
-    setIsSubmitting(false);
-    
-    toast.success('Rate request submitted!', {
-      description: 'An admin will review your request shortly.',
-    });
+    try {
+      // Convert weekly rate to daily rate (divide by 7)
+      const dailyRate = Math.round(data.requestedWeeklyRate / 7);
+      
+      await createNegotiation({
+        vehicle_id: data.vehicleId,
+        vehicle_make: vehicle.make,
+        vehicle_model: vehicle.model,
+        vehicle_year: vehicle.year,
+        vehicle_category: category,
+        requested_daily_rate: dailyRate,
+        driver_message: data.ownerMessage,
+        currency,
+      });
+      
+      setIsNewRequestOpen(false);
+      requestForm.reset();
+      toast.success('Rate request submitted!', {
+        description: 'An admin will review your request shortly.',
+      });
+    } catch (error) {
+      console.error('Error creating negotiation:', error);
+      toast.error('Failed to submit request. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleAcceptCounterOffer = async (negotiation: OwnerNegotiation) => {
+  const handleAcceptCounterOffer = async (negotiation: PriceNegotiation) => {
+    if (!negotiation.admin_counter_offer) return;
+    
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    setNegotiations(negotiations.map(n => 
-      n.id === negotiation.id 
-        ? { ...n, status: 'approved' as const, finalWeeklyRate: n.adminCounterOffer }
-        : n
-    ));
-    
-    setIsSubmitting(false);
-    toast.success('Counter offer accepted!', {
-      description: 'Your weekly rate has been confirmed.',
-    });
+    try {
+      await acceptCounterOffer(negotiation.id, negotiation.admin_counter_offer);
+      toast.success('Counter offer accepted!', {
+        description: 'Your weekly rate has been confirmed.',
+      });
+    } catch (error) {
+      console.error('Error accepting counter offer:', error);
+      toast.error('Failed to accept offer. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleModificationRequest = async (data: ModificationRequestData) => {
     if (!selectedNegotiation) return;
     
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setIsSubmitting(false);
-    setIsModificationOpen(false);
-    modificationForm.reset();
-    setSelectedNegotiation(null);
-    
-    toast.success('Modification request submitted!', {
-      description: 'An admin will review your request.',
-    });
+    try {
+      await createModificationRequest({
+        negotiation_id: selectedNegotiation.id,
+        current_rate: (selectedNegotiation.final_daily_rate || selectedNegotiation.requested_daily_rate) * 7,
+        requested_rate: data.requestedRate,
+        reason: data.reason,
+        requester_type: 'owner',
+      });
+      
+      setIsModificationOpen(false);
+      modificationForm.reset();
+      setSelectedNegotiation(null);
+      toast.success('Modification request submitted!', {
+        description: 'An admin will review your request.',
+      });
+    } catch (error) {
+      console.error('Error creating modification request:', error);
+      toast.error('Failed to submit request. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const openModificationDialog = (negotiation: OwnerNegotiation) => {
+  const openModificationDialog = (negotiation: PriceNegotiation) => {
     setSelectedNegotiation(negotiation);
-    modificationForm.setValue('requestedRate', negotiation.finalWeeklyRate || negotiation.requestedWeeklyRate);
+    const weeklyRate = (negotiation.final_daily_rate || negotiation.requested_daily_rate) * 7;
+    modificationForm.setValue('requestedRate', weeklyRate);
     setIsModificationOpen(true);
   };
 
-  const getStatusBadge = (status: OwnerNegotiation['status'], isLocked: boolean) => {
+  const getStatusBadge = (status: string | null, isLocked: boolean | null) => {
     if (isLocked) {
       return <Badge className="bg-purple-500"><Lock className="w-3 h-3 mr-1" /> Locked</Badge>;
     }
     
-    const config = {
-      pending: { variant: 'secondary' as const, icon: Clock, label: 'Pending' },
-      counter_offer: { variant: 'default' as const, icon: MessageSquare, label: 'Counter Offer' },
-      approved: { variant: 'default' as const, icon: CheckCircle, label: 'Approved' },
-      rejected: { variant: 'destructive' as const, icon: XCircle, label: 'Rejected' },
-      locked: { variant: 'outline' as const, icon: Lock, label: 'Locked' },
+    const config: Record<string, { variant: 'secondary' | 'default' | 'destructive' | 'outline'; icon: typeof Clock; label: string }> = {
+      pending: { variant: 'secondary', icon: Clock, label: 'Pending' },
+      counter_offer: { variant: 'default', icon: MessageSquare, label: 'Counter Offer' },
+      approved: { variant: 'default', icon: CheckCircle, label: 'Approved' },
+      rejected: { variant: 'destructive', icon: XCircle, label: 'Rejected' },
+      locked: { variant: 'outline', icon: Lock, label: 'Locked' },
     };
     
-    const { variant, icon: Icon, label } = config[status];
+    const statusConfig = config[status || 'pending'];
+    const Icon = statusConfig.icon;
+    
     return (
-      <Badge variant={variant}>
+      <Badge variant={statusConfig.variant}>
         <Icon className="w-3 h-3 mr-1" />
-        {label}
+        {statusConfig.label}
       </Badge>
     );
   };
 
-  // Get vehicles without active negotiations
-  const availableVehicles = mockVehicles.filter(
-    v => !negotiations.some(n => n.vehicleId === v.id && !['rejected'].includes(n.status))
-  );
+  const getCategoryLabel = (category: string | null) => {
+    if (!category) return 'Unknown';
+    return PRICE_CEILINGS[category as keyof typeof PRICE_CEILINGS]?.label || category;
+  };
+
+  // Convert daily rate to weekly for display
+  const toWeekly = (dailyRate: number | null) => dailyRate ? dailyRate * 7 : 0;
+
+  if (isLoading || vehiclesLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-48 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-10 w-40" />
+        </div>
+        <Skeleton className="h-12 w-full" />
+        {[1, 2].map((i) => (
+          <Skeleton key={i} className="h-48 w-full" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -259,106 +252,115 @@ export const OwnerPriceNegotiation = () => {
           <h2 className="text-2xl font-bold">Vehicle Rate Negotiation</h2>
           <p className="text-muted-foreground">Request and negotiate weekly rental rates for your vehicles</p>
         </div>
-        <Dialog open={isNewRequestOpen} onOpenChange={setIsNewRequestOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2" disabled={availableVehicles.length === 0}>
-              <Plus className="h-4 w-4" />
-              New Rate Request
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Request Weekly Rate</DialogTitle>
-              <DialogDescription>
-                Submit a rate request for your vehicle. An admin will review and respond.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={requestForm.handleSubmit(handleNewRequest)}>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Select Vehicle</Label>
-                  <Select
-                    value={requestForm.watch('vehicleId')}
-                    onValueChange={(v) => requestForm.setValue('vehicleId', v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a vehicle" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableVehicles.map(vehicle => (
-                        <SelectItem key={vehicle.id} value={vehicle.id}>
-                          <span className="flex items-center gap-2">
-                            <Car className="h-4 w-4" />
-                            {vehicle.year} {vehicle.make} {vehicle.model}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {requestForm.formState.errors.vehicleId && (
-                    <p className="text-xs text-destructive">{requestForm.formState.errors.vehicleId.message}</p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="icon" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Dialog open={isNewRequestOpen} onOpenChange={setIsNewRequestOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2" disabled={availableVehicles.length === 0}>
+                <Plus className="h-4 w-4" />
+                New Rate Request
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Request Weekly Rate</DialogTitle>
+                <DialogDescription>
+                  Submit a rate request for your vehicle. An admin will review and respond.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={requestForm.handleSubmit(handleNewRequest)}>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Select Vehicle</Label>
+                    <Select
+                      value={requestForm.watch('vehicleId')}
+                      onValueChange={(v) => requestForm.setValue('vehicleId', v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a vehicle" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableVehicles.length === 0 ? (
+                          <SelectItem value="" disabled>No available vehicles</SelectItem>
+                        ) : (
+                          availableVehicles.map(vehicle => (
+                            <SelectItem key={vehicle.id} value={vehicle.id}>
+                              <span className="flex items-center gap-2">
+                                <Car className="h-4 w-4" />
+                                {vehicle.year} {vehicle.make} {vehicle.model}
+                              </span>
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {requestForm.formState.errors.vehicleId && (
+                      <p className="text-xs text-destructive">{requestForm.formState.errors.vehicleId.message}</p>
+                    )}
+                  </div>
+
+                  {selectedVehicle && categoryInfo && (
+                    <Alert>
+                      <Car className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>{categoryInfo.label}</strong> category ({selectedVehicle.year})
+                        <br />
+                        Maximum weekly rate: {currencySymbol}{categoryInfo.ceiling}
+                      </AlertDescription>
+                    </Alert>
                   )}
-                </div>
 
-                {selectedVehicle && categoryInfo && (
-                  <Alert>
-                    <Car className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>{categoryInfo.label}</strong> category ({selectedVehicle.year})
-                      <br />
-                      Maximum weekly rate: {currencySymbol}{categoryInfo.ceiling}
-                    </AlertDescription>
-                  </Alert>
-                )}
+                  <div className="space-y-2">
+                    <Label htmlFor="rate">Requested Weekly Rate ({currency})</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="rate"
+                        type="number"
+                        className="pl-9"
+                        placeholder={categoryInfo ? `Up to ${categoryInfo.ceiling}` : '0'}
+                        max={categoryInfo?.ceiling}
+                        {...requestForm.register('requestedWeeklyRate', { valueAsNumber: true })}
+                      />
+                    </div>
+                    {requestForm.formState.errors.requestedWeeklyRate && (
+                      <p className="text-xs text-destructive">{requestForm.formState.errors.requestedWeeklyRate.message}</p>
+                    )}
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="rate">Requested Weekly Rate ({currency})</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="rate"
-                      type="number"
-                      className="pl-9"
-                      placeholder={categoryInfo ? `Up to ${categoryInfo.ceiling}` : '0'}
-                      max={categoryInfo?.ceiling}
-                      {...requestForm.register('requestedWeeklyRate', { valueAsNumber: true })}
+                  <div className="space-y-2">
+                    <Label htmlFor="message">Message (Optional)</Label>
+                    <Textarea
+                      id="message"
+                      placeholder="Describe vehicle condition, features, or any relevant information..."
+                      {...requestForm.register('ownerMessage')}
                     />
                   </div>
-                  {requestForm.formState.errors.requestedWeeklyRate && (
-                    <p className="text-xs text-destructive">{requestForm.formState.errors.requestedWeeklyRate.message}</p>
-                  )}
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="message">Message (Optional)</Label>
-                  <Textarea
-                    id="message"
-                    placeholder="Describe vehicle condition, features, or any relevant information..."
-                    {...requestForm.register('ownerMessage')}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsNewRequestOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="mr-2 h-4 w-4" />
-                      Submit Request
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsNewRequestOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-2 h-4 w-4" />
+                        Submit Request
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Price Tiers Info */}
@@ -368,6 +370,15 @@ export const OwnerPriceNegotiation = () => {
           <strong>Weekly Rate Ceilings by Category:</strong> Smart Start (2015-16): {currencySymbol}250 | Earnings Optimizer (2017-20): {currencySymbol}300 | Top Earner (2021-25): {currencySymbol}350
         </AlertDescription>
       </Alert>
+
+      {vehicles.length === 0 && (
+        <Alert>
+          <Car className="h-4 w-4" />
+          <AlertDescription>
+            You don't have any vehicles registered yet. Add a vehicle first to request rates.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Negotiations List */}
       <div className="space-y-4">
@@ -389,13 +400,13 @@ export const OwnerPriceNegotiation = () => {
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Car className="h-5 w-5" />
-                      {negotiation.vehicleYear} {negotiation.vehicleMake} {negotiation.vehicleModel}
+                      {negotiation.vehicle_year} {negotiation.vehicle_make} {negotiation.vehicle_model}
                     </CardTitle>
                     <CardDescription>
-                      {PRICE_CEILINGS[negotiation.vehicleCategory].label} • Submitted {new Date(negotiation.createdAt).toLocaleDateString()}
+                      {getCategoryLabel(negotiation.vehicle_category)} • Submitted {new Date(negotiation.created_at || '').toLocaleDateString()}
                     </CardDescription>
                   </div>
-                  {getStatusBadge(negotiation.status, negotiation.isLocked)}
+                  {getStatusBadge(negotiation.status, negotiation.is_locked)}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -403,53 +414,53 @@ export const OwnerPriceNegotiation = () => {
                   <div>
                     <p className="text-muted-foreground">Your Request</p>
                     <p className="text-lg font-semibold">
-                      {currencySymbol}{negotiation.requestedWeeklyRate}/week
+                      {currencySymbol}{toWeekly(negotiation.requested_daily_rate)}/week
                     </p>
                   </div>
-                  {negotiation.adminCounterOffer && (
+                  {negotiation.admin_counter_offer && (
                     <div>
                       <p className="text-muted-foreground">Counter Offer</p>
                       <p className="text-lg font-semibold text-primary">
-                        {currencySymbol}{negotiation.adminCounterOffer}/week
+                        {currencySymbol}{toWeekly(negotiation.admin_counter_offer)}/week
                       </p>
                     </div>
                   )}
-                  {negotiation.finalWeeklyRate && (
+                  {negotiation.final_daily_rate && (
                     <div>
                       <p className="text-muted-foreground">Final Rate</p>
                       <p className="text-lg font-semibold text-green-600">
-                        {currencySymbol}{negotiation.finalWeeklyRate}/week
+                        {currencySymbol}{toWeekly(negotiation.final_daily_rate)}/week
                       </p>
                     </div>
                   )}
                 </div>
 
-                {negotiation.ownerMessage && (
+                {negotiation.driver_message && (
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-xs text-muted-foreground mb-1">Your Message</p>
-                    <p className="text-sm">{negotiation.ownerMessage}</p>
+                    <p className="text-sm">{negotiation.driver_message}</p>
                   </div>
                 )}
 
-                {negotiation.adminResponse && (
+                {negotiation.admin_response && (
                   <div className="p-3 bg-primary/5 border-l-4 border-primary rounded-r-lg">
                     <p className="text-xs text-muted-foreground mb-1">Admin Response</p>
-                    <p className="text-sm">{negotiation.adminResponse}</p>
+                    <p className="text-sm">{negotiation.admin_response}</p>
                   </div>
                 )}
 
-                {negotiation.rejectionReason && (
+                {negotiation.rejection_reason && (
                   <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>Rejected:</strong> {negotiation.rejectionReason}
+                      <strong>Rejected:</strong> {negotiation.rejection_reason}
                     </AlertDescription>
                   </Alert>
                 )}
 
                 {/* Action Buttons */}
                 <div className="flex gap-2 pt-2">
-                  {negotiation.status === 'counter_offer' && (
+                  {negotiation.status === 'counter_offer' && negotiation.admin_counter_offer && (
                     <>
                       <Button 
                         onClick={() => handleAcceptCounterOffer(negotiation)}
@@ -457,7 +468,7 @@ export const OwnerPriceNegotiation = () => {
                         className="gap-2"
                       >
                         <CheckCircle className="h-4 w-4" />
-                        Accept {currencySymbol}{negotiation.adminCounterOffer}/week
+                        Accept {currencySymbol}{toWeekly(negotiation.admin_counter_offer)}/week
                       </Button>
                       <Button 
                         variant="outline"
@@ -468,7 +479,7 @@ export const OwnerPriceNegotiation = () => {
                     </>
                   )}
 
-                  {negotiation.isLocked && (
+                  {negotiation.is_locked && (
                     <Button 
                       variant="outline" 
                       onClick={() => openModificationDialog(negotiation)}
@@ -509,16 +520,16 @@ export const OwnerPriceNegotiation = () => {
               {selectedNegotiation && (
                 <div className="p-3 bg-muted rounded-lg">
                   <p className="text-sm">
-                    <strong>Current Rate:</strong> {currencySymbol}{selectedNegotiation.finalWeeklyRate}/week
+                    <strong>Current Rate:</strong> {currencySymbol}{toWeekly(selectedNegotiation.final_daily_rate || selectedNegotiation.requested_daily_rate)}/week
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {selectedNegotiation.vehicleYear} {selectedNegotiation.vehicleMake} {selectedNegotiation.vehicleModel}
+                    {selectedNegotiation.vehicle_year} {selectedNegotiation.vehicle_make} {selectedNegotiation.vehicle_model}
                   </p>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="newRate">Requested New Rate ({currency})</Label>
+                <Label htmlFor="newRate">Requested New Weekly Rate ({currency})</Label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
