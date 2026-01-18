@@ -240,6 +240,60 @@ export type Database = {
           },
         ]
       }
+      payment_defaults: {
+        Row: {
+          amount_due: number
+          created_at: string
+          currency: string
+          deactivated_at: string | null
+          deactivation_eligible: boolean
+          driver_id: string
+          hours_overdue: number
+          id: string
+          last_notification_at: string | null
+          notifications_sent: number
+          payment_frequency: string
+          rental_id: string
+          resolved_at: string | null
+          status: string
+          vehicle_id: string
+        }
+        Insert: {
+          amount_due: number
+          created_at?: string
+          currency?: string
+          deactivated_at?: string | null
+          deactivation_eligible?: boolean
+          driver_id: string
+          hours_overdue?: number
+          id?: string
+          last_notification_at?: string | null
+          notifications_sent?: number
+          payment_frequency?: string
+          rental_id: string
+          resolved_at?: string | null
+          status?: string
+          vehicle_id: string
+        }
+        Update: {
+          amount_due?: number
+          created_at?: string
+          currency?: string
+          deactivated_at?: string | null
+          deactivation_eligible?: boolean
+          driver_id?: string
+          hours_overdue?: number
+          id?: string
+          last_notification_at?: string | null
+          notifications_sent?: number
+          payment_frequency?: string
+          rental_id?: string
+          resolved_at?: string | null
+          status?: string
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
       price_modification_requests: {
         Row: {
           admin_response: string | null
@@ -383,6 +437,9 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string | null
+          daily_plan_forbidden: boolean | null
+          daily_plan_forbidden_at: string | null
+          daily_plan_forbidden_reason: string | null
           email: string | null
           full_name: string | null
           id: string
@@ -399,6 +456,9 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
+          daily_plan_forbidden?: boolean | null
+          daily_plan_forbidden_at?: string | null
+          daily_plan_forbidden_reason?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
@@ -415,6 +475,9 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string | null
+          daily_plan_forbidden?: boolean | null
+          daily_plan_forbidden_at?: string | null
+          daily_plan_forbidden_reason?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
