@@ -14,6 +14,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { useRegion } from '@/contexts/RegionContext';
 import { formatCurrency, PAYMENT_CONFIG } from '@/lib/payment-config';
+import { OwnerPriceNegotiation } from '@/components/negotiation/OwnerPriceNegotiation';
 import {
   Car,
   Plus,
@@ -31,6 +32,7 @@ import {
   FileText,
   Settings,
   Eye,
+  MessageSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -331,12 +333,21 @@ export default function OwnerDashboard() {
           </div>
 
           <Tabs defaultValue="vehicles" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
+            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
               <TabsTrigger value="vehicles">My Vehicles</TabsTrigger>
+              <TabsTrigger value="pricing" className="gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Pricing
+              </TabsTrigger>
               <TabsTrigger value="earnings">Earnings</TabsTrigger>
               <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
+
+            {/* Pricing Tab */}
+            <TabsContent value="pricing">
+              <OwnerPriceNegotiation />
+            </TabsContent>
 
             {/* Vehicles Tab */}
             <TabsContent value="vehicles" className="space-y-6">
