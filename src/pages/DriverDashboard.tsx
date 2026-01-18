@@ -11,6 +11,7 @@ import Footer from '@/components/layout/Footer';
 import { useRegion } from '@/contexts/RegionContext';
 import { formatCurrency, PAYMENT_CONFIG } from '@/lib/payment-config';
 import { PaymentOptionsSelector, type PaymentSelection } from '@/components/payment/PaymentOptionsSelector';
+import { DriverPriceNegotiation } from '@/components/negotiation/DriverPriceNegotiation';
 import {
   Car,
   CreditCard,
@@ -366,70 +367,7 @@ export default function DriverDashboard() {
 
             {/* Price Negotiation Tab */}
             <TabsContent value="negotiate" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Price Negotiation</CardTitle>
-                  <CardDescription>
-                    Request a price adjustment. Admin approval required for any changes.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Current Rate */}
-                  <div className="p-4 bg-muted rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Current Locked Rate</p>
-                        <p className="text-2xl font-bold">{formatCurrency(weeklyRate, currency)}/week</p>
-                      </div>
-                      <Badge className="bg-green-500">Admin Approved</Badge>
-                    </div>
-                  </div>
-
-                  {/* Pending Request */}
-                  {mockRentalData.priceNegotiation && (
-                    <Alert>
-                      <Clock className="h-4 w-4" />
-                      <AlertDescription>
-                        <strong>Pending Request:</strong> You requested {formatCurrency(isUSA ? 280 : 140000, currency)}/week. 
-                        Submitted on {mockRentalData.priceNegotiation.submittedAt}. Awaiting admin review.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {/* Request Form */}
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium">Requested Weekly Rate</label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-muted-foreground">{currencySymbol}</span>
-                        <input 
-                          type="number" 
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                          placeholder={isUSA ? '250' : '125000'}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Reason for Request</label>
-                      <textarea 
-                        className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
-                        placeholder="Explain why you're requesting a rate change..."
-                      />
-                    </div>
-                    <Button onClick={handleRequestNegotiation} className="w-full">
-                      Submit Price Request
-                    </Button>
-                  </div>
-
-                  <Alert variant="destructive" className="bg-destructive/10">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Important:</strong> Only admin can approve rate changes. 
-                      You cannot modify your rate without admin approval.
-                    </AlertDescription>
-                  </Alert>
-                </CardContent>
-              </Card>
+              <DriverPriceNegotiation />
             </TabsContent>
 
             {/* Documents Tab */}

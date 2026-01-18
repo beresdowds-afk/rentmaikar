@@ -123,6 +123,145 @@ export type Database = {
           },
         ]
       }
+      price_modification_requests: {
+        Row: {
+          admin_response: string | null
+          created_at: string | null
+          current_rate: number
+          id: string
+          negotiation_id: string
+          processed_at: string | null
+          processed_by: string | null
+          reason: string
+          requested_rate: number
+          requester_id: string
+          requester_type: string
+          status: string | null
+        }
+        Insert: {
+          admin_response?: string | null
+          created_at?: string | null
+          current_rate: number
+          id?: string
+          negotiation_id: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason: string
+          requested_rate: number
+          requester_id: string
+          requester_type: string
+          status?: string | null
+        }
+        Update: {
+          admin_response?: string | null
+          created_at?: string | null
+          current_rate?: number
+          id?: string
+          negotiation_id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason?: string
+          requested_rate?: number
+          requester_id?: string
+          requester_type?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_modification_requests_negotiation_id_fkey"
+            columns: ["negotiation_id"]
+            isOneToOne: false
+            referencedRelation: "price_negotiations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      price_negotiations: {
+        Row: {
+          admin_counter_offer: number | null
+          admin_response: string | null
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          currency: string
+          driver_id: string
+          driver_message: string | null
+          final_daily_rate: number | null
+          id: string
+          is_locked: boolean | null
+          locked_at: string | null
+          locked_by: string | null
+          owner_id: string | null
+          rejection_reason: string | null
+          requested_daily_rate: number
+          status: Database["public"]["Enums"]["negotiation_status"] | null
+          updated_at: string | null
+          vehicle_category: string | null
+          vehicle_id: string | null
+          vehicle_make: string | null
+          vehicle_model: string | null
+          vehicle_year: number | null
+        }
+        Insert: {
+          admin_counter_offer?: number | null
+          admin_response?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          currency?: string
+          driver_id: string
+          driver_message?: string | null
+          final_daily_rate?: number | null
+          id?: string
+          is_locked?: boolean | null
+          locked_at?: string | null
+          locked_by?: string | null
+          owner_id?: string | null
+          rejection_reason?: string | null
+          requested_daily_rate: number
+          status?: Database["public"]["Enums"]["negotiation_status"] | null
+          updated_at?: string | null
+          vehicle_category?: string | null
+          vehicle_id?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_year?: number | null
+        }
+        Update: {
+          admin_counter_offer?: number | null
+          admin_response?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          currency?: string
+          driver_id?: string
+          driver_message?: string | null
+          final_daily_rate?: number | null
+          id?: string
+          is_locked?: boolean | null
+          locked_at?: string | null
+          locked_by?: string | null
+          owner_id?: string | null
+          rejection_reason?: string | null
+          requested_daily_rate?: number
+          status?: Database["public"]["Enums"]["negotiation_status"] | null
+          updated_at?: string | null
+          vehicle_category?: string | null
+          vehicle_id?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_negotiations_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -233,6 +372,12 @@ export type Database = {
     Enums: {
       app_role: "admin" | "owner" | "driver"
       device_status: "inactive" | "active" | "offline" | "maintenance"
+      negotiation_status:
+        | "pending"
+        | "counter_offer"
+        | "approved"
+        | "rejected"
+        | "locked"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -362,6 +507,13 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "owner", "driver"],
       device_status: ["inactive", "active", "offline", "maintenance"],
+      negotiation_status: [
+        "pending",
+        "counter_offer",
+        "approved",
+        "rejected",
+        "locked",
+      ],
     },
   },
 } as const
