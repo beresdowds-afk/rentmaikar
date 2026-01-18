@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,6 +15,7 @@ import { PaymentBreakdownCard } from "@/components/payment/PaymentBreakdownCard"
 import { type PaymentDefault } from "@/lib/payment-config";
 import { useRegion, type Country } from "@/contexts/RegionContext";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const stats = [
   { label: "Active Vehicles", value: "156", icon: Car, color: "text-accent" },
@@ -23,10 +24,19 @@ const stats = [
   { label: "Payment Defaults", value: "7", icon: AlertTriangle, color: "text-destructive" },
 ];
 
-const pendingApprovals = [
-  { id: 1, type: "Driver", name: "John D.", location: "Maryland", status: "pending" },
-  { id: 2, type: "Vehicle", name: "Toyota Camry 2022", location: "Lagos", status: "pending" },
-  { id: 3, type: "Driver", name: "Sarah M.", location: "Abuja", status: "pending" },
+interface PendingApproval {
+  id: number;
+  type: "Driver" | "Vehicle" | "Owner";
+  name: string;
+  email: string;
+  location: string;
+  status: "pending" | "approved" | "rejected";
+}
+
+const initialPendingApprovals: PendingApproval[] = [
+  { id: 1, type: "Driver", name: "John D.", email: "john.d@example.com", location: "Maryland", status: "pending" },
+  { id: 2, type: "Owner", name: "Toyota Camry Owner", email: "owner@example.com", location: "Lagos", status: "pending" },
+  { id: 3, type: "Driver", name: "Sarah M.", email: "sarah.m@example.com", location: "Abuja", status: "pending" },
 ];
 
 // Mock payment defaults with proper structure
@@ -76,7 +86,59 @@ const paymentDefaults: PaymentDefault[] = [
 
 const AdminDashboard = () => {
   const { country, setCountry, regionMode, setRegionMode, isDetecting } = useRegion();
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
+  const [approvingId, setApprovingId] = useState<number | null>(null);
+
+  const handleApproval = async (item: PendingApproval) => {
+    setApprovingId(item.id);
+    
+    try {
+      // Determine the user type based on the approval type
+      const userType = item.type === "Owner" ? "owner" : "driver";
+      const region = item.location.includes("Lagos") || item.location.includes("Abuja") || item.location.includes("Port Harcourt") 
+        ? "NIGERIA" 
+        : "USA";
+
+      // Send approval notification email
+      const { data, error } = await supabase.functions.invoke("send-approval-notification", {
+        body: {
+          email: item.email,
+          name: item.name,
+          userType,
+          region,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // Update the approval status locally
+      setPendingApprovals(prev => 
+        prev.map(approval => 
+          approval.id === item.id 
+            ? { ...approval, status: "approved" as const }
+            : approval
+        )
+      );
+
+      toast.success(`${item.type} approved successfully!`, {
+        description: `Notification email sent to ${item.email}`,
+        icon: <Mail className="h-4 w-4" />,
+      });
+    } catch (error: any) {
+      console.error("Error approving:", error);
+      toast.error("Failed to send notification", {
+        description: error.message || "Please try again",
+      });
+    } finally {
+      setApprovingId(null);
+    }
+  };
   
+  const pendingItems = pendingApprovals.filter(item => item.status === "pending");
+  const approvedItems = pendingApprovals.filter(item => item.status === "approved");
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -133,26 +195,72 @@ const AdminDashboard = () => {
 
             <TabsContent value="approvals">
               <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Pending Approvals ({pendingApprovals.length})</h3>
-                <div className="space-y-3">
-                  {pendingApprovals.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center">
-                          <Clock className="w-5 h-5 text-warning" />
+                <h3 className="text-lg font-semibold mb-4">Pending Approvals ({pendingItems.length})</h3>
+                
+                {pendingItems.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CheckCircle className="h-12 w-12 mx-auto mb-3 text-success" />
+                    <p>All approvals have been processed!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center">
+                            <Clock className="w-5 h-5 text-warning" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{item.name}</p>
+                            <p className="text-sm text-muted-foreground">{item.type} • {item.location}</p>
+                            <p className="text-xs text-muted-foreground">{item.email}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium">{item.name}</p>
-                          <p className="text-sm text-muted-foreground">{item.type} • {item.location}</p>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline"><Eye className="w-4 h-4" /></Button>
+                          <Button 
+                            size="sm" 
+                            variant="hero"
+                            disabled={approvingId === item.id}
+                            onClick={() => handleApproval(item)}
+                          >
+                            {approvingId === item.id ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                Sending...
+                              </>
+                            ) : (
+                              <>
+                                <Mail className="w-4 h-4 mr-1" />
+                                Approve
+                              </>
+                            )}
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline"><Eye className="w-4 h-4" /></Button>
-                        <Button size="sm" variant="hero">Approve</Button>
-                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {approvedItems.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="text-sm font-medium text-muted-foreground mb-3">Recently Approved</h4>
+                    <div className="space-y-2">
+                      {approvedItems.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-success/10 border border-success/20">
+                          <div className="flex items-center gap-3">
+                            <CheckCircle className="w-5 h-5 text-success" />
+                            <div>
+                              <p className="font-medium text-sm">{item.name}</p>
+                              <p className="text-xs text-muted-foreground">{item.type} • {item.email}</p>
+                            </div>
+                          </div>
+                          <span className="text-xs text-success font-medium">Email Sent ✓</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </Card>
             </TabsContent>
 
