@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle } from "lucide-react";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
 import { SecretsManagement } from "@/components/admin/SecretsManagement";
 import { IoTDeviceOrders } from "@/components/admin/IoTDeviceOrders";
+import { UserAccountsView } from "@/components/admin/UserAccountsView";
 import { AdminPriceNegotiation } from "@/components/negotiation/AdminPriceNegotiation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -182,6 +183,10 @@ const AdminDashboard = () => {
           <Tabs defaultValue="tracking" className="space-y-6">
             <TabsList className="flex-wrap">
               <TabsTrigger value="tracking">Vehicle Tracking</TabsTrigger>
+              <TabsTrigger value="accounts" className="flex items-center gap-1">
+                <UserCircle className="h-4 w-4" />
+                User Accounts
+              </TabsTrigger>
               <TabsTrigger value="assets" className="flex items-center gap-1">
                 <ClipboardList className="h-4 w-4" />
                 Assets Registry
@@ -221,6 +226,10 @@ const AdminDashboard = () => {
                 </p>
                 <VehicleTrackingMap />
               </Card>
+            </TabsContent>
+
+            <TabsContent value="accounts">
+              <UserAccountsView />
             </TabsContent>
 
             <TabsContent value="assets">
