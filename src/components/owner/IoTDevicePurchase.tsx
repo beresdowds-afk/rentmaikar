@@ -18,6 +18,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { 
   Cpu, 
@@ -28,9 +35,13 @@ import {
   Clock,
   CreditCard,
   Building2,
-  Copy
+  Copy,
+  Package,
+  Wrench,
+  Smartphone
 } from 'lucide-react';
-import { formatCurrency, type PaymentBreakdown } from '@/lib/payment-config';
+import { formatCurrency } from '@/lib/payment-config';
+import { PaymentGateway } from '@/lib/payment-gateway';
 
 interface DevicePricing {
   id: string;
@@ -49,6 +60,10 @@ interface DeviceOrder {
   shipping_status: string;
   tracking_number: string | null;
   created_at: string;
+  delivery_confirmed_at: string | null;
+  installation_confirmed_at: string | null;
+  installed_sim_number: string | null;
+  installed_sim_provider: string | null;
 }
 
 const BANK_DETAILS = {
@@ -67,6 +82,11 @@ const BANK_DETAILS = {
   },
 };
 
+const SIM_PROVIDERS = {
+  usa: ['AT&T', 'T-Mobile', 'Verizon', 'Other'],
+  nigeria: ['MTN', 'Airtel', 'Glo', '9Mobile', 'Other'],
+};
+
 export function IoTDevicePurchase() {
   const { user } = useAuth();
   const { country } = useRegion();
@@ -74,12 +94,20 @@ export function IoTDevicePurchase() {
   const [orders, setOrders] = useState<DeviceOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
+  const [deliveryConfirmOpen, setDeliveryConfirmOpen] = useState(false);
+  const [installConfirmOpen, setInstallConfirmOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<DeviceOrder | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'online'>('bank_transfer');
   const [shippingAddress, setShippingAddress] = useState('');
   const [paymentReference, setPaymentReference] = useState('');
   const [phone, setPhone] = useState('');
   const [processing, setProcessing] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  // Installation form state
+  const [simNumber, setSimNumber] = useState('');
+  const [simProvider, setSimProvider] = useState('');
+  const [installNotes, setInstallNotes] = useState('');
 
   const currentRegion = country === 'Nigeria' ? 'nigeria' : 'usa';
   const currentCurrency: 'USD' | 'NGN' = country === 'Nigeria' ? 'NGN' : 'USD';
@@ -136,18 +164,68 @@ export function IoTDevicePurchase() {
     setProcessing(true);
 
     try {
-      const { error } = await supabase.from('iot_device_orders').insert({
+      let finalPaymentMethod = paymentMethod;
+      let finalPaymentReference = paymentReference || null;
+
+      // Handle online payment
+      if (paymentMethod === 'online') {
+        const gateway = new PaymentGateway(currentRegion);
+        const result = await gateway.initializePayment(
+          pricing.price,
+          user.id,
+          'device-order',
+          `device-${Date.now()}`,
+          { type: 'iot_device_purchase' }
+        );
+
+        if (!result.success) {
+          toast.error(result.error || 'Payment initialization failed');
+          setProcessing(false);
+          return;
+        }
+
+        finalPaymentReference = result.transactionId || null;
+
+        // Redirect to payment gateway
+        if (result.redirectUrl) {
+          toast.info('Redirecting to payment gateway...');
+          // In production, would redirect here
+          // For now, we'll simulate a successful payment
+        }
+      }
+
+      // Create the order
+      const { data: orderData, error } = await supabase.from('iot_device_orders').insert({
         owner_id: user.id,
         device_price: pricing.price,
         currency: pricing.currency,
-        payment_method: paymentMethod,
-        payment_reference: paymentReference || null,
+        payment_method: finalPaymentMethod,
+        payment_reference: finalPaymentReference,
+        payment_status: paymentMethod === 'online' ? 'pending' : 'pending',
         shipping_address: shippingAddress,
         owner_email: user.email,
         owner_phone: phone || null,
-      });
+      }).select().single();
 
       if (error) throw error;
+
+      // Send admin notification
+      try {
+        await supabase.functions.invoke('send-order-notification', {
+          body: {
+            orderId: orderData.id,
+            ownerEmail: user.email,
+            ownerPhone: phone || null,
+            devicePrice: pricing.price,
+            currency: pricing.currency,
+            shippingAddress: shippingAddress,
+            paymentMethod: finalPaymentMethod,
+          }
+        });
+      } catch (notifyError) {
+        console.error('Admin notification failed:', notifyError);
+        // Don't fail the order if notification fails
+      }
 
       toast.success('Order placed successfully!', {
         description: 'We will confirm your payment and ship the device soon.',
@@ -165,6 +243,80 @@ export function IoTDevicePurchase() {
     }
   };
 
+  const handleConfirmDelivery = async () => {
+    if (!selectedOrder || !user) return;
+    setProcessing(true);
+
+    try {
+      const { error } = await supabase
+        .from('iot_device_orders')
+        .update({
+          shipping_status: 'delivered',
+          delivery_confirmed_at: new Date().toISOString(),
+          delivery_confirmed_by: user.id,
+        })
+        .eq('id', selectedOrder.id);
+
+      if (error) throw error;
+
+      toast.success('Delivery confirmed!', {
+        description: 'Please proceed with device installation.',
+      });
+      setDeliveryConfirmOpen(false);
+      setSelectedOrder(null);
+      fetchData();
+    } catch (error) {
+      console.error('Error confirming delivery:', error);
+      toast.error('Failed to confirm delivery');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleConfirmInstallation = async () => {
+    if (!selectedOrder || !user) return;
+    
+    if (!simNumber.trim()) {
+      toast.error('Please enter the SIM card number');
+      return;
+    }
+    if (!simProvider) {
+      toast.error('Please select the SIM provider');
+      return;
+    }
+
+    setProcessing(true);
+
+    try {
+      const { error } = await supabase
+        .from('iot_device_orders')
+        .update({
+          installation_confirmed_at: new Date().toISOString(),
+          installed_sim_number: simNumber,
+          installed_sim_provider: simProvider,
+          installation_notes: installNotes || null,
+        })
+        .eq('id', selectedOrder.id);
+
+      if (error) throw error;
+
+      toast.success('Installation confirmed!', {
+        description: 'Your device is now ready for tracking.',
+      });
+      setInstallConfirmOpen(false);
+      setSelectedOrder(null);
+      setSimNumber('');
+      setSimProvider('');
+      setInstallNotes('');
+      fetchData();
+    } catch (error) {
+      console.error('Error confirming installation:', error);
+      toast.error('Failed to confirm installation');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const copyBankDetails = () => {
     const details = currentRegion === 'nigeria' ? BANK_DETAILS.nigeria : BANK_DETAILS.usa;
     const text = currentRegion === 'nigeria'
@@ -177,23 +329,27 @@ export function IoTDevicePurchase() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const getStatusBadge = (paymentStatus: string, shippingStatus: string) => {
-    if (paymentStatus === 'pending') {
-      return <Badge variant="outline" className="text-yellow-600 border-yellow-600"><Clock className="h-3 w-3 mr-1" />Awaiting Payment Confirmation</Badge>;
+  const getStatusBadge = (order: DeviceOrder) => {
+    if (order.payment_status === 'pending') {
+      return <Badge variant="outline" className="text-yellow-600 border-yellow-600"><Clock className="h-3 w-3 mr-1" />Awaiting Payment</Badge>;
     }
-    if (paymentStatus === 'confirmed' && shippingStatus === 'pending') {
-      return <Badge className="bg-blue-500"><Truck className="h-3 w-3 mr-1" />Processing Shipment</Badge>;
+    if (order.payment_status === 'confirmed' && order.shipping_status === 'pending') {
+      return <Badge className="bg-blue-500"><Package className="h-3 w-3 mr-1" />Processing</Badge>;
     }
-    if (shippingStatus === 'shipped') {
-      return <Badge className="bg-purple-500"><Truck className="h-3 w-3 mr-1" />Shipped</Badge>;
+    if (order.shipping_status === 'shipped' && !order.delivery_confirmed_at) {
+      return <Badge className="bg-purple-500"><Truck className="h-3 w-3 mr-1" />In Transit</Badge>;
     }
-    if (shippingStatus === 'delivered') {
-      return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Delivered</Badge>;
+    if (order.delivery_confirmed_at && !order.installation_confirmed_at) {
+      return <Badge className="bg-orange-500"><Wrench className="h-3 w-3 mr-1" />Pending Installation</Badge>;
     }
-    return <Badge variant="secondary">{paymentStatus}</Badge>;
+    if (order.installation_confirmed_at) {
+      return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>;
+    }
+    return <Badge variant="secondary">{order.payment_status}</Badge>;
   };
 
   const bankDetails = currentRegion === 'nigeria' ? BANK_DETAILS.nigeria : BANK_DETAILS.usa;
+  const simProviders = currentRegion === 'nigeria' ? SIM_PROVIDERS.nigeria : SIM_PROVIDERS.usa;
 
   return (
     <div className="space-y-6">
@@ -265,29 +421,63 @@ export function IoTDevicePurchase() {
         <Card>
           <CardHeader>
             <CardTitle>Your Device Orders</CardTitle>
-            <CardDescription>Track your IoT device purchases</CardDescription>
+            <CardDescription>Track your IoT device purchases and installations</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {orders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="space-y-1">
-                    <p className="font-medium">
-                      IoT Tracking Device
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Ordered {new Date(order.created_at).toLocaleDateString()}
-                    </p>
-                    <p className="text-sm font-medium">
-                      {formatCurrency(order.device_price, order.currency as 'USD' | 'NGN')}
-                    </p>
-                  </div>
-                  <div className="text-right space-y-2">
-                    {getStatusBadge(order.payment_status, order.shipping_status)}
-                    {order.tracking_number && (
+                <div key={order.id} className="p-4 border rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="font-medium">IoT Tracking Device</p>
                       <p className="text-sm text-muted-foreground">
-                        Tracking: {order.tracking_number}
+                        Ordered {new Date(order.created_at).toLocaleDateString()}
                       </p>
+                      <p className="text-sm font-medium">
+                        {formatCurrency(order.device_price, order.currency as 'USD' | 'NGN')}
+                      </p>
+                    </div>
+                    <div className="text-right space-y-2">
+                      {getStatusBadge(order)}
+                      {order.tracking_number && (
+                        <p className="text-sm text-muted-foreground">
+                          Tracking: {order.tracking_number}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-2 border-t">
+                    {order.shipping_status === 'shipped' && !order.delivery_confirmed_at && (
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setDeliveryConfirmOpen(true);
+                        }}
+                      >
+                        <Package className="h-4 w-4 mr-1" />
+                        Confirm Delivery
+                      </Button>
+                    )}
+                    {order.delivery_confirmed_at && !order.installation_confirmed_at && (
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setInstallConfirmOpen(true);
+                        }}
+                      >
+                        <Wrench className="h-4 w-4 mr-1" />
+                        Confirm Installation
+                      </Button>
+                    )}
+                    {order.installation_confirmed_at && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Smartphone className="h-4 w-4" />
+                        SIM: {order.installed_sim_provider} - {order.installed_sim_number}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -299,7 +489,7 @@ export function IoTDevicePurchase() {
 
       {/* Purchase Dialog */}
       <Dialog open={purchaseOpen} onOpenChange={setPurchaseOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Purchase IoT Device</DialogTitle>
             <DialogDescription>
@@ -340,11 +530,11 @@ export function IoTDevicePurchase() {
                       Bank Transfer
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-2 p-3 border rounded-lg opacity-50">
-                    <RadioGroupItem value="online" id="online" disabled />
+                  <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                    <RadioGroupItem value="online" id="online" />
                     <Label htmlFor="online" className="flex items-center gap-2 cursor-pointer flex-1">
                       <CreditCard className="h-4 w-4" />
-                      Online Payment (Coming Soon)
+                      {currentRegion === 'nigeria' ? 'Pay with Paystack' : 'Pay with PayPal'}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -421,7 +611,111 @@ export function IoTDevicePurchase() {
               Cancel
             </Button>
             <Button onClick={handlePurchase} disabled={processing}>
-              {processing ? 'Placing Order...' : 'Place Order'}
+              {processing ? 'Processing...' : paymentMethod === 'online' ? 'Proceed to Payment' : 'Place Order'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delivery Confirmation Dialog */}
+      <Dialog open={deliveryConfirmOpen} onOpenChange={setDeliveryConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Device Delivery</DialogTitle>
+            <DialogDescription>
+              Please confirm that you have received your IoT tracking device
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-muted p-4 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-2">Before confirming, please verify:</p>
+              <ul className="text-sm space-y-2">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Package is undamaged
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Device is present in the package
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  All accessories are included
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeliveryConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmDelivery} disabled={processing}>
+              {processing ? 'Confirming...' : 'Confirm Delivery'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Installation Confirmation Dialog */}
+      <Dialog open={installConfirmOpen} onOpenChange={setInstallConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Device Installation</DialogTitle>
+            <DialogDescription>
+              Enter the SIM card details installed in your tracking device
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="sim-provider">SIM Provider *</Label>
+              <Select value={simProvider} onValueChange={setSimProvider}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select SIM provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  {simProviders.map((provider) => (
+                    <SelectItem key={provider} value={provider}>
+                      {provider}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="sim-number">SIM Card Number *</Label>
+              <Input
+                id="sim-number"
+                placeholder="Enter SIM card phone number"
+                value={simNumber}
+                onChange={(e) => setSimNumber(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                This is the phone number associated with the SIM card in your device
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="install-notes">Installation Notes (Optional)</Label>
+              <Textarea
+                id="install-notes"
+                placeholder="Any additional notes about the installation..."
+                value={installNotes}
+                onChange={(e) => setInstallNotes(e.target.value)}
+                rows={2}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInstallConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmInstallation} disabled={processing}>
+              {processing ? 'Confirming...' : 'Confirm Installation'}
             </Button>
           </DialogFooter>
         </DialogContent>

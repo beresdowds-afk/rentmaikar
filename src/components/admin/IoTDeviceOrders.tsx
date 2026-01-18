@@ -33,7 +33,10 @@ import {
   Edit, 
   Send,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Wrench,
+  Smartphone,
+  Eye
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/payment-config';
 
@@ -54,6 +57,11 @@ interface DeviceOrder {
   owner_phone: string | null;
   notes: string | null;
   created_at: string;
+  delivery_confirmed_at: string | null;
+  installation_confirmed_at: string | null;
+  installed_sim_number: string | null;
+  installed_sim_provider: string | null;
+  installation_notes: string | null;
 }
 
 interface DevicePricing {
@@ -72,6 +80,7 @@ export function IoTDeviceOrders() {
   const [confirmPaymentOpen, setConfirmPaymentOpen] = useState(false);
   const [shipDeviceOpen, setShipDeviceOpen] = useState(false);
   const [editPricingOpen, setEditPricingOpen] = useState(false);
+  const [viewOrderOpen, setViewOrderOpen] = useState(false);
   const [selectedPricing, setSelectedPricing] = useState<DevicePricing | null>(null);
   const [trackingNumber, setTrackingNumber] = useState('');
   const [newPrice, setNewPrice] = useState('');
@@ -231,22 +240,29 @@ export function IoTDeviceOrders() {
     }
   };
 
-  const getShippingStatusBadge = (status: string) => {
-    switch (status) {
+  const getShippingStatusBadge = (order: DeviceOrder) => {
+    if (order.installation_confirmed_at) {
+      return <Badge className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" />Installed</Badge>;
+    }
+    if (order.delivery_confirmed_at) {
+      return <Badge className="bg-orange-500"><Wrench className="h-3 w-3 mr-1" />Awaiting Install</Badge>;
+    }
+    switch (order.shipping_status) {
       case 'shipped':
         return <Badge className="bg-blue-500"><Truck className="h-3 w-3 mr-1" />Shipped</Badge>;
       case 'delivered':
-        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Delivered</Badge>;
+        return <Badge className="bg-purple-500"><Package className="h-3 w-3 mr-1" />Delivered</Badge>;
       case 'pending':
         return <Badge variant="outline"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="secondary">{order.shipping_status}</Badge>;
     }
   };
 
   const pendingPayments = orders.filter(o => o.payment_status === 'pending');
   const confirmedOrders = orders.filter(o => o.payment_status === 'confirmed');
   const readyToShip = confirmedOrders.filter(o => o.shipping_status === 'pending');
+  const installedDevices = orders.filter(o => o.installation_confirmed_at);
 
   return (
     <div className="space-y-6">
@@ -258,7 +274,7 @@ export function IoTDeviceOrders() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
@@ -288,11 +304,20 @@ export function IoTDeviceOrders() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Confirmed Payments</CardTitle>
+            <CardTitle className="text-sm font-medium">Confirmed</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{confirmedOrders.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Installed</CardTitle>
+            <Smartphone className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{installedDevices.length}</div>
           </CardContent>
         </Card>
       </div>
@@ -329,7 +354,7 @@ export function IoTDeviceOrders() {
                       <TableHead>Owner Email</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Payment</TableHead>
-                      <TableHead>Shipping</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -345,7 +370,7 @@ export function IoTDeviceOrders() {
                         </TableCell>
                         <TableCell>{getPaymentStatusBadge(order.payment_status)}</TableCell>
                         <TableCell>
-                          {getShippingStatusBadge(order.shipping_status)}
+                          {getShippingStatusBadge(order)}
                           {order.tracking_number && (
                             <div className="text-xs text-muted-foreground mt-1">
                               #{order.tracking_number}
@@ -354,6 +379,16 @@ export function IoTDeviceOrders() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setSelectedOrder(order);
+                                setViewOrderOpen(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                             {order.payment_status === 'pending' && (
                               <Button
                                 size="sm"
@@ -440,6 +475,131 @@ export function IoTDeviceOrders() {
         </TabsContent>
       </Tabs>
 
+      {/* View Order Dialog */}
+      <Dialog open={viewOrderOpen} onOpenChange={setViewOrderOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Order Details</DialogTitle>
+            <DialogDescription>
+              Complete order information and status
+            </DialogDescription>
+          </DialogHeader>
+          {selectedOrder && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Order ID:</span>
+                  <p className="font-medium">{selectedOrder.id.slice(0, 8)}...</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Date:</span>
+                  <p className="font-medium">{new Date(selectedOrder.created_at).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Owner Email:</span>
+                  <p className="font-medium">{selectedOrder.owner_email || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Phone:</span>
+                  <p className="font-medium">{selectedOrder.owner_phone || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Amount:</span>
+                  <p className="font-medium">{formatCurrency(selectedOrder.device_price, selectedOrder.currency as 'USD' | 'NGN')}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Payment Method:</span>
+                  <p className="font-medium">{selectedOrder.payment_method || 'N/A'}</p>
+                </div>
+              </div>
+              
+              {selectedOrder.payment_reference && (
+                <div>
+                  <span className="text-sm text-muted-foreground">Payment Reference:</span>
+                  <p className="font-medium">{selectedOrder.payment_reference}</p>
+                </div>
+              )}
+              
+              {selectedOrder.shipping_address && (
+                <div>
+                  <span className="text-sm text-muted-foreground">Shipping Address:</span>
+                  <p className="font-medium">{selectedOrder.shipping_address}</p>
+                </div>
+              )}
+
+              <div className="border-t pt-4 space-y-3">
+                <h4 className="font-medium">Status Timeline</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className={`h-4 w-4 ${selectedOrder.payment_status === 'confirmed' ? 'text-green-500' : 'text-muted-foreground'}`} />
+                    <span>Payment {selectedOrder.payment_status === 'confirmed' ? 'Confirmed' : 'Pending'}</span>
+                    {selectedOrder.payment_confirmed_at && (
+                      <span className="text-muted-foreground">
+                        ({new Date(selectedOrder.payment_confirmed_at).toLocaleDateString()})
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Truck className={`h-4 w-4 ${selectedOrder.shipping_status === 'shipped' ? 'text-blue-500' : 'text-muted-foreground'}`} />
+                    <span>{selectedOrder.shipping_status === 'shipped' ? 'Shipped' : 'Awaiting Shipment'}</span>
+                    {selectedOrder.shipped_at && (
+                      <span className="text-muted-foreground">
+                        ({new Date(selectedOrder.shipped_at).toLocaleDateString()})
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Package className={`h-4 w-4 ${selectedOrder.delivery_confirmed_at ? 'text-purple-500' : 'text-muted-foreground'}`} />
+                    <span>{selectedOrder.delivery_confirmed_at ? 'Delivered' : 'Awaiting Delivery'}</span>
+                    {selectedOrder.delivery_confirmed_at && (
+                      <span className="text-muted-foreground">
+                        ({new Date(selectedOrder.delivery_confirmed_at).toLocaleDateString()})
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Wrench className={`h-4 w-4 ${selectedOrder.installation_confirmed_at ? 'text-green-600' : 'text-muted-foreground'}`} />
+                    <span>{selectedOrder.installation_confirmed_at ? 'Installed' : 'Awaiting Installation'}</span>
+                    {selectedOrder.installation_confirmed_at && (
+                      <span className="text-muted-foreground">
+                        ({new Date(selectedOrder.installation_confirmed_at).toLocaleDateString()})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {selectedOrder.installation_confirmed_at && (
+                <div className="border-t pt-4">
+                  <h4 className="font-medium mb-2">Installation Details</h4>
+                  <div className="bg-muted p-3 rounded-lg space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">SIM Provider:</span>
+                      <span className="font-medium">{selectedOrder.installed_sim_provider}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">SIM Number:</span>
+                      <span className="font-medium">{selectedOrder.installed_sim_number}</span>
+                    </div>
+                    {selectedOrder.installation_notes && (
+                      <div className="pt-2">
+                        <span className="text-muted-foreground">Notes:</span>
+                        <p className="font-medium">{selectedOrder.installation_notes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewOrderOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Confirm Payment Dialog */}
       <Dialog open={confirmPaymentOpen} onOpenChange={setConfirmPaymentOpen}>
         <DialogContent>
@@ -473,6 +633,12 @@ export function IoTDeviceOrders() {
                   </div>
                 )}
               </div>
+              <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <AlertCircle className="h-4 w-4 inline mr-1" />
+                  Please verify the payment in your bank account before confirming.
+                </p>
+              </div>
             </div>
           )}
           <DialogFooter>
@@ -492,7 +658,7 @@ export function IoTDeviceOrders() {
           <DialogHeader>
             <DialogTitle>Ship Device</DialogTitle>
             <DialogDescription>
-              Enter tracking details and notify the owner
+              Enter tracking details for this shipment
             </DialogDescription>
           </DialogHeader>
           {selectedOrder && (
@@ -503,11 +669,15 @@ export function IoTDeviceOrders() {
                   <span className="font-medium">{selectedOrder.owner_email || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Address:</span>
-                  <span className="font-medium text-right max-w-[200px]">
-                    {selectedOrder.shipping_address || 'Not provided'}
-                  </span>
+                  <span className="text-muted-foreground">Phone:</span>
+                  <span className="font-medium">{selectedOrder.owner_phone || 'N/A'}</span>
                 </div>
+                {selectedOrder.shipping_address && (
+                  <div>
+                    <span className="text-muted-foreground">Shipping to:</span>
+                    <p className="font-medium mt-1">{selectedOrder.shipping_address}</p>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="tracking">Tracking Number *</Label>
@@ -525,7 +695,7 @@ export function IoTDeviceOrders() {
               Cancel
             </Button>
             <Button onClick={handleShipDevice} disabled={processing}>
-              {processing ? 'Processing...' : 'Ship & Notify Owner'}
+              {processing ? 'Shipping...' : 'Mark as Shipped'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -535,19 +705,20 @@ export function IoTDeviceOrders() {
       <Dialog open={editPricingOpen} onOpenChange={setEditPricingOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update Device Price</DialogTitle>
+            <DialogTitle>Update Device Pricing</DialogTitle>
             <DialogDescription>
-              Set a new price for the {selectedPricing?.region?.toUpperCase()} region
+              Set the price for {selectedPricing?.region === 'usa' ? 'USA' : 'Nigeria'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="newPrice">Price ({selectedPricing?.currency})</Label>
+              <Label htmlFor="price">Price ({selectedPricing?.currency}) *</Label>
               <Input
-                id="newPrice"
+                id="price"
                 type="number"
+                min="0"
                 step="0.01"
-                placeholder="Enter new price"
+                placeholder="Enter price"
                 value={newPrice}
                 onChange={(e) => setNewPrice(e.target.value)}
               />
@@ -556,9 +727,10 @@ export function IoTDeviceOrders() {
               <Label htmlFor="description">Description (optional)</Label>
               <Textarea
                 id="description"
-                placeholder="Device description"
+                placeholder="Add a description for this pricing"
                 value={priceDescription}
                 onChange={(e) => setPriceDescription(e.target.value)}
+                rows={2}
               />
             </div>
           </div>
@@ -567,7 +739,7 @@ export function IoTDeviceOrders() {
               Cancel
             </Button>
             <Button onClick={handleUpdatePricing} disabled={processing}>
-              {processing ? 'Updating...' : 'Update Price'}
+              {processing ? 'Saving...' : 'Save Pricing'}
             </Button>
           </DialogFooter>
         </DialogContent>
