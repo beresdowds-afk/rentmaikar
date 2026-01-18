@@ -5,7 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { RegionProvider } from "@/contexts/RegionContext";
 import { UserTypeProvider } from "@/contexts/UserTypeContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
+import Auth from "./pages/Auth";
 import DriverRegistration from "./pages/DriverRegistration";
 import OwnerRegistration from "./pages/OwnerRegistration";
 import DriverDashboard from "./pages/DriverDashboard";
@@ -18,26 +21,50 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <RegionProvider>
-      <UserTypeProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/driver/register" element={<DriverRegistration />} />
-              <Route path="/driver/dashboard" element={<DriverDashboard />} />
-              <Route path="/owner/register" element={<OwnerRegistration />} />
-              <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-              <Route path="/catalogue/:category" element={<Catalogue />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </UserTypeProvider>
-    </RegionProvider>
+    <AuthProvider>
+      <RegionProvider>
+        <UserTypeProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/driver/register" element={<DriverRegistration />} />
+                <Route path="/owner/register" element={<OwnerRegistration />} />
+                <Route 
+                  path="/driver/dashboard" 
+                  element={
+                    <ProtectedRoute allowedRoles={['driver', 'admin']}>
+                      <DriverDashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/owner/dashboard" 
+                  element={
+                    <ProtectedRoute allowedRoles={['owner', 'admin']}>
+                      <OwnerDashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route path="/catalogue/:category" element={<Catalogue />} />
+                <Route 
+                  path="/admin" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </UserTypeProvider>
+      </RegionProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
