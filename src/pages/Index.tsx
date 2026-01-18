@@ -8,26 +8,41 @@ import TestimonialsSection from "@/components/home/TestimonialsSection";
 import CTASection from "@/components/home/CTASection";
 import OwnerBenefitsSection from "@/components/home/OwnerBenefitsSection";
 import UserTypeSelector from "@/components/home/UserTypeSelector";
+import OnboardingTour from "@/components/onboarding/OnboardingTour";
 import { useUserType } from "@/contexts/UserTypeContext";
+import { useOnboardingTour } from "@/hooks/useOnboardingTour";
 
 const Index = () => {
   const { hasSelectedType } = useUserType();
+  const { isOpen, completeTour } = useOnboardingTour();
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className={!hasSelectedType ? "pb-24" : ""}>
         <HeroSection />
-        <CategoryCards />
+        <div data-tour="categories">
+          <CategoryCards />
+        </div>
         <OwnerBenefitsSection />
         <HowItWorks />
-        <FeaturesSection />
+        <div data-tour="features">
+          <FeaturesSection />
+        </div>
         <TestimonialsSection />
-        <CTASection />
+        <div data-tour="payments">
+          <CTASection />
+        </div>
       </main>
       <Footer />
       {/* Show user type selector if not selected */}
-      {!hasSelectedType && <UserTypeSelector />}
+      {!hasSelectedType && (
+        <div data-tour="user-type">
+          <UserTypeSelector />
+        </div>
+      )}
+      {/* Onboarding Tour */}
+      <OnboardingTour isOpen={isOpen} onComplete={completeTour} />
     </div>
   );
 };

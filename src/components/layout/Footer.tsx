@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Mail, Phone, MapPin, Code } from "lucide-react";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 
 const Footer = () => {
@@ -48,6 +48,12 @@ const Footer = () => {
               <li>
                 <Link to="/owner/register" className="text-primary-foreground/70 hover:text-accent transition-colors">
                   List Your Vehicle
+                </Link>
+              </li>
+              <li>
+                <Link to="/api-docs" className="text-primary-foreground/70 hover:text-accent transition-colors flex items-center gap-1">
+                  <Code className="w-3 h-3" />
+                  API Documentation
                 </Link>
               </li>
             </ul>
