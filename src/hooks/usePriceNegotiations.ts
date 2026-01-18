@@ -78,6 +78,35 @@ export interface CreateModificationData {
   requester_type: 'driver' | 'owner';
 }
 
+// Helper to send notification emails
+const sendPriceNotification = async (data: {
+  email: string;
+  name: string;
+  userType: 'driver' | 'owner';
+  notificationType: 'approved' | 'rejected' | 'counter_offer' | 'locked' | 'modification_approved' | 'modification_rejected';
+  vehicleInfo: string;
+  requestedRate: number;
+  finalRate?: number;
+  counterOffer?: number;
+  adminResponse?: string;
+  rejectionReason?: string;
+  currency: string;
+}) => {
+  try {
+    const { error } = await supabase.functions.invoke('send-price-notification', {
+      body: data,
+    });
+    
+    if (error) {
+      console.error('Failed to send notification email:', error);
+    } else {
+      console.log('Notification email sent successfully');
+    }
+  } catch (err) {
+    console.error('Error invoking send-price-notification:', err);
+  }
+};
+
 export const usePriceNegotiations = (role: 'driver' | 'owner' | 'admin') => {
   const { user } = useAuth();
   const [negotiations, setNegotiations] = useState<PriceNegotiation[]>([]);
@@ -219,6 +248,9 @@ export const usePriceNegotiations = (role: 'driver' | 'owner' | 'admin') => {
   ) => {
     if (!user) throw new Error('Not authenticated');
     
+    // Find the negotiation to get requester info
+    const negotiation = negotiations.find(n => n.id === negotiationId);
+    
     const updateData: Record<string, unknown> = {
       status: withLock ? 'locked' as NegotiationStatus : 'approved' as NegotiationStatus,
       final_daily_rate: finalRate,
@@ -239,6 +271,23 @@ export const usePriceNegotiations = (role: 'driver' | 'owner' | 'admin') => {
       .eq('id', negotiationId);
     
     if (error) throw error;
+    
+    // Send notification email
+    if (negotiation?.requester_profile?.email) {
+      const userType = negotiation.owner_id ? 'owner' : 'driver';
+      await sendPriceNotification({
+        email: negotiation.requester_profile.email,
+        name: negotiation.requester_profile.full_name || 'User',
+        userType,
+        notificationType: withLock ? 'locked' : 'approved',
+        vehicleInfo: `${negotiation.vehicle_year} ${negotiation.vehicle_make} ${negotiation.vehicle_model}`,
+        requestedRate: negotiation.requested_daily_rate,
+        finalRate,
+        adminResponse,
+        currency: negotiation.currency,
+      });
+    }
+    
     await fetchNegotiations();
   };
 
@@ -248,6 +297,8 @@ export const usePriceNegotiations = (role: 'driver' | 'owner' | 'admin') => {
     counterOffer: number, 
     adminResponse: string
   ) => {
+    const negotiation = negotiations.find(n => n.id === negotiationId);
+    
     const { error } = await supabase
       .from('price_negotiations')
       .update({
@@ -258,11 +309,30 @@ export const usePriceNegotiations = (role: 'driver' | 'owner' | 'admin') => {
       .eq('id', negotiationId);
     
     if (error) throw error;
+    
+    // Send notification email
+    if (negotiation?.requester_profile?.email) {
+      const userType = negotiation.owner_id ? 'owner' : 'driver';
+      await sendPriceNotification({
+        email: negotiation.requester_profile.email,
+        name: negotiation.requester_profile.full_name || 'User',
+        userType,
+        notificationType: 'counter_offer',
+        vehicleInfo: `${negotiation.vehicle_year} ${negotiation.vehicle_make} ${negotiation.vehicle_model}`,
+        requestedRate: negotiation.requested_daily_rate,
+        counterOffer,
+        adminResponse,
+        currency: negotiation.currency,
+      });
+    }
+    
     await fetchNegotiations();
   };
 
   // Admin: Reject negotiation
   const rejectNegotiation = async (negotiationId: string, rejectionReason: string) => {
+    const negotiation = negotiations.find(n => n.id === negotiationId);
+    
     const { error } = await supabase
       .from('price_negotiations')
       .update({
@@ -273,6 +343,22 @@ export const usePriceNegotiations = (role: 'driver' | 'owner' | 'admin') => {
       .eq('id', negotiationId);
     
     if (error) throw error;
+    
+    // Send notification email
+    if (negotiation?.requester_profile?.email) {
+      const userType = negotiation.owner_id ? 'owner' : 'driver';
+      await sendPriceNotification({
+        email: negotiation.requester_profile.email,
+        name: negotiation.requester_profile.full_name || 'User',
+        userType,
+        notificationType: 'rejected',
+        vehicleInfo: `${negotiation.vehicle_year} ${negotiation.vehicle_make} ${negotiation.vehicle_model}`,
+        requestedRate: negotiation.requested_daily_rate,
+        rejectionReason,
+        currency: negotiation.currency,
+      });
+    }
+    
     await fetchNegotiations();
   };
 
@@ -325,6 +411,23 @@ export const usePriceNegotiations = (role: 'driver' | 'owner' | 'admin') => {
         .from('price_negotiations')
         .update({ final_daily_rate: request.requested_rate })
         .eq('id', request.negotiation_id);
+    }
+    
+    // Send notification email
+    if (request.requester_profile?.email && request.negotiation) {
+      const userType = request.requester_type as 'driver' | 'owner';
+      await sendPriceNotification({
+        email: request.requester_profile.email,
+        name: request.requester_profile.full_name || 'User',
+        userType,
+        notificationType: action === 'approve' ? 'modification_approved' : 'modification_rejected',
+        vehicleInfo: `${request.negotiation.vehicle_year} ${request.negotiation.vehicle_make} ${request.negotiation.vehicle_model}`,
+        requestedRate: request.current_rate,
+        finalRate: action === 'approve' ? request.requested_rate : undefined,
+        adminResponse,
+        rejectionReason: action === 'reject' ? adminResponse : undefined,
+        currency: request.negotiation.currency,
+      });
     }
     
     await Promise.all([fetchNegotiations(), fetchModificationRequests()]);
