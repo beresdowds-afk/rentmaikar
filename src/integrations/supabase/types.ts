@@ -553,6 +553,11 @@ export type Database = {
           id: string
           incident_type: Database["public"]["Enums"]["incident_type"]
           iot_data: Json | null
+          iot_deceleration_g: number | null
+          iot_impact_severity: string | null
+          iot_speed_at_impact: number | null
+          iot_trigger_type: string | null
+          iot_triggered_at: string | null
           is_iot_detected: boolean
           is_late_report: boolean
           location_address: string | null
@@ -582,6 +587,11 @@ export type Database = {
           id?: string
           incident_type: Database["public"]["Enums"]["incident_type"]
           iot_data?: Json | null
+          iot_deceleration_g?: number | null
+          iot_impact_severity?: string | null
+          iot_speed_at_impact?: number | null
+          iot_trigger_type?: string | null
+          iot_triggered_at?: string | null
           is_iot_detected?: boolean
           is_late_report?: boolean
           location_address?: string | null
@@ -611,6 +621,11 @@ export type Database = {
           id?: string
           incident_type?: Database["public"]["Enums"]["incident_type"]
           iot_data?: Json | null
+          iot_deceleration_g?: number | null
+          iot_impact_severity?: string | null
+          iot_speed_at_impact?: number | null
+          iot_trigger_type?: string | null
+          iot_triggered_at?: string | null
           is_iot_detected?: boolean
           is_late_report?: boolean
           location_address?: string | null
