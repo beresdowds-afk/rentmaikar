@@ -99,17 +99,17 @@ const usaCategoryContent: CategoryContent = {
   budget: {
     title: "The Smart Start",
     description: "Get started without big upfront costs. Reliable, fuel-efficient cars that let you keep more of your weekly earnings.",
-    priceLabel: "From $250",
+    priceLabel: "Up to $250",
   },
   standard: {
     title: "The Earnings Optimizer",
     description: "Boost your ratings and unlock better ride requests. Modern comforts and reliability that passengers love.",
-    priceLabel: "From $300",
+    priceLabel: "Up to $300",
   },
   premium: {
     title: "The Top Earner",
     description: "Command higher rates with Uber Comfort and Lyft Lux. Drive the latest models to attract premium rides and maximize your income.",
-    priceLabel: "From $350",
+    priceLabel: "Up to $350",
   },
   viewCta: "See Cars",
 };
@@ -230,17 +230,17 @@ const nigeriaCategoryContent: CategoryContent = {
   budget: {
     title: "The Smart Start",
     description: "Perfect for wise starters. Keep your costs low and your profits high with these reliable, fuel-saving champions.",
-    priceLabel: "From ₦60,000",
+    priceLabel: "Up to ₦60,000",
   },
   standard: {
     title: "The Profit Builder",
     description: "Boost your ratings and attract better rides. Modern comfort that passengers appreciate and reward with tips.",
-    priceLabel: "From ₦73,000",
+    priceLabel: "Up to ₦73,000",
   },
   premium: {
     title: "The Top Earner",
     description: "Command premium fares and VIP rides. Drive the latest models that passengers request by name.",
-    priceLabel: "From ₦93,000",
+    priceLabel: "Up to ₦93,000",
   },
   viewCta: "View Cars",
 };
