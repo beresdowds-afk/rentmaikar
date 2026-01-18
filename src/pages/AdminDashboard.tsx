@@ -26,10 +26,29 @@ import { useCurrencyConversion } from "@/hooks/useCurrencyConversion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-// Mock revenue data - in production, this would come from the database
-const mockRevenueData = {
-  usd: 28320, // Revenue from USA operations
-  ngn: 31200000, // Revenue from Nigeria operations (in Naira)
+// Mock financial data - in production, this would come from the database
+const mockFinancialData = {
+  // Monthly income (from drivers - base rate + admin fee)
+  income: {
+    usd: 28320,
+    ngn: 31200000,
+  },
+  // Monthly payouts to owners (base rate - management fee)
+  ownerPayouts: {
+    usd: 16992, // 60% of driver payments go to owners
+    ngn: 18720000,
+  },
+  // Admin withdrawals (platform earnings = 40% of total)
+  adminWithdrawals: {
+    weekly: {
+      usd: 2832,
+      ngn: 3120000,
+    },
+    monthly: {
+      usd: 11328, // 40% platform fee
+      ngn: 12480000,
+    },
+  },
 };
 
 interface PendingApproval {
@@ -98,9 +117,18 @@ const AdminDashboard = () => {
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
   const [approvingId, setApprovingId] = useState<number | null>(null);
 
-  // Calculate converted revenue
-  const ngnInUsd = convertToUSD(mockRevenueData.ngn, 'NGN');
-  const totalRevenueUsd = mockRevenueData.usd + ngnInUsd;
+  // Calculate converted values
+  const incomeNgnInUsd = convertToUSD(mockFinancialData.income.ngn, 'NGN');
+  const totalIncomeUsd = mockFinancialData.income.usd + incomeNgnInUsd;
+
+  const payoutsNgnInUsd = convertToUSD(mockFinancialData.ownerPayouts.ngn, 'NGN');
+  const totalPayoutsUsd = mockFinancialData.ownerPayouts.usd + payoutsNgnInUsd;
+
+  const weeklyWithdrawalsNgnInUsd = convertToUSD(mockFinancialData.adminWithdrawals.weekly.ngn, 'NGN');
+  const totalWeeklyWithdrawalsUsd = mockFinancialData.adminWithdrawals.weekly.usd + weeklyWithdrawalsNgnInUsd;
+
+  const monthlyWithdrawalsNgnInUsd = convertToUSD(mockFinancialData.adminWithdrawals.monthly.ngn, 'NGN');
+  const totalMonthlyWithdrawalsUsd = mockFinancialData.adminWithdrawals.monthly.usd + monthlyWithdrawalsNgnInUsd;
 
   const handleApproval = async (item: PendingApproval) => {
     setApprovingId(item.id);
@@ -197,12 +225,12 @@ const AdminDashboard = () => {
               </div>
             </Card>
 
-            {/* Monthly Revenue - Enhanced with breakdown */}
-            <Card className="p-6 col-span-1 sm:col-span-2 lg:col-span-1">
+            {/* Monthly Income - Enhanced with breakdown */}
+            <Card className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm text-muted-foreground">Monthly Revenue</p>
+                    <p className="text-sm text-muted-foreground">Monthly Income</p>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button 
@@ -220,12 +248,12 @@ const AdminDashboard = () => {
                       <TooltipContent>Refresh exchange rate</TooltipContent>
                     </Tooltip>
                   </div>
-                  <p className="text-2xl font-bold text-foreground mt-1">
-                    ${totalRevenueUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  <p className="text-2xl font-bold text-green-600 mt-1">
+                    ${totalIncomeUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-warning">
-                  <DollarSign className="w-6 h-6" />
+                <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+                  <TrendingUp className="w-6 h-6" />
                 </div>
               </div>
               <div className="space-y-1.5 pt-2 border-t">
@@ -233,26 +261,79 @@ const AdminDashboard = () => {
                   <span className="text-muted-foreground flex items-center gap-1">
                     <span>🇺🇸</span> USD
                   </span>
-                  <span className="font-medium">${mockRevenueData.usd.toLocaleString()}</span>
+                  <span className="font-medium">${mockFinancialData.income.usd.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-1">
                     <span>🇳🇬</span> NGN
                   </span>
-                  <span className="font-medium">₦{mockRevenueData.ngn.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-                  <span className="flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" />
-                    NGN → USD
-                  </span>
-                  <span>${ngnInUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                  <span className="font-medium">₦{mockFinancialData.income.ngn.toLocaleString()}</span>
                 </div>
                 {rates && (
                   <p className="text-[10px] text-muted-foreground pt-1">
                     Rate: $1 = ₦{rates.USD_NGN.toLocaleString('en-US', { maximumFractionDigits: 2 })}
                   </p>
                 )}
+              </div>
+            </Card>
+
+            {/* Monthly Payouts to Owners */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Monthly Payouts</p>
+                  <p className="text-2xl font-bold text-blue-600 mt-1">
+                    ${totalPayoutsUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                  <Wallet className="w-6 h-6" />
+                </div>
+              </div>
+              <div className="space-y-1.5 pt-2 border-t">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <span>🇺🇸</span> USD
+                  </span>
+                  <span className="font-medium">${mockFinancialData.ownerPayouts.usd.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <span>🇳🇬</span> NGN
+                  </span>
+                  <span className="font-medium">₦{mockFinancialData.ownerPayouts.ngn.toLocaleString()}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground pt-1">
+                  Paid to owners (60% of income)
+                </p>
+              </div>
+            </Card>
+
+            {/* Admin Withdrawals */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Admin Withdrawals</p>
+                  <p className="text-2xl font-bold text-primary mt-1">
+                    ${totalMonthlyWithdrawalsUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                  <DollarSign className="w-6 h-6" />
+                </div>
+              </div>
+              <div className="space-y-1.5 pt-2 border-t">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Weekly</span>
+                  <span className="font-medium">${totalWeeklyWithdrawalsUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Monthly</span>
+                  <span className="font-medium">${totalMonthlyWithdrawalsUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground pt-1">
+                  Platform earnings (40% fee)
+                </p>
               </div>
             </Card>
 
