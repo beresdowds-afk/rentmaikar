@@ -9,7 +9,8 @@ interface GeoLocationResult {
 // Free IP geolocation using ip-api.com (no API key required)
 export const detectCountryFromIP = async (): Promise<GeoLocationResult> => {
   try {
-    const response = await fetch("http://ip-api.com/json/?fields=countryCode", {
+    // Use HTTPS for secure transmission of IP data
+    const response = await fetch("https://ip-api.com/json/?fields=countryCode", {
       method: "GET",
     });
 
