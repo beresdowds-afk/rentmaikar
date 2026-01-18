@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2 } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu } from "lucide-react";
+import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -176,6 +177,10 @@ const AdminDashboard = () => {
           <Tabs defaultValue="tracking" className="space-y-6">
             <TabsList className="flex-wrap">
               <TabsTrigger value="tracking">Vehicle Tracking</TabsTrigger>
+              <TabsTrigger value="hardware" className="flex items-center gap-1">
+                <Cpu className="h-4 w-4" />
+                Hardware
+              </TabsTrigger>
               <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
               <TabsTrigger value="defaults">Payment Defaults</TabsTrigger>
               <TabsTrigger value="fees">Fee Structure</TabsTrigger>
@@ -191,6 +196,10 @@ const AdminDashboard = () => {
                 </p>
                 <VehicleTrackingMap />
               </Card>
+            </TabsContent>
+
+            <TabsContent value="hardware">
+              <HardwareManagement />
             </TabsContent>
 
             <TabsContent value="approvals">
