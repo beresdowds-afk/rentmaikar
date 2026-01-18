@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban } from "lucide-react";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
 import { SecretsManagement } from "@/components/admin/SecretsManagement";
 import { IoTDeviceOrders } from "@/components/admin/IoTDeviceOrders";
 import { UserAccountsView } from "@/components/admin/UserAccountsView";
+import { DailyPlanManagement } from "@/components/admin/DailyPlanManagement";
 import { AdminPriceNegotiation } from "@/components/negotiation/AdminPriceNegotiation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -383,6 +384,10 @@ const AdminDashboard = () => {
               </TabsTrigger>
               <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
               <TabsTrigger value="defaults">Payment Defaults</TabsTrigger>
+              <TabsTrigger value="daily-plans" className="flex items-center gap-1">
+                <Ban className="h-4 w-4" />
+                Daily Plans
+              </TabsTrigger>
               <TabsTrigger value="fees">Fee Structure</TabsTrigger>
               <TabsTrigger value="secrets" className="flex items-center gap-1">
                 <KeyRound className="h-4 w-4" />
@@ -508,8 +513,9 @@ const AdminDashboard = () => {
                     <p><strong>Payment Default Protocol:</strong></p>
                     <ul className="list-disc list-inside text-muted-foreground space-y-1">
                       <li>Auto-debit runs daily at 12:01 AM</li>
-                      <li>3-day notification sequence (SMS/WhatsApp)</li>
-                      <li>Vehicle deactivation eligible after 3rd notification</li>
+                      <li><strong>Weekly Plans:</strong> 72-hour lockdown with 3 notifications at 24-hour intervals</li>
+                      <li><strong>Daily Plans:</strong> 36-hour lockdown with 3 notifications at 12-hour intervals</li>
+                      <li>Daily plans become forbidden after any payment default</li>
                       <li>Deactivation only when vehicle is parked (speed &lt; 2 mph)</li>
                     </ul>
                   </div>
@@ -532,6 +538,10 @@ const AdminDashboard = () => {
                   />
                 ))}
               </div>
+            </TabsContent>
+
+            <TabsContent value="daily-plans">
+              <DailyPlanManagement />
             </TabsContent>
 
             <TabsContent value="fees">
