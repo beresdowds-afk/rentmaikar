@@ -12,6 +12,7 @@ import {
   type PaymentMethod, 
   type PaymentFrequency 
 } from '@/lib/payment-config';
+import { useDailyPlanEligibility } from '@/hooks/useDailyPlanEligibility';
 import { 
   CreditCard, 
   Building2, 
@@ -21,7 +22,9 @@ import {
   Loader2,
   Info,
   Copy,
-  Check
+  Check,
+  Ban,
+  Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -53,6 +56,9 @@ export function PaymentOptionsSelector({
   const [frequency, setFrequency] = useState<PaymentFrequency>('weekly');
   const [downPaymentDays, setDownPaymentDays] = useState<number>(PAYMENT_CONFIG.MINIMUM_DOWN_PAYMENT_DAYS);
   const [copied, setCopied] = useState(false);
+  
+  // Check if driver is eligible for daily payment plan
+  const dailyEligibility = useDailyPlanEligibility();
 
   const availableMethods = country === 'USA' 
     ? PAYMENT_CONFIG.PAYMENT_METHODS.USA 
@@ -251,7 +257,7 @@ export function PaymentOptionsSelector({
                   <span className="font-medium">Weekly Payment</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Pay once per week - no additional fees
+                  Pay once per week - no additional fees. 72-hour lockdown policy.
                 </p>
               </Label>
               <Badge className="bg-green-500 hover:bg-green-600">Recommended</Badge>
@@ -259,42 +265,81 @@ export function PaymentOptionsSelector({
             
             <div
               className={`flex items-center space-x-3 p-4 rounded-lg border transition-colors ${
-                frequency === 'daily'
+                dailyEligibility.isForbidden
+                  ? 'border-destructive/50 bg-destructive/5 opacity-60'
+                  : frequency === 'daily'
                   ? 'border-primary bg-primary/5'
                   : 'border-border hover:border-primary/50'
               }`}
             >
-              <RadioGroupItem value="daily" id="daily" />
-              <Label htmlFor="daily" className="flex-1 cursor-pointer">
+              <RadioGroupItem 
+                value="daily" 
+                id="daily" 
+                disabled={dailyEligibility.isForbidden}
+              />
+              <Label 
+                htmlFor="daily" 
+                className={`flex-1 ${dailyEligibility.isForbidden ? 'opacity-60' : 'cursor-pointer'}`}
+              >
                 <div className="flex items-center gap-2">
                   <CalendarDays className="h-4 w-4" />
                   <span className="font-medium">Daily Payment</span>
+                  {dailyEligibility.isForbidden && (
+                    <Ban className="h-4 w-4 text-destructive" />
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Pay daily with minimum 2-day down payment
+                  {dailyEligibility.isForbidden 
+                    ? 'Unavailable due to previous payment default'
+                    : 'Pay daily with minimum 2-day down payment. 36-hour lockdown policy.'
+                  }
                 </p>
               </Label>
-              <Badge variant="destructive">+10% Fine</Badge>
+              {dailyEligibility.isForbidden ? (
+                <Badge variant="destructive">Forbidden</Badge>
+              ) : (
+                <Badge variant="destructive">+10% Fee</Badge>
+              )}
             </div>
           </RadioGroup>
         </div>
 
-        {/* Daily Payment Warning */}
-        {frequency === 'daily' && (
+        {/* Daily Plan Forbidden Alert */}
+        {dailyEligibility.isForbidden && (
           <Alert variant="destructive" className="bg-destructive/10">
-            <AlertTriangle className="h-4 w-4" />
+            <Ban className="h-4 w-4" />
             <AlertDescription>
-              <strong>10% Daily Payment Fine Applied</strong>
+              <strong>Daily Payment Plan Unavailable</strong>
               <p className="text-sm mt-1">
-                Daily payments incur a {PAYMENT_CONFIG.DAILY_PAYMENT_FINE_PERCENT}% fine. 
-                Minimum {PAYMENT_CONFIG.MINIMUM_DOWN_PAYMENT_DAYS}-day down payment required.
+                {dailyEligibility.forbiddenReason || 'Due to a previous payment default, daily payment plans are no longer available for your account.'}
+              </p>
+              <p className="text-xs mt-2 text-muted-foreground">
+                Contact support if you believe this is an error.
               </p>
             </AlertDescription>
           </Alert>
         )}
 
+        {/* Daily Payment Warning */}
+        {frequency === 'daily' && !dailyEligibility.isForbidden && (
+          <Alert variant="destructive" className="bg-destructive/10">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>10% Extra Administrative Fee Applied</strong>
+              <p className="text-sm mt-1">
+                Daily payments incur a {PAYMENT_CONFIG.DAILY_PAYMENT_FINE_PERCENT}% extra fee. 
+                Minimum {PAYMENT_CONFIG.MINIMUM_DOWN_PAYMENT_DAYS}-day down payment required.
+              </p>
+              <div className="flex items-center gap-2 mt-2 text-xs text-orange-500">
+                <Clock className="h-3 w-3" />
+                <span>36-hour lockdown policy with 3 notifications at 12-hour intervals</span>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Down Payment Days (for daily frequency) */}
-        {frequency === 'daily' && (
+        {frequency === 'daily' && !dailyEligibility.isForbidden && (
           <div className="space-y-3">
             <Label className="text-base font-semibold">Down Payment Days</Label>
             <div className="flex items-center gap-4">

@@ -9,7 +9,7 @@ export const PAYMENT_CONFIG = {
   ADMIN_FEE_PERCENT: 20, // Driver pays base + 20%
   MANAGEMENT_FEE_PERCENT: 20, // Owner receives base - 20%
   PLATFORM_FEE_PERCENT: 40, // Total platform earnings
-  DAILY_PAYMENT_FINE_PERCENT: 10, // 10% fine for daily payment option
+  DAILY_PAYMENT_FINE_PERCENT: 10, // 10% extra admin fee for daily payment option
   
   // Payment frequency settings
   MINIMUM_DOWN_PAYMENT_DAYS: 2, // Minimum 2 days down payment required
@@ -18,9 +18,19 @@ export const PAYMENT_CONFIG = {
   DAILY_DEBIT_TIME: '00:01', // 12:01 AM
   WEEKLY_PAYOUT_DAY: 5, // Friday (0 = Sunday)
   
-  // Default sequence
-  DEFAULT_GRACE_PERIOD_DAYS: 3,
-  NOTIFICATION_DAYS: [1, 2, 3],
+  // Default sequence for WEEKLY payments (72 hours / 3 days)
+  WEEKLY_DEFAULT: {
+    GRACE_PERIOD_HOURS: 72,
+    NOTIFICATION_HOURS: [24, 48, 72], // 3 notifications at 24-hour intervals
+    LOCKDOWN_AFTER_HOURS: 72,
+  },
+  
+  // Default sequence for DAILY payments (36 hours)
+  DAILY_DEFAULT: {
+    GRACE_PERIOD_HOURS: 36,
+    NOTIFICATION_HOURS: [12, 24, 36], // 3 notifications at 12-hour intervals
+    LOCKDOWN_AFTER_HOURS: 36,
+  },
   
   // Currency settings
   CURRENCIES: {
@@ -97,7 +107,8 @@ export interface PaymentDefault {
   rentalId: string;
   amountDue: number;
   currency: 'USD' | 'NGN';
-  daysOverdue: number;
+  paymentFrequency: PaymentFrequency;
+  hoursOverdue: number;
   notificationsSent: number;
   lastNotificationAt?: Date;
   deactivationEligible: boolean;
@@ -195,21 +206,43 @@ export function isWeeklyPayoutDay(): boolean {
 }
 
 /**
+ * Get default config based on payment frequency
+ */
+export function getDefaultConfig(frequency: PaymentFrequency) {
+  return frequency === 'daily' 
+    ? PAYMENT_CONFIG.DAILY_DEFAULT 
+    : PAYMENT_CONFIG.WEEKLY_DEFAULT;
+}
+
+/**
  * Check if deactivation is allowed based on payment default status
  */
 export function isDeactivationAllowed(paymentDefault: PaymentDefault): boolean {
+  const config = getDefaultConfig(paymentDefault.paymentFrequency);
   return (
-    paymentDefault.daysOverdue >= PAYMENT_CONFIG.DEFAULT_GRACE_PERIOD_DAYS &&
-    paymentDefault.notificationsSent >= PAYMENT_CONFIG.NOTIFICATION_DAYS.length
+    paymentDefault.hoursOverdue >= config.LOCKDOWN_AFTER_HOURS &&
+    paymentDefault.notificationsSent >= config.NOTIFICATION_HOURS.length
   );
 }
 
 /**
- * Get next notification day for payment default
+ * Get next notification hour for payment default
  */
-export function getNextNotificationDay(notificationsSent: number): number | null {
-  if (notificationsSent >= PAYMENT_CONFIG.NOTIFICATION_DAYS.length) {
+export function getNextNotificationHour(
+  notificationsSent: number,
+  frequency: PaymentFrequency
+): number | null {
+  const config = getDefaultConfig(frequency);
+  if (notificationsSent >= config.NOTIFICATION_HOURS.length) {
     return null;
   }
-  return PAYMENT_CONFIG.NOTIFICATION_DAYS[notificationsSent];
+  return config.NOTIFICATION_HOURS[notificationsSent];
+}
+
+/**
+ * Get hours until lockdown for a payment default
+ */
+export function getHoursUntilLockdown(paymentDefault: PaymentDefault): number {
+  const config = getDefaultConfig(paymentDefault.paymentFrequency);
+  return Math.max(0, config.LOCKDOWN_AFTER_HOURS - paymentDefault.hoursOverdue);
 }

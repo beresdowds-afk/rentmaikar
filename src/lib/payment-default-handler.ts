@@ -1,13 +1,15 @@
 import { 
   PAYMENT_CONFIG, 
   type PaymentDefault,
+  type PaymentFrequency,
   isDeactivationAllowed,
-  getNextNotificationDay,
+  getNextNotificationHour,
+  getDefaultConfig,
   formatCurrency
 } from './payment-config';
 
 export interface DefaultNotification {
-  day: number;
+  hour: number;
   type: 'sms' | 'whatsapp' | 'email' | 'push';
   message: string;
   sent: boolean;
@@ -28,7 +30,9 @@ export interface DeactivationRequest {
 
 /**
  * Payment Default Handler
- * Manages the 3-day payment default sequence with notifications and vehicle deactivation
+ * Manages payment defaults with frequency-based lockdown:
+ * - Weekly: 72 hours with 3 notifications at 24-hour intervals
+ * - Daily: 36 hours with 3 notifications at 12-hour intervals
  */
 export class PaymentDefaultHandler {
   /**
@@ -39,7 +43,8 @@ export class PaymentDefaultHandler {
     vehicleId: string,
     rentalId: string,
     amountDue: number,
-    currency: 'USD' | 'NGN'
+    currency: 'USD' | 'NGN',
+    paymentFrequency: PaymentFrequency = 'weekly'
   ): PaymentDefault {
     return {
       id: `DEFAULT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -48,7 +53,8 @@ export class PaymentDefaultHandler {
       rentalId,
       amountDue,
       currency,
-      daysOverdue: 0,
+      paymentFrequency,
+      hoursOverdue: 0,
       notificationsSent: 0,
       deactivationEligible: false,
       status: 'active',
@@ -57,80 +63,93 @@ export class PaymentDefaultHandler {
   }
 
   /**
-   * Generate notification message for a specific day
+   * Generate notification message for a specific hour
    */
   static generateNotificationMessage(
     paymentDefault: PaymentDefault,
-    day: number,
+    notificationNumber: number,
     driverName: string
   ): DefaultNotification {
     const amountFormatted = formatCurrency(paymentDefault.amountDue, paymentDefault.currency);
+    const config = getDefaultConfig(paymentDefault.paymentFrequency);
+    const hoursRemaining = config.LOCKDOWN_AFTER_HOURS - paymentDefault.hoursOverdue;
+    const isDaily = paymentDefault.paymentFrequency === 'daily';
+    const intervalLabel = isDaily ? '12 hours' : '24 hours';
     
     const messages: Record<number, string> = {
-      1: `🔔 Payment Reminder (Day 1)
+      1: `🔔 Payment Reminder (Notification 1/3)
 
 Dear ${driverName},
 
 Your payment of ${amountFormatted} is overdue. Please make payment immediately to avoid service interruption.
 
-⚠️ If payment is not received within 72 hours, your vehicle may be subject to remote deactivation.
+⚠️ You are on a ${isDaily ? 'DAILY' : 'WEEKLY'} payment plan. Vehicle lockdown in ${hoursRemaining} hours if payment is not received.
+
+Next notification in ${intervalLabel}.
 
 Payment Link: [PAYMENT_LINK]
 
 Thank you.`,
 
-      2: `⚠️ URGENT: Payment Overdue (Day 2)
+      2: `⚠️ URGENT: Payment Overdue (Notification 2/3)
 
 Dear ${driverName},
 
 This is your second reminder. Your payment of ${amountFormatted} remains outstanding.
 
-🚨 You have 48 hours remaining before vehicle deactivation becomes eligible.
+🚨 ${hoursRemaining} hours remaining until vehicle lockdown.
+
+${isDaily ? '⚡ Daily payment plans require faster resolution.' : ''}
 
 Please pay now: [PAYMENT_LINK]
 
 Contact support if you need assistance.`,
 
-      3: `🚨 FINAL NOTICE: Payment Default (Day 3)
+      3: `🚨 FINAL NOTICE: Payment Default (Notification 3/3)
 
 Dear ${driverName},
 
 FINAL WARNING: Your payment of ${amountFormatted} is critically overdue.
 
-❌ Vehicle deactivation has been authorized. Your vehicle may be remotely disabled when safely parked.
+❌ Vehicle lockdown has been authorized. Your vehicle will be remotely disabled when safely parked.
 
-To avoid deactivation, pay immediately: [PAYMENT_LINK]
+${isDaily ? '⚡ Daily payment plans are now FORBIDDEN for your account due to this default.' : ''}
+
+To avoid lockdown, pay immediately: [PAYMENT_LINK]
 
 This is your last warning.`,
     };
 
     return {
-      day,
-      type: day === 3 ? 'whatsapp' : 'sms',
-      message: messages[day] || messages[1],
+      hour: paymentDefault.hoursOverdue,
+      type: notificationNumber === 3 ? 'whatsapp' : 'sms',
+      message: messages[notificationNumber] || messages[1],
       sent: false,
     };
   }
 
   /**
-   * Process daily payment default check
-   * Called at 12:01 AM for each active default
+   * Process hourly payment default check
+   * Called every hour for each active default
    */
-  static processDailyCheck(paymentDefault: PaymentDefault): {
+  static processHourlyCheck(paymentDefault: PaymentDefault): {
     updated: PaymentDefault;
     notification?: DefaultNotification;
     deactivationEligible: boolean;
   } {
     const updated = { ...paymentDefault };
-    updated.daysOverdue += 1;
+    updated.hoursOverdue += 1;
 
-    const nextNotificationDay = getNextNotificationDay(updated.notificationsSent);
+    const nextNotificationHour = getNextNotificationHour(
+      updated.notificationsSent,
+      updated.paymentFrequency
+    );
     let notification: DefaultNotification | undefined;
 
-    if (nextNotificationDay !== null && updated.daysOverdue >= nextNotificationDay) {
+    if (nextNotificationHour !== null && updated.hoursOverdue >= nextNotificationHour) {
       notification = this.generateNotificationMessage(
         updated,
-        nextNotificationDay,
+        updated.notificationsSent + 1,
         'Driver' // Would be actual driver name from DB
       );
       updated.notificationsSent += 1;
@@ -155,8 +174,9 @@ This is your last warning.`,
   ): DeactivationRequest | null {
     if (!isDeactivationAllowed(paymentDefault)) {
       console.warn('[PaymentDefault] Deactivation not allowed yet:', {
-        daysOverdue: paymentDefault.daysOverdue,
+        hoursOverdue: paymentDefault.hoursOverdue,
         notificationsSent: paymentDefault.notificationsSent,
+        paymentFrequency: paymentDefault.paymentFrequency,
       });
       return null;
     }
@@ -193,30 +213,32 @@ This is your last warning.`,
     message: string;
     action: string;
   } {
-    const { daysOverdue, notificationsSent, deactivationEligible } = paymentDefault;
+    const { hoursOverdue, notificationsSent, deactivationEligible, paymentFrequency } = paymentDefault;
     const amountFormatted = formatCurrency(paymentDefault.amountDue, paymentDefault.currency);
+    const config = getDefaultConfig(paymentFrequency);
+    const hoursUntilLockdown = Math.max(0, config.LOCKDOWN_AFTER_HOURS - hoursOverdue);
 
     if (deactivationEligible) {
       return {
         severity: 'critical',
-        message: `${daysOverdue} days overdue - ${amountFormatted}. Deactivation authorized.`,
-        action: 'Initiate vehicle deactivation when safely parked',
+        message: `${hoursOverdue}h overdue - ${amountFormatted}. Lockdown authorized.`,
+        action: 'Initiate vehicle lockdown when safely parked',
       };
     }
 
-    if (daysOverdue >= 2) {
+    if (notificationsSent >= 2) {
       return {
         severity: 'high',
-        message: `${daysOverdue} days overdue - ${amountFormatted}. ${3 - notificationsSent} notification(s) remaining.`,
-        action: 'Send urgent notification and prepare deactivation',
+        message: `${hoursOverdue}h overdue - ${amountFormatted}. ${hoursUntilLockdown}h until lockdown.`,
+        action: 'Send final notification and prepare lockdown',
       };
     }
 
-    if (daysOverdue >= 1) {
+    if (notificationsSent >= 1) {
       return {
         severity: 'medium',
-        message: `${daysOverdue} day(s) overdue - ${amountFormatted}.`,
-        action: 'Send reminder notification',
+        message: `${hoursOverdue}h overdue - ${amountFormatted}. ${3 - notificationsSent} notification(s) remaining.`,
+        action: 'Send urgent notification',
       };
     }
 
@@ -225,5 +247,38 @@ This is your last warning.`,
       message: `Payment pending - ${amountFormatted}`,
       action: 'Monitor and await payment',
     };
+  }
+
+  /**
+   * Check if driver is eligible for daily payment plan
+   */
+  static async checkDailyPlanEligibility(driverId: string, supabase: any): Promise<{
+    eligible: boolean;
+    reason?: string;
+  }> {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('daily_plan_forbidden, daily_plan_forbidden_reason')
+        .eq('user_id', driverId)
+        .single();
+
+      if (error) {
+        console.error('[PaymentDefault] Error checking daily plan eligibility:', error);
+        return { eligible: true }; // Default to eligible if check fails
+      }
+
+      if (profile?.daily_plan_forbidden) {
+        return {
+          eligible: false,
+          reason: profile.daily_plan_forbidden_reason || 'Previous payment default',
+        };
+      }
+
+      return { eligible: true };
+    } catch (error) {
+      console.error('[PaymentDefault] Error checking daily plan eligibility:', error);
+      return { eligible: true };
+    }
   }
 }

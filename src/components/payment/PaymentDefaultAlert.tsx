@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
-  type PaymentDefault 
+  type PaymentDefault,
+  getHoursUntilLockdown 
 } from '@/lib/payment-config';
 import { PaymentDefaultHandler } from '@/lib/payment-default-handler';
 import { formatCurrency } from '@/lib/payment-config';
@@ -33,6 +34,8 @@ export function PaymentDefaultAlert({
 }: PaymentDefaultAlertProps) {
   const status = PaymentDefaultHandler.getStatusSummary(paymentDefault);
   const progress = (paymentDefault.notificationsSent / 3) * 100;
+  const hoursUntilLockdown = getHoursUntilLockdown(paymentDefault);
+  const isDaily = paymentDefault.paymentFrequency === 'daily';
 
   const severityStyles = {
     low: 'border-yellow-500/50 bg-yellow-500/10',
@@ -55,13 +58,19 @@ export function PaymentDefaultAlert({
         <div className="flex-1 space-y-3">
           <div className="flex items-center justify-between">
             <AlertTitle className="text-base font-semibold">
-              Payment Default - Day {paymentDefault.daysOverdue}
+              Payment Default - {paymentDefault.hoursOverdue}h Overdue
+              {isDaily && <span className="ml-2 text-xs font-normal text-muted-foreground">(Daily Plan)</span>}
             </AlertTitle>
-            <Badge 
-              variant={status.severity === 'critical' ? 'destructive' : 'secondary'}
-            >
-              {status.severity.toUpperCase()}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                {isDaily ? '36h lockdown' : '72h lockdown'}
+              </Badge>
+              <Badge 
+                variant={status.severity === 'critical' ? 'destructive' : 'secondary'}
+              >
+                {status.severity.toUpperCase()}
+              </Badge>
+            </div>
           </div>
           
           <AlertDescription className="space-y-3">
@@ -83,10 +92,15 @@ export function PaymentDefaultAlert({
             {/* Notification Progress */}
             <div className="space-y-1">
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Notifications Sent</span>
+                <span>Notifications Sent ({isDaily ? '12h intervals' : '24h intervals'})</span>
                 <span>{paymentDefault.notificationsSent}/3</span>
               </div>
               <Progress value={progress} className="h-2" />
+              {hoursUntilLockdown > 0 && (
+                <p className="text-xs text-orange-500">
+                  {hoursUntilLockdown}h until vehicle lockdown eligible
+                </p>
+              )}
             </div>
 
             {/* Action Text */}
