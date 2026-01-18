@@ -541,6 +541,96 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_incidents: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          actual_downtime_hours: number | null
+          created_at: string
+          description: string
+          driver_id: string
+          estimated_downtime_hours: number | null
+          id: string
+          incident_type: Database["public"]["Enums"]["incident_type"]
+          iot_data: Json | null
+          is_iot_detected: boolean
+          is_late_report: boolean
+          location_address: string | null
+          location_lat: number | null
+          location_lng: number | null
+          occurred_at: string
+          owner_id: string | null
+          photos: string[] | null
+          reported_at: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: Database["public"]["Enums"]["incident_severity"]
+          status: Database["public"]["Enums"]["incident_status"]
+          title: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          actual_downtime_hours?: number | null
+          created_at?: string
+          description: string
+          driver_id: string
+          estimated_downtime_hours?: number | null
+          id?: string
+          incident_type: Database["public"]["Enums"]["incident_type"]
+          iot_data?: Json | null
+          is_iot_detected?: boolean
+          is_late_report?: boolean
+          location_address?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          occurred_at: string
+          owner_id?: string | null
+          photos?: string[] | null
+          reported_at?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: Database["public"]["Enums"]["incident_severity"]
+          status?: Database["public"]["Enums"]["incident_status"]
+          title: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          actual_downtime_hours?: number | null
+          created_at?: string
+          description?: string
+          driver_id?: string
+          estimated_downtime_hours?: number | null
+          id?: string
+          incident_type?: Database["public"]["Enums"]["incident_type"]
+          iot_data?: Json | null
+          is_iot_detected?: boolean
+          is_late_report?: boolean
+          location_address?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          occurred_at?: string
+          owner_id?: string | null
+          photos?: string[] | null
+          reported_at?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: Database["public"]["Enums"]["incident_severity"]
+          status?: Database["public"]["Enums"]["incident_status"]
+          title?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
       vehicles: {
         Row: {
           color: string | null
@@ -600,6 +690,19 @@ export type Database = {
     Enums: {
       app_role: "admin" | "owner" | "driver"
       device_status: "inactive" | "active" | "offline" | "maintenance"
+      incident_severity: "low" | "medium" | "high" | "critical"
+      incident_status:
+        | "reported"
+        | "acknowledged"
+        | "in_progress"
+        | "resolved"
+        | "closed"
+      incident_type:
+        | "accident"
+        | "maintenance"
+        | "breakdown"
+        | "theft"
+        | "other"
       negotiation_status:
         | "pending"
         | "counter_offer"
@@ -735,6 +838,15 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "owner", "driver"],
       device_status: ["inactive", "active", "offline", "maintenance"],
+      incident_severity: ["low", "medium", "high", "critical"],
+      incident_status: [
+        "reported",
+        "acknowledged",
+        "in_progress",
+        "resolved",
+        "closed",
+      ],
+      incident_type: ["accident", "maintenance", "breakdown", "theft", "other"],
       negotiation_status: [
         "pending",
         "counter_offer",
