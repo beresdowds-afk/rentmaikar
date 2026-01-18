@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Car, User, Building, Shield, LayoutDashboard, LogIn, LogOut } from "lucide-react";
+import { Menu, X, User, Building, Shield, LayoutDashboard, LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import RegionSwitcher from "@/components/home/RegionSwitcher";
 import { useUserType } from "@/contexts/UserTypeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -44,12 +45,11 @@ const Header = () => {
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-gradient-hero flex items-center justify-center">
-              <Car className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xl font-display font-bold text-primary">
-              Rent<span className="text-accent">maikar</span>
-            </span>
+            <img 
+              src={rentmaikarLogo} 
+              alt="Rentmaikar" 
+              className="h-10 md:h-12 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Navigation */}
