@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,8 +12,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Car, Loader2, AlertCircle, User, Shield, Users, ArrowLeft, Mail, CheckCircle, RefreshCw } from 'lucide-react';
+import { Loader2, AlertCircle, User, Shield, Users, ArrowLeft, Mail, CheckCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -398,10 +399,14 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 rounded-xl bg-primary flex items-center justify-center mb-4">
-            <Car className="w-6 h-6 text-primary-foreground" />
-          </div>
-          <CardTitle className="text-2xl font-display">Rentmaikar</CardTitle>
+          <Link to="/" className="mx-auto mb-4">
+            <img 
+              src={rentmaikarLogo} 
+              alt="Rentmaikar" 
+              className="h-16 w-auto object-contain"
+            />
+          </Link>
+          <CardTitle className="text-2xl font-display">Welcome Back</CardTitle>
           <CardDescription>
             Sign in to access your dashboard
           </CardDescription>
