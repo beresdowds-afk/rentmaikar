@@ -14,6 +14,7 @@ import { PaymentOptionsSelector, type PaymentSelection } from '@/components/paym
 import { DriverPriceNegotiation } from '@/components/negotiation/DriverPriceNegotiation';
 import { PhoneVerification } from '@/components/phone/PhoneVerification';
 import { NotificationPreferences } from '@/components/phone/NotificationPreferences';
+import { IncidentReportForm } from '@/components/incidents/IncidentReportForm';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -31,6 +32,7 @@ import {
   FileText,
   Bell,
   Settings,
+  Wrench,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -198,10 +200,14 @@ export default function DriverDashboard() {
           </div>
 
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
+            <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="payments">Payments</TabsTrigger>
               <TabsTrigger value="negotiate">Price Negotiation</TabsTrigger>
+              <TabsTrigger value="incidents" className="flex items-center gap-1">
+                <Wrench className="h-3 w-3" />
+                Incidents
+              </TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
@@ -392,6 +398,14 @@ export default function DriverDashboard() {
             {/* Price Negotiation Tab */}
             <TabsContent value="negotiate" className="space-y-6">
               <DriverPriceNegotiation />
+            </TabsContent>
+
+            {/* Incidents Tab */}
+            <TabsContent value="incidents" className="space-y-6">
+              <IncidentReportForm 
+                vehicleId={vehicle.id}
+                vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+              />
             </TabsContent>
 
             {/* Documents Tab */}

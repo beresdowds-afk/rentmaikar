@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench } from "lucide-react";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
@@ -8,6 +8,7 @@ import { SecretsManagement } from "@/components/admin/SecretsManagement";
 import { IoTDeviceOrders } from "@/components/admin/IoTDeviceOrders";
 import { UserAccountsView } from "@/components/admin/UserAccountsView";
 import { DailyPlanManagement } from "@/components/admin/DailyPlanManagement";
+import { AdminIncidentManagement } from "@/components/admin/AdminIncidentManagement";
 import { AdminPriceNegotiation } from "@/components/negotiation/AdminPriceNegotiation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -384,6 +385,10 @@ const AdminDashboard = () => {
               </TabsTrigger>
               <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
               <TabsTrigger value="defaults">Payment Defaults</TabsTrigger>
+              <TabsTrigger value="incidents" className="flex items-center gap-1">
+                <Wrench className="h-4 w-4" />
+                Incidents
+              </TabsTrigger>
               <TabsTrigger value="daily-plans" className="flex items-center gap-1">
                 <Ban className="h-4 w-4" />
                 Daily Plans
@@ -538,6 +543,10 @@ const AdminDashboard = () => {
                   />
                 ))}
               </div>
+            </TabsContent>
+
+            <TabsContent value="incidents">
+              <AdminIncidentManagement />
             </TabsContent>
 
             <TabsContent value="daily-plans">
