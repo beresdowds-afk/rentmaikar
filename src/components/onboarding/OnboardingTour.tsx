@@ -24,6 +24,14 @@ const tourSteps: TourStep[] = [
     position: "center"
   },
   {
+    id: "login",
+    title: "Sign In to Rentmaikar",
+    description: "Already have an account? Click 'Sign In' to access your personalized dashboard. New users can create an account to get started as a driver or vehicle owner.",
+    target: "[data-tour='auth']",
+    icon: User,
+    position: "bottom"
+  },
+  {
     id: "user-type",
     title: "Choose Your Role",
     description: "Select whether you're a Driver looking to rent a vehicle, or an Owner wanting to list your cars. This helps us personalize your experience.",

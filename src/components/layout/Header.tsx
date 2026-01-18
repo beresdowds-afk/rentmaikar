@@ -113,7 +113,7 @@ const Header = () => {
                     </Button>
                   </Link>
                 )}
-                <Link to="/auth">
+                <Link to="/auth" data-tour="auth">
                   <Button variant="default" size="sm" className="gap-2">
                     <LogIn className="w-4 h-4" />
                     Sign In
