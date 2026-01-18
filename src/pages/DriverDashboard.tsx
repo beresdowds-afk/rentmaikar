@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,10 @@ import { useRegion } from '@/contexts/RegionContext';
 import { formatCurrency, PAYMENT_CONFIG } from '@/lib/payment-config';
 import { PaymentOptionsSelector, type PaymentSelection } from '@/components/payment/PaymentOptionsSelector';
 import { DriverPriceNegotiation } from '@/components/negotiation/DriverPriceNegotiation';
+import { PhoneVerification } from '@/components/phone/PhoneVerification';
+import { NotificationPreferences } from '@/components/phone/NotificationPreferences';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Car,
   CreditCard,
@@ -26,6 +30,7 @@ import {
   TrendingUp,
   FileText,
   Bell,
+  Settings,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -67,12 +72,30 @@ const mockRentalData = {
 
 export default function DriverDashboard() {
   const { country, currency, currencySymbol } = useRegion();
+  const { user } = useAuth();
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
 
   const isUSA = country === 'USA';
   const rental = mockRentalData.rental;
   const vehicle = mockRentalData.vehicle;
+
+  // Fetch phone verification status
+  useEffect(() => {
+    const fetchPhoneStatus = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('phone_verified')
+        .eq('user_id', user.id)
+        .single();
+      if (data) {
+        setPhoneVerified(data.phone_verified || false);
+      }
+    };
+    fetchPhoneStatus();
+  }, [user]);
 
   // Calculate amounts based on region
   const weeklyRate = isUSA ? 300 : 150000; // USD or NGN
@@ -175,11 +198,12 @@ export default function DriverDashboard() {
           </div>
 
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
+            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="payments">Payments</TabsTrigger>
               <TabsTrigger value="negotiate">Price Negotiation</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
@@ -419,6 +443,15 @@ export default function DriverDashboard() {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* Settings Tab */}
+            <TabsContent value="settings" className="space-y-6">
+              {/* Phone Verification */}
+              <PhoneVerification onVerified={() => setPhoneVerified(true)} />
+
+              {/* Notification Preferences */}
+              <NotificationPreferences phoneVerified={phoneVerified} />
             </TabsContent>
           </Tabs>
         </div>

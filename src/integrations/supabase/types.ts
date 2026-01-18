@@ -269,7 +269,13 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          notification_email: boolean | null
+          notification_sms: boolean | null
+          notification_whatsapp: boolean | null
           phone: string | null
+          phone_verification_code: string | null
+          phone_verification_expires_at: string | null
+          phone_verified: boolean | null
           updated_at: string | null
           user_id: string
         }
@@ -279,7 +285,13 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          notification_email?: boolean | null
+          notification_sms?: boolean | null
+          notification_whatsapp?: boolean | null
           phone?: string | null
+          phone_verification_code?: string | null
+          phone_verification_expires_at?: string | null
+          phone_verified?: boolean | null
           updated_at?: string | null
           user_id: string
         }
@@ -289,7 +301,13 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          notification_email?: boolean | null
+          notification_sms?: boolean | null
+          notification_whatsapp?: boolean | null
           phone?: string | null
+          phone_verification_code?: string | null
+          phone_verification_expires_at?: string | null
+          phone_verified?: boolean | null
           updated_at?: string | null
           user_id?: string
         }
