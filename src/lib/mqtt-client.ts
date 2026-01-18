@@ -95,6 +95,17 @@ export interface SafetyCheckResult {
 type LocationCallback = (location: VehicleLocation) => void;
 type StatusCallback = (vehicleId: string, status: 'online' | 'offline') => void;
 type AccidentCallback = (event: AccidentEvent) => void;
+type TelemetryFailureCallback = (failure: TelemetryFailureEvent) => void;
+
+// Telemetry failure event for recall triggering
+export interface TelemetryFailureEvent {
+  vehicleId: string;
+  failureType: 'telemetry_timeout' | 'connection_lost' | 'data_corruption' | 'sensor_malfunction';
+  lastSuccessfulPing: Date | null;
+  lastKnownLocation: VehicleLocation | null;
+  failedAttempts: number;
+  timestamp: Date;
+}
 
 // Safety Rules Helper Functions
 const isWithinSafeDeactivationHours = (): boolean => {
@@ -118,9 +129,16 @@ class MQTTVehicleTracker {
   private locationCallbacks: Map<string, Set<LocationCallback>> = new Map();
   private statusCallbacks: Set<StatusCallback> = new Set();
   private accidentCallbacks: Set<AccidentCallback> = new Set();
+  private telemetryFailureCallbacks: Set<TelemetryFailureCallback> = new Set();
   private isConnected: boolean = false;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
+  
+  // Telemetry monitoring
+  private telemetryTimeouts: Map<string, NodeJS.Timeout> = new Map();
+  private telemetryFailureCounts: Map<string, number> = new Map();
+  private readonly TELEMETRY_TIMEOUT_MS = 120000; // 2 minutes without data = timeout
+  private readonly MAX_FAILURES_BEFORE_RECALL = 3;
   
   // Store latest vehicle locations for safety checks
   private vehicleLocations: Map<string, VehicleLocation> = new Map();
@@ -241,6 +259,10 @@ class MQTTVehicleTracker {
 
         // Store latest location for safety checks
         this.vehicleLocations.set(vehicleId, location);
+        
+        // Reset telemetry failure count on successful data
+        this.telemetryFailureCounts.set(vehicleId, 0);
+        this.resetTelemetryTimeout(vehicleId);
         
         // Track speed history for accident detection
         this.trackSpeedHistory(vehicleId, location.speed);

@@ -98,6 +98,9 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
     if (!vehicleId) return;
     
     setIsCapturingIoT(true);
+    let captureAttempts = 0;
+    const maxAttempts = 3;
+    
     try {
       // Request fresh diagnostic data from IoT device
       await mqttTracker.requestDiagnosticReport(vehicleId);
@@ -107,6 +110,31 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
       
       // Capture the telemetry snapshot
       const snapshot = mqttTracker.captureIoTSnapshot(vehicleId);
+      
+      // Check if we got valid data
+      const hasValidData = snapshot.location || snapshot.motion || snapshot.vehicle;
+      
+      if (!hasValidData) {
+        captureAttempts++;
+        
+        // If capture fails, try again
+        while (captureAttempts < maxAttempts && !hasValidData) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await mqttTracker.requestDiagnosticReport(vehicleId);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          captureAttempts++;
+        }
+        
+        // If still no data after retries, report failure and trigger recall
+        if (!hasValidData) {
+          await reportTelemetryFailure(vehicleId, snapshot, captureAttempts);
+          toast.warning('IoT telemetry capture failed', {
+            description: 'A vehicle recall has been initiated. Please continue with the report.',
+          });
+          return;
+        }
+      }
+      
       setIotSnapshot(snapshot);
       
       // Auto-fill location if available
@@ -119,9 +147,56 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
       });
     } catch (error) {
       console.error('[IncidentReport] IoT capture error:', error);
-      toast.error('Could not capture IoT data');
+      
+      // Report the failure and trigger recall procedure
+      await reportTelemetryFailure(vehicleId, null, captureAttempts);
+      toast.warning('IoT data capture failed', {
+        description: 'A vehicle recall has been initiated due to telemetry failure.',
+      });
     } finally {
       setIsCapturingIoT(false);
+    }
+  };
+
+  const reportTelemetryFailure = async (
+    vehicleId: string, 
+    lastSnapshot: IoTTelemetrySnapshot | null,
+    attempts: number
+  ) => {
+    if (!user?.id) return;
+
+    try {
+      // Get vehicle's last known location from tracker
+      const lastLocation = mqttTracker.getVehicleLocation(vehicleId);
+      
+      // Create vehicle recall entry
+      const recallData: any = {
+        vehicle_id: vehicleId,
+        driver_id: user.id,
+        owner_id: ownerId || null,
+        recall_reason: `IoT telemetry capture failed during ${incidentType || 'incident'} report. Device not responding after ${attempts} attempts.`,
+        recall_type: 'iot_failure',
+        status: 'pending',
+        priority: incidentType === 'breakdown' ? 'high' : 'medium',
+        iot_failure_type: 'capture_failed',
+        last_known_location_lat: lastLocation?.latitude || null,
+        last_known_location_lng: lastLocation?.longitude || null,
+        last_successful_ping: lastLocation?.timestamp?.toISOString() || null,
+        failed_capture_attempts: attempts,
+        last_telemetry_snapshot: lastSnapshot || null,
+      };
+
+      const { error } = await supabase
+        .from('vehicle_recalls')
+        .insert(recallData);
+
+      if (error) {
+        console.error('[IncidentReport] Failed to create recall:', error);
+      } else {
+        console.log('[IncidentReport] Vehicle recall created for telemetry failure');
+      }
+    } catch (error) {
+      console.error('[IncidentReport] Recall creation error:', error);
     }
   };
 

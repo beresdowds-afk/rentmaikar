@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff } from "lucide-react";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
@@ -9,6 +9,7 @@ import { IoTDeviceOrders } from "@/components/admin/IoTDeviceOrders";
 import { UserAccountsView } from "@/components/admin/UserAccountsView";
 import { DailyPlanManagement } from "@/components/admin/DailyPlanManagement";
 import { AdminIncidentManagement } from "@/components/admin/AdminIncidentManagement";
+import { VehicleRecallManagement } from "@/components/admin/VehicleRecallManagement";
 import { AdminPriceNegotiation } from "@/components/negotiation/AdminPriceNegotiation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -389,6 +390,10 @@ const AdminDashboard = () => {
                 <Wrench className="h-4 w-4" />
                 Incidents
               </TabsTrigger>
+              <TabsTrigger value="recalls" className="flex items-center gap-1">
+                <WifiOff className="h-4 w-4" />
+                Vehicle Recalls
+              </TabsTrigger>
               <TabsTrigger value="daily-plans" className="flex items-center gap-1">
                 <Ban className="h-4 w-4" />
                 Daily Plans
@@ -547,6 +552,10 @@ const AdminDashboard = () => {
 
             <TabsContent value="incidents">
               <AdminIncidentManagement />
+            </TabsContent>
+
+            <TabsContent value="recalls">
+              <VehicleRecallManagement />
             </TabsContent>
 
             <TabsContent value="daily-plans">
