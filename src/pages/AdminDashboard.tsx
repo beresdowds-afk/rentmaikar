@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp } from "lucide-react";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import VehicleTrackingMap from "@/components/tracking/VehicleTrackingMap";
@@ -21,15 +22,15 @@ import { PaymentDefaultAlert } from "@/components/payment/PaymentDefaultAlert";
 import { PaymentBreakdownCard } from "@/components/payment/PaymentBreakdownCard";
 import { type PaymentDefault } from "@/lib/payment-config";
 import { useRegion, type Country } from "@/contexts/RegionContext";
+import { useCurrencyConversion } from "@/hooks/useCurrencyConversion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-const stats = [
-  { label: "Active Vehicles", value: "156", icon: Car, color: "text-accent" },
-  { label: "Active Drivers", value: "234", icon: Users, color: "text-success" },
-  { label: "Monthly Revenue", value: "$48,320", icon: DollarSign, color: "text-warning" },
-  { label: "Payment Defaults", value: "7", icon: AlertTriangle, color: "text-destructive" },
-];
+// Mock revenue data - in production, this would come from the database
+const mockRevenueData = {
+  usd: 28320, // Revenue from USA operations
+  ngn: 31200000, // Revenue from Nigeria operations (in Naira)
+};
 
 interface PendingApproval {
   id: number;
@@ -93,8 +94,13 @@ const paymentDefaults: PaymentDefault[] = [
 
 const AdminDashboard = () => {
   const { country, setCountry, regionMode, setRegionMode, isDetecting } = useRegion();
+  const { rates, isLoading: ratesLoading, convertToUSD, formatWithConversion, refetch: refetchRates } = useCurrencyConversion();
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
   const [approvingId, setApprovingId] = useState<number | null>(null);
+
+  // Calculate converted revenue
+  const ngnInUsd = convertToUSD(mockRevenueData.ngn, 'NGN');
+  const totalRevenueUsd = mockRevenueData.usd + ngnInUsd;
 
   const handleApproval = async (item: PendingApproval) => {
     setApprovingId(item.id);
@@ -165,19 +171,103 @@ const AdminDashboard = () => {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {stats.map((stat) => (
-              <Card key={stat.label} className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                    <p className="text-2xl font-bold text-foreground mt-1">{stat.value}</p>
-                  </div>
-                  <div className={`w-12 h-12 rounded-lg bg-muted flex items-center justify-center ${stat.color}`}>
-                    <stat.icon className="w-6 h-6" />
-                  </div>
+            {/* Active Vehicles */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Vehicles</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">156</p>
                 </div>
-              </Card>
-            ))}
+                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-accent">
+                  <Car className="w-6 h-6" />
+                </div>
+              </div>
+            </Card>
+
+            {/* Active Drivers */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Drivers</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">234</p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-success">
+                  <Users className="w-6 h-6" />
+                </div>
+              </div>
+            </Card>
+
+            {/* Monthly Revenue - Enhanced with breakdown */}
+            <Card className="p-6 col-span-1 sm:col-span-2 lg:col-span-1">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">Monthly Revenue</p>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-5 w-5"
+                          onClick={() => {
+                            refetchRates();
+                            toast.success('Exchange rates refreshed');
+                          }}
+                        >
+                          <RefreshCw className={`h-3 w-3 ${ratesLoading ? 'animate-spin' : ''}`} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Refresh exchange rate</TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground mt-1">
+                    ${totalRevenueUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-warning">
+                  <DollarSign className="w-6 h-6" />
+                </div>
+              </div>
+              <div className="space-y-1.5 pt-2 border-t">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <span>🇺🇸</span> USD
+                  </span>
+                  <span className="font-medium">${mockRevenueData.usd.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <span>🇳🇬</span> NGN
+                  </span>
+                  <span className="font-medium">₦{mockRevenueData.ngn.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                  <span className="flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" />
+                    NGN → USD
+                  </span>
+                  <span>${ngnInUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                </div>
+                {rates && (
+                  <p className="text-[10px] text-muted-foreground pt-1">
+                    Rate: $1 = ₦{rates.USD_NGN.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                  </p>
+                )}
+              </div>
+            </Card>
+
+            {/* Payment Defaults */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Payment Defaults</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">7</p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-destructive">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+              </div>
+            </Card>
           </div>
 
           <Tabs defaultValue="tracking" className="space-y-6">
