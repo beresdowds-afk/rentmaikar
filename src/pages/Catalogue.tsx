@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Search, Filter, MapPin, Calendar, Star, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { useRegion } from "@/contexts/RegionContext";
-import { isVehicleInRange } from "@/lib/geo-utils";
+import { isVehicleInRange, getVehicleDistance, getNigeriaParentCity } from "@/lib/geo-utils";
 import categoryBudget from "@/assets/category-budget.jpg";
 import categoryStandard from "@/assets/category-standard.jpg";
 import categoryPremium from "@/assets/category-premium.jpg";
@@ -26,6 +26,12 @@ interface Vehicle {
   rating: number;
   image: string;
   country: "USA" | "Nigeria";
+}
+
+interface VehicleWithDistance extends Vehicle {
+  distance: number;
+  isNearby: boolean;
+  nearestCity?: string;
 }
 
 // Mock vehicles with coordinates for distance calculation
@@ -83,35 +89,73 @@ const Catalogue = () => {
   const info = categoryInfo[category] || categoryInfo.budget;
   const allVehicles = mockVehicles[category] || mockVehicles.budget;
 
-  // Filter vehicles by country first
-  const countryVehicles = useMemo(() => 
-    allVehicles.filter(v => v.country === country),
-    [allVehicles, country]
+  // Filter vehicles by country first and calculate distances
+  const vehiclesWithDistance: VehicleWithDistance[] = useMemo(() => {
+    return allVehicles
+      .filter(v => v.country === country)
+      .map(vehicle => {
+        const distance = getVehicleDistance(
+          vehicle.location,
+          vehicle.coordinates || null,
+          driverHome.location,
+          driverHome.coordinates,
+          country
+        );
+        const isNearby = isVehicleInRange(
+          vehicle.location,
+          vehicle.coordinates || null,
+          driverHome.location,
+          driverHome.coordinates,
+          country
+        );
+        const nearestCity = country === "Nigeria" 
+          ? getNigeriaParentCity(vehicle.location) || vehicle.location
+          : vehicle.location;
+        
+        return { ...vehicle, distance, isNearby, nearestCity };
+      })
+      .sort((a, b) => {
+        // Sort by: nearby first, then by distance
+        if (a.isNearby && !b.isNearby) return -1;
+        if (!a.isNearby && b.isNearby) return 1;
+        return a.distance - b.distance;
+      });
+  }, [allVehicles, country, driverHome]);
+
+  // Get nearby vehicles count for display
+  const nearbyCount = useMemo(() => 
+    vehiclesWithDistance.filter(v => v.isNearby).length,
+    [vehiclesWithDistance]
   );
 
-  // Apply location-based filtering (Nigeria: city, USA: 35-mile radius)
-  const nearbyVehicles = useMemo(() => {
-    return countryVehicles.filter(vehicle => 
-      isVehicleInRange(
-        vehicle.location,
-        vehicle.coordinates || null,
-        driverHome.location,
-        driverHome.coordinates,
-        country
-      )
-    );
-  }, [countryVehicles, driverHome, country]);
-
-  const vehiclesToShow = locationFilter === "nearby" ? nearbyVehicles : countryVehicles;
-
-  const filteredVehicles = vehiclesToShow
+  const filteredVehicles = vehiclesWithDistance
     .filter((v) => {
       const matchesSearch =
         v.make.toLowerCase().includes(searchQuery.toLowerCase()) ||
         v.model.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Apply location filter
+      if (locationFilter === "nearby") {
+        return matchesSearch && v.isNearby;
+      }
       return matchesSearch;
     })
     .sort((a, b) => {
+      // When showing all, maintain nearby-first order before applying price/rating sort
+      if (locationFilter === "all") {
+        // Primary sort: nearby first
+        if (a.isNearby !== b.isNearby) {
+          return a.isNearby ? -1 : 1;
+        }
+        // Secondary sort: distance for non-nearby
+        if (!a.isNearby && !b.isNearby) {
+          if (a.distance !== b.distance) {
+            return a.distance - b.distance;
+          }
+        }
+      }
+      
+      // Tertiary sort: by selected criteria
       const priceA = country === "Nigeria" ? (a.priceNGN || a.price) : a.price;
       const priceB = country === "Nigeria" ? (b.priceNGN || b.price) : b.price;
       if (sortBy === "price-low") return priceA - priceB;
@@ -120,7 +164,7 @@ const Catalogue = () => {
       return 0;
     });
 
-  const locations = [...new Set(vehiclesToShow.map((v) => v.location))];
+  const locations = [...new Set(vehiclesWithDistance.map((v) => v.location))];
 
   return (
     <div className="min-h-screen bg-background">
@@ -220,65 +264,108 @@ const Catalogue = () => {
           </div>
 
           {/* Results */}
-          <div className="mb-4 text-muted-foreground">
-            {filteredVehicles.length} vehicles found
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-muted-foreground">
+              {filteredVehicles.length} vehicles found
+              {locationFilter === "all" && nearbyCount > 0 && (
+                <span className="ml-2 text-xs">
+                  ({nearbyCount} nearby, {filteredVehicles.length - filteredVehicles.filter(v => v.isNearby).length} from other areas)
+                </span>
+              )}
+            </span>
           </div>
 
           {/* Vehicle Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredVehicles.map((vehicle) => (
-              <div
-                key={vehicle.id}
-                className="bg-card rounded-xl overflow-hidden shadow-card card-hover border border-border"
-              >
-                <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={vehicle.image}
-                    alt={`${vehicle.make} ${vehicle.model}`}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-3 right-3 bg-card/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1">
-                    <Star className="w-4 h-4 text-warning fill-warning" />
-                    <span className="text-sm font-medium">{vehicle.rating}</span>
-                  </div>
-                </div>
-                
-                <div className="p-4">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                    <Calendar className="w-3 h-3" />
-                    {vehicle.year}
-                    <span className="mx-1">•</span>
-                    {vehicle.color}
-                  </div>
-                  
-                  <h3 className="text-lg font-semibold text-foreground">
-                    {vehicle.make} {vehicle.model}
-                  </h3>
-                  
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                    <MapPin className="w-3 h-3" />
-                    {vehicle.location}
-                  </div>
-                  
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-                    <div className="flex items-center gap-1">
-                      <span className="text-lg font-bold text-accent">{currencySymbol}</span>
-                      <span className="text-xl font-bold text-foreground">
-                        {country === "Nigeria" 
-                          ? (vehicle.priceNGN || vehicle.price).toLocaleString()
-                          : vehicle.price
-                        }
-                      </span>
-                      <span className="text-sm text-muted-foreground">/week</span>
+            {filteredVehicles.map((vehicle, index) => {
+              // Show separator before first non-nearby vehicle when showing all
+              const showSeparator = locationFilter === "all" && 
+                !vehicle.isNearby && 
+                (index === 0 || filteredVehicles[index - 1]?.isNearby);
+              
+              return (
+                <React.Fragment key={vehicle.id}>
+                  {showSeparator && (
+                    <div key={`separator-${vehicle.id}`} className="col-span-full py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="h-px flex-1 bg-border" />
+                        <span className="text-sm font-medium text-muted-foreground px-3 py-1 bg-muted rounded-full">
+                          Vehicles from Nearby Cities
+                        </span>
+                        <div className="h-px flex-1 bg-border" />
+                      </div>
+                    </div>
+                  )}
+                  <div
+                    key={vehicle.id}
+                    className={`bg-card rounded-xl overflow-hidden shadow-card card-hover border ${
+                      vehicle.isNearby ? "border-border" : "border-muted"
+                    }`}
+                  >
+                    <div className="relative h-48 overflow-hidden">
+                      <img
+                        src={vehicle.image}
+                        alt={`${vehicle.make} ${vehicle.model}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-3 right-3 bg-card/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1">
+                        <Star className="w-4 h-4 text-warning fill-warning" />
+                        <span className="text-sm font-medium">{vehicle.rating}</span>
+                      </div>
+                      {!vehicle.isNearby && (
+                        <div className="absolute top-3 left-3 bg-muted/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-xs">
+                          <MapPin className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-muted-foreground">
+                            {country === "Nigeria" 
+                              ? vehicle.nearestCity 
+                              : `${Math.round(vehicle.distance)} mi`
+                            }
+                          </span>
+                        </div>
+                      )}
                     </div>
                     
-                    <Button size="sm" variant="hero">
-                      View
-                    </Button>
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                        <Calendar className="w-3 h-3" />
+                        {vehicle.year}
+                        <span className="mx-1">•</span>
+                        {vehicle.color}
+                      </div>
+                      
+                      <h3 className="text-lg font-semibold text-foreground">
+                        {vehicle.make} {vehicle.model}
+                      </h3>
+                      
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                        <MapPin className="w-3 h-3" />
+                        {vehicle.location}
+                        {!vehicle.isNearby && country === "Nigeria" && (
+                          <span className="ml-1 text-xs text-accent">• {Math.round(vehicle.distance)} mi away</span>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                        <div className="flex items-center gap-1">
+                          <span className="text-lg font-bold text-accent">{currencySymbol}</span>
+                          <span className="text-xl font-bold text-foreground">
+                            {country === "Nigeria" 
+                              ? (vehicle.priceNGN || vehicle.price).toLocaleString()
+                              : vehicle.price
+                            }
+                          </span>
+                          <span className="text-sm text-muted-foreground">/week</span>
+                        </div>
+                        
+                        <Button size="sm" variant="hero">
+                          View
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                </React.Fragment>
+              );
+            })}
           </div>
 
           {filteredVehicles.length === 0 && (

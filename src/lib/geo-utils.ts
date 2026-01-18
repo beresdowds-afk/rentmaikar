@@ -52,6 +52,34 @@ export const getNigeriaParentCity = (location: string): string | null => {
   return null;
 };
 
+// Nigeria city coordinates for distance calculation
+export const nigeriaCityCoordinates: Record<string, { lat: number; lng: number }> = {
+  "Lagos": { lat: 6.5244, lng: 3.3792 },
+  "Abuja": { lat: 9.0765, lng: 7.3986 },
+  "Port Harcourt": { lat: 4.8156, lng: 7.0498 },
+};
+
+// Get distance between two locations
+export const getDistanceBetweenLocations = (
+  location1: string,
+  location2: string,
+  country: "USA" | "Nigeria"
+): number => {
+  if (country === "Nigeria") {
+    const city1 = getNigeriaParentCity(location1) || location1;
+    const city2 = getNigeriaParentCity(location2) || location2;
+    const coords1 = nigeriaCityCoordinates[city1];
+    const coords2 = nigeriaCityCoordinates[city2];
+    if (!coords1 || !coords2) return Infinity;
+    return calculateDistanceInMiles(coords1.lat, coords1.lng, coords2.lat, coords2.lng);
+  } else {
+    const coords1 = usaLocationCoordinates[location1];
+    const coords2 = usaLocationCoordinates[location2];
+    if (!coords1 || !coords2) return Infinity;
+    return calculateDistanceInMiles(coords1.lat, coords1.lng, coords2.lat, coords2.lng);
+  }
+};
+
 // Check if a vehicle is within range based on country rules
 export const isVehicleInRange = (
   vehicleLocation: string,
@@ -85,5 +113,26 @@ export const isVehicleInRange = (
       vehicleCoordinates.lat, vehicleCoordinates.lng
     );
     return distance <= 35;
+  }
+};
+
+// Get distance from user location to vehicle location
+export const getVehicleDistance = (
+  vehicleLocation: string,
+  vehicleCoordinates: { lat: number; lng: number } | null,
+  userLocation: string,
+  userCoordinates: { lat: number; lng: number } | null,
+  country: "USA" | "Nigeria"
+): number => {
+  if (country === "Nigeria") {
+    return getDistanceBetweenLocations(vehicleLocation, userLocation, country);
+  } else {
+    if (vehicleCoordinates && userCoordinates) {
+      return calculateDistanceInMiles(
+        userCoordinates.lat, userCoordinates.lng,
+        vehicleCoordinates.lat, vehicleCoordinates.lng
+      );
+    }
+    return getDistanceBetweenLocations(vehicleLocation, userLocation, country);
   }
 };
