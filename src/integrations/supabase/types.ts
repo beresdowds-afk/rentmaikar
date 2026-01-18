@@ -331,6 +331,36 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_category_prices: {
+        Row: {
+          category: string
+          created_at: string
+          currency: string
+          id: string
+          price: number
+          region: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          currency?: string
+          id?: string
+          price: number
+          region: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          price?: number
+          region?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       vehicles: {
         Row: {
           color: string | null

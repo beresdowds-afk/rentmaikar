@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag } from "lucide-react";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
+import { CategoryPricing } from "@/components/admin/CategoryPricing";
 import { AdminPriceNegotiation } from "@/components/negotiation/AdminPriceNegotiation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -187,6 +188,10 @@ const AdminDashboard = () => {
                 <Cpu className="h-4 w-4" />
                 Hardware
               </TabsTrigger>
+              <TabsTrigger value="pricing" className="flex items-center gap-1">
+                <Tag className="h-4 w-4" />
+                Category Pricing
+              </TabsTrigger>
               <TabsTrigger value="negotiations" className="flex items-center gap-1">
                 <HandshakeIcon className="h-4 w-4" />
                 Negotiations
@@ -214,6 +219,10 @@ const AdminDashboard = () => {
 
             <TabsContent value="hardware">
               <HardwareManagement />
+            </TabsContent>
+
+            <TabsContent value="pricing">
+              <CategoryPricing />
             </TabsContent>
 
             <TabsContent value="negotiations">
