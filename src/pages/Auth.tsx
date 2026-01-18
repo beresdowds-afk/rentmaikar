@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Car, Loader2, AlertCircle, User, Shield, Users } from 'lucide-react';
+import { Car, Loader2, AlertCircle, User, Shield, Users, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 const loginSchema = z.object({
@@ -30,8 +31,13 @@ const signupSchema = z.object({
   path: ['confirmPassword'],
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+});
+
 type LoginFormData = z.infer<typeof loginSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
+type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -40,13 +46,14 @@ const Auth = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('login');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
   // Redirect authenticated users
   useEffect(() => {
     if (user && !authLoading) {
-      // Redirect based on role
       if (userRole === 'admin') {
         navigate('/admin', { replace: true });
       } else if (userRole === 'owner') {
@@ -75,6 +82,13 @@ const Auth = () => {
       password: '',
       confirmPassword: '',
       role: 'driver',
+    },
+  });
+
+  const forgotPasswordForm = useForm<ForgotPasswordFormData>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: '',
     },
   });
 
@@ -122,10 +136,129 @@ const Auth = () => {
     setIsSubmitting(false);
   };
 
+  const handleForgotPassword = async (data: ForgotPasswordFormData) => {
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        setResetEmailSent(true);
+        toast.success('Password reset email sent!', {
+          description: 'Check your inbox for the reset link.',
+        });
+      }
+    } catch (err: any) {
+      setError(err.message);
+    }
+
+    setIsSubmitting(false);
+  };
+
+  const handleBackToLogin = () => {
+    setShowForgotPassword(false);
+    setResetEmailSent(false);
+    setError(null);
+    forgotPasswordForm.reset();
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Forgot Password View
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-12 h-12 rounded-xl bg-primary flex items-center justify-center mb-4">
+              <Mail className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <CardTitle className="text-2xl font-display">Reset Password</CardTitle>
+            <CardDescription>
+              {resetEmailSent 
+                ? "Check your email for a reset link"
+                : "Enter your email to receive a password reset link"
+              }
+            </CardDescription>
+          </CardHeader>
+
+          {resetEmailSent ? (
+            <CardContent className="space-y-4">
+              <Alert className="border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  We've sent a password reset link to <strong>{forgotPasswordForm.getValues('email')}</strong>. 
+                  Please check your inbox and click the link to reset your password.
+                </AlertDescription>
+              </Alert>
+              <p className="text-sm text-muted-foreground text-center">
+                Didn't receive the email? Check your spam folder or try again.
+              </p>
+            </CardContent>
+          ) : (
+            <form onSubmit={forgotPasswordForm.handleSubmit(handleForgotPassword)}>
+              <CardContent className="space-y-4">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                
+                <div className="space-y-2">
+                  <Label htmlFor="forgot-email">Email</Label>
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    {...forgotPasswordForm.register('email')}
+                    disabled={isSubmitting}
+                  />
+                  {forgotPasswordForm.formState.errors.email && (
+                    <p className="text-sm text-destructive">{forgotPasswordForm.formState.errors.email.message}</p>
+                  )}
+                </div>
+              </CardContent>
+              
+              <CardFooter className="flex flex-col gap-3">
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    'Send Reset Link'
+                  )}
+                </Button>
+              </CardFooter>
+            </form>
+          )}
+          
+          <CardFooter className="pt-0">
+            <Button 
+              variant="ghost" 
+              className="w-full gap-2" 
+              onClick={handleBackToLogin}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Login
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }
@@ -175,7 +308,20 @@ const Auth = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="login-password">Password</Label>
+                    <Button 
+                      type="button"
+                      variant="link" 
+                      className="px-0 h-auto text-sm text-muted-foreground hover:text-primary"
+                      onClick={() => {
+                        setShowForgotPassword(true);
+                        setError(null);
+                      }}
+                    >
+                      Forgot password?
+                    </Button>
+                  </div>
                   <Input
                     id="login-password"
                     type="password"

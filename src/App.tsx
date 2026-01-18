@@ -9,6 +9,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import DriverRegistration from "./pages/DriverRegistration";
 import OwnerRegistration from "./pages/OwnerRegistration";
 import DriverDashboard from "./pages/DriverDashboard";
@@ -31,6 +32,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/driver/register" element={<DriverRegistration />} />
                 <Route path="/owner/register" element={<OwnerRegistration />} />
                 <Route 
