@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Search, Filter, MapPin, Calendar, DollarSign, Star, ChevronDown } from "lucide-react";
+import { Search, Filter, MapPin, Calendar, Star, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { useRegion } from "@/contexts/RegionContext";
+import { isVehicleInRange } from "@/lib/geo-utils";
 import categoryBudget from "@/assets/category-budget.jpg";
 import categoryStandard from "@/assets/category-standard.jpg";
 import categoryPremium from "@/assets/category-premium.jpg";
@@ -17,63 +20,107 @@ interface Vehicle {
   year: number;
   color: string;
   price: number;
+  priceNGN?: number;
   location: string;
+  coordinates?: { lat: number; lng: number };
   rating: number;
   image: string;
+  country: "USA" | "Nigeria";
 }
 
+// Mock vehicles with coordinates for distance calculation
 const mockVehicles: Record<string, Vehicle[]> = {
   budget: [
-    { id: "1", make: "Toyota", model: "Corolla", year: 2015, color: "Silver", price: 225, location: "Washington DC", rating: 4.7, image: categoryBudget },
-    { id: "2", make: "Honda", model: "Civic", year: 2016, color: "White", price: 240, location: "Maryland", rating: 4.5, image: categoryBudget },
-    { id: "3", make: "Nissan", model: "Sentra", year: 2015, color: "Black", price: 210, location: "Virginia", rating: 4.3, image: categoryBudget },
-    { id: "4", make: "Hyundai", model: "Elantra", year: 2016, color: "Blue", price: 230, location: "Lagos", rating: 4.6, image: categoryBudget },
+    { id: "1", make: "Toyota", model: "Corolla", year: 2015, color: "Silver", price: 225, location: "Washington DC", coordinates: { lat: 38.9072, lng: -77.0369 }, rating: 4.7, image: categoryBudget, country: "USA" },
+    { id: "2", make: "Honda", model: "Civic", year: 2016, color: "White", price: 240, location: "Silver Spring", coordinates: { lat: 38.9907, lng: -77.0261 }, rating: 4.5, image: categoryBudget, country: "USA" },
+    { id: "3", make: "Nissan", model: "Sentra", year: 2015, color: "Black", price: 210, location: "Arlington", coordinates: { lat: 38.8816, lng: -77.0910 }, rating: 4.3, image: categoryBudget, country: "USA" },
+    { id: "4", make: "Hyundai", model: "Elantra", year: 2016, color: "Blue", priceNGN: 55000, price: 230, location: "Lagos", rating: 4.6, image: categoryBudget, country: "Nigeria" },
+    { id: "14", make: "Kia", model: "Rio", year: 2015, color: "Red", priceNGN: 52000, price: 220, location: "Lekki", rating: 4.4, image: categoryBudget, country: "Nigeria" },
+    { id: "15", make: "Toyota", model: "Yaris", year: 2016, color: "White", priceNGN: 58000, price: 235, location: "Abuja", rating: 4.5, image: categoryBudget, country: "Nigeria" },
+    { id: "16", make: "Honda", model: "Fit", year: 2015, color: "Silver", priceNGN: 54000, price: 228, location: "Port Harcourt", rating: 4.3, image: categoryBudget, country: "Nigeria" },
+    { id: "17", make: "Nissan", model: "Versa", year: 2016, color: "Gray", price: 245, location: "Baltimore", coordinates: { lat: 39.2904, lng: -76.6122 }, rating: 4.4, image: categoryBudget, country: "USA" },
   ],
   standard: [
-    { id: "5", make: "Toyota", model: "Camry", year: 2019, color: "Gray", price: 280, location: "Washington DC", rating: 4.8, image: categoryStandard },
-    { id: "6", make: "Honda", model: "Accord", year: 2018, color: "Black", price: 290, location: "Abuja", rating: 4.9, image: categoryStandard },
-    { id: "7", make: "Hyundai", model: "Sonata", year: 2020, color: "White", price: 300, location: "Maryland", rating: 4.7, image: categoryStandard },
-    { id: "8", make: "Kia", model: "Optima", year: 2019, color: "Silver", price: 275, location: "Port Harcourt", rating: 4.5, image: categoryStandard },
+    { id: "5", make: "Toyota", model: "Camry", year: 2019, color: "Gray", price: 280, location: "Washington DC", coordinates: { lat: 38.9072, lng: -77.0369 }, rating: 4.8, image: categoryStandard, country: "USA" },
+    { id: "6", make: "Honda", model: "Accord", year: 2018, color: "Black", priceNGN: 68000, price: 290, location: "Abuja", rating: 4.9, image: categoryStandard, country: "Nigeria" },
+    { id: "7", make: "Hyundai", model: "Sonata", year: 2020, color: "White", price: 300, location: "Bethesda", coordinates: { lat: 38.9847, lng: -77.0947 }, rating: 4.7, image: categoryStandard, country: "USA" },
+    { id: "8", make: "Kia", model: "Optima", year: 2019, color: "Silver", priceNGN: 70000, price: 275, location: "Port Harcourt", rating: 4.5, image: categoryStandard, country: "Nigeria" },
+    { id: "18", make: "Toyota", model: "Avalon", year: 2018, color: "Blue", priceNGN: 72000, price: 295, location: "Victoria Island", rating: 4.8, image: categoryStandard, country: "Nigeria" },
+    { id: "19", make: "Mazda", model: "6", year: 2019, color: "Red", price: 285, location: "Alexandria", coordinates: { lat: 38.8048, lng: -77.0469 }, rating: 4.6, image: categoryStandard, country: "USA" },
   ],
   premium: [
-    { id: "9", make: "Toyota", model: "Avalon", year: 2023, color: "Black", price: 340, location: "Washington DC", rating: 4.9, image: categoryPremium },
-    { id: "10", make: "Lexus", model: "ES 350", year: 2022, color: "Pearl White", price: 350, location: "Maryland", rating: 5.0, image: categoryPremium },
-    { id: "11", make: "Mercedes-Benz", model: "E-Class", year: 2024, color: "Silver", price: 350, location: "Virginia", rating: 4.9, image: categoryPremium },
-    { id: "12", make: "BMW", model: "5 Series", year: 2023, color: "Black", price: 345, location: "Lagos", rating: 4.8, image: categoryPremium },
+    { id: "9", make: "Toyota", model: "Avalon", year: 2023, color: "Black", price: 340, location: "Washington DC", coordinates: { lat: 38.9072, lng: -77.0369 }, rating: 4.9, image: categoryPremium, country: "USA" },
+    { id: "10", make: "Lexus", model: "ES 350", year: 2022, color: "Pearl White", price: 350, location: "Rockville", coordinates: { lat: 39.0840, lng: -77.1528 }, rating: 5.0, image: categoryPremium, country: "USA" },
+    { id: "11", make: "Mercedes-Benz", model: "E-Class", year: 2024, color: "Silver", price: 350, location: "Arlington", coordinates: { lat: 38.8816, lng: -77.0910 }, rating: 4.9, image: categoryPremium, country: "USA" },
+    { id: "12", make: "BMW", model: "5 Series", year: 2023, color: "Black", priceNGN: 90000, price: 345, location: "Lagos", rating: 4.8, image: categoryPremium, country: "Nigeria" },
+    { id: "20", make: "Mercedes-Benz", model: "C-Class", year: 2022, color: "White", priceNGN: 88000, price: 335, location: "Ikeja", rating: 4.7, image: categoryPremium, country: "Nigeria" },
+    { id: "21", make: "Audi", model: "A6", year: 2023, color: "Gray", priceNGN: 92000, price: 348, location: "Maitama", rating: 4.9, image: categoryPremium, country: "Nigeria" },
   ],
 };
 
-const categoryInfo: Record<string, { title: string; years: string; maxPrice: number; color: string }> = {
-  budget: { title: "Budget Friendly", years: "2015 - 2016", maxPrice: 250, color: "category-budget" },
-  standard: { title: "Standard Selection", years: "2017 - 2020", maxPrice: 300, color: "category-standard" },
-  premium: { title: "Premium Fleet", years: "2021 - 2025", maxPrice: 350, color: "category-premium" },
+const categoryInfo: Record<string, { title: string; years: string; maxPrice: number; maxPriceNGN: number; color: string }> = {
+  budget: { title: "Budget Friendly", years: "2015 - 2016", maxPrice: 250, maxPriceNGN: 60000, color: "category-budget" },
+  standard: { title: "Standard Selection", years: "2017 - 2020", maxPrice: 300, maxPriceNGN: 73000, color: "category-standard" },
+  premium: { title: "Premium Fleet", years: "2021 - 2025", maxPrice: 350, maxPriceNGN: 93000, color: "category-premium" },
+};
+
+// Mock driver home location (in a real app, this would come from user profile)
+const getDriverHomeLocation = (country: "USA" | "Nigeria") => {
+  if (country === "Nigeria") {
+    return { location: "Lagos", coordinates: null };
+  }
+  return { location: "Washington DC", coordinates: { lat: 38.9072, lng: -77.0369 } };
 };
 
 const Catalogue = () => {
   const { category = "budget" } = useParams<{ category: string }>();
+  const { country, currency, currencySymbol } = useRegion();
   const [searchQuery, setSearchQuery] = useState("");
-  const [locationFilter, setLocationFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState("nearby");
   const [sortBy, setSortBy] = useState("price-low");
 
+  const driverHome = getDriverHomeLocation(country);
   const info = categoryInfo[category] || categoryInfo.budget;
-  const vehicles = mockVehicles[category] || mockVehicles.budget;
+  const allVehicles = mockVehicles[category] || mockVehicles.budget;
 
-  const filteredVehicles = vehicles
+  // Filter vehicles by country first
+  const countryVehicles = useMemo(() => 
+    allVehicles.filter(v => v.country === country),
+    [allVehicles, country]
+  );
+
+  // Apply location-based filtering (Nigeria: city, USA: 35-mile radius)
+  const nearbyVehicles = useMemo(() => {
+    return countryVehicles.filter(vehicle => 
+      isVehicleInRange(
+        vehicle.location,
+        vehicle.coordinates || null,
+        driverHome.location,
+        driverHome.coordinates,
+        country
+      )
+    );
+  }, [countryVehicles, driverHome, country]);
+
+  const vehiclesToShow = locationFilter === "nearby" ? nearbyVehicles : countryVehicles;
+
+  const filteredVehicles = vehiclesToShow
     .filter((v) => {
       const matchesSearch =
         v.make.toLowerCase().includes(searchQuery.toLowerCase()) ||
         v.model.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesLocation = locationFilter === "all" || v.location === locationFilter;
-      return matchesSearch && matchesLocation;
+      return matchesSearch;
     })
     .sort((a, b) => {
-      if (sortBy === "price-low") return a.price - b.price;
-      if (sortBy === "price-high") return b.price - a.price;
+      const priceA = country === "Nigeria" ? (a.priceNGN || a.price) : a.price;
+      const priceB = country === "Nigeria" ? (b.priceNGN || b.price) : b.price;
+      if (sortBy === "price-low") return priceA - priceB;
+      if (sortBy === "price-high") return priceB - priceA;
       if (sortBy === "rating") return b.rating - a.rating;
       return 0;
     });
 
-  const locations = [...new Set(vehicles.map((v) => v.location))];
+  const locations = [...new Set(vehiclesToShow.map((v) => v.location))];
 
   return (
     <div className="min-h-screen bg-background">
@@ -94,7 +141,7 @@ const Catalogue = () => {
                   {info.title}
                 </h1>
                 <p className="text-muted-foreground mt-1">
-                  {info.years} • Up to ${info.maxPrice}/week
+                  {info.years} • Up to {currencySymbol}{country === "Nigeria" ? info.maxPriceNGN.toLocaleString() : info.maxPrice}/week
                 </p>
               </div>
               
@@ -118,6 +165,18 @@ const Catalogue = () => {
             </div>
           </div>
 
+          {/* Location Info Alert */}
+          <Alert className="mb-6 border-accent/30 bg-accent/5">
+            <Info className="h-4 w-4 text-accent" />
+            <AlertDescription className="text-sm">
+              {country === "Nigeria" ? (
+                <>Showing vehicles in <strong>{driverHome.location}</strong> (your home city)</>
+              ) : (
+                <>Showing vehicles within <strong>35 miles</strong> of <strong>{driverHome.location}</strong></>
+              )}
+            </AlertDescription>
+          </Alert>
+
           {/* Filters */}
           <div className="bg-card rounded-xl p-4 mb-8 shadow-sm border border-border">
             <div className="flex flex-col md:flex-row gap-4">
@@ -132,15 +191,17 @@ const Catalogue = () => {
               </div>
               
               <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger className="w-full md:w-48">
+                <SelectTrigger className="w-full md:w-56">
                   <MapPin className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="All Locations" />
+                  <SelectValue placeholder="Nearby Vehicles" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                  ))}
+                  <SelectItem value="nearby">
+                    {country === "Nigeria" ? "My City Only" : "Within 35 Miles"}
+                  </SelectItem>
+                  <SelectItem value="all">
+                    All {country === "Nigeria" ? "Nigeria" : "DMV Area"}
+                  </SelectItem>
                 </SelectContent>
               </Select>
 
@@ -201,8 +262,13 @@ const Catalogue = () => {
                   
                   <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
                     <div className="flex items-center gap-1">
-                      <DollarSign className="w-5 h-5 text-accent" />
-                      <span className="text-xl font-bold text-foreground">{vehicle.price}</span>
+                      <span className="text-lg font-bold text-accent">{currencySymbol}</span>
+                      <span className="text-xl font-bold text-foreground">
+                        {country === "Nigeria" 
+                          ? (vehicle.priceNGN || vehicle.price).toLocaleString()
+                          : vehicle.price
+                        }
+                      </span>
                       <span className="text-sm text-muted-foreground">/week</span>
                     </div>
                     
@@ -220,12 +286,18 @@ const Catalogue = () => {
               <p className="text-muted-foreground text-lg">
                 No vehicles found matching your criteria.
               </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                {country === "Nigeria" 
+                  ? `Try viewing all vehicles in Nigeria instead of just ${driverHome.location}`
+                  : "Try expanding your search to the entire DMV area"
+                }
+              </p>
               <Button
                 variant="outline"
                 className="mt-4"
                 onClick={() => {
                   setSearchQuery("");
-                  setLocationFilter("all");
+                  setLocationFilter("nearby");
                 }}
               >
                 Clear Filters
