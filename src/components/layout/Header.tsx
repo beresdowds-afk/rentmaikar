@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, User, Building, Shield, LayoutDashboard, LogIn, LogOut } from "lucide-react";
+import { Menu, X, User, Building, Shield, LayoutDashboard, LogIn, LogOut, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import RegionSwitcher from "@/components/home/RegionSwitcher";
@@ -9,7 +9,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 
-const Header = () => {
+interface HeaderProps {
+  onRestartTour?: () => void;
+}
+
+const Header = ({ onRestartTour }: HeaderProps = {}) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -72,6 +76,17 @@ const Header = () => {
 
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center gap-3">
+            {onRestartTour && location.pathname === "/" && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={onRestartTour}
+                className="gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <HelpCircle className="w-4 h-4" />
+                Tour
+              </Button>
+            )}
             <div data-tour="region">
               <RegionSwitcher />
             </div>
@@ -136,10 +151,23 @@ const Header = () => {
         {isMenuOpen && (
           <div className="lg:hidden py-4 border-t border-border animate-slide-up">
             <nav className="flex flex-col gap-2">
-              {/* Region Switcher for Mobile */}
+              {/* Region Switcher and Tour for Mobile */}
               <div className="px-4 py-2 flex items-center justify-between border-b border-border mb-2 pb-4">
                 <span className="text-sm text-muted-foreground">Region</span>
-                <RegionSwitcher />
+                <div className="flex items-center gap-2">
+                  {onRestartTour && location.pathname === "/" && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => { onRestartTour(); setIsMenuOpen(false); }}
+                      className="gap-1"
+                    >
+                      <HelpCircle className="w-4 h-4" />
+                      Tour
+                    </Button>
+                  )}
+                  <RegionSwitcher />
+                </div>
               </div>
               
               {navLinks.map((link) => (

@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { X, ChevronLeft, ChevronRight, Car, User, Shield, CreditCard, MapPin, Bell } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Car, User, Shield, CreditCard, MapPin, Bell, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 
@@ -86,6 +87,7 @@ interface OnboardingTourProps {
 }
 
 export const OnboardingTour = ({ onComplete, isOpen }: OnboardingTourProps) => {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
@@ -134,6 +136,11 @@ export const OnboardingTour = ({ onComplete, isOpen }: OnboardingTourProps) => {
 
   const handleSkip = () => {
     onComplete();
+  };
+
+  const handleLoginClick = () => {
+    onComplete();
+    navigate("/auth");
   };
 
   if (!isOpen) return null;
@@ -282,10 +289,27 @@ export const OnboardingTour = ({ onComplete, isOpen }: OnboardingTourProps) => {
               <ChevronLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
-            <Button size="sm" onClick={handleNext}>
-              {currentStep === tourSteps.length - 1 ? "Get Started" : "Next"}
-              {currentStep < tourSteps.length - 1 && <ChevronRight className="h-4 w-4 ml-1" />}
-            </Button>
+            {currentStep === tourSteps.length - 1 ? (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleLoginClick}
+                  className="gap-1"
+                >
+                  <LogIn className="h-4 w-4" />
+                  Sign In
+                </Button>
+                <Button size="sm" onClick={handleNext}>
+                  Get Started
+                </Button>
+              </>
+            ) : (
+              <Button size="sm" onClick={handleNext}>
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            )}
           </div>
         </CardFooter>
       </Card>
