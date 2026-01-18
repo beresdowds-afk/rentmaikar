@@ -646,6 +646,95 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_recalls: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string
+          driver_id: string | null
+          driver_notified_at: string | null
+          failed_capture_attempts: number | null
+          id: string
+          iot_failure_type: string | null
+          last_known_location_address: string | null
+          last_known_location_lat: number | null
+          last_known_location_lng: number | null
+          last_successful_ping: string | null
+          last_telemetry_snapshot: Json | null
+          owner_id: string | null
+          owner_notified_at: string | null
+          priority: string
+          recall_reason: string
+          recall_type: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          driver_id?: string | null
+          driver_notified_at?: string | null
+          failed_capture_attempts?: number | null
+          id?: string
+          iot_failure_type?: string | null
+          last_known_location_address?: string | null
+          last_known_location_lat?: number | null
+          last_known_location_lng?: number | null
+          last_successful_ping?: string | null
+          last_telemetry_snapshot?: Json | null
+          owner_id?: string | null
+          owner_notified_at?: string | null
+          priority?: string
+          recall_reason: string
+          recall_type?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          driver_id?: string | null
+          driver_notified_at?: string | null
+          failed_capture_attempts?: number | null
+          id?: string
+          iot_failure_type?: string | null
+          last_known_location_address?: string | null
+          last_known_location_lat?: number | null
+          last_known_location_lng?: number | null
+          last_successful_ping?: string | null
+          last_telemetry_snapshot?: Json | null
+          owner_id?: string | null
+          owner_notified_at?: string | null
+          priority?: string
+          recall_reason?: string
+          recall_type?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_recalls_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicles: {
         Row: {
           color: string | null
