@@ -14,16 +14,192 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      device_activity_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          device_id: string
+          id: string
+          performed_by: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          device_id: string
+          id?: string
+          performed_by: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          device_id?: string
+          id?: string
+          performed_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_activity_log_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "iot_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      iot_devices: {
+        Row: {
+          activated_at: string | null
+          battery_level: number | null
+          created_at: string | null
+          device_model: string | null
+          firmware_version: string | null
+          id: string
+          imei: string | null
+          is_linked: boolean | null
+          last_ping: string | null
+          latitude: number | null
+          longitude: number | null
+          notes: string | null
+          serial_number: string
+          signal_strength: number | null
+          sim_number: string | null
+          sim_provider: string | null
+          status: Database["public"]["Enums"]["device_status"] | null
+          updated_at: string | null
+          vehicle_id: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          battery_level?: number | null
+          created_at?: string | null
+          device_model?: string | null
+          firmware_version?: string | null
+          id?: string
+          imei?: string | null
+          is_linked?: boolean | null
+          last_ping?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          serial_number: string
+          signal_strength?: number | null
+          sim_number?: string | null
+          sim_provider?: string | null
+          status?: Database["public"]["Enums"]["device_status"] | null
+          updated_at?: string | null
+          vehicle_id?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          battery_level?: number | null
+          created_at?: string | null
+          device_model?: string | null
+          firmware_version?: string | null
+          id?: string
+          imei?: string | null
+          is_linked?: boolean | null
+          last_ping?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          serial_number?: string
+          signal_strength?: number | null
+          sim_number?: string | null
+          sim_provider?: string | null
+          status?: Database["public"]["Enums"]["device_status"] | null
+          updated_at?: string | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iot_devices_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          id: string
+          license_plate: string
+          make: string
+          model: string
+          owner_id: string
+          status: string | null
+          updated_at: string | null
+          vin: string | null
+          year: number
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          license_plate: string
+          make: string
+          model: string
+          owner_id: string
+          status?: string | null
+          updated_at?: string | null
+          vin?: string | null
+          year: number
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          license_plate?: string
+          make?: string
+          model?: string
+          owner_id?: string
+          status?: string | null
+          updated_at?: string | null
+          vin?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "owner" | "driver"
+      device_status: "inactive" | "active" | "offline" | "maintenance"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +326,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "owner", "driver"],
+      device_status: ["inactive", "active", "offline", "maintenance"],
+    },
   },
 } as const
