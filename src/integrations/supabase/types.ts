@@ -49,6 +49,105 @@ export type Database = {
           },
         ]
       }
+      iot_device_orders: {
+        Row: {
+          created_at: string
+          currency: string
+          device_price: number
+          id: string
+          notes: string | null
+          owner_email: string | null
+          owner_id: string
+          owner_phone: string | null
+          payment_confirmed_at: string | null
+          payment_confirmed_by: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          payment_status: string
+          shipped_at: string | null
+          shipped_by: string | null
+          shipping_address: string | null
+          shipping_status: string
+          tracking_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          device_price: number
+          id?: string
+          notes?: string | null
+          owner_email?: string | null
+          owner_id: string
+          owner_phone?: string | null
+          payment_confirmed_at?: string | null
+          payment_confirmed_by?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          payment_status?: string
+          shipped_at?: string | null
+          shipped_by?: string | null
+          shipping_address?: string | null
+          shipping_status?: string
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          device_price?: number
+          id?: string
+          notes?: string | null
+          owner_email?: string | null
+          owner_id?: string
+          owner_phone?: string | null
+          payment_confirmed_at?: string | null
+          payment_confirmed_by?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          payment_status?: string
+          shipped_at?: string | null
+          shipped_by?: string | null
+          shipping_address?: string | null
+          shipping_status?: string
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      iot_device_pricing: {
+        Row: {
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          price: number
+          region: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          description?: string | null
+          id?: string
+          price: number
+          region: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          price?: number
+          region?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       iot_devices: {
         Row: {
           activated_at: string | null

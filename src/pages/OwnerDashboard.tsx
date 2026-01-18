@@ -17,6 +17,7 @@ import { formatCurrency, PAYMENT_CONFIG } from '@/lib/payment-config';
 import { OwnerPriceNegotiation } from '@/components/negotiation/OwnerPriceNegotiation';
 import { PhoneVerification } from '@/components/phone/PhoneVerification';
 import { NotificationPreferences } from '@/components/phone/NotificationPreferences';
+import { IoTDevicePurchase } from '@/components/owner/IoTDevicePurchase';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -355,8 +356,9 @@ export default function OwnerDashboard() {
           </div>
 
           <Tabs defaultValue="vehicles" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
+            <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex">
               <TabsTrigger value="vehicles">My Vehicles</TabsTrigger>
+              <TabsTrigger value="iot-device">IoT Device</TabsTrigger>
               <TabsTrigger value="pricing" className="gap-2">
                 <MessageSquare className="h-4 w-4" />
                 Pricing
@@ -365,6 +367,11 @@ export default function OwnerDashboard() {
               <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
+
+            {/* IoT Device Tab */}
+            <TabsContent value="iot-device">
+              <IoTDevicePurchase />
+            </TabsContent>
 
             {/* Pricing Tab */}
             <TabsContent value="pricing">

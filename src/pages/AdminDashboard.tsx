@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package } from "lucide-react";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
 import { SecretsManagement } from "@/components/admin/SecretsManagement";
+import { IoTDeviceOrders } from "@/components/admin/IoTDeviceOrders";
 import { AdminPriceNegotiation } from "@/components/negotiation/AdminPriceNegotiation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -189,6 +190,10 @@ const AdminDashboard = () => {
                 <Cpu className="h-4 w-4" />
                 Hardware
               </TabsTrigger>
+              <TabsTrigger value="device-orders" className="flex items-center gap-1">
+                <Package className="h-4 w-4" />
+                Device Orders
+              </TabsTrigger>
               <TabsTrigger value="pricing" className="flex items-center gap-1">
                 <Tag className="h-4 w-4" />
                 Category Pricing
@@ -224,6 +229,10 @@ const AdminDashboard = () => {
 
             <TabsContent value="hardware">
               <HardwareManagement />
+            </TabsContent>
+
+            <TabsContent value="device-orders">
+              <IoTDeviceOrders />
             </TabsContent>
 
             <TabsContent value="pricing">
