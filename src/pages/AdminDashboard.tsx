@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound } from "lucide-react";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
+import { SecretsManagement } from "@/components/admin/SecretsManagement";
 import { AdminPriceNegotiation } from "@/components/negotiation/AdminPriceNegotiation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -199,6 +200,10 @@ const AdminDashboard = () => {
               <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
               <TabsTrigger value="defaults">Payment Defaults</TabsTrigger>
               <TabsTrigger value="fees">Fee Structure</TabsTrigger>
+              <TabsTrigger value="secrets" className="flex items-center gap-1">
+                <KeyRound className="h-4 w-4" />
+                API Secrets
+              </TabsTrigger>
               <TabsTrigger value="settings">Region Settings</TabsTrigger>
             </TabsList>
 
@@ -396,6 +401,10 @@ const AdminDashboard = () => {
                   </ul>
                 </div>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="secrets">
+              <SecretsManagement />
             </TabsContent>
 
             <TabsContent value="settings">
