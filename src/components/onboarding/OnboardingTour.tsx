@@ -5,6 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Progress } from "@/components/ui/progress";
 import { X, ChevronLeft, ChevronRight, Car, User, Shield, CreditCard, MapPin, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 
 interface TourStep {
   id: string;
@@ -224,12 +225,23 @@ export const OnboardingTour = ({ onComplete, isOpen }: OnboardingTourProps) => {
         )}
         style={getCardPosition()}
       >
-        <CardHeader className="pb-3">
+        {currentStep === 0 && (
+          <div className="flex justify-center pt-6 pb-2">
+            <img 
+              src={rentmaikarLogo} 
+              alt="Rentmaikar Logo" 
+              className="h-16 w-auto rounded-lg shadow-md"
+            />
+          </div>
+        )}
+        <CardHeader className={cn("pb-3", currentStep === 0 && "pt-2")}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Icon className="h-5 w-5 text-primary" />
-              </div>
+              {currentStep !== 0 && (
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Icon className="h-5 w-5 text-primary" />
+                </div>
+              )}
               <CardTitle className="text-lg">{step.title}</CardTitle>
             </div>
             <Button variant="ghost" size="icon" onClick={handleSkip} className="h-8 w-8">
