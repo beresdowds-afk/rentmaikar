@@ -14,11 +14,11 @@ import { useOnboardingTour } from "@/hooks/useOnboardingTour";
 
 const Index = () => {
   const { hasSelectedType } = useUserType();
-  const { isOpen, completeTour } = useOnboardingTour();
+  const { isOpen, completeTour, resetTour } = useOnboardingTour();
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header onRestartTour={resetTour} />
       <main className={!hasSelectedType ? "pb-24" : ""}>
         <HeroSection />
         <div data-tour="categories">
