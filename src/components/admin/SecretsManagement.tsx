@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Phone,
   Mail,
+  CreditCard,
   AlertTriangle,
   Info
 } from "lucide-react";
@@ -43,6 +44,7 @@ interface SecretConfig {
 }
 
 const secrets: SecretConfig[] = [
+  // SMS/WhatsApp
   {
     name: "TWILIO_ACCOUNT_SID",
     displayName: "Twilio Account SID",
@@ -67,6 +69,7 @@ const secrets: SecretConfig[] = [
     testable: true,
     docsUrl: "https://www.twilio.com/docs/phone-numbers",
   },
+  // Email
   {
     name: "RESEND_API_KEY",
     displayName: "Resend API Key",
@@ -75,13 +78,47 @@ const secrets: SecretConfig[] = [
     testable: true,
     docsUrl: "https://resend.com/docs/api-reference/introduction",
   },
+  // Payment - PayPal (USA)
+  {
+    name: "PAYPAL_CLIENT_ID",
+    displayName: "PayPal Client ID",
+    description: "PayPal REST API client ID for USA payment processing",
+    category: "payment",
+    testable: false,
+    docsUrl: "https://developer.paypal.com/api/rest/",
+  },
+  {
+    name: "PAYPAL_CLIENT_SECRET",
+    displayName: "PayPal Client Secret",
+    description: "PayPal REST API secret key for authentication",
+    category: "payment",
+    testable: false,
+    docsUrl: "https://developer.paypal.com/api/rest/",
+  },
+  // Payment - Paystack (Nigeria)
+  {
+    name: "PAYSTACK_SECRET_KEY",
+    displayName: "Paystack Secret Key",
+    description: "Paystack secret key for Nigeria payment processing",
+    category: "payment",
+    testable: false,
+    docsUrl: "https://paystack.com/docs/api/",
+  },
+  {
+    name: "PAYSTACK_PUBLIC_KEY",
+    displayName: "Paystack Public Key",
+    description: "Paystack public key for client-side integration",
+    category: "payment",
+    testable: false,
+    docsUrl: "https://paystack.com/docs/api/",
+  },
 ];
 
 const categoryConfig = {
-  sms: { icon: Phone, label: "SMS/WhatsApp", color: "bg-blue-500" },
-  email: { icon: Mail, label: "Email", color: "bg-green-500" },
-  payment: { icon: Key, label: "Payment", color: "bg-purple-500" },
-  system: { icon: Shield, label: "System", color: "bg-gray-500" },
+  sms: { icon: Phone, label: "SMS/WhatsApp", color: "bg-blue-500", region: null },
+  email: { icon: Mail, label: "Email", color: "bg-green-500", region: null },
+  payment: { icon: CreditCard, label: "Payment Gateways", color: "bg-purple-500", region: null },
+  system: { icon: Shield, label: "System", color: "bg-gray-500", region: null },
 };
 
 export function SecretsManagement() {
