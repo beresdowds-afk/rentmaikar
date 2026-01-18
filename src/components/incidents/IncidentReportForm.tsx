@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,10 @@ import {
   Loader2,
   Camera,
   Send,
-  Info
+  Info,
+  Upload,
+  X,
+  Image as ImageIcon
 } from 'lucide-react';
 
 type IncidentType = 'accident' | 'maintenance' | 'breakdown' | 'theft' | 'other';
@@ -31,6 +34,13 @@ interface IncidentReportFormProps {
   vehicleName?: string;
   ownerId?: string;
   onSuccess?: () => void;
+}
+
+interface UploadedPhoto {
+  file: File;
+  preview: string;
+  uploading: boolean;
+  url?: string;
 }
 
 const incidentTypes: { value: IncidentType; label: string; icon: React.ReactNode; description: string }[] = [
@@ -48,8 +58,12 @@ const severityLevels: { value: Severity; label: string; color: string }[] = [
   { value: 'critical', label: 'Critical', color: 'bg-red-700' },
 ];
 
+const MAX_PHOTOS = 5;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
 export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess }: IncidentReportFormProps) {
   const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [incidentType, setIncidentType] = useState<IncidentType | ''>('');
   const [severity, setSeverity] = useState<Severity>('medium');
@@ -58,11 +72,113 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
   const [occurredAt, setOccurredAt] = useState('');
   const [location, setLocation] = useState('');
   const [estimatedDowntime, setEstimatedDowntime] = useState('');
+  const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
   // Check if report would be late (more than 1 hour after occurrence)
   const isLateReport = occurredAt ? 
     (new Date().getTime() - new Date(occurredAt).getTime()) / (1000 * 60 * 60) > 1 : 
     false;
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newPhotos: UploadedPhoto[] = [];
+    
+    for (let i = 0; i < files.length && photos.length + newPhotos.length < MAX_PHOTOS; i++) {
+      const file = files[i];
+      
+      if (!file.type.startsWith('image/')) {
+        toast.error(`${file.name} is not an image file`);
+        continue;
+      }
+      
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`${file.name} exceeds 10MB limit`);
+        continue;
+      }
+
+      newPhotos.push({
+        file,
+        preview: URL.createObjectURL(file),
+        uploading: false,
+      });
+    }
+
+    setPhotos(prev => [...prev, ...newPhotos]);
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos(prev => {
+      const updated = [...prev];
+      URL.revokeObjectURL(updated[index].preview);
+      updated.splice(index, 1);
+      return updated;
+    });
+  };
+
+  const uploadPhotos = async (): Promise<string[]> => {
+    if (!user?.id || photos.length === 0) return [];
+
+    const uploadedUrls: string[] = [];
+
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
+      if (photo.url) {
+        uploadedUrls.push(photo.url);
+        continue;
+      }
+
+      // Mark as uploading
+      setPhotos(prev => {
+        const updated = [...prev];
+        updated[i] = { ...updated[i], uploading: true };
+        return updated;
+      });
+
+      try {
+        const fileExt = photo.file.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}-${i}.${fileExt}`;
+
+        const { data, error } = await supabase.storage
+          .from('incident-photos')
+          .upload(fileName, photo.file, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (error) throw error;
+
+        const { data: urlData } = supabase.storage
+          .from('incident-photos')
+          .getPublicUrl(data.path);
+
+        uploadedUrls.push(urlData.publicUrl);
+
+        // Update photo with URL
+        setPhotos(prev => {
+          const updated = [...prev];
+          updated[i] = { ...updated[i], uploading: false, url: urlData.publicUrl };
+          return updated;
+        });
+      } catch (error) {
+        console.error('[IncidentReport] Photo upload error:', error);
+        setPhotos(prev => {
+          const updated = [...prev];
+          updated[i] = { ...updated[i], uploading: false };
+          return updated;
+        });
+        toast.error(`Failed to upload ${photo.file.name}`);
+      }
+    }
+
+    return uploadedUrls;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,6 +196,9 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
     setIsSubmitting(true);
 
     try {
+      // Upload photos first
+      const photoUrls = await uploadPhotos();
+
       // Insert incident record
       const { data: incident, error: insertError } = await supabase
         .from('vehicle_incidents')
@@ -95,6 +214,7 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
           location_address: location.trim() || null,
           estimated_downtime_hours: estimatedDowntime ? parseInt(estimatedDowntime) : null,
           is_iot_detected: false,
+          photos: photoUrls.length > 0 ? photoUrls : null,
         })
         .select()
         .single();
@@ -120,7 +240,6 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
         });
       } catch (notifError) {
         console.error('[IncidentReport] Notification failed:', notifError);
-        // Don't fail the whole submission if notification fails
       }
 
       toast.success('Incident reported successfully', {
@@ -128,6 +247,9 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
           ? 'Note: This report was submitted more than 1 hour after the incident.'
           : 'Admin and owner have been notified.',
       });
+
+      // Cleanup photo previews
+      photos.forEach(p => URL.revokeObjectURL(p.preview));
 
       // Reset form
       setIncidentType('');
@@ -137,6 +259,7 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
       setLocation('');
       setEstimatedDowntime('');
       setSeverity('medium');
+      setPhotos([]);
 
       onSuccess?.();
     } catch (error) {
@@ -286,6 +409,72 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
             </p>
           </div>
 
+          {/* Photo Upload */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold flex items-center gap-2">
+              <Camera className="h-4 w-4" />
+              Proof Photos (Optional)
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Upload up to {MAX_PHOTOS} photos documenting the incident. Max 10MB per photo.
+            </p>
+            
+            {/* Photo Grid */}
+            {photos.length > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                {photos.map((photo, index) => (
+                  <div key={index} className="relative aspect-square rounded-lg overflow-hidden border">
+                    <img 
+                      src={photo.preview} 
+                      alt={`Photo ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {photo.uploading && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-white" />
+                      </div>
+                    )}
+                    {photo.url && (
+                      <div className="absolute bottom-1 right-1">
+                        <Badge variant="secondary" className="text-xs">✓</Badge>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(index)}
+                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-destructive text-white flex items-center justify-center hover:bg-destructive/80"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload Button */}
+            {photos.length < MAX_PHOTOS && (
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full border-dashed"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Add Photos ({photos.length}/{MAX_PHOTOS})
+                </Button>
+              </div>
+            )}
+          </div>
+
           {/* Location */}
           <div className="space-y-2">
             <Label htmlFor="location" className="flex items-center gap-2">
@@ -328,7 +517,7 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Submitting...
+                {photos.some(p => p.uploading) ? 'Uploading Photos...' : 'Submitting...'}
               </>
             ) : (
               <>

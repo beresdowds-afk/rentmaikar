@@ -1,4 +1,5 @@
 import mqtt, { MqttClient, IClientOptions } from 'mqtt';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface VehicleLocation {
   vehicleId: string;
@@ -10,6 +11,27 @@ export interface VehicleLocation {
   batteryLevel: number;
   timestamp: Date;
   isParked: boolean;
+}
+
+export interface AccelerometerData {
+  vehicleId: string;
+  x: number; // G-force
+  y: number;
+  z: number;
+  totalG: number;
+  timestamp: Date;
+}
+
+export interface AccidentEvent {
+  vehicleId: string;
+  driverId?: string;
+  ownerId?: string;
+  triggerType: 'sudden_deceleration' | 'impact' | 'rollover' | 'airbag';
+  decelerationG: number;
+  speedAtImpact: number;
+  latitude: number;
+  longitude: number;
+  timestamp: Date;
 }
 
 export interface MQTTConfig {
@@ -30,6 +52,7 @@ export interface SafetyCheckResult {
 
 type LocationCallback = (location: VehicleLocation) => void;
 type StatusCallback = (vehicleId: string, status: 'online' | 'offline') => void;
+type AccidentCallback = (event: AccidentEvent) => void;
 
 // Safety Rules Helper Functions
 const isWithinSafeDeactivationHours = (): boolean => {
@@ -41,16 +64,28 @@ const isWithinSafeDeactivationHours = (): boolean => {
 
 const PARKED_SPEED_THRESHOLD = 2; // mph - vehicle considered parked if speed < 2
 
+// Accident detection thresholds
+const ACCIDENT_THRESHOLDS = {
+  SUDDEN_DECELERATION_G: 4.0, // 4G deceleration triggers detection
+  CRITICAL_G: 8.0, // 8G+ is severe
+  SPEED_BUFFER_MS: 5000, // Store last 5 seconds of speed data
+};
+
 class MQTTVehicleTracker {
   private client: MqttClient | null = null;
   private locationCallbacks: Map<string, Set<LocationCallback>> = new Map();
   private statusCallbacks: Set<StatusCallback> = new Set();
+  private accidentCallbacks: Set<AccidentCallback> = new Set();
   private isConnected: boolean = false;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
   
   // Store latest vehicle locations for safety checks
   private vehicleLocations: Map<string, VehicleLocation> = new Map();
+  // Store speed history for accident detection
+  private speedHistory: Map<string, { speed: number; timestamp: number }[]> = new Map();
+  // Driver/owner mapping for accident reports
+  private vehicleDriverMap: Map<string, { driverId: string; ownerId?: string }> = new Map();
 
   // Default broker configuration (would be replaced with actual broker in production)
   private defaultConfig: MQTTConfig = {
@@ -88,6 +123,12 @@ class MQTTVehicleTracker {
           this.client?.subscribe('rentmaikar/vehicles/+/status', (err) => {
             if (err) console.error('[MQTT] Subscription error:', err);
             else console.log('[MQTT] Subscribed to vehicle status');
+          });
+
+          // Subscribe to accelerometer/sensor data for accident detection
+          this.client?.subscribe('rentmaikar/vehicles/+/sensors', (err) => {
+            if (err) console.error('[MQTT] Subscription error:', err);
+            else console.log('[MQTT] Subscribed to vehicle sensors');
           });
 
           resolve();
@@ -154,6 +195,9 @@ class MQTTVehicleTracker {
 
         // Store latest location for safety checks
         this.vehicleLocations.set(vehicleId, location);
+        
+        // Track speed history for accident detection
+        this.trackSpeedHistory(vehicleId, location.speed);
 
         // Notify all location callbacks for this vehicle
         const callbacks = this.locationCallbacks.get(vehicleId);
@@ -172,9 +216,110 @@ class MQTTVehicleTracker {
         const data = JSON.parse(message);
         this.statusCallbacks.forEach(cb => cb(vehicleId, data.status));
       }
+
+      // Handle sensor data (accelerometer, impact sensors)
+      if (messageType === 'sensors') {
+        const data = JSON.parse(message);
+        this.handleSensorData(vehicleId, data);
+      }
     } catch (error) {
       console.error('[MQTT] Error parsing message:', error);
     }
+  }
+
+  private trackSpeedHistory(vehicleId: string, speed: number): void {
+    const now = Date.now();
+    if (!this.speedHistory.has(vehicleId)) {
+      this.speedHistory.set(vehicleId, []);
+    }
+    
+    const history = this.speedHistory.get(vehicleId)!;
+    history.push({ speed, timestamp: now });
+    
+    // Keep only last 5 seconds of data
+    const cutoff = now - ACCIDENT_THRESHOLDS.SPEED_BUFFER_MS;
+    this.speedHistory.set(
+      vehicleId,
+      history.filter(h => h.timestamp > cutoff)
+    );
+  }
+
+  private handleSensorData(vehicleId: string, data: any): void {
+    // Check for sudden deceleration or impact
+    if (data.type === 'accelerometer' || data.type === 'impact') {
+      const totalG = data.totalG || Math.sqrt(
+        Math.pow(data.x || 0, 2) + 
+        Math.pow(data.y || 0, 2) + 
+        Math.pow(data.z || 0, 2)
+      );
+
+      if (totalG >= ACCIDENT_THRESHOLDS.SUDDEN_DECELERATION_G) {
+        console.log(`[MQTT] Accident detected for ${vehicleId}: ${totalG.toFixed(2)}G`);
+        this.triggerAccidentEvent(vehicleId, totalG, data.type === 'impact' ? 'impact' : 'sudden_deceleration');
+      }
+    }
+
+    // Handle airbag deployment signal
+    if (data.type === 'airbag' && data.deployed) {
+      console.log(`[MQTT] Airbag deployment detected for ${vehicleId}`);
+      this.triggerAccidentEvent(vehicleId, 10, 'airbag'); // Airbag = critical
+    }
+  }
+
+  private async triggerAccidentEvent(
+    vehicleId: string, 
+    decelerationG: number, 
+    triggerType: AccidentEvent['triggerType']
+  ): Promise<void> {
+    const location = this.vehicleLocations.get(vehicleId);
+    const speedHistory = this.speedHistory.get(vehicleId) || [];
+    const speedAtImpact = speedHistory.length > 0 
+      ? speedHistory[speedHistory.length - 1].speed 
+      : 0;
+
+    const driverInfo = this.vehicleDriverMap.get(vehicleId);
+
+    const event: AccidentEvent = {
+      vehicleId,
+      driverId: driverInfo?.driverId,
+      ownerId: driverInfo?.ownerId,
+      triggerType,
+      decelerationG,
+      speedAtImpact,
+      latitude: location?.latitude || 0,
+      longitude: location?.longitude || 0,
+      timestamp: new Date(),
+    };
+
+    // Notify local callbacks
+    this.accidentCallbacks.forEach(cb => cb(event));
+
+    // Send to backend for incident creation
+    try {
+      await supabase.functions.invoke('iot-accident-detection', {
+        body: {
+          ...event,
+          deviceId: `device-${vehicleId}`,
+          timestamp: event.timestamp.toISOString(),
+        },
+      });
+      console.log('[MQTT] Accident event sent to backend');
+    } catch (error) {
+      console.error('[MQTT] Failed to send accident event:', error);
+    }
+  }
+
+  // Register vehicle-driver mapping for accident reports
+  registerVehicleDriver(vehicleId: string, driverId: string, ownerId?: string): void {
+    this.vehicleDriverMap.set(vehicleId, { driverId, ownerId });
+  }
+
+  // Subscribe to accident events
+  onAccident(callback: AccidentCallback): () => void {
+    this.accidentCallbacks.add(callback);
+    return () => {
+      this.accidentCallbacks.delete(callback);
+    };
   }
 
   subscribeToVehicle(vehicleId: string, callback: LocationCallback): () => void {
