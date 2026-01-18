@@ -72,7 +72,9 @@ const Header = () => {
 
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center gap-3">
-            <RegionSwitcher />
+            <div data-tour="region">
+              <RegionSwitcher />
+            </div>
             
             {!isLoading && user ? (
               <>

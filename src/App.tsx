@@ -16,6 +16,7 @@ import DriverDashboard from "./pages/DriverDashboard";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import Catalogue from "./pages/Catalogue";
 import AdminDashboard from "./pages/AdminDashboard";
+import ApiDocs from "./pages/ApiDocs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ const App = () => (
                   } 
                 />
                 <Route path="/catalogue/:category" element={<Catalogue />} />
+                <Route path="/api-docs" element={<ApiDocs />} />
                 <Route 
                   path="/admin" 
                   element={
