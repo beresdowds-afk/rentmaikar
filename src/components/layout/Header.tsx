@@ -1,15 +1,19 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Car, User, Building, Shield, LayoutDashboard } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, Car, User, Building, Shield, LayoutDashboard, LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import RegionSwitcher from "@/components/home/RegionSwitcher";
 import { useUserType } from "@/contexts/UserTypeContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { userType } = useUserType();
+  const { user, userRole, signOut, isLoading } = useAuth();
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -19,6 +23,20 @@ const Header = () => {
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success("Signed out successfully");
+    navigate("/");
+  };
+
+  const getDashboardLink = () => {
+    if (userRole === 'admin') return '/admin';
+    if (userRole === 'owner') return '/owner/dashboard';
+    if (userRole === 'driver') return '/driver/dashboard';
+    // Fallback based on userType context
+    return userType === 'driver' ? '/driver/dashboard' : '/owner/dashboard';
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass-effect">
@@ -55,42 +73,52 @@ const Header = () => {
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center gap-3">
             <RegionSwitcher />
-            {userType === 'driver' ? (
+            
+            {!isLoading && user ? (
               <>
-                <Link to="/driver/dashboard">
+                <Link to={getDashboardLink()}>
                   <Button variant="outline" size="sm" className="gap-2">
                     <LayoutDashboard className="w-4 h-4" />
                     My Dashboard
                   </Button>
                 </Link>
-                <Link to="/driver/register">
-                  <Button variant="default" size="sm" className="gap-2">
-                    <User className="w-4 h-4" />
-                    Driver Sign Up
-                  </Button>
-                </Link>
+                {userRole === 'admin' && (
+                  <Link to="/admin">
+                    <Button variant="ghost" size="icon">
+                      <Shield className="w-5 h-5" />
+                    </Button>
+                  </Link>
+                )}
+                <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-2">
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </Button>
               </>
             ) : (
               <>
-                <Link to="/owner/dashboard">
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <LayoutDashboard className="w-4 h-4" />
-                    My Dashboard
-                  </Button>
-                </Link>
-                <Link to="/owner/register">
+                {userType === 'driver' ? (
+                  <Link to="/driver/register">
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <User className="w-4 h-4" />
+                      Driver Sign Up
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link to="/owner/register">
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Building className="w-4 h-4" />
+                      List Your Car
+                    </Button>
+                  </Link>
+                )}
+                <Link to="/auth">
                   <Button variant="default" size="sm" className="gap-2">
-                    <Building className="w-4 h-4" />
-                    List Your Car
+                    <LogIn className="w-4 h-4" />
+                    Sign In
                   </Button>
                 </Link>
               </>
             )}
-            <Link to="/admin">
-              <Button variant="ghost" size="icon">
-                <Shield className="w-5 h-5" />
-              </Button>
-            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -127,44 +155,54 @@ const Header = () => {
                   {link.label}
                 </Link>
               ))}
+              
               <div className="flex flex-col gap-2 pt-4 border-t border-border mt-2">
-                {userType === 'driver' ? (
+                {!isLoading && user ? (
                   <>
-                    <Link to="/driver/dashboard" onClick={() => setIsMenuOpen(false)}>
+                    <Link to={getDashboardLink()} onClick={() => setIsMenuOpen(false)}>
                       <Button variant="outline" className="w-full gap-2">
                         <LayoutDashboard className="w-4 h-4" />
                         My Dashboard
                       </Button>
                     </Link>
-                    <Link to="/driver/register" onClick={() => setIsMenuOpen(false)}>
-                      <Button variant="default" className="w-full gap-2">
-                        <User className="w-4 h-4" />
-                        Driver Sign Up
-                      </Button>
-                    </Link>
+                    {userRole === 'admin' && (
+                      <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full gap-2">
+                          <Shield className="w-4 h-4" />
+                          Admin Portal
+                        </Button>
+                      </Link>
+                    )}
+                    <Button variant="ghost" className="w-full gap-2" onClick={() => { handleSignOut(); setIsMenuOpen(false); }}>
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </Button>
                   </>
                 ) : (
                   <>
-                    <Link to="/owner/dashboard" onClick={() => setIsMenuOpen(false)}>
-                      <Button variant="outline" className="w-full gap-2">
-                        <LayoutDashboard className="w-4 h-4" />
-                        My Dashboard
-                      </Button>
-                    </Link>
-                    <Link to="/owner/register" onClick={() => setIsMenuOpen(false)}>
+                    {userType === 'driver' ? (
+                      <Link to="/driver/register" onClick={() => setIsMenuOpen(false)}>
+                        <Button variant="outline" className="w-full gap-2">
+                          <User className="w-4 h-4" />
+                          Driver Sign Up
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Link to="/owner/register" onClick={() => setIsMenuOpen(false)}>
+                        <Button variant="outline" className="w-full gap-2">
+                          <Building className="w-4 h-4" />
+                          List Your Car
+                        </Button>
+                      </Link>
+                    )}
+                    <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
                       <Button variant="default" className="w-full gap-2">
-                        <Building className="w-4 h-4" />
-                        List Your Car
+                        <LogIn className="w-4 h-4" />
+                        Sign In
                       </Button>
                     </Link>
                   </>
                 )}
-                <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
-                  <Button variant="ghost" className="w-full gap-2">
-                    <Shield className="w-4 h-4" />
-                    Admin Portal
-                  </Button>
-                </Link>
               </div>
             </nav>
           </div>
