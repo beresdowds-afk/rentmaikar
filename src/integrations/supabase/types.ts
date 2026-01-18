@@ -53,8 +53,14 @@ export type Database = {
         Row: {
           created_at: string
           currency: string
+          delivery_confirmed_at: string | null
+          delivery_confirmed_by: string | null
           device_price: number
           id: string
+          installation_confirmed_at: string | null
+          installation_notes: string | null
+          installed_sim_number: string | null
+          installed_sim_provider: string | null
           notes: string | null
           owner_email: string | null
           owner_id: string
@@ -74,8 +80,14 @@ export type Database = {
         Insert: {
           created_at?: string
           currency?: string
+          delivery_confirmed_at?: string | null
+          delivery_confirmed_by?: string | null
           device_price: number
           id?: string
+          installation_confirmed_at?: string | null
+          installation_notes?: string | null
+          installed_sim_number?: string | null
+          installed_sim_provider?: string | null
           notes?: string | null
           owner_email?: string | null
           owner_id: string
@@ -95,8 +107,14 @@ export type Database = {
         Update: {
           created_at?: string
           currency?: string
+          delivery_confirmed_at?: string | null
+          delivery_confirmed_by?: string | null
           device_price?: number
           id?: string
+          installation_confirmed_at?: string | null
+          installation_notes?: string | null
+          installed_sim_number?: string | null
+          installed_sim_provider?: string | null
           notes?: string | null
           owner_email?: string | null
           owner_id?: string
