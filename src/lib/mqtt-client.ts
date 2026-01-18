@@ -34,6 +34,48 @@ export interface AccidentEvent {
   timestamp: Date;
 }
 
+// IoT Telemetry Snapshot for incident logging
+export interface IoTTelemetrySnapshot {
+  vehicleId: string;
+  capturedAt: string;
+  location: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+  } | null;
+  motion: {
+    speed: number;
+    heading: number;
+    isParked: boolean;
+  } | null;
+  vehicle: {
+    ignitionStatus: boolean;
+    batteryLevel: number;
+    fuelLevel?: number;
+    engineTemp?: number;
+    odometerReading?: number;
+  } | null;
+  diagnostics: {
+    engineCode?: string[];
+    checkEngineLightOn?: boolean;
+    tirePressure?: { fl: number; fr: number; rl: number; rr: number };
+    brakeWearLevel?: number;
+    oilLevel?: number;
+    coolantLevel?: number;
+    transmissionTemp?: number;
+  } | null;
+  sensors: {
+    lastAccelerometerReading?: { x: number; y: number; z: number; totalG: number };
+    ambientTemp?: number;
+    humidity?: number;
+  } | null;
+  connectivity: {
+    signalStrength: number;
+    lastPingMs: number;
+    firmwareVersion?: string;
+  } | null;
+}
+
 export interface MQTTConfig {
   brokerUrl: string;
   options?: IClientOptions;
@@ -86,6 +128,10 @@ class MQTTVehicleTracker {
   private speedHistory: Map<string, { speed: number; timestamp: number }[]> = new Map();
   // Driver/owner mapping for accident reports
   private vehicleDriverMap: Map<string, { driverId: string; ownerId?: string }> = new Map();
+  // Store latest sensor/diagnostic data for telemetry snapshots
+  private vehicleDiagnostics: Map<string, any> = new Map();
+  private vehicleSensors: Map<string, any> = new Map();
+  private lastAccelerometer: Map<string, { x: number; y: number; z: number; totalG: number }> = new Map();
 
   // Default broker configuration (would be replaced with actual broker in production)
   private defaultConfig: MQTTConfig = {
@@ -245,7 +291,7 @@ class MQTTVehicleTracker {
   }
 
   private handleSensorData(vehicleId: string, data: any): void {
-    // Check for sudden deceleration or impact
+    // Store sensor data for telemetry snapshots
     if (data.type === 'accelerometer' || data.type === 'impact') {
       const totalG = data.totalG || Math.sqrt(
         Math.pow(data.x || 0, 2) + 
@@ -253,10 +299,36 @@ class MQTTVehicleTracker {
         Math.pow(data.z || 0, 2)
       );
 
+      // Store latest accelerometer reading
+      this.lastAccelerometer.set(vehicleId, {
+        x: data.x || 0,
+        y: data.y || 0,
+        z: data.z || 0,
+        totalG,
+      });
+
       if (totalG >= ACCIDENT_THRESHOLDS.SUDDEN_DECELERATION_G) {
         console.log(`[MQTT] Accident detected for ${vehicleId}: ${totalG.toFixed(2)}G`);
         this.triggerAccidentEvent(vehicleId, totalG, data.type === 'impact' ? 'impact' : 'sudden_deceleration');
       }
+    }
+
+    // Store diagnostic data
+    if (data.type === 'diagnostics') {
+      this.vehicleDiagnostics.set(vehicleId, {
+        ...this.vehicleDiagnostics.get(vehicleId),
+        ...data,
+        updatedAt: Date.now(),
+      });
+    }
+
+    // Store environmental/other sensor data
+    if (data.type === 'environment' || data.type === 'sensors') {
+      this.vehicleSensors.set(vehicleId, {
+        ...this.vehicleSensors.get(vehicleId),
+        ...data,
+        updatedAt: Date.now(),
+      });
     }
 
     // Handle airbag deployment signal
@@ -525,6 +597,98 @@ class MQTTVehicleTracker {
 
   getConnectionStatus(): boolean {
     return this.isConnected;
+  }
+
+  /**
+   * Capture complete IoT telemetry snapshot for incident logging
+   * Called when driver reports maintenance/breakdown to preserve vehicle state
+   */
+  captureIoTSnapshot(vehicleId: string): IoTTelemetrySnapshot {
+    const location = this.vehicleLocations.get(vehicleId);
+    const diagnostics = this.vehicleDiagnostics.get(vehicleId);
+    const sensors = this.vehicleSensors.get(vehicleId);
+    const accelerometer = this.lastAccelerometer.get(vehicleId);
+    const speedHistory = this.speedHistory.get(vehicleId) || [];
+
+    console.log(`[MQTT] Capturing IoT snapshot for vehicle ${vehicleId}`);
+
+    const snapshot: IoTTelemetrySnapshot = {
+      vehicleId,
+      capturedAt: new Date().toISOString(),
+      location: location ? {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        accuracy: 5, // meters (simulated)
+      } : null,
+      motion: location ? {
+        speed: location.speed,
+        heading: location.heading,
+        isParked: location.isParked,
+      } : null,
+      vehicle: location ? {
+        ignitionStatus: location.ignitionStatus,
+        batteryLevel: location.batteryLevel,
+        fuelLevel: diagnostics?.fuelLevel,
+        engineTemp: diagnostics?.engineTemp,
+        odometerReading: diagnostics?.odometer,
+      } : null,
+      diagnostics: diagnostics ? {
+        engineCode: diagnostics.dtcCodes || [],
+        checkEngineLightOn: diagnostics.checkEngineLight || false,
+        tirePressure: diagnostics.tirePressure,
+        brakeWearLevel: diagnostics.brakeWear,
+        oilLevel: diagnostics.oilLevel,
+        coolantLevel: diagnostics.coolantLevel,
+        transmissionTemp: diagnostics.transmissionTemp,
+      } : null,
+      sensors: {
+        lastAccelerometerReading: accelerometer,
+        ambientTemp: sensors?.ambientTemp,
+        humidity: sensors?.humidity,
+      },
+      connectivity: {
+        signalStrength: diagnostics?.signalStrength || 85,
+        lastPingMs: location ? Date.now() - location.timestamp.getTime() : 0,
+        firmwareVersion: diagnostics?.firmwareVersion,
+      },
+    };
+
+    console.log(`[MQTT] IoT snapshot captured:`, snapshot);
+    return snapshot;
+  }
+
+  /**
+   * Request fresh diagnostic data from vehicle
+   * Sends command to IoT device to report all current parameters
+   */
+  async requestDiagnosticReport(vehicleId: string): Promise<void> {
+    if (!this.client || !this.isConnected) {
+      console.log(`[MQTT] Offline mode: Cannot request diagnostics for ${vehicleId}`);
+      return;
+    }
+
+    const topic = `rentmaikar/vehicles/${vehicleId}/command`;
+    const payload = JSON.stringify({
+      command: 'report_diagnostics',
+      timestamp: new Date().toISOString(),
+      requestId: Math.random().toString(36).slice(2, 11),
+      params: {
+        includeOBD: true,
+        includeSensors: true,
+        includeLocation: true,
+      },
+    });
+
+    return new Promise((resolve) => {
+      this.client!.publish(topic, payload, { qos: 1 }, (error) => {
+        if (error) {
+          console.error('[MQTT] Diagnostic request error:', error);
+        } else {
+          console.log(`[MQTT] Diagnostic report requested for ${vehicleId}`);
+        }
+        resolve();
+      });
+    });
   }
 }
 
