@@ -13,18 +13,80 @@ interface ApprovalNotificationRequest {
   region: "USA" | "NIGERIA";
 }
 
-const handler = async (req: Request): Promise<Response> => {
-  console.log("Received approval notification request");
+// Validation helpers
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return typeof email === 'string' && 
+         email.length > 0 && 
+         email.length <= 255 && 
+         emailRegex.test(email);
+};
 
+const isValidName = (name: string): boolean => {
+  return typeof name === 'string' && 
+         name.trim().length >= 2 && 
+         name.length <= 100;
+};
+
+const isValidUserType = (userType: string): userType is "driver" | "owner" => {
+  return userType === "driver" || userType === "owner";
+};
+
+const isValidRegion = (region: string): region is "USA" | "NIGERIA" => {
+  return region === "USA" || region === "NIGERIA";
+};
+
+const sanitizeString = (input: string): string => {
+  // Remove any HTML tags and trim whitespace
+  return input.replace(/<[^>]*>/g, '').trim();
+};
+
+const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { email, name, userType, region }: ApprovalNotificationRequest = await req.json();
+    const body = await req.json();
+    
+    // Extract and validate all fields
+    const email = typeof body.email === 'string' ? body.email.trim() : '';
+    const name = typeof body.name === 'string' ? sanitizeString(body.name) : '';
+    const userType = typeof body.userType === 'string' ? body.userType : '';
+    const region = typeof body.region === 'string' ? body.region : '';
 
-    console.log(`Sending approval notification to ${email} for ${userType} in ${region}`);
+    // Validate email
+    if (!isValidEmail(email)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid email address" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Validate name
+    if (!isValidName(name)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Name must be between 2 and 100 characters" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Validate userType
+    if (!isValidUserType(userType)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid user type. Must be 'driver' or 'owner'" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Validate region
+    if (!isValidRegion(region)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid region. Must be 'USA' or 'NIGERIA'" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) {
@@ -32,11 +94,20 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Get the app URL
-    const appUrl = Deno.env.get("APP_URL") || "https://id-preview--4011c747-3d97-471e-9350-01af2636bf43.lovable.app";
+    const appUrl = Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app') || 
+                   "https://id-preview--4011c747-3d97-471e-9350-01af2636bf43.lovable.app";
     
     const dashboardPath = userType === "driver" ? "/driver/dashboard" : "/owner/dashboard";
     const dashboardUrl = `${appUrl}${dashboardPath}`;
     const dashboardName = userType === "driver" ? "Driver Dashboard" : "Owner Dashboard";
+    
+    // Sanitize name for use in HTML (escape special characters)
+    const escapedName = name
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
 
     const emailHtml = `
 <!DOCTYPE html>
@@ -44,7 +115,7 @@ const handler = async (req: Request): Promise<Response> => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Account Approved - AutoRent</title>
+  <title>Account Approved - Rentmaikar</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -171,11 +242,11 @@ const handler = async (req: Request): Promise<Response> => {
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">🚗 AutoRent</div>
+      <div class="logo">🚗 Rentmaikar</div>
       <div class="success-badge">✓ Account Approved</div>
     </div>
 
-    <h1>Congratulations, ${name}!</h1>
+    <h1>Congratulations, ${escapedName}!</h1>
     
     <p>Great news! Your <strong>${userType}</strong> account has been approved by our admin team. You now have full access to your personalized dashboard.</p>
 
@@ -240,14 +311,14 @@ const handler = async (req: Request): Promise<Response> => {
     <div class="contact-info">
       <strong>Need Help?</strong><br>
       ${region === "NIGERIA" 
-        ? "WhatsApp: +234 XXX XXX XXXX<br>Email: support@autorent.ng" 
-        : "Phone: +1 XXX XXX XXXX<br>Email: support@autorent.com"}
+        ? "WhatsApp: +234 XXX XXX XXXX<br>Email: support@rentmaikar.ng" 
+        : "Phone: +1 XXX XXX XXXX<br>Email: support@rentmaikar.com"}
     </div>
 
     <p>We're excited to have you on board! If you have any questions, don't hesitate to reach out to our support team.</p>
 
     <div class="footer">
-      <p>© ${new Date().getFullYear()} AutoRent. All rights reserved.</p>
+      <p>© ${new Date().getFullYear()} Rentmaikar. All rights reserved.</p>
       <p>This email was sent because your ${userType} account was approved.</p>
     </div>
   </div>
@@ -263,9 +334,9 @@ const handler = async (req: Request): Promise<Response> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "AutoRent <onboarding@resend.dev>",
+        from: "Rentmaikar <onboarding@resend.dev>",
         to: [email],
-        subject: `🎉 Welcome to AutoRent - Your ${userType.charAt(0).toUpperCase() + userType.slice(1)} Account is Approved!`,
+        subject: `🎉 Welcome to Rentmaikar - Your ${userType.charAt(0).toUpperCase() + userType.slice(1)} Account is Approved!`,
         html: emailHtml,
       }),
     });
@@ -276,8 +347,6 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Resend API error:", responseData);
       throw new Error(responseData.message || "Failed to send email");
     }
-
-    console.log("Email sent successfully:", responseData);
 
     return new Response(JSON.stringify({ success: true, data: responseData }), {
       status: 200,
