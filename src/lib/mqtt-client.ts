@@ -295,6 +295,52 @@ class MQTTVehicleTracker {
     }
   }
 
+  private resetTelemetryTimeout(vehicleId: string): void {
+    // Clear existing timeout
+    const existingTimeout = this.telemetryTimeouts.get(vehicleId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    // Set new timeout - if no data received within threshold, trigger failure
+    const timeout = setTimeout(() => {
+      this.handleTelemetryTimeout(vehicleId);
+    }, this.TELEMETRY_TIMEOUT_MS);
+
+    this.telemetryTimeouts.set(vehicleId, timeout);
+  }
+
+  private handleTelemetryTimeout(vehicleId: string): void {
+    const failureCount = (this.telemetryFailureCounts.get(vehicleId) || 0) + 1;
+    this.telemetryFailureCounts.set(vehicleId, failureCount);
+
+    console.warn(`[MQTT] Telemetry timeout for vehicle ${vehicleId} (failure #${failureCount})`);
+
+    // Notify callbacks about the failure
+    const lastLocation = this.vehicleLocations.get(vehicleId);
+    const failureEvent: TelemetryFailureEvent = {
+      vehicleId,
+      failureType: 'telemetry_timeout',
+      lastSuccessfulPing: lastLocation?.timestamp || null,
+      lastKnownLocation: lastLocation || null,
+      failedAttempts: failureCount,
+      timestamp: new Date(),
+    };
+
+    this.telemetryFailureCallbacks.forEach(cb => cb(failureEvent));
+
+    // Reset timeout to continue monitoring
+    this.resetTelemetryTimeout(vehicleId);
+  }
+
+  // Subscribe to telemetry failure events
+  onTelemetryFailure(callback: TelemetryFailureCallback): () => void {
+    this.telemetryFailureCallbacks.add(callback);
+    return () => {
+      this.telemetryFailureCallbacks.delete(callback);
+    };
+  }
+
   private trackSpeedHistory(vehicleId: string, speed: number): void {
     const now = Date.now();
     if (!this.speedHistory.has(vehicleId)) {
