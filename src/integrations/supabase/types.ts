@@ -777,6 +777,129 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_inspection_reports: {
+        Row: {
+          admin_decision: string | null
+          admin_id: string | null
+          admin_notes: string | null
+          admin_reviewed_at: string | null
+          created_at: string | null
+          driver_accepted_withdrawal: boolean | null
+          driver_id: string
+          driver_responded_at: string | null
+          id: string
+          owner_action: string | null
+          owner_id: string | null
+          owner_notes: string | null
+          owner_reviewed_at: string | null
+          photo_back_left_tyre: string | null
+          photo_back_right_tyre: string | null
+          photo_back_view: string | null
+          photo_dashboard: string | null
+          photo_driver_side: string | null
+          photo_front_left_tyre: string | null
+          photo_front_right_tyre: string | null
+          photo_front_view: string | null
+          photo_interior: string | null
+          photo_passenger_side: string | null
+          photo_timestamps: Json | null
+          status: string | null
+          submitted_at: string | null
+          updated_at: string | null
+          vehicle_id: string
+          week_start_date: string
+        }
+        Insert: {
+          admin_decision?: string | null
+          admin_id?: string | null
+          admin_notes?: string | null
+          admin_reviewed_at?: string | null
+          created_at?: string | null
+          driver_accepted_withdrawal?: boolean | null
+          driver_id: string
+          driver_responded_at?: string | null
+          id?: string
+          owner_action?: string | null
+          owner_id?: string | null
+          owner_notes?: string | null
+          owner_reviewed_at?: string | null
+          photo_back_left_tyre?: string | null
+          photo_back_right_tyre?: string | null
+          photo_back_view?: string | null
+          photo_dashboard?: string | null
+          photo_driver_side?: string | null
+          photo_front_left_tyre?: string | null
+          photo_front_right_tyre?: string | null
+          photo_front_view?: string | null
+          photo_interior?: string | null
+          photo_passenger_side?: string | null
+          photo_timestamps?: Json | null
+          status?: string | null
+          submitted_at?: string | null
+          updated_at?: string | null
+          vehicle_id: string
+          week_start_date: string
+        }
+        Update: {
+          admin_decision?: string | null
+          admin_id?: string | null
+          admin_notes?: string | null
+          admin_reviewed_at?: string | null
+          created_at?: string | null
+          driver_accepted_withdrawal?: boolean | null
+          driver_id?: string
+          driver_responded_at?: string | null
+          id?: string
+          owner_action?: string | null
+          owner_id?: string | null
+          owner_notes?: string | null
+          owner_reviewed_at?: string | null
+          photo_back_left_tyre?: string | null
+          photo_back_right_tyre?: string | null
+          photo_back_view?: string | null
+          photo_dashboard?: string | null
+          photo_driver_side?: string | null
+          photo_front_left_tyre?: string | null
+          photo_front_right_tyre?: string | null
+          photo_front_view?: string | null
+          photo_interior?: string | null
+          photo_passenger_side?: string | null
+          photo_timestamps?: Json | null
+          status?: string | null
+          submitted_at?: string | null
+          updated_at?: string | null
+          vehicle_id?: string
+          week_start_date?: string
+        }
+        Relationships: []
+      }
+      weekly_report_settings: {
+        Row: {
+          feature_enabled: boolean | null
+          grace_period_hours: number | null
+          id: string
+          report_due_day: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          feature_enabled?: boolean | null
+          grace_period_hours?: number | null
+          id?: string
+          report_due_day?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          feature_enabled?: boolean | null
+          grace_period_hours?: number | null
+          id?: string
+          report_due_day?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -15,6 +15,7 @@ import { DriverPriceNegotiation } from '@/components/negotiation/DriverPriceNego
 import { PhoneVerification } from '@/components/phone/PhoneVerification';
 import { NotificationPreferences } from '@/components/phone/NotificationPreferences';
 import { IncidentReportForm } from '@/components/incidents/IncidentReportForm';
+import { WeeklyInspectionReport } from '@/components/inspection/WeeklyInspectionReport';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -33,6 +34,7 @@ import {
   Bell,
   Settings,
   Wrench,
+  Camera,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -200,10 +202,14 @@ export default function DriverDashboard() {
           </div>
 
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex">
+            <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-flex">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="payments">Payments</TabsTrigger>
               <TabsTrigger value="negotiate">Price Negotiation</TabsTrigger>
+              <TabsTrigger value="inspection" className="flex items-center gap-1">
+                <Camera className="h-3 w-3" />
+                Weekly Report
+              </TabsTrigger>
               <TabsTrigger value="incidents" className="flex items-center gap-1">
                 <Wrench className="h-3 w-3" />
                 Incidents
