@@ -19,6 +19,7 @@ import { PhoneVerification } from '@/components/phone/PhoneVerification';
 import { NotificationPreferences } from '@/components/phone/NotificationPreferences';
 import { IoTDevicePurchase } from '@/components/owner/IoTDevicePurchase';
 import { OwnerWeeklyReportReview } from '@/components/inspection/OwnerWeeklyReportReview';
+import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -358,7 +359,7 @@ export default function OwnerDashboard() {
           </div>
 
           <Tabs defaultValue="vehicles" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-flex">
+            <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-flex">
               <TabsTrigger value="vehicles">My Vehicles</TabsTrigger>
               <TabsTrigger value="iot-device">IoT Device</TabsTrigger>
               <TabsTrigger value="inspections" className="flex items-center gap-1">
@@ -368,6 +369,10 @@ export default function OwnerDashboard() {
               <TabsTrigger value="pricing" className="gap-2">
                 <MessageSquare className="h-4 w-4" />
                 Pricing
+              </TabsTrigger>
+              <TabsTrigger value="agreements" className="flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                Agreements
               </TabsTrigger>
               <TabsTrigger value="earnings">Earnings</TabsTrigger>
               <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
@@ -387,6 +392,11 @@ export default function OwnerDashboard() {
             {/* Pricing Tab */}
             <TabsContent value="pricing">
               <OwnerPriceNegotiation />
+            </TabsContent>
+
+            {/* Agreements Tab */}
+            <TabsContent value="agreements" className="space-y-6">
+              <UserAgreementsList userType="owner" />
             </TabsContent>
 
             {/* Vehicles Tab */}
