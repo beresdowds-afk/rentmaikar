@@ -18,6 +18,7 @@ import { OwnerPriceNegotiation } from '@/components/negotiation/OwnerPriceNegoti
 import { PhoneVerification } from '@/components/phone/PhoneVerification';
 import { NotificationPreferences } from '@/components/phone/NotificationPreferences';
 import { IoTDevicePurchase } from '@/components/owner/IoTDevicePurchase';
+import { OwnerWeeklyReportReview } from '@/components/inspection/OwnerWeeklyReportReview';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -38,6 +39,7 @@ import {
   Settings,
   Eye,
   MessageSquare,
+  ImageIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -356,9 +358,13 @@ export default function OwnerDashboard() {
           </div>
 
           <Tabs defaultValue="vehicles" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex">
+            <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-flex">
               <TabsTrigger value="vehicles">My Vehicles</TabsTrigger>
               <TabsTrigger value="iot-device">IoT Device</TabsTrigger>
+              <TabsTrigger value="inspections" className="flex items-center gap-1">
+                <ImageIcon className="h-4 w-4" />
+                Inspections
+              </TabsTrigger>
               <TabsTrigger value="pricing" className="gap-2">
                 <MessageSquare className="h-4 w-4" />
                 Pricing
@@ -371,6 +377,11 @@ export default function OwnerDashboard() {
             {/* IoT Device Tab */}
             <TabsContent value="iot-device">
               <IoTDevicePurchase />
+            </TabsContent>
+
+            {/* Inspections Tab */}
+            <TabsContent value="inspections">
+              <OwnerWeeklyReportReview />
             </TabsContent>
 
             {/* Pricing Tab */}

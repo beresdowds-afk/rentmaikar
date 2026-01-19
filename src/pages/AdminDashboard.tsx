@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff, Camera } from "lucide-react";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
@@ -10,6 +10,7 @@ import { UserAccountsView } from "@/components/admin/UserAccountsView";
 import { DailyPlanManagement } from "@/components/admin/DailyPlanManagement";
 import { AdminIncidentManagement } from "@/components/admin/AdminIncidentManagement";
 import { VehicleRecallManagement } from "@/components/admin/VehicleRecallManagement";
+import { AdminWeeklyReportManagement } from "@/components/admin/AdminWeeklyReportManagement";
 import { AdminPriceNegotiation } from "@/components/negotiation/AdminPriceNegotiation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -398,6 +399,10 @@ const AdminDashboard = () => {
                 <Ban className="h-4 w-4" />
                 Daily Plans
               </TabsTrigger>
+              <TabsTrigger value="weekly-reports" className="flex items-center gap-1">
+                <Camera className="h-4 w-4" />
+                Weekly Reports
+              </TabsTrigger>
               <TabsTrigger value="fees">Fee Structure</TabsTrigger>
               <TabsTrigger value="secrets" className="flex items-center gap-1">
                 <KeyRound className="h-4 w-4" />
@@ -560,6 +565,10 @@ const AdminDashboard = () => {
 
             <TabsContent value="daily-plans">
               <DailyPlanManagement />
+            </TabsContent>
+
+            <TabsContent value="weekly-reports">
+              <AdminWeeklyReportManagement />
             </TabsContent>
 
             <TabsContent value="fees">
