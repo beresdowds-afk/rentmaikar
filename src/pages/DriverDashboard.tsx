@@ -16,6 +16,7 @@ import { PhoneVerification } from '@/components/phone/PhoneVerification';
 import { NotificationPreferences } from '@/components/phone/NotificationPreferences';
 import { IncidentReportForm } from '@/components/incidents/IncidentReportForm';
 import { WeeklyInspectionReport } from '@/components/inspection/WeeklyInspectionReport';
+import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -202,7 +203,7 @@ export default function DriverDashboard() {
           </div>
 
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-flex">
+            <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-flex">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="payments">Payments</TabsTrigger>
               <TabsTrigger value="negotiate">Price Negotiation</TabsTrigger>
@@ -213,6 +214,10 @@ export default function DriverDashboard() {
               <TabsTrigger value="incidents" className="flex items-center gap-1">
                 <Wrench className="h-3 w-3" />
                 Incidents
+              </TabsTrigger>
+              <TabsTrigger value="agreements" className="flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                Agreements
               </TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -421,6 +426,11 @@ export default function DriverDashboard() {
                 vehicleId={vehicle.id}
                 vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
               />
+            </TabsContent>
+
+            {/* Agreements Tab */}
+            <TabsContent value="agreements" className="space-y-6">
+              <UserAgreementsList userType="driver" />
             </TabsContent>
 
             {/* Documents Tab */}
