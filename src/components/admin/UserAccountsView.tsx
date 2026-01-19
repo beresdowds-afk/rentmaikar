@@ -7,10 +7,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
-import { Eye, Search, Users, Car, User, Loader2, MapPin, Phone, Mail, Calendar, DollarSign } from 'lucide-react';
+import { Eye, Search, Users, Car, User, Loader2, Phone, Mail, FileText, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { OwnerDashboardPreview } from './previews/OwnerDashboardPreview';
 import { DriverDashboardPreview } from './previews/DriverDashboardPreview';
+import { CreateAgreementDialog } from './CreateAgreementDialog';
 
 interface UserWithRole {
   id: string;
@@ -29,6 +30,7 @@ export function UserAccountsView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [createAgreementOpen, setCreateAgreementOpen] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -170,14 +172,21 @@ export function UserAccountsView() {
                 View individual owner and driver dashboards (read-only)
               </CardDescription>
             </div>
-            <div className="relative w-full md:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name, email, or phone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+            <div className="flex items-center gap-3">
+              <Button onClick={() => setCreateAgreementOpen(true)} className="gap-2">
+                <FileText className="h-4 w-4" />
+                <Plus className="h-3 w-3" />
+                New Agreement
+              </Button>
+              <div className="relative w-full md:w-80">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, email, or phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -264,6 +273,12 @@ export function UserAccountsView() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Create Agreement Dialog */}
+      <CreateAgreementDialog
+        open={createAgreementOpen}
+        onOpenChange={setCreateAgreementOpen}
+      />
     </>
   );
 }
