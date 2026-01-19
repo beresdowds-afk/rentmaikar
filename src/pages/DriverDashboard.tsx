@@ -406,6 +406,15 @@ export default function DriverDashboard() {
               <DriverPriceNegotiation />
             </TabsContent>
 
+            {/* Weekly Inspection Tab */}
+            <TabsContent value="inspection" className="space-y-6">
+              <WeeklyInspectionReport
+                vehicleId={vehicle.id}
+                vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                ownerId={null}
+              />
+            </TabsContent>
+
             {/* Incidents Tab */}
             <TabsContent value="incidents" className="space-y-6">
               <IncidentReportForm 
