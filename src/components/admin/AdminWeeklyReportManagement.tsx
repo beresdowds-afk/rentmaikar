@@ -32,6 +32,7 @@ import {
   ArrowLeftRight,
   FileWarning,
   Car,
+  FileDown,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
@@ -49,6 +50,7 @@ export function AdminWeeklyReportManagement() {
   const [zoomPhotos, setZoomPhotos] = useState<Array<{ url: string | null; label: string; timestamp?: string | null }>>([]);
   const [compareDialogOpen, setCompareDialogOpen] = useState(false);
   const [compareVehicleReports, setCompareVehicleReports] = useState<InspectionReport[]>([]);
+  const [downloadingReportId, setDownloadingReportId] = useState<string | null>(null);
 
   useEffect(() => {
     if (settings) {
@@ -98,6 +100,51 @@ export function AdminWeeklyReportManagement() {
     const vehicleReports = reports.filter(r => r.vehicle_id === report.vehicle_id);
     setCompareVehicleReports(vehicleReports);
     setCompareDialogOpen(true);
+  };
+
+  const handleDownloadPdf = async (report: InspectionReport) => {
+    setDownloadingReportId(report.id);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-inspection-pdf', {
+        body: {
+          reportId: report.id,
+          vehicleInfo: {
+            make: 'Vehicle',
+            model: report.vehicle_id.slice(0, 8),
+            year: new Date().getFullYear(),
+            licensePlate: 'N/A',
+          },
+          driverInfo: {
+            name: 'Driver',
+            email: 'driver@example.com',
+          },
+          ownerInfo: report.owner_id ? {
+            name: 'Owner',
+            email: 'owner@example.com',
+          } : null,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.pdf) {
+        // Create download link from base64 PDF
+        const link = document.createElement('a');
+        link.href = data.pdf;
+        link.download = data.filename || `inspection-report-${report.id.slice(0, 8)}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast.success('PDF report downloaded successfully');
+      }
+    } catch (error: any) {
+      console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF report');
+    } finally {
+      setDownloadingReportId(null);
+    }
   };
 
   const handleAdminDecision = async (decision: string) => {
@@ -274,6 +321,8 @@ export function AdminWeeklyReportManagement() {
                 onViewPhotos={() => handleViewPhotos(report)}
                 onCompare={() => handleComparePhotos(report)}
                 onReview={() => openReviewDialog(report)}
+                onDownloadPdf={() => handleDownloadPdf(report)}
+                isDownloading={downloadingReportId === report.id}
               />
             ))
           )}
@@ -300,6 +349,8 @@ export function AdminWeeklyReportManagement() {
                 onViewPhotos={() => handleViewPhotos(report)}
                 onCompare={() => handleComparePhotos(report)}
                 onReview={() => openReviewDialog(report)}
+                onDownloadPdf={() => handleDownloadPdf(report)}
+                isDownloading={downloadingReportId === report.id}
               />
             ))
           )}
@@ -325,6 +376,8 @@ export function AdminWeeklyReportManagement() {
                 onViewPhotos={() => handleViewPhotos(report)}
                 onCompare={() => handleComparePhotos(report)}
                 onReview={() => openReviewDialog(report)}
+                onDownloadPdf={() => handleDownloadPdf(report)}
+                isDownloading={downloadingReportId === report.id}
               />
             ))
           )}
@@ -349,6 +402,8 @@ export function AdminWeeklyReportManagement() {
                 report={report}
                 onViewPhotos={() => handleViewPhotos(report)}
                 onCompare={() => handleComparePhotos(report)}
+                onDownloadPdf={() => handleDownloadPdf(report)}
+                isDownloading={downloadingReportId === report.id}
               />
             ))
           )}
@@ -487,9 +542,11 @@ interface ReportCardProps {
   onViewPhotos: () => void;
   onCompare: () => void;
   onReview?: () => void;
+  onDownloadPdf: () => void;
+  isDownloading?: boolean;
 }
 
-function ReportCard({ report, showForceOption, onViewPhotos, onCompare, onReview }: ReportCardProps) {
+function ReportCard({ report, showForceOption, onViewPhotos, onCompare, onReview, onDownloadPdf, isDownloading }: ReportCardProps) {
   const photoCount = PHOTO_TYPES.filter(pt => report[pt.key as keyof InspectionReport]).length;
   
   const getStatusBadge = () => {
@@ -541,7 +598,7 @@ function ReportCard({ report, showForceOption, onViewPhotos, onCompare, onReview
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={onViewPhotos}>
               <Eye className="h-4 w-4 mr-1" />
               Photos
@@ -549,6 +606,14 @@ function ReportCard({ report, showForceOption, onViewPhotos, onCompare, onReview
             <Button variant="outline" size="sm" onClick={onCompare}>
               <ArrowLeftRight className="h-4 w-4 mr-1" />
               Compare
+            </Button>
+            <Button variant="outline" size="sm" onClick={onDownloadPdf} disabled={isDownloading}>
+              {isDownloading ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <FileDown className="h-4 w-4 mr-1" />
+              )}
+              PDF
             </Button>
             {onReview && (
               <Button size="sm" onClick={onReview}>
