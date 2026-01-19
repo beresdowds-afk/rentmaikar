@@ -1,28 +1,30 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface IoTAccidentData {
-  vehicleId: string;
-  driverId: string;
-  ownerId?: string;
-  triggerType: 'sudden_deceleration' | 'impact' | 'rollover' | 'airbag';
-  decelerationG: number; // G-force of deceleration
-  speedAtImpact: number; // Speed in mph when detected
-  latitude: number;
-  longitude: number;
-  timestamp: string;
-  deviceId: string;
-  additionalData?: {
-    heading?: number;
-    altitude?: number;
-    batteryLevel?: number;
-  };
-}
+// Input validation schema with proper range checks
+const iotAccidentSchema = z.object({
+  vehicleId: z.string().uuid("Invalid vehicle ID"),
+  driverId: z.string().uuid("Invalid driver ID"),
+  ownerId: z.string().uuid("Invalid owner ID").optional(),
+  triggerType: z.enum(['sudden_deceleration', 'impact', 'rollover', 'airbag']),
+  decelerationG: z.number().min(0, "Deceleration cannot be negative").max(100, "Unrealistic deceleration value"),
+  speedAtImpact: z.number().min(0, "Speed cannot be negative").max(300, "Unrealistic speed value"),
+  latitude: z.number().min(-90).max(90, "Invalid latitude"),
+  longitude: z.number().min(-180).max(180, "Invalid longitude"),
+  timestamp: z.string().datetime("Invalid timestamp format"),
+  deviceId: z.string().min(1).max(100, "Invalid device ID"),
+  additionalData: z.object({
+    heading: z.number().min(0).max(360).optional(),
+    altitude: z.number().min(-1000).max(50000).optional(),
+    batteryLevel: z.number().min(0).max(100).optional(),
+  }).optional(),
+});
 
 // Thresholds for accident detection
 const ACCIDENT_THRESHOLDS = {
@@ -64,13 +66,63 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const body: IoTAccidentData = await req.json();
+    
+    // Parse and validate request body
+    const rawBody = await req.json();
+    const parseResult = iotAccidentSchema.safeParse(rawBody);
+    
+    if (!parseResult.success) {
+      console.error("[IoTAccident] Validation failed:", parseResult.error.errors);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Invalid request data",
+          details: parseResult.error.errors.map(e => e.message)
+        }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const body = parseResult.data;
 
     console.log("[IoTAccident] Processing accident data:", {
       vehicleId: body.vehicleId,
       triggerType: body.triggerType,
       decelerationG: body.decelerationG,
     });
+
+    // Verify device exists in iot_devices table
+    const { data: device, error: deviceError } = await supabase
+      .from('iot_devices')
+      .select('id, vehicle_id, status')
+      .eq('id', body.deviceId)
+      .maybeSingle();
+
+    if (deviceError || !device) {
+      console.error("[IoTAccident] Device not found:", body.deviceId);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Unknown device ID" 
+        }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Verify vehicle ID matches device's linked vehicle
+    if (device.vehicle_id && device.vehicle_id !== body.vehicleId) {
+      console.error("[IoTAccident] Vehicle ID mismatch:", {
+        expected: device.vehicle_id,
+        received: body.vehicleId,
+      });
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Device not linked to this vehicle" 
+        }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     // Validate minimum threshold
     if (body.decelerationG < ACCIDENT_THRESHOLDS.SUDDEN_DECELERATION_G) {
