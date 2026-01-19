@@ -240,6 +240,75 @@ export type Database = {
           },
         ]
       }
+      legal_agreements: {
+        Row: {
+          admin_witness_id: string | null
+          admin_witness_signature: string | null
+          admin_witnessed_at: string | null
+          agreement_content: string
+          agreement_type: string
+          agreement_version: string
+          created_at: string
+          driver_id: string
+          driver_signature: string | null
+          driver_signed_at: string | null
+          email_sent_at: string | null
+          email_sent_to: Json | null
+          id: string
+          owner_id: string
+          owner_signature: string | null
+          owner_signed_at: string | null
+          pdf_url: string | null
+          status: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          admin_witness_id?: string | null
+          admin_witness_signature?: string | null
+          admin_witnessed_at?: string | null
+          agreement_content: string
+          agreement_type?: string
+          agreement_version?: string
+          created_at?: string
+          driver_id: string
+          driver_signature?: string | null
+          driver_signed_at?: string | null
+          email_sent_at?: string | null
+          email_sent_to?: Json | null
+          id?: string
+          owner_id: string
+          owner_signature?: string | null
+          owner_signed_at?: string | null
+          pdf_url?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          admin_witness_id?: string | null
+          admin_witness_signature?: string | null
+          admin_witnessed_at?: string | null
+          agreement_content?: string
+          agreement_type?: string
+          agreement_version?: string
+          created_at?: string
+          driver_id?: string
+          driver_signature?: string | null
+          driver_signed_at?: string | null
+          email_sent_at?: string | null
+          email_sent_to?: Json | null
+          id?: string
+          owner_id?: string
+          owner_signature?: string | null
+          owner_signed_at?: string | null
+          pdf_url?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: []
+      }
       payment_defaults: {
         Row: {
           amount_due: number

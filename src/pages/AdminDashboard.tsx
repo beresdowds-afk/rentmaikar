@@ -13,6 +13,7 @@ import { AdminIncidentManagement } from "@/components/admin/AdminIncidentManagem
 import { VehicleRecallManagement } from "@/components/admin/VehicleRecallManagement";
 import { AdminWeeklyReportManagement } from "@/components/admin/AdminWeeklyReportManagement";
 import { AdminPriceNegotiation } from "@/components/negotiation/AdminPriceNegotiation";
+import LegalAgreementsManagement from "@/components/admin/LegalAgreementsManagement";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -406,7 +407,11 @@ const AdminDashboard = () => {
               </TabsTrigger>
               <TabsTrigger value="weekly-reports" className="flex items-center gap-1">
                 <Camera className="h-4 w-4" />
-                Weekly Reports
+              Weekly Reports
+              </TabsTrigger>
+              <TabsTrigger value="legal-agreements" className="flex items-center gap-1">
+                <ClipboardList className="h-4 w-4" />
+                Legal Agreements
               </TabsTrigger>
               <TabsTrigger value="fees">Fee Structure</TabsTrigger>
               <TabsTrigger value="secrets" className="flex items-center gap-1">
@@ -578,6 +583,10 @@ const AdminDashboard = () => {
 
             <TabsContent value="weekly-reports">
               <AdminWeeklyReportManagement />
+            </TabsContent>
+
+            <TabsContent value="legal-agreements">
+              <LegalAgreementsManagement />
             </TabsContent>
 
             <TabsContent value="fees">
