@@ -412,11 +412,15 @@ const OwnerRegistration = () => {
                     }
                   />
                   <span className="text-sm text-muted-foreground">
-                    I agree to the{" "}
-                    <a href="#" className="text-accent hover:underline">
-                      Owner Terms of Service
+                    I have read and agree to the{" "}
+                    <a href="/terms" target="_blank" className="text-accent hover:underline font-medium">
+                      Terms of Use
                     </a>{" "}
-                    and understand that a 20% platform fee applies to all rentals
+                    and{" "}
+                    <a href="/privacy" target="_blank" className="text-accent hover:underline font-medium">
+                      Privacy Policy
+                    </a>
+                    , including consent for IoT tracking and the 20% platform fee on all rentals.
                   </span>
                 </label>
                 {errors.agreeTerms && (
