@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, AlertCircle, User, Shield, Users, ArrowLeft, Mail, CheckCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
@@ -27,6 +28,7 @@ const signupSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
   role: z.enum(['driver', 'owner', 'admin'] as const),
+  agreeTerms: z.boolean().refine(val => val, 'You must agree to the Terms of Use and Privacy Policy'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
@@ -87,6 +89,7 @@ const Auth = () => {
       password: '',
       confirmPassword: '',
       role: 'driver',
+      agreeTerms: false,
     },
   });
 
@@ -585,6 +588,28 @@ const Auth = () => {
                     <p className="text-sm text-destructive">{signupForm.formState.errors.confirmPassword.message}</p>
                   )}
                 </div>
+
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="signup-terms"
+                    checked={signupForm.watch('agreeTerms')}
+                    onCheckedChange={(checked) => signupForm.setValue('agreeTerms', checked as boolean)}
+                    disabled={isSubmitting}
+                  />
+                  <label htmlFor="signup-terms" className="text-sm text-muted-foreground cursor-pointer leading-relaxed">
+                    I have read and agree to the{" "}
+                    <a href="/terms" target="_blank" className="text-primary hover:underline font-medium">
+                      Terms of Use
+                    </a>{" "}
+                    and{" "}
+                    <a href="/privacy" target="_blank" className="text-primary hover:underline font-medium">
+                      Privacy Policy
+                    </a>
+                  </label>
+                </div>
+                {signupForm.formState.errors.agreeTerms && (
+                  <p className="text-sm text-destructive">{signupForm.formState.errors.agreeTerms.message}</p>
+                )}
               </CardContent>
               
               <CardFooter>

@@ -333,14 +333,15 @@ const DriverRegistration = () => {
                     }
                   />
                   <span className="text-sm text-muted-foreground">
-                    I agree to the{" "}
-                    <a href="#" className="text-accent hover:underline">
-                      Terms of Service
+                    I have read and agree to the{" "}
+                    <a href="/terms" target="_blank" className="text-accent hover:underline font-medium">
+                      Terms of Use
                     </a>{" "}
                     and{" "}
-                    <a href="#" className="text-accent hover:underline">
+                    <a href="/privacy" target="_blank" className="text-accent hover:underline font-medium">
                       Privacy Policy
                     </a>
+                    , including consent for IoT tracking and remote vehicle deactivation.
                   </span>
                 </label>
                 {errors.agreeTerms && (
