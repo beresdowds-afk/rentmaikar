@@ -1,29 +1,32 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface SendCodeRequest {
-  action: "send_code";
-  phone: string;
-  channel: "sms" | "whatsapp";
-}
+// Input validation schemas
+const phoneSchema = z.string()
+  .min(7)
+  .max(16)
+  .regex(/^\+[1-9]\d{6,14}$/, "Invalid phone number format");
 
-interface VerifyCodeRequest {
-  action: "verify_code";
-  phone: string;
-  code: string;
-}
+const sendCodeSchema = z.object({
+  action: z.literal("send_code"),
+  phone: phoneSchema,
+  channel: z.enum(["sms", "whatsapp"]),
+});
 
-type RequestBody = SendCodeRequest | VerifyCodeRequest;
+const verifyCodeSchema = z.object({
+  action: z.literal("verify_code"),
+  phone: phoneSchema,
+  code: z.string().length(6).regex(/^\d{6}$/, "Code must be 6 digits"),
+});
 
-const isValidPhone = (phone: string): boolean => {
-  const phoneRegex = /^\+[1-9]\d{6,14}$/;
-  return phoneRegex.test(phone.replace(/\s/g, ''));
-};
+const requestSchema = z.discriminatedUnion("action", [sendCodeSchema, verifyCodeSchema]);
 
 const generateVerificationCode = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -58,28 +61,36 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const body: RequestBody = await req.json();
-
-    if (!body.phone || !isValidPhone(body.phone)) {
+    // Parse and validate request body
+    const rawBody = await req.json();
+    const parseResult = requestSchema.safeParse(rawBody);
+    
+    if (!parseResult.success) {
       return new Response(
-        JSON.stringify({ success: false, error: "Invalid phone number format" }),
+        JSON.stringify({ 
+          success: false, 
+          error: "Invalid request data",
+          details: parseResult.error.errors.map(e => e.message)
+        }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
+    const body = parseResult.data;
     const cleanPhone = body.phone.replace(/\s/g, '');
 
     if (body.action === "send_code") {
-      // Generate and store verification code
+      // Generate verification code and hash it before storage
       const code = generateVerificationCode();
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+      const hashedCode = await bcrypt.hash(code);
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // Reduced to 5 minutes for security
 
-      // Update profile with verification code
+      // Update profile with hashed verification code
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           phone: cleanPhone,
-          phone_verification_code: code,
+          phone_verification_code: hashedCode, // Store hashed code
           phone_verification_expires_at: expiresAt.toISOString(),
           phone_verified: false,
         })
@@ -90,7 +101,7 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error("Failed to initiate verification");
       }
 
-      // Send verification code via SMS/WhatsApp
+      // Send verification code via SMS/WhatsApp (send plaintext code to user)
       const smsResponse = await fetch(`${supabaseUrl}/functions/v1/send-sms-notification`, {
         method: 'POST',
         headers: {
@@ -101,7 +112,7 @@ const handler = async (req: Request): Promise<Response> => {
           phone: cleanPhone,
           channel: body.channel,
           notificationType: 'verification_code',
-          verificationCode: code,
+          verificationCode: code, // Send plaintext to user via SMS
         }),
       });
 
@@ -118,14 +129,14 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ 
           success: true, 
           message: `Verification code sent via ${body.channel}`,
-          expiresIn: 600 // seconds
+          expiresIn: 300 // 5 minutes in seconds
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
     if (body.action === "verify_code") {
-      // Get stored verification code
+      // Get stored hashed verification code
       const { data: profile, error: fetchError } = await supabase
         .from('profiles')
         .select('phone_verification_code, phone_verification_expires_at')
@@ -144,15 +155,25 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
 
-      // Check if code matches
-      if (profile.phone_verification_code !== body.code) {
+      // Check if code exists
+      if (!profile.phone_verification_code) {
+        return new Response(
+          JSON.stringify({ success: false, error: "No verification code found. Please request a new one." }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Compare submitted code with stored hash using bcrypt
+      const isValid = await bcrypt.compare(body.code, profile.phone_verification_code);
+      
+      if (!isValid) {
         return new Response(
           JSON.stringify({ success: false, error: "Invalid verification code" }),
           { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
 
-      // Mark phone as verified
+      // Mark phone as verified and clear the code immediately
       const { error: verifyError } = await supabase
         .from('profiles')
         .update({

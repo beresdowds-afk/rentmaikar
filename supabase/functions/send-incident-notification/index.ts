@@ -1,27 +1,40 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface IncidentNotificationRequest {
-  incidentId: string;
-  incidentType: 'accident' | 'maintenance' | 'breakdown' | 'theft' | 'other';
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  vehicleId: string;
-  driverId: string;
-  ownerId?: string;
-  title: string;
-  description: string;
-  isIotDetected: boolean;
-  isLateReport: boolean;
-  location?: string;
-}
+// Input validation schema
+const incidentNotificationSchema = z.object({
+  incidentId: z.string().uuid("Invalid incident ID"),
+  incidentType: z.enum(['accident', 'maintenance', 'breakdown', 'theft', 'other']),
+  severity: z.enum(['low', 'medium', 'high', 'critical']),
+  vehicleId: z.string().uuid("Invalid vehicle ID"),
+  driverId: z.string().uuid("Invalid driver ID"),
+  ownerId: z.string().uuid("Invalid owner ID").optional(),
+  title: z.string().min(1).max(200, "Title too long"),
+  description: z.string().min(1).max(2000, "Description too long"),
+  isIotDetected: z.boolean(),
+  isLateReport: z.boolean(),
+  location: z.string().max(500).optional(),
+});
+
+// HTML escape function to prevent XSS in emails
+const escapeHtml = (str: string): string => {
+  const htmlEntities: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return str.replace(/[&<>"']/g, (char) => htmlEntities[char] || char);
+};
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const ADMIN_EMAIL = "admin@rentmaikar.com";
 
 const getSeverityEmoji = (severity: string): string => {
   const emojis: Record<string, string> = {
@@ -116,14 +129,35 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const body: IncidentNotificationRequest = await req.json();
+    
+    // Parse and validate request body
+    const rawBody = await req.json();
+    const parseResult = incidentNotificationSchema.safeParse(rawBody);
+    
+    if (!parseResult.success) {
+      console.error("[IncidentNotification] Validation failed:", parseResult.error.errors);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Invalid request data",
+          details: parseResult.error.errors.map(e => e.message)
+        }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const body = parseResult.data;
 
     console.log("[IncidentNotification] Processing incident:", body.incidentId);
 
     const sevEmoji = getSeverityEmoji(body.severity);
     const typeEmoji = getTypeEmoji(body.incidentType);
-    const lateWarning = body.isLateReport ? '⚠️ LATE REPORT (>1 hour after occurrence)' : '';
     const iotBadge = body.isIotDetected ? '🤖 IoT Detected' : '👤 Driver Reported';
+
+    // Escape user-provided content to prevent XSS
+    const safeTitle = escapeHtml(body.title);
+    const safeDescription = escapeHtml(body.description);
+    const safeLocation = body.location ? escapeHtml(body.location) : null;
 
     // Fetch driver info
     const { data: driverProfile } = await supabase
@@ -163,6 +197,11 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // Escape profile data
+    const safeDriverName = driverProfile?.full_name ? escapeHtml(driverProfile.full_name) : 'Unknown';
+    const safeDriverEmail = driverProfile?.email ? escapeHtml(driverProfile.email) : 'N/A';
+    const safeDriverPhone = driverProfile?.phone ? escapeHtml(driverProfile.phone) : 'N/A';
+
     // Build email content
     const emailSubject = `${sevEmoji} ${typeEmoji} ${body.incidentType.toUpperCase()} Report - Vehicle Incident`;
     const emailHtml = `
@@ -183,8 +222,8 @@ const handler = async (req: Request): Promise<Response> => {
           ` : ''}
           
           <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
-            <h2 style="margin: 0 0 12px 0; color: #1f2937;">${typeEmoji} ${body.title}</h2>
-            <p style="color: #6b7280; margin: 0;">${body.description}</p>
+            <h2 style="margin: 0 0 12px 0; color: #1f2937;">${typeEmoji} ${safeTitle}</h2>
+            <p style="color: #6b7280; margin: 0;">${safeDescription}</p>
           </div>
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
@@ -201,16 +240,16 @@ const handler = async (req: Request): Promise<Response> => {
           <div style="background: white; padding: 16px; border-radius: 8px; margin-top: 16px;">
             <h3 style="margin: 0 0 12px 0; color: #1f2937;">Driver Information</h3>
             <p style="margin: 0; color: #6b7280;">
-              <strong>Name:</strong> ${driverProfile?.full_name || 'Unknown'}<br>
-              <strong>Email:</strong> ${driverProfile?.email || 'N/A'}<br>
-              <strong>Phone:</strong> ${driverProfile?.phone || 'N/A'}
+              <strong>Name:</strong> ${safeDriverName}<br>
+              <strong>Email:</strong> ${safeDriverEmail}<br>
+              <strong>Phone:</strong> ${safeDriverPhone}
             </p>
           </div>
           
-          ${body.location ? `
+          ${safeLocation ? `
             <div style="background: white; padding: 16px; border-radius: 8px; margin-top: 16px;">
               <h3 style="margin: 0 0 8px 0; color: #1f2937;">📍 Location</h3>
-              <p style="margin: 0; color: #6b7280;">${body.location}</p>
+              <p style="margin: 0; color: #6b7280;">${safeLocation}</p>
             </div>
           ` : ''}
         </div>
@@ -223,7 +262,7 @@ const handler = async (req: Request): Promise<Response> => {
       </div>
     `;
 
-    // Build SMS message
+    // Build SMS message (plain text, no HTML escaping needed)
     const smsMessage = `${sevEmoji} RENTMAIKAR INCIDENT\n\n${typeEmoji} ${body.incidentType.toUpperCase()}: ${body.title}\n\nSeverity: ${body.severity}\nDriver: ${driverProfile?.full_name || 'Unknown'}\n${body.isLateReport ? '\n⚠️ LATE REPORT' : ''}\n\nCheck dashboard for details.`;
 
     const results = {
