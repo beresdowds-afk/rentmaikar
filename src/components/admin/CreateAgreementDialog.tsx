@@ -14,10 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Send, FileText } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Send, FileText, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import SignaturePad from '@/components/legal/SignaturePad';
 import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Profile {
   user_id: string;
@@ -35,12 +37,24 @@ interface Vehicle {
   owner_id: string;
 }
 
+interface Negotiation {
+  id: string;
+  driver_id: string;
+  owner_id: string | null;
+  vehicle_id: string | null;
+  status: string;
+  final_daily_rate: number | null;
+  vehicle_make: string | null;
+  vehicle_model: string | null;
+  vehicle_year: number | null;
+  currency: string;
+}
+
 interface CreateAgreementDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
   preSelectedDriver?: string;
-  preSelectedOwner?: string;
 }
 
 export function CreateAgreementDialog({
@@ -48,16 +62,15 @@ export function CreateAgreementDialog({
   onOpenChange,
   onSuccess,
   preSelectedDriver,
-  preSelectedOwner,
 }: CreateAgreementDialogProps) {
   const [drivers, setDrivers] = useState<Profile[]>([]);
   const [owners, setOwners] = useState<Profile[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [negotiations, setNegotiations] = useState<Negotiation[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [selectedDriver, setSelectedDriver] = useState<string>(preSelectedDriver || '');
-  const [selectedOwner, setSelectedOwner] = useState<string>(preSelectedOwner || '');
-  const [selectedVehicle, setSelectedVehicle] = useState<string>('');
+  const [selectedNegotiation, setSelectedNegotiation] = useState<string>('');
   const [adminSignature, setAdminSignature] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -69,8 +82,12 @@ export function CreateAgreementDialog({
 
   useEffect(() => {
     if (preSelectedDriver) setSelectedDriver(preSelectedDriver);
-    if (preSelectedOwner) setSelectedOwner(preSelectedOwner);
-  }, [preSelectedDriver, preSelectedOwner]);
+  }, [preSelectedDriver]);
+
+  // Reset negotiation selection when driver changes
+  useEffect(() => {
+    setSelectedNegotiation('');
+  }, [selectedDriver]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -97,6 +114,14 @@ export function CreateAgreementDialog({
         .select('*');
 
       setVehicles(vehiclesData || []);
+
+      // Fetch approved negotiations (driver's choice of vehicles)
+      const { data: negotiationsData } = await supabase
+        .from('price_negotiations')
+        .select('*')
+        .eq('status', 'approved');
+
+      setNegotiations(negotiationsData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to load data');
@@ -105,9 +130,21 @@ export function CreateAgreementDialog({
     }
   };
 
+  // Get negotiations for the selected driver
+  const driverNegotiations = negotiations.filter(n => n.driver_id === selectedDriver);
+
+  // Get the selected negotiation details
+  const currentNegotiation = negotiations.find(n => n.id === selectedNegotiation);
+
   const handleCreate = async () => {
-    if (!selectedDriver || !selectedOwner || !selectedVehicle || !adminSignature) {
-      toast.error('Please fill all fields and provide your witness signature');
+    if (!selectedDriver || !selectedNegotiation || !adminSignature) {
+      toast.error('Please select a driver, their approved vehicle choice, and provide your witness signature');
+      return;
+    }
+
+    const negotiation = negotiations.find(n => n.id === selectedNegotiation);
+    if (!negotiation || !negotiation.owner_id || !negotiation.vehicle_id) {
+      toast.error('Invalid negotiation selected');
       return;
     }
 
@@ -117,8 +154,8 @@ export function CreateAgreementDialog({
       if (!user) throw new Error('Not authenticated');
 
       const driver = drivers.find(d => d.user_id === selectedDriver);
-      const owner = owners.find(o => o.user_id === selectedOwner);
-      const vehicle = vehicles.find(v => v.id === selectedVehicle);
+      const owner = owners.find(o => o.user_id === negotiation.owner_id);
+      const vehicle = vehicles.find(v => v.id === negotiation.vehicle_id);
 
       const agreementContent = `
 VEHICLE RENTAL AGREEMENT
@@ -134,6 +171,9 @@ ${vehicle?.year} ${vehicle?.make} ${vehicle?.model}
 License Plate: ${vehicle?.license_plate}
 ${vehicle?.vin ? `VIN: ${vehicle.vin}` : ''}
 
+NEGOTIATION REFERENCE: ${negotiation.id}
+Agreed Daily Rate: As per RentMaiKar platform pricing
+
 This agreement is governed by the RentMaiKar Terms of Use and Privacy Policy.
 All pricing and payment terms are as displayed on the RentMaiKar platform.
       `.trim();
@@ -142,8 +182,8 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
         .from('legal_agreements')
         .insert({
           driver_id: selectedDriver,
-          owner_id: selectedOwner,
-          vehicle_id: selectedVehicle,
+          owner_id: negotiation.owner_id,
+          vehicle_id: negotiation.vehicle_id,
           agreement_content: agreementContent,
           admin_witness_signature: adminSignature,
           admin_witnessed_at: new Date().toISOString(),
@@ -167,12 +207,26 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
 
   const resetForm = () => {
     setSelectedDriver(preSelectedDriver || '');
-    setSelectedOwner(preSelectedOwner || '');
-    setSelectedVehicle('');
+    setSelectedNegotiation('');
     setAdminSignature(null);
   };
 
-  const ownerVehicles = vehicles.filter(v => v.owner_id === selectedOwner);
+  const getOwnerName = (ownerId: string | null) => {
+    if (!ownerId) return 'Unknown Owner';
+    const owner = owners.find(o => o.user_id === ownerId);
+    return owner?.full_name || owner?.email || 'Unknown Owner';
+  };
+
+  const getVehicleInfo = (negotiation: Negotiation) => {
+    if (negotiation.vehicle_id) {
+      const vehicle = vehicles.find(v => v.id === negotiation.vehicle_id);
+      if (vehicle) {
+        return `${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.license_plate})`;
+      }
+    }
+    // Fallback to negotiation data if vehicle not found
+    return `${negotiation.vehicle_year} ${negotiation.vehicle_make} ${negotiation.vehicle_model}`;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -183,7 +237,7 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
             Create New Rental Agreement
           </DialogTitle>
           <DialogDescription>
-            Select the parties and vehicle for this agreement. You will witness the agreement as an administrator.
+            Create an agreement based on the driver's approved vehicle negotiations. Only approved negotiations are shown.
           </DialogDescription>
         </DialogHeader>
 
@@ -193,69 +247,99 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Select Owner</label>
-                <Select 
-                  value={selectedOwner} 
-                  onValueChange={(v) => { setSelectedOwner(v); setSelectedVehicle(''); }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose an owner" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {owners.map(owner => (
-                      <SelectItem key={owner.user_id} value={owner.user_id}>
-                        {owner.full_name || owner.email || 'Unknown'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Select Driver</label>
-                <Select value={selectedDriver} onValueChange={setSelectedDriver}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a driver" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {drivers.map(driver => (
-                      <SelectItem key={driver.user_id} value={driver.user_id}>
-                        {driver.full_name || driver.email || 'Unknown'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
+            {/* Step 1: Select Driver */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Select Vehicle</label>
-              <Select 
-                value={selectedVehicle} 
-                onValueChange={setSelectedVehicle} 
-                disabled={!selectedOwner}
-              >
+              <label className="text-sm font-medium">1. Select Driver</label>
+              <Select value={selectedDriver} onValueChange={setSelectedDriver}>
                 <SelectTrigger>
-                  <SelectValue placeholder={selectedOwner ? "Choose a vehicle" : "Select owner first"} />
+                  <SelectValue placeholder="Choose a driver" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ownerVehicles.length === 0 ? (
-                    <SelectItem value="none" disabled>No vehicles found for this owner</SelectItem>
-                  ) : (
-                    ownerVehicles.map(vehicle => (
-                      <SelectItem key={vehicle.id} value={vehicle.id}>
-                        {vehicle.year} {vehicle.make} {vehicle.model} ({vehicle.license_plate})
-                      </SelectItem>
-                    ))
-                  )}
+                  {drivers.map(driver => (
+                    <SelectItem key={driver.user_id} value={driver.user_id}>
+                      {driver.full_name || driver.email || 'Unknown'}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
+            {/* Step 2: Select from Driver's Approved Negotiations */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Administrator Witness Signature</label>
+              <label className="text-sm font-medium">2. Select Driver's Vehicle Choice (Approved Negotiations)</label>
+              {selectedDriver && driverNegotiations.length === 0 ? (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    This driver has no approved vehicle negotiations. The driver must first negotiate and have a rate approved before an agreement can be created.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Select 
+                  value={selectedNegotiation} 
+                  onValueChange={setSelectedNegotiation}
+                  disabled={!selectedDriver || driverNegotiations.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={selectedDriver ? "Choose from driver's approved vehicles" : "Select driver first"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {driverNegotiations.map(negotiation => (
+                      <SelectItem key={negotiation.id} value={negotiation.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{getVehicleInfo(negotiation)}</span>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="text-muted-foreground text-sm">
+                            Owner: {getOwnerName(negotiation.owner_id)}
+                          </span>
+                          {negotiation.final_daily_rate && (
+                            <>
+                              <span className="text-muted-foreground">•</span>
+                              <Badge variant="outline" className="text-xs">
+                                {negotiation.currency} {negotiation.final_daily_rate}/day
+                              </Badge>
+                            </>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Show selected details */}
+            {currentNegotiation && (
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <h4 className="font-medium text-sm">Agreement Details Preview</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Driver:</span>{' '}
+                    {drivers.find(d => d.user_id === selectedDriver)?.full_name || 'Unknown'}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Owner:</span>{' '}
+                    {getOwnerName(currentNegotiation.owner_id)}
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Vehicle:</span>{' '}
+                    {getVehicleInfo(currentNegotiation)}
+                  </div>
+                  {currentNegotiation.final_daily_rate && (
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground">Agreed Rate:</span>{' '}
+                      <Badge variant="secondary">
+                        {currentNegotiation.currency} {currentNegotiation.final_daily_rate}/day
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Admin Signature */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">3. Administrator Witness Signature</label>
               <SignaturePad onSignatureChange={setAdminSignature} />
             </div>
 
@@ -265,7 +349,7 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
               </Button>
               <Button 
                 onClick={handleCreate} 
-                disabled={isCreating || !selectedDriver || !selectedOwner || !selectedVehicle || !adminSignature}
+                disabled={isCreating || !selectedDriver || !selectedNegotiation || !adminSignature}
               >
                 {isCreating ? (
                   <>
