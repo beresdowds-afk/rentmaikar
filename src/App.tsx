@@ -17,6 +17,8 @@ import OwnerDashboard from "./pages/OwnerDashboard";
 import Catalogue from "./pages/Catalogue";
 import AdminDashboard from "./pages/AdminDashboard";
 import ApiDocs from "./pages/ApiDocs";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,7 +55,16 @@ const App = () => (
                   } 
                 />
                 <Route path="/catalogue/:category" element={<Catalogue />} />
-                <Route path="/api-docs" element={<ApiDocs />} />
+                <Route 
+                  path="/api-docs" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <ApiDocs />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
                 <Route 
                   path="/admin" 
                   element={

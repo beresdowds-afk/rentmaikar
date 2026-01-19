@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin, Code } from "lucide-react";
+import { Mail, Phone, MapPin, Code, FileText, Shield } from "lucide-react";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Footer = () => {
+  const { userRole } = useAuth();
+  
   return (
     <footer className="bg-primary text-primary-foreground">
       <div className="container mx-auto px-4 py-12">
@@ -50,10 +53,24 @@ const Footer = () => {
                   List Your Vehicle
                 </Link>
               </li>
+              {userRole === 'admin' && (
+                <li>
+                  <Link to="/api-docs" className="text-primary-foreground/70 hover:text-accent transition-colors flex items-center gap-1">
+                    <Code className="w-3 h-3" />
+                    API Documentation
+                  </Link>
+                </li>
+              )}
               <li>
-                <Link to="/api-docs" className="text-primary-foreground/70 hover:text-accent transition-colors flex items-center gap-1">
-                  <Code className="w-3 h-3" />
-                  API Documentation
+                <Link to="/terms" className="text-primary-foreground/70 hover:text-accent transition-colors flex items-center gap-1">
+                  <FileText className="w-3 h-3" />
+                  Terms of Use
+                </Link>
+              </li>
+              <li>
+                <Link to="/privacy" className="text-primary-foreground/70 hover:text-accent transition-colors flex items-center gap-1">
+                  <Shield className="w-3 h-3" />
+                  Privacy Policy
                 </Link>
               </li>
             </ul>
