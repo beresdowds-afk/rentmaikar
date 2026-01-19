@@ -7,6 +7,7 @@ import { RegionProvider } from "@/contexts/RegionContext";
 import { UserTypeProvider } from "@/contexts/UserTypeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import CookieConsent from "@/components/CookieConsent";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -31,6 +32,7 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <CookieConsent />
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<Index />} />
