@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      contact_settings: {
+        Row: {
+          contact_type: string
+          contact_value: string
+          created_at: string
+          display_name: string | null
+          id: string
+          is_active: boolean
+          region: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          contact_type: string
+          contact_value: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          region: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          contact_type?: string
+          contact_value?: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          region?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       device_activity_log: {
         Row: {
           action: string
@@ -131,6 +167,110 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "faq_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbox_conversations: {
+        Row: {
+          assigned_to: string | null
+          channel: string
+          created_at: string
+          id: string
+          last_message_at: string
+          priority: string
+          region: string
+          status: string
+          subject: string | null
+          updated_at: string
+          user_email: string | null
+          user_id: string | null
+          user_name: string | null
+          user_phone: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          channel: string
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          priority?: string
+          region: string
+          status?: string
+          subject?: string | null
+          updated_at?: string
+          user_email?: string | null
+          user_id?: string | null
+          user_name?: string | null
+          user_phone?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          channel?: string
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          priority?: string
+          region?: string
+          status?: string
+          subject?: string | null
+          updated_at?: string
+          user_email?: string | null
+          user_id?: string | null
+          user_name?: string | null
+          user_phone?: string | null
+        }
+        Relationships: []
+      }
+      inbox_messages: {
+        Row: {
+          channel: string
+          content: string
+          conversation_id: string
+          created_at: string
+          external_id: string | null
+          id: string
+          is_read: boolean
+          metadata: Json | null
+          read_at: string | null
+          sender_id: string | null
+          sender_name: string | null
+          sender_type: string
+        }
+        Insert: {
+          channel: string
+          content: string
+          conversation_id: string
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          is_read?: boolean
+          metadata?: Json | null
+          read_at?: string | null
+          sender_id?: string | null
+          sender_name?: string | null
+          sender_type: string
+        }
+        Update: {
+          channel?: string
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          is_read?: boolean
+          metadata?: Json | null
+          read_at?: string | null
+          sender_id?: string | null
+          sender_name?: string | null
+          sender_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "inbox_conversations"
             referencedColumns: ["id"]
           },
         ]
