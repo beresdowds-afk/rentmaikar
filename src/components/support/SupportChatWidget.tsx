@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, MinusCircle, Paperclip, FileIcon, ImageIcon, XCircle } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { MessageCircle, X, Send, Loader2, MinusCircle, Paperclip, FileIcon, ImageIcon, XCircle, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useSupportChat, MessageAttachment } from '@/hooks/useSupportChat';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = [
@@ -82,8 +83,10 @@ const SupportChatWidget = () => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [message, setMessage] = useState('');
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   const {
     messages,
@@ -102,17 +105,16 @@ const SupportChatWidget = () => {
     }
   }, [messages, isOpen, isMinimized]);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    for (const file of Array.from(files)) {
+  const processFiles = useCallback(async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    
+    for (const file of fileArray) {
       if (file.size > MAX_FILE_SIZE) {
-        alert(`File "${file.name}" is too large. Maximum size is 10MB.`);
+        toast.error(`File "${file.name}" is too large. Maximum size is 10MB.`);
         continue;
       }
       if (!ALLOWED_TYPES.includes(file.type)) {
-        alert(`File type "${file.type}" is not supported.`);
+        toast.error(`File type "${file.type}" is not supported.`);
         continue;
       }
 
@@ -121,12 +123,52 @@ const SupportChatWidget = () => {
         setPendingAttachments(prev => [...prev, attachment]);
       }
     }
+  }, [uploadAttachment]);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    await processFiles(files);
 
     // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
+
+  // Drag and drop handlers
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Only set isDragging to false if we're leaving the drop zone entirely
+    if (dropZoneRef.current && !dropZoneRef.current.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      await processFiles(files);
+    }
+  }, [processFiles]);
 
   const handleRemoveAttachment = (index: number) => {
     setPendingAttachments(prev => prev.filter((_, i) => i !== index));
@@ -177,11 +219,25 @@ const SupportChatWidget = () => {
       {/* Chat Window */}
       {isOpen && (
         <div
+          ref={dropZoneRef}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
           className={cn(
-            "bg-card border border-border rounded-xl shadow-2xl transition-all duration-300 overflow-hidden",
+            "bg-card border border-border rounded-xl shadow-2xl transition-all duration-300 overflow-hidden relative",
             isMinimized ? "w-64 h-12" : "w-80 sm:w-96 h-[32rem]"
           )}
         >
+          {/* Drag overlay */}
+          {isDragging && !isMinimized && (
+            <div className="absolute inset-0 z-50 bg-primary/10 backdrop-blur-sm border-2 border-dashed border-primary rounded-xl flex flex-col items-center justify-center">
+              <Upload className="w-12 h-12 text-primary mb-2 animate-bounce" />
+              <p className="text-sm font-medium text-primary">Drop files here</p>
+              <p className="text-xs text-muted-foreground mt-1">Images, PDFs, documents</p>
+            </div>
+          )}
+
           {/* Header */}
           <div className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -224,7 +280,7 @@ const SupportChatWidget = () => {
                       Need help? Send us a message and we'll get back to you as soon as possible.
                     </p>
                     <p className="text-xs text-muted-foreground mt-2">
-                      You can also attach screenshots or documents.
+                      Drag & drop files or click <Paperclip className="inline w-3 h-3" /> to attach.
                     </p>
                   </div>
                 ) : (
@@ -312,7 +368,7 @@ const SupportChatWidget = () => {
                   </Button>
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1 text-center">
-                  Ctrl+Enter to send • Max 10MB per file
+                  Ctrl+Enter to send • Drag & drop files
                 </p>
               </div>
             </>
