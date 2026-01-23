@@ -160,8 +160,8 @@ export function useRentToOwn() {
     toast.success(`Rent to Own feature ${enabled ? 'enabled' : 'disabled'}`);
   };
 
-  // Fetch listings based on role
-  const fetchListings = useCallback(async (role: 'admin' | 'owner' | 'driver') => {
+  // Fetch listings based on role, with optional region filter for drivers
+  const fetchListings = useCallback(async (role: 'admin' | 'owner' | 'driver', regionCurrency?: RTOCurrency) => {
     let query = supabase
       .from('rent_to_own_listings')
       .select(`
@@ -175,6 +175,10 @@ export function useRentToOwn() {
       query = query.eq('owner_id', user.id);
     } else if (role === 'driver') {
       query = query.eq('is_available', true).eq('status', 'active');
+      // Filter by region currency to ensure drivers only see listings from their country
+      if (regionCurrency) {
+        query = query.eq('currency', regionCurrency);
+      }
     }
 
     const { data, error } = await query;
