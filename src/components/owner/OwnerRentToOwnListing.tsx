@@ -26,6 +26,7 @@ import {
   Send,
   RefreshCw,
   Info,
+  Globe,
 } from 'lucide-react';
 
 interface Vehicle {
@@ -54,6 +55,7 @@ export function OwnerRentToOwnListing() {
   
   // Form state
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState<'USA' | 'Nigeria'>(country === 'Nigeria' ? 'Nigeria' : 'USA');
   const [totalPrice, setTotalPrice] = useState('');
   const [downPayment, setDownPayment] = useState('');
   const [monthlyPayment, setMonthlyPayment] = useState('');
@@ -109,7 +111,7 @@ export function OwnerRentToOwnListing() {
       down_payment: parseFloat(downPayment),
       monthly_payment: parseFloat(monthlyPayment),
       duration_months: parseInt(durationMonths),
-      currency: country === 'Nigeria' ? 'NGN' : 'USD',
+      currency: selectedCountry === 'Nigeria' ? 'NGN' : 'USD',
       allow_buyout: allowBuyout,
       allow_conversion_to_rental: allowConversion,
       owner_message: ownerMessage || undefined,
@@ -133,6 +135,7 @@ export function OwnerRentToOwnListing() {
 
   const resetForm = () => {
     setSelectedVehicleId('');
+    setSelectedCountry(country === 'Nigeria' ? 'Nigeria' : 'USA');
     setTotalPrice('');
     setDownPayment('');
     setMonthlyPayment('');
@@ -221,6 +224,37 @@ export function OwnerRentToOwnListing() {
                           No active vehicles found. Add a vehicle first.
                         </p>
                       )}
+                    </div>
+
+                    {/* Vehicle Location Country */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
+                        Vehicle Location (Country) *
+                      </Label>
+                      <Select 
+                        value={selectedCountry} 
+                        onValueChange={(value) => setSelectedCountry(value as 'USA' | 'Nigeria')}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="USA">
+                            <span className="flex items-center gap-2">
+                              <span>🇺🇸</span> United States (USD)
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="Nigeria">
+                            <span className="flex items-center gap-2">
+                              <span>🇳🇬</span> Nigeria (NGN)
+                            </span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        This determines which region's drivers can see your listing
+                      </p>
                     </div>
 
                     {/* Financial Terms */}

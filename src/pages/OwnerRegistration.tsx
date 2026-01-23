@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Building, Mail, Phone, MapPin, Car, Calendar, DollarSign, Check, ArrowLeft, Upload } from "lucide-react";
+import { Building, Mail, Phone, MapPin, Car, Calendar, DollarSign, Check, ArrowLeft, Upload, ExternalLink, FileText, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,30 +16,33 @@ import Footer from "@/components/layout/Footer";
 
 const ownerSchema = z.object({
   // Owner Details
-  firstName: z.string().min(2, "First name is required"),
-  lastName: z.string().min(2, "Last name is required"),
-  email: z.string().email("Invalid email address"),
+  firstName: z.string().min(2, "First name is required").max(50, "First name too long"),
+  lastName: z.string().min(2, "Last name is required").max(50, "Last name too long"),
+  email: z.string().email("Invalid email address").max(255, "Email too long"),
   phoneCountry: z.enum(["us", "ng"]),
-  phoneNumber: z.string().min(10, "Phone number is required"),
+  phoneNumber: z.string().min(10, "Phone number is required").max(15, "Phone number too long"),
   
   // Location
   country: z.enum(["usa", "nigeria"]),
   city: z.string().min(1, "City is required"),
-  zipCode: z.string().min(3, "ZIP/Postal code is required"),
+  zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
   
   // Vehicle Details
   vehicleMake: z.string().min(1, "Vehicle make is required"),
-  vehicleModel: z.string().min(1, "Vehicle model is required"),
+  vehicleModel: z.string().min(1, "Vehicle model is required").max(50, "Model name too long"),
   vehicleYear: z.string().min(4, "Vehicle year is required"),
-  vehicleColor: z.string().min(1, "Vehicle color is required"),
-  vehiclePlate: z.string().min(1, "License plate is required"),
+  vehicleColor: z.string().min(1, "Vehicle color is required").max(30, "Color name too long"),
+  vehiclePlate: z.string().min(1, "License plate is required").max(15, "License plate too long"),
   desiredPrice: z.string().min(1, "Desired weekly price is required"),
-  vehicleDescription: z.string().optional(),
+  vehicleDescription: z.string().max(500, "Description too long").optional(),
   
   // Confirmations
   hasRegistration: z.boolean().refine(val => val, "Vehicle registration is required"),
   hasInsurance: z.boolean().refine(val => val, "Insurance is required"),
-  agreeTerms: z.boolean().refine(val => val, "You must agree to terms"),
+  agreeTerms: z.boolean().refine(val => val, "You must agree to Terms of Service"),
+  agreePrivacy: z.boolean().refine(val => val, "You must agree to Privacy Policy"),
+  agreeIoT: z.boolean().refine(val => val, "You must consent to IoT tracking"),
+  agreeFees: z.boolean().refine(val => val, "You must acknowledge platform fees"),
 });
 
 type OwnerFormData = z.infer<typeof ownerSchema>;
@@ -72,6 +75,9 @@ const OwnerRegistration = () => {
       hasRegistration: false,
       hasInsurance: false,
       agreeTerms: false,
+      agreePrivacy: false,
+      agreeIoT: false,
+      agreeFees: false,
     },
   });
 
@@ -403,29 +409,120 @@ const OwnerRegistration = () => {
                 )}
               </div>
 
-              {/* Terms */}
-              <div className="pt-4 border-t border-border">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <Checkbox
-                    onCheckedChange={(checked) =>
-                      setValue("agreeTerms", checked as boolean)
-                    }
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    I have read and agree to the{" "}
-                    <a href="/terms" target="_blank" className="text-accent hover:underline font-medium">
-                      Terms of Use
-                    </a>{" "}
-                    and{" "}
-                    <a href="/privacy" target="_blank" className="text-accent hover:underline font-medium">
-                      Privacy Policy
-                    </a>
-                    , including consent for IoT tracking and the 20% platform fee on all rentals.
-                  </span>
-                </label>
-                {errors.agreeTerms && (
-                  <p className="text-destructive text-sm mt-2">{errors.agreeTerms.message}</p>
-                )}
+              {/* Terms & Policy Acceptance */}
+              <div className="space-y-4 pt-4 border-t border-border">
+                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-accent" />
+                  Terms & Policy Acceptance
+                </h3>
+                
+                {/* Terms of Service */}
+                <div className="p-4 rounded-lg border border-border hover:border-accent/50">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <Checkbox
+                      onCheckedChange={(checked) =>
+                        setValue("agreeTerms", checked as boolean)
+                      }
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          Terms of Service
+                        </span>
+                        <a 
+                          href="/terms" 
+                          target="_blank" 
+                          className="text-accent hover:underline text-sm flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          View <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        I have read and agree to the Terms of Service
+                      </p>
+                    </div>
+                  </label>
+                  {errors.agreeTerms && (
+                    <p className="text-destructive text-sm mt-2">{errors.agreeTerms.message}</p>
+                  )}
+                </div>
+
+                {/* Privacy Policy */}
+                <div className="p-4 rounded-lg border border-border hover:border-accent/50">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <Checkbox
+                      onCheckedChange={(checked) =>
+                        setValue("agreePrivacy", checked as boolean)
+                      }
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium flex items-center gap-2">
+                          <Shield className="w-4 h-4" />
+                          Privacy Policy
+                        </span>
+                        <a 
+                          href="/privacy" 
+                          target="_blank" 
+                          className="text-accent hover:underline text-sm flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          View <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        I have read and agree to the Privacy Policy
+                      </p>
+                    </div>
+                  </label>
+                  {errors.agreePrivacy && (
+                    <p className="text-destructive text-sm mt-2">{errors.agreePrivacy.message}</p>
+                  )}
+                </div>
+
+                {/* IoT Consent */}
+                <div className="p-4 rounded-lg border border-border hover:border-accent/50 bg-accent/5">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <Checkbox
+                      onCheckedChange={(checked) =>
+                        setValue("agreeIoT", checked as boolean)
+                      }
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium">IoT Tracking Device Requirement</span>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        I agree to install Rentmaikar IoT tracking devices on my vehicle(s) and understand that 
+                        this enables real-time GPS tracking, accident detection, and remote deactivation capabilities.
+                      </p>
+                    </div>
+                  </label>
+                  {errors.agreeIoT && (
+                    <p className="text-destructive text-sm mt-2">{errors.agreeIoT.message}</p>
+                  )}
+                </div>
+
+                {/* Platform Fees */}
+                <div className="p-4 rounded-lg border border-border hover:border-accent/50 bg-primary/5">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <Checkbox
+                      onCheckedChange={(checked) =>
+                        setValue("agreeFees", checked as boolean)
+                      }
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium">Platform Fee Acknowledgement</span>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        I acknowledge and agree to the 20% management fee deducted from all rental earnings 
+                        before payout to my account.
+                      </p>
+                    </div>
+                  </label>
+                  {errors.agreeFees && (
+                    <p className="text-destructive text-sm mt-2">{errors.agreeFees.message}</p>
+                  )}
+                </div>
               </div>
 
               <Button

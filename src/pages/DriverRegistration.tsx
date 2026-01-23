@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { User, Mail, Phone, MapPin, FileText, Car, Check, ArrowLeft } from "lucide-react";
+import { User, Mail, Phone, MapPin, FileText, Car, Check, ArrowLeft, ExternalLink, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,17 +14,19 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 
 const driverSchema = z.object({
-  firstName: z.string().min(2, "First name is required"),
-  lastName: z.string().min(2, "Last name is required"),
-  email: z.string().email("Invalid email address"),
+  firstName: z.string().min(2, "First name is required").max(50, "First name too long"),
+  lastName: z.string().min(2, "Last name is required").max(50, "Last name too long"),
+  email: z.string().email("Invalid email address").max(255, "Email too long"),
   phoneCountry: z.enum(["us", "ng"]),
-  phoneNumber: z.string().min(10, "Phone number is required"),
+  phoneNumber: z.string().min(10, "Phone number is required").max(15, "Phone number too long"),
   country: z.enum(["usa", "nigeria"]),
   city: z.string().min(1, "City is required"),
-  zipCode: z.string().min(3, "ZIP/Postal code is required"),
+  zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
   rideshareApproval: z.array(z.string()).min(1, "Select at least one platform"),
   hasDriverLicense: z.boolean().refine(val => val, "Driver license is required"),
-  agreeTerms: z.boolean().refine(val => val, "You must agree to terms"),
+  agreeTerms: z.boolean().refine(val => val, "You must agree to Terms of Service"),
+  agreePrivacy: z.boolean().refine(val => val, "You must agree to Privacy Policy"),
+  agreeIoT: z.boolean().refine(val => val, "You must consent to IoT tracking"),
 });
 
 type DriverFormData = z.infer<typeof driverSchema>;
@@ -66,6 +68,8 @@ const DriverRegistration = () => {
       rideshareApproval: [],
       hasDriverLicense: false,
       agreeTerms: false,
+      agreePrivacy: false,
+      agreeIoT: false,
     },
   });
 
@@ -324,29 +328,99 @@ const DriverRegistration = () => {
                 )}
               </div>
 
-              {/* Terms */}
-              <div className="pt-4 border-t border-border">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <Checkbox
-                    onCheckedChange={(checked) =>
-                      setValue("agreeTerms", checked as boolean)
-                    }
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    I have read and agree to the{" "}
-                    <a href="/terms" target="_blank" className="text-accent hover:underline font-medium">
-                      Terms of Use
-                    </a>{" "}
-                    and{" "}
-                    <a href="/privacy" target="_blank" className="text-accent hover:underline font-medium">
-                      Privacy Policy
-                    </a>
-                    , including consent for IoT tracking and remote vehicle deactivation.
-                  </span>
-                </label>
-                {errors.agreeTerms && (
-                  <p className="text-destructive text-sm mt-2">{errors.agreeTerms.message}</p>
-                )}
+              {/* Terms & Policy Acceptance */}
+              <div className="space-y-4 pt-4 border-t border-border">
+                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-accent" />
+                  Terms & Policy Acceptance
+                </h3>
+                
+                {/* Terms of Service */}
+                <div className="p-4 rounded-lg border border-border hover:border-accent/50">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <Checkbox
+                      onCheckedChange={(checked) =>
+                        setValue("agreeTerms", checked as boolean)
+                      }
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          Terms of Service
+                        </span>
+                        <a 
+                          href="/terms" 
+                          target="_blank" 
+                          className="text-accent hover:underline text-sm flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          View <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        I have read and agree to the Terms of Service
+                      </p>
+                    </div>
+                  </label>
+                  {errors.agreeTerms && (
+                    <p className="text-destructive text-sm mt-2">{errors.agreeTerms.message}</p>
+                  )}
+                </div>
+
+                {/* Privacy Policy */}
+                <div className="p-4 rounded-lg border border-border hover:border-accent/50">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <Checkbox
+                      onCheckedChange={(checked) =>
+                        setValue("agreePrivacy", checked as boolean)
+                      }
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium flex items-center gap-2">
+                          <Shield className="w-4 h-4" />
+                          Privacy Policy
+                        </span>
+                        <a 
+                          href="/privacy" 
+                          target="_blank" 
+                          className="text-accent hover:underline text-sm flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          View <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        I have read and agree to the Privacy Policy
+                      </p>
+                    </div>
+                  </label>
+                  {errors.agreePrivacy && (
+                    <p className="text-destructive text-sm mt-2">{errors.agreePrivacy.message}</p>
+                  )}
+                </div>
+
+                {/* IoT Consent */}
+                <div className="p-4 rounded-lg border border-border hover:border-accent/50 bg-warning/5">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <Checkbox
+                      onCheckedChange={(checked) =>
+                        setValue("agreeIoT", checked as boolean)
+                      }
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium">IoT Tracking & Remote Deactivation Consent</span>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        I understand and consent to continuous GPS tracking of the vehicle and acknowledge 
+                        that the vehicle may be remotely deactivated in cases of payment default, unauthorized use, or safety concerns.
+                      </p>
+                    </div>
+                  </label>
+                  {errors.agreeIoT && (
+                    <p className="text-destructive text-sm mt-2">{errors.agreeIoT.message}</p>
+                  )}
+                </div>
               </div>
 
               <Button
