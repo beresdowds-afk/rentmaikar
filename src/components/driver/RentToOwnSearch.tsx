@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 
 export function RentToOwnSearch() {
-  const { currencySymbol } = useRegion();
+  const { currencySymbol, currency } = useRegion();
   const { settings, listings, loading, fetchListings } = useRentToOwn();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,9 +34,10 @@ export function RentToOwnSearch() {
 
   useEffect(() => {
     if (settings?.feature_enabled) {
-      fetchListings('driver');
+      // Pass the driver's region currency to filter listings by country
+      fetchListings('driver', currency);
     }
-  }, [settings?.feature_enabled, fetchListings]);
+  }, [settings?.feature_enabled, fetchListings, currency]);
 
   const filteredListings = listings.filter(listing => {
     const matchesSearch = 
