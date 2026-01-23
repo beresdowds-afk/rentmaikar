@@ -562,6 +562,233 @@ export type Database = {
         }
         Relationships: []
       }
+      rent_to_own_agreements: {
+        Row: {
+          admin_witness_id: string | null
+          admin_witness_signature: string | null
+          admin_witnessed_at: string | null
+          agreement_content: string
+          allow_buyout: boolean
+          allow_conversion_to_rental: boolean
+          created_at: string
+          currency: string
+          down_payment: number
+          driver_id: string
+          driver_signature: string | null
+          driver_signed_at: string | null
+          duration_months: number
+          id: string
+          listing_id: string
+          monthly_payment: number
+          next_payment_due: string | null
+          owner_id: string
+          owner_signature: string | null
+          owner_signed_at: string | null
+          payments_made: number
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          total_amount_paid: number
+          total_price: number
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          admin_witness_id?: string | null
+          admin_witness_signature?: string | null
+          admin_witnessed_at?: string | null
+          agreement_content: string
+          allow_buyout?: boolean
+          allow_conversion_to_rental?: boolean
+          created_at?: string
+          currency?: string
+          down_payment: number
+          driver_id: string
+          driver_signature?: string | null
+          driver_signed_at?: string | null
+          duration_months: number
+          id?: string
+          listing_id: string
+          monthly_payment: number
+          next_payment_due?: string | null
+          owner_id: string
+          owner_signature?: string | null
+          owner_signed_at?: string | null
+          payments_made?: number
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          total_amount_paid?: number
+          total_price: number
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          admin_witness_id?: string | null
+          admin_witness_signature?: string | null
+          admin_witnessed_at?: string | null
+          agreement_content?: string
+          allow_buyout?: boolean
+          allow_conversion_to_rental?: boolean
+          created_at?: string
+          currency?: string
+          down_payment?: number
+          driver_id?: string
+          driver_signature?: string | null
+          driver_signed_at?: string | null
+          duration_months?: number
+          id?: string
+          listing_id?: string
+          monthly_payment?: number
+          next_payment_due?: string | null
+          owner_id?: string
+          owner_signature?: string | null
+          owner_signed_at?: string | null
+          payments_made?: number
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          total_amount_paid?: number
+          total_price?: number
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rent_to_own_agreements_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "rent_to_own_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rent_to_own_agreements_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rent_to_own_listings: {
+        Row: {
+          admin_counter_down_payment: number | null
+          admin_counter_duration_months: number | null
+          admin_counter_monthly_payment: number | null
+          admin_counter_total_price: number | null
+          admin_response: string | null
+          allow_buyout: boolean
+          allow_conversion_to_rental: boolean
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          currency: string
+          down_payment: number
+          duration_months: number
+          final_down_payment: number | null
+          final_duration_months: number | null
+          final_monthly_payment: number | null
+          final_total_price: number | null
+          id: string
+          is_available: boolean
+          monthly_payment: number
+          owner_id: string
+          owner_message: string | null
+          status: string
+          total_price: number
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          admin_counter_down_payment?: number | null
+          admin_counter_duration_months?: number | null
+          admin_counter_monthly_payment?: number | null
+          admin_counter_total_price?: number | null
+          admin_response?: string | null
+          allow_buyout?: boolean
+          allow_conversion_to_rental?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          currency?: string
+          down_payment?: number
+          duration_months: number
+          final_down_payment?: number | null
+          final_duration_months?: number | null
+          final_monthly_payment?: number | null
+          final_total_price?: number | null
+          id?: string
+          is_available?: boolean
+          monthly_payment: number
+          owner_id: string
+          owner_message?: string | null
+          status?: string
+          total_price: number
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          admin_counter_down_payment?: number | null
+          admin_counter_duration_months?: number | null
+          admin_counter_monthly_payment?: number | null
+          admin_counter_total_price?: number | null
+          admin_response?: string | null
+          allow_buyout?: boolean
+          allow_conversion_to_rental?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          currency?: string
+          down_payment?: number
+          duration_months?: number
+          final_down_payment?: number | null
+          final_duration_months?: number | null
+          final_monthly_payment?: number | null
+          final_total_price?: number | null
+          id?: string
+          is_available?: boolean
+          monthly_payment?: number
+          owner_id?: string
+          owner_message?: string | null
+          status?: string
+          total_price?: number
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rent_to_own_listings_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rent_to_own_settings: {
+        Row: {
+          feature_enabled: boolean
+          id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          feature_enabled?: boolean
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          feature_enabled?: boolean
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
