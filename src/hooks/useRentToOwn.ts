@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
+export type RTOCurrency = 'USD' | 'NGN';
+
 export interface RTOListing {
   id: string;
   vehicle_id: string;
@@ -11,7 +13,7 @@ export interface RTOListing {
   down_payment: number;
   monthly_payment: number;
   duration_months: number;
-  currency: string;
+  currency: RTOCurrency;
   allow_buyout: boolean;
   allow_conversion_to_rental: boolean;
   admin_counter_total_price: number | null;
@@ -55,7 +57,7 @@ export interface RTOAgreement {
   down_payment: number;
   monthly_payment: number;
   duration_months: number;
-  currency: string;
+  currency: RTOCurrency;
   allow_buyout: boolean;
   allow_conversion_to_rental: boolean;
   payments_made: number;
@@ -108,7 +110,7 @@ export interface CreateRTOListingData {
   down_payment: number;
   monthly_payment: number;
   duration_months: number;
-  currency: string;
+  currency: RTOCurrency;
   allow_buyout: boolean;
   allow_conversion_to_rental: boolean;
   owner_message?: string;

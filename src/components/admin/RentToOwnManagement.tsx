@@ -14,7 +14,6 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SignaturePad from '@/components/legal/SignaturePad';
 import { useRentToOwn, type RTOListing, type RTOAgreement } from '@/hooks/useRentToOwn';
-import { formatCurrency, type Currency } from '@/lib/payment-config';
 import { formatCurrency } from '@/lib/payment-config';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
