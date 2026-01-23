@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -41,6 +41,8 @@ export interface InboxMessage {
   is_read: boolean;
   read_at: string | null;
   created_at: string;
+  external_id?: string | null;
+  metadata?: unknown;
 }
 
 export const useContactSettings = () => {
@@ -94,7 +96,7 @@ export const useInboxConversations = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
 
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     setIsLoading(true);
     let query = supabase
       .from('inbox_conversations')
@@ -117,7 +119,7 @@ export const useInboxConversations = () => {
       setConversations(data || []);
     }
     setIsLoading(false);
-  };
+  }, [statusFilter, channelFilter]);
 
   const updateConversation = async (id: string, updates: Partial<InboxConversation>) => {
     const { error } = await supabase
@@ -135,9 +137,46 @@ export const useInboxConversations = () => {
     return true;
   };
 
+  // Real-time subscription for conversations
   useEffect(() => {
     fetchConversations();
-  }, [statusFilter, channelFilter]);
+
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel('inbox_conversations_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inbox_conversations',
+        },
+        (payload) => {
+          console.log('Conversation change:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            const newConv = payload.new as InboxConversation;
+            setConversations(prev => [newConv, ...prev]);
+            toast.info(`New ${newConv.channel} message received`, {
+              description: newConv.subject || 'New conversation',
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedConv = payload.new as InboxConversation;
+            setConversations(prev => 
+              prev.map(c => c.id === updatedConv.id ? updatedConv : c)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as { id: string }).id;
+            setConversations(prev => prev.filter(c => c.id !== deletedId));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [statusFilter, channelFilter, fetchConversations]);
 
   return { 
     conversations, 
@@ -155,8 +194,9 @@ export const useInboxMessages = (conversationId: string | null) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<InboxMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSendingReply, setIsSendingReply] = useState(false);
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     if (!conversationId) {
       setMessages([]);
       return;
@@ -188,11 +228,12 @@ export const useInboxMessages = (conversationId: string | null) => {
       }
     }
     setIsLoading(false);
-  };
+  }, [conversationId]);
 
-  const sendMessage = async (content: string, channel: string) => {
+  const sendMessage = async (content: string, channel: string, recipientPhone?: string | null, recipientEmail?: string | null) => {
     if (!conversationId || !user) return false;
 
+    // First, save the message to the database
     const { error } = await supabase
       .from('inbox_messages')
       .insert({
@@ -214,17 +255,107 @@ export const useInboxMessages = (conversationId: string | null) => {
     // Update conversation last_message_at
     await supabase
       .from('inbox_conversations')
-      .update({ last_message_at: new Date().toISOString() })
+      .update({ 
+        last_message_at: new Date().toISOString(),
+        status: 'pending'
+      })
       .eq('id', conversationId);
+
+    // Send via external channel (SMS/WhatsApp/Email)
+    if (channel === 'sms' || channel === 'whatsapp') {
+      if (recipientPhone) {
+        setIsSendingReply(true);
+        try {
+          const { data, error: sendError } = await supabase.functions.invoke('send-inbox-reply', {
+            body: {
+              conversationId,
+              messageContent: content,
+              channel,
+              recipientPhone,
+            },
+          });
+
+          if (sendError) {
+            console.error('Error sending reply via Twilio:', sendError);
+            toast.warning('Message saved but delivery may be delayed');
+          } else if (data?.success) {
+            toast.success(`Reply sent via ${channel.toUpperCase()}`);
+          }
+        } catch (err) {
+          console.error('Failed to send via Twilio:', err);
+          toast.warning('Message saved but external delivery failed');
+        } finally {
+          setIsSendingReply(false);
+        }
+      }
+    } else if (channel === 'email' && recipientEmail) {
+      setIsSendingReply(true);
+      try {
+        const { data, error: sendError } = await supabase.functions.invoke('send-email-reply', {
+          body: {
+            conversationId,
+            messageContent: content,
+            recipientEmail,
+          },
+        });
+
+        if (sendError) {
+          console.error('Error sending reply via email:', sendError);
+          toast.warning('Message saved but email delivery may be delayed');
+        } else if (data?.success) {
+          toast.success('Email reply sent');
+        }
+      } catch (err) {
+        console.error('Failed to send email:', err);
+        toast.warning('Message saved but email delivery failed');
+      } finally {
+        setIsSendingReply(false);
+      }
+    } else {
+      toast.success('Message sent');
+    }
     
-    toast.success('Message sent');
     await fetchMessages();
     return true;
   };
 
+  // Real-time subscription for messages
   useEffect(() => {
     fetchMessages();
-  }, [conversationId]);
 
-  return { messages, isLoading, fetchMessages, sendMessage };
+    if (!conversationId) return;
+
+    // Subscribe to realtime changes for this conversation
+    const channel = supabase
+      .channel(`inbox_messages_${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'inbox_messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          console.log('New message:', payload);
+          const newMessage = payload.new as InboxMessage;
+          setMessages(prev => [...prev, newMessage]);
+          
+          // Mark as read if from user
+          if (newMessage.sender_type === 'user') {
+            supabase
+              .from('inbox_messages')
+              .update({ is_read: true, read_at: new Date().toISOString() })
+              .eq('id', newMessage.id);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId, fetchMessages]);
+
+  return { messages, isLoading, isSendingReply, fetchMessages, sendMessage };
 };
