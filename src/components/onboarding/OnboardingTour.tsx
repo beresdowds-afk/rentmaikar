@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { X, ChevronLeft, ChevronRight, Car, User, Shield, CreditCard, MapPin, Bell, LogIn } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Car, User, Shield, CreditCard, MapPin, Bell, LogIn, Inbox, MessageSquare, FileText, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 
@@ -66,10 +66,31 @@ const tourSteps: TourStep[] = [
     position: "top"
   },
   {
+    id: "rent-to-own",
+    title: "Rent-to-Own Program 🏠",
+    description: "Owners can list vehicles for rent-to-own with country-specific pricing. Drivers can find listings in their region and work toward vehicle ownership.",
+    icon: Home,
+    position: "center"
+  },
+  {
     id: "notifications",
-    title: "Stay Informed",
-    description: "Receive SMS, WhatsApp, and email notifications for important updates like payment reminders, incident alerts, and account changes.",
-    icon: Bell,
+    title: "Communication Preferences",
+    description: "Choose how you want to be contacted - WhatsApp, SMS, or both. Email notifications are always enabled to keep you informed of important updates.",
+    icon: MessageSquare,
+    position: "center"
+  },
+  {
+    id: "unified-inbox",
+    title: "Unified Support System 📬",
+    description: "Need help? Reach us via email, SMS, or WhatsApp. All your messages are handled through our centralized support system for quick responses.",
+    icon: Inbox,
+    position: "center"
+  },
+  {
+    id: "policies",
+    title: "Terms & Policies",
+    description: "During registration, you'll review and accept our Terms of Service, Privacy Policy, and platform-specific agreements for transparency and trust.",
+    icon: FileText,
     position: "center"
   },
   {
