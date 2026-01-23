@@ -111,14 +111,19 @@ const MessageThread = ({
   conversation: InboxConversation;
   onUpdateStatus: (status: string) => void;
 }) => {
-  const { messages, isLoading, sendMessage } = useInboxMessages(conversation.id);
+  const { messages, isLoading, isSendingReply, sendMessage } = useInboxMessages(conversation.id);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
 
   const handleSend = async () => {
     if (!newMessage.trim()) return;
     setIsSending(true);
-    const success = await sendMessage(newMessage, conversation.channel);
+    const success = await sendMessage(
+      newMessage, 
+      conversation.channel,
+      conversation.user_phone,
+      conversation.user_email
+    );
     if (success) {
       setNewMessage('');
     }
@@ -217,10 +222,10 @@ const MessageThread = ({
         </div>
         <div className="flex items-center justify-between mt-2">
           <span className="text-xs text-muted-foreground">
-            Press Ctrl+Enter to send
+            {isSendingReply ? 'Delivering message...' : 'Press Ctrl+Enter to send'}
           </span>
-          <Button onClick={handleSend} disabled={!newMessage.trim() || isSending}>
-            {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          <Button onClick={handleSend} disabled={!newMessage.trim() || isSending || isSendingReply}>
+            {(isSending || isSendingReply) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Send via {conversation.channel}
           </Button>
         </div>
