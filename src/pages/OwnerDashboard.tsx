@@ -21,6 +21,7 @@ import { IoTDevicePurchase } from '@/components/owner/IoTDevicePurchase';
 import { OwnerWeeklyReportReview } from '@/components/inspection/OwnerWeeklyReportReview';
 import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { OwnerRentToOwnListing } from '@/components/owner/OwnerRentToOwnListing';
+import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -745,6 +746,7 @@ export default function OwnerDashboard() {
       </main>
 
       <Footer />
+      <SupportChatWidget />
     </div>
   );
 }
