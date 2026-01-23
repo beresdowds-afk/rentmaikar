@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff, Camera, BarChart3, Home, Inbox, MessageSquare } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff, Camera, BarChart3, Home, Inbox, MessageSquare, HelpCircle } from "lucide-react";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
@@ -19,6 +19,8 @@ import { FAQManagement } from "@/components/admin/FAQManagement";
 import { PolicyManagement } from "@/components/admin/PolicyManagement";
 import { AdminUnifiedInbox } from "@/components/admin/AdminUnifiedInbox";
 import { AdminContactSettings } from "@/components/admin/AdminContactSettings";
+import AdminOnboardingTour from "@/components/onboarding/AdminOnboardingTour";
+import { useAdminOnboardingTour } from "@/hooks/useAdminOnboardingTour";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -130,6 +132,7 @@ const AdminDashboard = () => {
   const { rates, isLoading: ratesLoading, convertToUSD, formatWithConversion, refetch: refetchRates } = useCurrencyConversion();
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
   const [approvingId, setApprovingId] = useState<number | null>(null);
+  const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
 
   // Calculate converted values
   const incomeNgnInUsd = convertToUSD(mockFinancialData.income.ngn, 'NGN');
@@ -199,16 +202,22 @@ const AdminDashboard = () => {
       <Header />
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-              <Shield className="w-6 h-6 text-primary-foreground" />
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
+                <Shield className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
+                  Admin Dashboard
+                </h1>
+                <p className="text-muted-foreground">Manage vehicles, drivers, and payments</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
-                Admin Dashboard
-              </h1>
-              <p className="text-muted-foreground">Manage vehicles, drivers, and payments</p>
-            </div>
+            <Button variant="outline" size="sm" onClick={resetTour} className="gap-2">
+              <HelpCircle className="h-4 w-4" />
+              Tour
+            </Button>
           </div>
 
           {/* Stats Grid */}
@@ -368,19 +377,19 @@ const AdminDashboard = () => {
           <Tabs defaultValue="tracking" className="space-y-6">
             <TabsList className="flex-wrap">
               <TabsTrigger value="tracking">Vehicle Tracking</TabsTrigger>
-              <TabsTrigger value="inbox" className="flex items-center gap-1">
+              <TabsTrigger value="inbox" className="flex items-center gap-1" data-tour="admin-inbox">
                 <Inbox className="h-4 w-4" />
                 Unified Inbox
               </TabsTrigger>
-              <TabsTrigger value="contacts" className="flex items-center gap-1">
+              <TabsTrigger value="contacts" className="flex items-center gap-1" data-tour="admin-contacts">
                 <MessageSquare className="h-4 w-4" />
                 Contact Settings
               </TabsTrigger>
-              <TabsTrigger value="accounts" className="flex items-center gap-1">
+              <TabsTrigger value="accounts" className="flex items-center gap-1" data-tour="admin-accounts">
                 <UserCircle className="h-4 w-4" />
                 User Accounts
               </TabsTrigger>
-              <TabsTrigger value="assets" className="flex items-center gap-1">
+              <TabsTrigger value="assets" className="flex items-center gap-1" data-tour="admin-assets">
                 <ClipboardList className="h-4 w-4" />
                 Assets Registry
               </TabsTrigger>
@@ -388,7 +397,7 @@ const AdminDashboard = () => {
                 <Cpu className="h-4 w-4" />
                 Hardware
               </TabsTrigger>
-              <TabsTrigger value="device-orders" className="flex items-center gap-1">
+              <TabsTrigger value="device-orders" className="flex items-center gap-1" data-tour="admin-device-orders">
                 <Package className="h-4 w-4" />
                 Device Orders
               </TabsTrigger>
@@ -400,13 +409,13 @@ const AdminDashboard = () => {
                 <Tag className="h-4 w-4" />
                 Category Pricing
               </TabsTrigger>
-              <TabsTrigger value="negotiations" className="flex items-center gap-1">
+              <TabsTrigger value="negotiations" className="flex items-center gap-1" data-tour="admin-negotiations">
                 <HandshakeIcon className="h-4 w-4" />
                 Negotiations
               </TabsTrigger>
               <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
               <TabsTrigger value="defaults">Payment Defaults</TabsTrigger>
-              <TabsTrigger value="incidents" className="flex items-center gap-1">
+              <TabsTrigger value="incidents" className="flex items-center gap-1" data-tour="admin-incidents">
                 <Wrench className="h-4 w-4" />
                 Incidents
               </TabsTrigger>
@@ -418,15 +427,15 @@ const AdminDashboard = () => {
                 <Ban className="h-4 w-4" />
                 Daily Plans
               </TabsTrigger>
-              <TabsTrigger value="weekly-reports" className="flex items-center gap-1">
+              <TabsTrigger value="weekly-reports" className="flex items-center gap-1" data-tour="admin-inspections">
                 <Camera className="h-4 w-4" />
               Weekly Reports
               </TabsTrigger>
-              <TabsTrigger value="legal-agreements" className="flex items-center gap-1">
+              <TabsTrigger value="legal-agreements" className="flex items-center gap-1" data-tour="admin-agreements">
                 <ClipboardList className="h-4 w-4" />
                 Legal Agreements
               </TabsTrigger>
-              <TabsTrigger value="rent-to-own" className="flex items-center gap-1">
+              <TabsTrigger value="rent-to-own" className="flex items-center gap-1" data-tour="admin-rto">
                 <Home className="h-4 w-4" />
                 Rent to Own
               </TabsTrigger>
@@ -817,6 +826,7 @@ const AdminDashboard = () => {
         </div>
       </main>
       <Footer />
+      <AdminOnboardingTour isOpen={isTourOpen} onComplete={completeTour} />
     </div>
   );
 };

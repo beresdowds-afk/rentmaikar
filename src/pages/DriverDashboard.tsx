@@ -206,27 +206,27 @@ export default function DriverDashboard() {
 
           <Tabs defaultValue="overview" className="space-y-6">
             <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-flex">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="payments">Payments</TabsTrigger>
-              <TabsTrigger value="negotiate">Price Negotiation</TabsTrigger>
-              <TabsTrigger value="lease-to-own" className="flex items-center gap-1">
+              <TabsTrigger value="overview" data-tour="driver-overview">Overview</TabsTrigger>
+              <TabsTrigger value="payments" data-tour="driver-payments">Payments</TabsTrigger>
+              <TabsTrigger value="negotiate" data-tour="driver-negotiate">Price Negotiation</TabsTrigger>
+              <TabsTrigger value="lease-to-own" className="flex items-center gap-1" data-tour="driver-rto">
                 <Home className="h-3 w-3" />
                 Lease to Own
               </TabsTrigger>
-              <TabsTrigger value="inspection" className="flex items-center gap-1">
+              <TabsTrigger value="inspection" className="flex items-center gap-1" data-tour="driver-inspection">
                 <Camera className="h-3 w-3" />
                 Weekly Report
               </TabsTrigger>
-              <TabsTrigger value="incidents" className="flex items-center gap-1">
+              <TabsTrigger value="incidents" className="flex items-center gap-1" data-tour="driver-incidents">
                 <Wrench className="h-3 w-3" />
                 Incidents
               </TabsTrigger>
-              <TabsTrigger value="agreements" className="flex items-center gap-1">
+              <TabsTrigger value="agreements" className="flex items-center gap-1" data-tour="driver-agreements">
                 <FileText className="h-3 w-3" />
                 Agreements
               </TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
+              <TabsTrigger value="settings" data-tour="driver-settings">Settings</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}

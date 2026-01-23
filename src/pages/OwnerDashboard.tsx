@@ -362,27 +362,27 @@ export default function OwnerDashboard() {
 
           <Tabs defaultValue="vehicles" className="space-y-6">
             <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-flex">
-              <TabsTrigger value="vehicles">My Vehicles</TabsTrigger>
-              <TabsTrigger value="iot-device">IoT Device</TabsTrigger>
-              <TabsTrigger value="inspections" className="flex items-center gap-1">
+              <TabsTrigger value="vehicles" data-tour="owner-vehicles">My Vehicles</TabsTrigger>
+              <TabsTrigger value="iot-device" data-tour="owner-iot">IoT Device</TabsTrigger>
+              <TabsTrigger value="inspections" className="flex items-center gap-1" data-tour="owner-inspections">
                 <ImageIcon className="h-4 w-4" />
                 Inspections
               </TabsTrigger>
-              <TabsTrigger value="pricing" className="gap-2">
+              <TabsTrigger value="pricing" className="gap-2" data-tour="owner-pricing">
                 <MessageSquare className="h-4 w-4" />
                 Pricing
               </TabsTrigger>
-              <TabsTrigger value="rent-to-own" className="flex items-center gap-1">
+              <TabsTrigger value="rent-to-own" className="flex items-center gap-1" data-tour="owner-rto">
                 <Home className="h-4 w-4" />
                 Rent to Own
               </TabsTrigger>
-              <TabsTrigger value="agreements" className="flex items-center gap-1">
+              <TabsTrigger value="agreements" className="flex items-center gap-1" data-tour="owner-agreements">
                 <FileText className="h-4 w-4" />
                 Agreements
               </TabsTrigger>
-              <TabsTrigger value="earnings">Earnings</TabsTrigger>
-              <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
+              <TabsTrigger value="earnings" data-tour="owner-earnings">Earnings</TabsTrigger>
+              <TabsTrigger value="withdrawals" data-tour="owner-withdrawals">Withdrawals</TabsTrigger>
+              <TabsTrigger value="settings" data-tour="owner-settings">Settings</TabsTrigger>
             </TabsList>
 
             {/* IoT Device Tab */}
