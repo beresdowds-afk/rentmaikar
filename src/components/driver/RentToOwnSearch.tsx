@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useRentToOwn } from '@/hooks/useRentToOwn';
 import { useRegion } from '@/contexts/RegionContext';
-import { formatCurrency, type Currency } from '@/lib/payment-config';
+import { formatCurrency } from '@/lib/payment-config';
 import {
   Search,
   Home,
@@ -213,10 +213,7 @@ export function RentToOwnSearch() {
                       {/* Action Button */}
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button 
-                            className="w-full" 
-                            onClick={() => setSelectedListing(listing)}
-                          >
+                          <Button className="w-full">
                             View Details
                           </Button>
                         </DialogTrigger>

@@ -17,6 +17,7 @@ import { NotificationPreferences } from '@/components/phone/NotificationPreferen
 import { IncidentReportForm } from '@/components/incidents/IncidentReportForm';
 import { WeeklyInspectionReport } from '@/components/inspection/WeeklyInspectionReport';
 import UserAgreementsList from '@/components/legal/UserAgreementsList';
+import { RentToOwnSearch } from '@/components/driver/RentToOwnSearch';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -36,6 +37,7 @@ import {
   Settings,
   Wrench,
   Camera,
+  Home,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -203,10 +205,14 @@ export default function DriverDashboard() {
           </div>
 
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-flex">
+            <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-flex">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="payments">Payments</TabsTrigger>
               <TabsTrigger value="negotiate">Price Negotiation</TabsTrigger>
+              <TabsTrigger value="lease-to-own" className="flex items-center gap-1">
+                <Home className="h-3 w-3" />
+                Lease to Own
+              </TabsTrigger>
               <TabsTrigger value="inspection" className="flex items-center gap-1">
                 <Camera className="h-3 w-3" />
                 Weekly Report
@@ -409,6 +415,11 @@ export default function DriverDashboard() {
             {/* Price Negotiation Tab */}
             <TabsContent value="negotiate" className="space-y-6">
               <DriverPriceNegotiation />
+            </TabsContent>
+
+            {/* Lease to Own Tab */}
+            <TabsContent value="lease-to-own">
+              <RentToOwnSearch />
             </TabsContent>
 
             {/* Weekly Inspection Tab */}

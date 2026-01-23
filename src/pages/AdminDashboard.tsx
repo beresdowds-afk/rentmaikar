@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff, Camera, BarChart3 } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff, Camera, BarChart3, Home } from "lucide-react";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
@@ -14,6 +14,7 @@ import { VehicleRecallManagement } from "@/components/admin/VehicleRecallManagem
 import { AdminWeeklyReportManagement } from "@/components/admin/AdminWeeklyReportManagement";
 import { AdminPriceNegotiation } from "@/components/negotiation/AdminPriceNegotiation";
 import LegalAgreementsManagement from "@/components/admin/LegalAgreementsManagement";
+import { RentToOwnManagement } from "@/components/admin/RentToOwnManagement";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -413,6 +414,10 @@ const AdminDashboard = () => {
                 <ClipboardList className="h-4 w-4" />
                 Legal Agreements
               </TabsTrigger>
+              <TabsTrigger value="rent-to-own" className="flex items-center gap-1">
+                <Home className="h-4 w-4" />
+                Rent to Own
+              </TabsTrigger>
               <TabsTrigger value="fees">Fee Structure</TabsTrigger>
               <TabsTrigger value="secrets" className="flex items-center gap-1">
                 <KeyRound className="h-4 w-4" />
@@ -587,6 +592,10 @@ const AdminDashboard = () => {
 
             <TabsContent value="legal-agreements">
               <LegalAgreementsManagement />
+            </TabsContent>
+
+            <TabsContent value="rent-to-own">
+              <RentToOwnManagement />
             </TabsContent>
 
             <TabsContent value="fees">

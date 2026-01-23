@@ -20,6 +20,7 @@ import { NotificationPreferences } from '@/components/phone/NotificationPreferen
 import { IoTDevicePurchase } from '@/components/owner/IoTDevicePurchase';
 import { OwnerWeeklyReportReview } from '@/components/inspection/OwnerWeeklyReportReview';
 import UserAgreementsList from '@/components/legal/UserAgreementsList';
+import { OwnerRentToOwnListing } from '@/components/owner/OwnerRentToOwnListing';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -41,6 +42,7 @@ import {
   Eye,
   MessageSquare,
   ImageIcon,
+  Home,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -359,7 +361,7 @@ export default function OwnerDashboard() {
           </div>
 
           <Tabs defaultValue="vehicles" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-flex">
+            <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-flex">
               <TabsTrigger value="vehicles">My Vehicles</TabsTrigger>
               <TabsTrigger value="iot-device">IoT Device</TabsTrigger>
               <TabsTrigger value="inspections" className="flex items-center gap-1">
@@ -369,6 +371,10 @@ export default function OwnerDashboard() {
               <TabsTrigger value="pricing" className="gap-2">
                 <MessageSquare className="h-4 w-4" />
                 Pricing
+              </TabsTrigger>
+              <TabsTrigger value="rent-to-own" className="flex items-center gap-1">
+                <Home className="h-4 w-4" />
+                Rent to Own
               </TabsTrigger>
               <TabsTrigger value="agreements" className="flex items-center gap-1">
                 <FileText className="h-4 w-4" />
@@ -397,6 +403,11 @@ export default function OwnerDashboard() {
             {/* Agreements Tab */}
             <TabsContent value="agreements" className="space-y-6">
               <UserAgreementsList userType="owner" />
+            </TabsContent>
+
+            {/* Rent to Own Tab */}
+            <TabsContent value="rent-to-own">
+              <OwnerRentToOwnListing />
             </TabsContent>
 
             {/* Vehicles Tab */}
