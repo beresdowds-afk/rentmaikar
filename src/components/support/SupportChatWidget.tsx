@@ -1,26 +1,98 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, MinusCircle } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, MinusCircle, Paperclip, FileIcon, ImageIcon, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useSupportChat } from '@/hooks/useSupportChat';
+import { useSupportChat, MessageAttachment } from '@/hooks/useSupportChat';
 import { format } from 'date-fns';
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_TYPES = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'application/pdf',
+  'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain', 'text/csv'
+];
+
+const formatFileSize = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const isImageType = (type: string) => type.startsWith('image/');
+
+const AttachmentPreview = ({ 
+  attachment, 
+  onRemove 
+}: { 
+  attachment: MessageAttachment; 
+  onRemove?: () => void;
+}) => (
+  <div className="relative group inline-flex items-center gap-2 bg-muted rounded-lg p-2 text-xs">
+    {isImageType(attachment.type) ? (
+      <ImageIcon className="w-4 h-4 text-primary" />
+    ) : (
+      <FileIcon className="w-4 h-4 text-muted-foreground" />
+    )}
+    <span className="max-w-[120px] truncate">{attachment.name}</span>
+    <span className="text-muted-foreground">({formatFileSize(attachment.size)})</span>
+    {onRemove && (
+      <button
+        onClick={onRemove}
+        className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <XCircle className="w-3 h-3" />
+      </button>
+    )}
+  </div>
+);
+
+const MessageAttachments = ({ attachments }: { attachments: MessageAttachment[] }) => (
+  <div className="flex flex-wrap gap-2 mt-2">
+    {attachments.map((att, idx) => (
+      <a
+        key={idx}
+        href={att.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 bg-background/50 hover:bg-background rounded-lg p-2 text-xs transition-colors border border-border"
+      >
+        {isImageType(att.type) ? (
+          <img 
+            src={att.url} 
+            alt={att.name} 
+            className="w-16 h-16 object-cover rounded"
+          />
+        ) : (
+          <>
+            <FileIcon className="w-4 h-4 text-muted-foreground" />
+            <span className="max-w-[100px] truncate">{att.name}</span>
+          </>
+        )}
+      </a>
+    ))}
+  </div>
+);
 
 const SupportChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [message, setMessage] = useState('');
+  const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     messages,
     isLoading,
     isSending,
+    isUploading,
     unreadCount,
     sendMessage,
+    uploadAttachment,
   } = useSupportChat();
 
   // Auto-scroll to bottom when new messages arrive
@@ -30,11 +102,46 @@ const SupportChatWidget = () => {
     }
   }, [messages, isOpen, isMinimized]);
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    for (const file of Array.from(files)) {
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`File "${file.name}" is too large. Maximum size is 10MB.`);
+        continue;
+      }
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        alert(`File type "${file.type}" is not supported.`);
+        continue;
+      }
+
+      const attachment = await uploadAttachment(file);
+      if (attachment) {
+        setPendingAttachments(prev => [...prev, attachment]);
+      }
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveAttachment = (index: number) => {
+    setPendingAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSend = async () => {
-    if (!message.trim() || isSending) return;
+    if ((!message.trim() && pendingAttachments.length === 0) || isSending || isUploading) return;
+    
     const content = message;
+    const attachments = [...pendingAttachments];
+    
     setMessage('');
-    await sendMessage(content);
+    setPendingAttachments([]);
+    
+    await sendMessage(content, attachments.length > 0 ? attachments : undefined);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -57,12 +164,22 @@ const SupportChatWidget = () => {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        multiple
+        accept={ALLOWED_TYPES.join(',')}
+        onChange={handleFileSelect}
+      />
+
       {/* Chat Window */}
       {isOpen && (
         <div
           className={cn(
             "bg-card border border-border rounded-xl shadow-2xl transition-all duration-300 overflow-hidden",
-            isMinimized ? "w-64 h-12" : "w-80 sm:w-96 h-[28rem]"
+            isMinimized ? "w-64 h-12" : "w-80 sm:w-96 h-[32rem]"
           )}
         >
           {/* Header */}
@@ -95,7 +212,7 @@ const SupportChatWidget = () => {
           {!isMinimized && (
             <>
               {/* Messages */}
-              <ScrollArea className="h-[calc(100%-8rem)] p-4" ref={scrollRef}>
+              <ScrollArea className="h-[calc(100%-10rem)] p-4" ref={scrollRef}>
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
                     <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -105,6 +222,9 @@ const SupportChatWidget = () => {
                     <MessageCircle className="w-12 h-12 text-muted-foreground/50 mb-3" />
                     <p className="text-sm text-muted-foreground">
                       Need help? Send us a message and we'll get back to you as soon as possible.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      You can also attach screenshots or documents.
                     </p>
                   </div>
                 ) : (
@@ -126,6 +246,9 @@ const SupportChatWidget = () => {
                           )}
                         >
                           {msg.content}
+                          {msg.metadata?.attachments && msg.metadata.attachments.length > 0 && (
+                            <MessageAttachments attachments={msg.metadata.attachments} />
+                          )}
                         </div>
                         <span className="text-[10px] text-muted-foreground mt-1 px-1">
                           {format(new Date(msg.created_at), 'h:mm a')}
@@ -136,11 +259,38 @@ const SupportChatWidget = () => {
                 )}
               </ScrollArea>
 
+              {/* Pending Attachments */}
+              {pendingAttachments.length > 0 && (
+                <div className="px-3 py-2 border-t border-border bg-muted/30">
+                  <div className="flex flex-wrap gap-2">
+                    {pendingAttachments.map((att, idx) => (
+                      <AttachmentPreview
+                        key={idx}
+                        attachment={att}
+                        onRemove={() => handleRemoveAttachment(idx)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Input */}
               <div className="p-3 border-t border-border bg-background/50">
                 <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Paperclip className="w-4 h-4" />
+                    )}
+                  </Button>
                   <Textarea
-                    ref={textareaRef}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -151,7 +301,7 @@ const SupportChatWidget = () => {
                   <Button
                     size="icon"
                     onClick={handleSend}
-                    disabled={!message.trim() || isSending}
+                    disabled={(!message.trim() && pendingAttachments.length === 0) || isSending || isUploading}
                     className="shrink-0"
                   >
                     {isSending ? (
@@ -162,7 +312,7 @@ const SupportChatWidget = () => {
                   </Button>
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1 text-center">
-                  Press Ctrl+Enter to send
+                  Ctrl+Enter to send • Max 10MB per file
                 </p>
               </div>
             </>

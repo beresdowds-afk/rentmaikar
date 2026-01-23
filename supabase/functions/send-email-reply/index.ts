@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -22,8 +21,6 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    const resend = new Resend(RESEND_API_KEY);
 
     const { conversationId, messageContent, recipientEmail, subject } = await req.json();
 
@@ -48,38 +45,52 @@ serve(async (req) => {
 
     console.log(`Sending email to ${recipientEmail} from ${fromEmail}`);
 
-    const emailResponse = await resend.emails.send({
-      from: `Rentmaikar Support <${fromEmail}>`,
-      to: [recipientEmail],
-      subject: emailSubject,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background-color: #f97316; padding: 20px; text-align: center;">
-            <h1 style="color: white; margin: 0;">Rentmaikar</h1>
+    // Send email using Resend API directly
+    const emailResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: `Rentmaikar Support <${fromEmail}>`,
+        to: [recipientEmail],
+        subject: emailSubject,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background-color: #f97316; padding: 20px; text-align: center;">
+              <h1 style="color: white; margin: 0;">Rentmaikar</h1>
+            </div>
+            <div style="padding: 30px; background-color: #ffffff;">
+              <div style="white-space: pre-wrap; line-height: 1.6;">${messageContent.replace(/\n/g, '<br>')}</div>
+              <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+              <p style="color: #666; font-size: 14px;">
+                This is a reply from Rentmaikar Support. Please reply to this email if you need further assistance.
+              </p>
+            </div>
+            <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 12px; color: #666;">
+              <p>© ${new Date().getFullYear()} Rentmaikar. All rights reserved.</p>
+              <p>Vehicle rentals for rideshare drivers</p>
+            </div>
           </div>
-          <div style="padding: 30px; background-color: #ffffff;">
-            <div style="white-space: pre-wrap; line-height: 1.6;">${messageContent.replace(/\n/g, '<br>')}</div>
-            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-            <p style="color: #666; font-size: 14px;">
-              This is a reply from Rentmaikar Support. Please reply to this email if you need further assistance.
-            </p>
-          </div>
-          <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 12px; color: #666;">
-            <p>© ${new Date().getFullYear()} Rentmaikar. All rights reserved.</p>
-            <p>Vehicle rentals for rideshare drivers</p>
-          </div>
-        </div>
-      `,
-      text: messageContent,
+        `,
+        text: messageContent,
+      }),
     });
 
-    console.log("Email sent successfully:", emailResponse);
+    if (!emailResponse.ok) {
+      const errorData = await emailResponse.text();
+      throw new Error(`Failed to send email: ${errorData}`);
+    }
+
+    const emailResult = await emailResponse.json();
+    console.log("Email sent successfully:", emailResult);
 
     // Update the message with external_id
     await supabase
       .from("inbox_messages")
       .update({
-        external_id: emailResponse.id,
+        external_id: emailResult.id,
         metadata: {
           email_status: "sent",
           sent_at: new Date().toISOString(),
@@ -95,7 +106,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        emailId: emailResponse.id,
+        emailId: emailResult.id,
       }),
       {
         status: 200,
