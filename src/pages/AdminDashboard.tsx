@@ -15,6 +15,8 @@ import { AdminWeeklyReportManagement } from "@/components/admin/AdminWeeklyRepor
 import { AdminPriceNegotiation } from "@/components/negotiation/AdminPriceNegotiation";
 import LegalAgreementsManagement from "@/components/admin/LegalAgreementsManagement";
 import { RentToOwnManagement } from "@/components/admin/RentToOwnManagement";
+import { FAQManagement } from "@/components/admin/FAQManagement";
+import { PolicyManagement } from "@/components/admin/PolicyManagement";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -424,6 +426,7 @@ const AdminDashboard = () => {
                 API Secrets
               </TabsTrigger>
               <TabsTrigger value="settings">Region Settings</TabsTrigger>
+              <TabsTrigger value="content">Content CMS</TabsTrigger>
             </TabsList>
 
             <TabsContent value="tracking">
@@ -775,6 +778,22 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               </Card>
+            </TabsContent>
+
+            {/* Content Management Tab */}
+            <TabsContent value="content">
+              <Tabs defaultValue="faq" className="space-y-4">
+                <TabsList>
+                  <TabsTrigger value="faq">FAQ Management</TabsTrigger>
+                  <TabsTrigger value="policies">Policy Versions</TabsTrigger>
+                </TabsList>
+                <TabsContent value="faq">
+                  <FAQManagement />
+                </TabsContent>
+                <TabsContent value="policies">
+                  <PolicyManagement />
+                </TabsContent>
+              </Tabs>
             </TabsContent>
           </Tabs>
         </div>
