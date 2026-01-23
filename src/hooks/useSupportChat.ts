@@ -4,12 +4,22 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
 import { toast } from 'sonner';
 
+export interface MessageAttachment {
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+}
+
 export interface SupportMessage {
   id: string;
   content: string;
   sender_type: 'user' | 'admin';
   created_at: string;
   read_at: string | null;
+  metadata?: {
+    attachments?: MessageAttachment[];
+  };
 }
 
 export interface SupportConversation {
@@ -27,6 +37,7 @@ export const useSupportChat = () => {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchOrCreateConversation = useCallback(async () => {
@@ -81,6 +92,7 @@ export const useSupportChat = () => {
       sender_type: msg.sender_type as 'user' | 'admin',
       created_at: msg.created_at,
       read_at: msg.read_at,
+      metadata: msg.metadata as SupportMessage['metadata'],
     }));
 
     setMessages(formattedMessages);
@@ -105,8 +117,45 @@ export const useSupportChat = () => {
     }
   };
 
-  const sendMessage = async (content: string) => {
-    if (!user || !content.trim()) return;
+  const uploadAttachment = async (file: File): Promise<MessageAttachment | null> => {
+    if (!user) return null;
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('chat-attachments')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get a signed URL for private bucket access
+      const { data: signedUrlData, error: urlError } = await supabase.storage
+        .from('chat-attachments')
+        .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 day expiry
+
+      if (urlError) throw urlError;
+
+      return {
+        name: file.name,
+        url: signedUrlData.signedUrl,
+        type: file.type,
+        size: file.size,
+      };
+    } catch (error) {
+      console.error('Error uploading attachment:', error);
+      toast.error('Failed to upload file');
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const sendMessage = async (content: string, attachments?: MessageAttachment[]) => {
+    if (!user || (!content.trim() && (!attachments || attachments.length === 0))) return;
 
     setIsSending(true);
     try {
@@ -148,15 +197,26 @@ export const useSupportChat = () => {
         });
       }
 
-      // Create the message
+      // Build message content
+      const messageContent = content.trim() || (attachments && attachments.length > 0 
+        ? `Shared ${attachments.length} file${attachments.length > 1 ? 's' : ''}`
+        : '');
+
+      // Create the message with metadata for attachments
+      const messageData: any = {
+        conversation_id: conversationId,
+        content: messageContent,
+        sender_type: 'user',
+        channel: 'in_app',
+      };
+
+      if (attachments && attachments.length > 0) {
+        messageData.metadata = { attachments };
+      }
+
       const { data: newMessage, error: messageError } = await supabase
         .from('inbox_messages')
-        .insert({
-          conversation_id: conversationId,
-          content: content.trim(),
-          sender_type: 'user',
-          channel: 'in_app',
-        })
+        .insert(messageData)
         .select()
         .single();
 
@@ -177,6 +237,7 @@ export const useSupportChat = () => {
         sender_type: newMessage.sender_type as 'user' | 'admin',
         created_at: newMessage.created_at,
         read_at: newMessage.read_at,
+        metadata: newMessage.metadata as SupportMessage['metadata'],
       }]);
 
       toast.success('Message sent!');
@@ -214,6 +275,7 @@ export const useSupportChat = () => {
                 sender_type: newMsg.sender_type,
                 created_at: newMsg.created_at,
                 read_at: newMsg.read_at,
+                metadata: newMsg.metadata,
               }];
             });
             setUnreadCount(prev => prev + 1);
@@ -237,8 +299,10 @@ export const useSupportChat = () => {
     messages,
     isLoading,
     isSending,
+    isUploading,
     unreadCount,
     sendMessage,
+    uploadAttachment,
     refreshMessages: () => conversation?.id && fetchMessages(conversation.id),
   };
 };
