@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin, Code, FileText, Shield } from "lucide-react";
+import { Mail, Phone, MapPin, Code, FileText, Shield, HelpCircle } from "lucide-react";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -71,6 +71,12 @@ const Footer = () => {
                 <Link to="/privacy" className="text-primary-foreground/70 hover:text-accent transition-colors flex items-center gap-1">
                   <Shield className="w-3 h-3" />
                   Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/faq" className="text-primary-foreground/70 hover:text-accent transition-colors flex items-center gap-1">
+                  <HelpCircle className="w-3 h-3" />
+                  FAQ
                 </Link>
               </li>
             </ul>

@@ -20,6 +20,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ApiDocs from "./pages/ApiDocs";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -67,6 +68,7 @@ const App = () => (
                 />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/privacy" element={<Privacy />} />
+                <Route path="/faq" element={<FAQ />} />
                 <Route 
                   path="/admin" 
                   element={
