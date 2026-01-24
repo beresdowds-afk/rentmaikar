@@ -94,7 +94,7 @@ export const VehicleDocumentUpload = () => {
                 <SelectValue placeholder="Select a vehicle..." />
               </SelectTrigger>
               <SelectContent>
-                {vehicles.map((vehicle) => (
+                {vehicles.filter(v => v.id).map((vehicle) => (
                   <SelectItem key={vehicle.id} value={vehicle.id}>
                     {vehicle.year} {vehicle.make} {vehicle.model} ({vehicle.license_plate})
                   </SelectItem>

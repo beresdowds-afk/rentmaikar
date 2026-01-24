@@ -363,7 +363,7 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                         <SelectValue placeholder="Choose an owner" />
                       </SelectTrigger>
                       <SelectContent>
-                        {owners.map(owner => (
+                        {owners.filter(owner => owner.user_id).map(owner => (
                           <SelectItem key={owner.user_id} value={owner.user_id}>
                             {owner.full_name || owner.email}
                           </SelectItem>
@@ -379,7 +379,7 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                         <SelectValue placeholder="Choose a driver" />
                       </SelectTrigger>
                       <SelectContent>
-                        {drivers.map(driver => (
+                        {drivers.filter(driver => driver.user_id).map(driver => (
                           <SelectItem key={driver.user_id} value={driver.user_id}>
                             {driver.full_name || driver.email}
                           </SelectItem>
@@ -396,7 +396,7 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                       <SelectValue placeholder={selectedOwner ? "Choose a vehicle" : "Select owner first"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {ownerVehicles.map(vehicle => (
+                      {ownerVehicles.filter(vehicle => vehicle.id).map(vehicle => (
                         <SelectItem key={vehicle.id} value={vehicle.id}>
                           {vehicle.year} {vehicle.make} {vehicle.model} ({vehicle.license_plate})
                         </SelectItem>
