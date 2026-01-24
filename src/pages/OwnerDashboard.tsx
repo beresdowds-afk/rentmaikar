@@ -21,6 +21,7 @@ import { IoTDevicePurchase } from '@/components/owner/IoTDevicePurchase';
 import { OwnerWeeklyReportReview } from '@/components/inspection/OwnerWeeklyReportReview';
 import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { OwnerRentToOwnListing } from '@/components/owner/OwnerRentToOwnListing';
+import { VehiclePickupLocation } from '@/components/owner/VehiclePickupLocation';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
 import { useAuth } from '@/contexts/AuthContext';
@@ -363,8 +364,12 @@ export default function OwnerDashboard() {
           </div>
 
           <Tabs defaultValue="vehicles" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-flex">
+            <TabsList className="grid w-full grid-cols-10 lg:w-auto lg:inline-flex">
               <TabsTrigger value="vehicles" data-tour="owner-vehicles">My Vehicles</TabsTrigger>
+              <TabsTrigger value="pickup-locations" className="flex items-center gap-1">
+                <MapPin className="h-4 w-4" />
+                Pickup Locations
+              </TabsTrigger>
               <TabsTrigger value="iot-device" data-tour="owner-iot">IoT Device</TabsTrigger>
               <TabsTrigger value="inspections" className="flex items-center gap-1" data-tour="owner-inspections">
                 <ImageIcon className="h-4 w-4" />
@@ -386,6 +391,11 @@ export default function OwnerDashboard() {
               <TabsTrigger value="withdrawals" data-tour="owner-withdrawals">Withdrawals</TabsTrigger>
               <TabsTrigger value="settings" data-tour="owner-settings">Settings</TabsTrigger>
             </TabsList>
+
+            {/* Pickup Locations Tab */}
+            <TabsContent value="pickup-locations">
+              <VehiclePickupLocation />
+            </TabsContent>
 
             {/* IoT Device Tab */}
             <TabsContent value="iot-device">

@@ -22,6 +22,7 @@ import { AdminUnifiedInbox } from "@/components/admin/AdminUnifiedInbox";
 import { AdminContactSettings } from "@/components/admin/AdminContactSettings";
 import { AdminSupportTaskManagement } from "@/components/admin/AdminSupportTaskManagement";
 import { AdminTaskPortal } from "@/components/admin/portal/AdminTaskPortal";
+import { VehiclePickupManagement } from "@/components/admin/VehiclePickupManagement";
 import AdminOnboardingTour from "@/components/onboarding/AdminOnboardingTour";
 import { useAdminOnboardingTour } from "@/hooks/useAdminOnboardingTour";
 import { Button } from "@/components/ui/button";
@@ -404,6 +405,10 @@ const AdminDashboard = () => {
                 <ClipboardList className="h-4 w-4" />
                 Assets Registry
               </TabsTrigger>
+              <TabsTrigger value="pickup-locations" className="flex items-center gap-1">
+                <MapPin className="h-4 w-4" />
+                Pickup Locations
+              </TabsTrigger>
               <TabsTrigger value="hardware" className="flex items-center gap-1">
                 <Cpu className="h-4 w-4" />
                 Hardware
@@ -496,6 +501,10 @@ const AdminDashboard = () => {
 
             <TabsContent value="assets">
               <AssetsRegistry />
+            </TabsContent>
+
+            <TabsContent value="pickup-locations">
+              <VehiclePickupManagement />
             </TabsContent>
 
             <TabsContent value="hardware">
