@@ -1576,6 +1576,10 @@ export type Database = {
           make: string
           model: string
           owner_id: string
+          pickup_address: string | null
+          pickup_city: string | null
+          pickup_instructions: string | null
+          pickup_location: string | null
           status: string | null
           updated_at: string | null
           vin: string | null
@@ -1589,6 +1593,10 @@ export type Database = {
           make: string
           model: string
           owner_id: string
+          pickup_address?: string | null
+          pickup_city?: string | null
+          pickup_instructions?: string | null
+          pickup_location?: string | null
           status?: string | null
           updated_at?: string | null
           vin?: string | null
@@ -1602,6 +1610,10 @@ export type Database = {
           make?: string
           model?: string
           owner_id?: string
+          pickup_address?: string | null
+          pickup_city?: string | null
+          pickup_instructions?: string | null
+          pickup_location?: string | null
           status?: string | null
           updated_at?: string | null
           vin?: string | null

@@ -37,10 +37,10 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch the complete agreement
+    // Fetch the complete agreement with vehicle details
     const { data: agreement, error: fetchError } = await supabase
       .from("legal_agreements")
-      .select("*")
+      .select("*, vehicle_id")
       .eq("id", agreementId)
       .single();
 
@@ -48,13 +48,56 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Agreement not found");
     }
 
+    // Fetch vehicle pickup details if vehicle_id exists
+    let pickupDetails = null;
+    if (agreement.vehicle_id) {
+      const { data: vehicle } = await supabase
+        .from("vehicles")
+        .select("pickup_location, pickup_address, pickup_city, pickup_instructions")
+        .eq("id", agreement.vehicle_id)
+        .single();
+      pickupDetails = vehicle;
+    }
+
+    // Fetch owner profile for contact details
+    const { data: ownerProfile } = await supabase
+      .from("profiles")
+      .select("phone, email")
+      .eq("user_id", agreement.owner_id)
+      .single();
+
     const agreementDate = new Date(agreement.created_at).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
 
-    const emailHtml = `
+    // Build pickup location section for driver email
+    const pickupLocationSection = pickupDetails ? `
+    <h3 style="color: #1a1a2e; margin-top: 25px;">🚗 Vehicle Pickup Details</h3>
+    <div style="background: #e3f2fd; border-left: 4px solid #1976d2; padding: 15px; margin: 15px 0;">
+      ${pickupDetails.pickup_location ? `<p style="margin: 5px 0;"><strong>Location:</strong> ${pickupDetails.pickup_location}</p>` : ''}
+      ${pickupDetails.pickup_address ? `<p style="margin: 5px 0;"><strong>Address:</strong> ${pickupDetails.pickup_address}</p>` : ''}
+      ${pickupDetails.pickup_city ? `<p style="margin: 5px 0;"><strong>City:</strong> ${pickupDetails.pickup_city}</p>` : ''}
+      ${pickupDetails.pickup_instructions ? `<p style="margin: 10px 0 0 0;"><strong>Special Instructions:</strong><br/>${pickupDetails.pickup_instructions}</p>` : ''}
+    </div>
+    ` : '';
+
+    // Build owner contact section for driver email
+    const ownerContactSection = ownerProfile ? `
+    <h3 style="color: #1a1a2e; margin-top: 25px;">📞 Owner Contact Information</h3>
+    <div style="background: #fff3e0; border-left: 4px solid #ff9800; padding: 15px; margin: 15px 0;">
+      <p style="margin: 5px 0;"><strong>Name:</strong> ${ownerName}</p>
+      ${ownerProfile.phone ? `<p style="margin: 5px 0;"><strong>Phone:</strong> <a href="tel:${ownerProfile.phone}" style="color: #1976d2;">${ownerProfile.phone}</a></p>` : ''}
+      ${ownerProfile.email ? `<p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:${ownerProfile.email}" style="color: #1976d2;">${ownerProfile.email}</a></p>` : ''}
+      <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+        <em>Please coordinate with the owner to arrange a convenient pickup time.</em>
+      </p>
+    </div>
+    ` : '';
+
+    // Base email template
+    const baseEmailHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -95,12 +138,17 @@ const handler = async (req: Request): Promise<Response> => {
       </tr>
     </table>
 
-    <h3 style="color: #1a1a2e;">Key Terms Reference</h3>
+    {{PICKUP_DETAILS}}
+
+    {{OWNER_CONTACT}}
+
+    <h3 style="color: #1a1a2e;">Key Terms Reference {{COPY_TYPE}}</h3>
     <ul style="color: #666; padding-left: 20px;">
       <li>All pricing and payment terms are as displayed on the RentMaiKar portal</li>
       <li>Weekly inspection reports are required</li>
       <li>IoT tracking and remote deactivation consent is included</li>
       <li>Platform fee applies as specified on the portal</li>
+      {{NEXT_STEPS}}
     </ul>
 
     <div style="background: #f5f5f5; padding: 20px; border-radius: 5px; margin-top: 20px;">
@@ -130,12 +178,26 @@ const handler = async (req: Request): Promise<Response> => {
 </html>
     `;
 
+    // Driver email includes pickup details and owner contact
+    const driverEmailHtml = baseEmailHtml
+      .replace("{{PICKUP_DETAILS}}", pickupLocationSection)
+      .replace("{{OWNER_CONTACT}}", ownerContactSection)
+      .replace("{{COPY_TYPE}}", "(Driver Copy)")
+      .replace("{{NEXT_STEPS}}", "<li><strong>Next Step:</strong> Contact the owner to arrange vehicle pickup and complete the initial inspection</li>");
+
+    // Owner email doesn't include pickup/contact (they already know this)
+    const ownerEmailHtml = baseEmailHtml
+      .replace("{{PICKUP_DETAILS}}", "")
+      .replace("{{OWNER_CONTACT}}", "")
+      .replace("{{COPY_TYPE}}", "(Owner Copy)")
+      .replace("{{NEXT_STEPS}}", "<li><strong>Next Step:</strong> Coordinate with the driver for vehicle handover</li>");
+
     // Send email to driver
     const driverEmailResponse = await resend.emails.send({
       from: "RentMaiKar <agreements@resend.dev>",
       to: [driverEmail],
       subject: `Vehicle Rental Agreement Executed - ${vehicleInfo}`,
-      html: emailHtml.replace("Key Terms Reference", "Key Terms Reference (Driver Copy)"),
+      html: driverEmailHtml,
     });
 
     console.log("Driver email sent:", driverEmailResponse);
@@ -145,7 +207,7 @@ const handler = async (req: Request): Promise<Response> => {
       from: "RentMaiKar <agreements@resend.dev>",
       to: [ownerEmail],
       subject: `Vehicle Rental Agreement Executed - ${vehicleInfo}`,
-      html: emailHtml.replace("Key Terms Reference", "Key Terms Reference (Owner Copy)"),
+      html: ownerEmailHtml,
     });
 
     console.log("Owner email sent:", ownerEmailResponse);
