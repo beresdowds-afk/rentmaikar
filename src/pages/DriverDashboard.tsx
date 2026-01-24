@@ -19,6 +19,7 @@ import { WeeklyInspectionReport } from '@/components/inspection/WeeklyInspection
 import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { RentToOwnSearch } from '@/components/driver/RentToOwnSearch';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
+import { CallSupportButton } from '@/components/support/CallSupportButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -510,6 +511,7 @@ export default function DriverDashboard() {
 
       <Footer />
       <SupportChatWidget />
+      <CallSupportButton userType="driver" variant="floating" />
     </div>
   );
 }

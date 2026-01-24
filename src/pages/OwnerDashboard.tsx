@@ -22,6 +22,7 @@ import { OwnerWeeklyReportReview } from '@/components/inspection/OwnerWeeklyRepo
 import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { OwnerRentToOwnListing } from '@/components/owner/OwnerRentToOwnListing';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
+import { CallSupportButton } from '@/components/support/CallSupportButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -747,6 +748,7 @@ export default function OwnerDashboard() {
 
       <Footer />
       <SupportChatWidget />
+      <CallSupportButton userType="owner" variant="floating" />
     </div>
   );
 }
