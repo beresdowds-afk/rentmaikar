@@ -21,6 +21,7 @@ import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { RentToOwnSearch } from '@/components/driver/RentToOwnSearch';
 import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
+import { PaymentReminderPreview } from '@/components/payment/PaymentReminderPreview';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -415,6 +416,14 @@ export default function DriverDashboard() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Payment Reminder Notification Preview */}
+              <PaymentReminderPreview 
+                driverName={user?.user_metadata?.full_name || 'Driver'}
+                amountDue={isUSA ? totalDue : totalDue}
+                currency={currency}
+                paymentFrequency={rental.paymentFrequency}
+              />
             </TabsContent>
 
             {/* Price Negotiation Tab */}
