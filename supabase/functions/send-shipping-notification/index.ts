@@ -45,7 +45,7 @@ const handler = async (req: Request): Promise<Response> => {
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: "Rentmaikar <notifications@resend.dev>",
+        from: "Rentmaikar <noreply@rentmaikar.com>",
         to: [email],
         subject: "Your IoT Device Has Been Shipped! 📦",
         html: `

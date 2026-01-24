@@ -203,7 +203,7 @@ const handler = async (req: Request): Promise<Response> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Rentmaikar Support <onboarding@resend.dev>",
+        from: "Rentmaikar Support <support@rentmaikar.com>",
         to: [staffEmail],
         subject: `🔔 New ${taskTypeLabels[taskType] || taskType} Task: ${taskTitle}`,
         html: emailHtml,

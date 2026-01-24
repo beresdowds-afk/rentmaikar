@@ -75,7 +75,7 @@ const sendEmailNotification = async (
         'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'Rentmaikar <notifications@resend.dev>',
+        from: 'Rentmaikar <support@rentmaikar.com>',
         to: [to],
         subject,
         html,
