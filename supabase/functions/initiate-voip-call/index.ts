@@ -122,6 +122,11 @@ const handler = async (req: Request): Promise<Response> => {
         formData.append('From', fromNumber);
         formData.append('Twiml', twiml);
         
+        // Enable call recording
+        formData.append('Record', 'true');
+        formData.append('RecordingStatusCallback', `${supabaseUrl}/functions/v1/recording-status-callback`);
+        formData.append('RecordingStatusCallbackEvent', 'completed');
+        
         // Add status callback for call updates
         const callbackUrl = `${supabaseUrl}/functions/v1/voip-status-callback`;
         formData.append('StatusCallback', callbackUrl);
