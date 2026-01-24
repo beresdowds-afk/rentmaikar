@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-
+import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -203,7 +203,7 @@ const handler = async (req: Request): Promise<Response> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Rentmaikar Support <support@rentmaikar.com>",
+        from: formatSenderEmail('support'),
         to: [staffEmail],
         subject: `🔔 New ${taskTypeLabels[taskType] || taskType} Task: ${taskTitle}`,
         html: emailHtml,

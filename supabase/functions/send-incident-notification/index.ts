@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
-
+import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -75,7 +75,7 @@ const sendEmailNotification = async (
         'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'Rentmaikar <support@rentmaikar.com>',
+        from: formatSenderEmail('support'),
         to: [to],
         subject,
         html,
