@@ -1609,6 +1609,208 @@ export type Database = {
         }
         Relationships: []
       }
+      voip_call_groups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          region: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          region: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          region?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voip_call_groups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      voip_call_participants: {
+        Row: {
+          call_id: string
+          created_at: string
+          display_name: string | null
+          id: string
+          joined_at: string | null
+          left_at: string | null
+          participant_type: string
+          phone_number: string
+          region: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          call_id: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          joined_at?: string | null
+          left_at?: string | null
+          participant_type: string
+          phone_number: string
+          region: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          call_id?: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          joined_at?: string | null
+          left_at?: string | null
+          participant_type?: string
+          phone_number?: string
+          region?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voip_call_participants_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "voip_calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voip_call_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      voip_calls: {
+        Row: {
+          call_sid: string | null
+          call_type: string
+          created_at: string
+          direction: string
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          initiated_by: string | null
+          recording_url: string | null
+          region: string
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          call_sid?: string | null
+          call_type: string
+          created_at?: string
+          direction?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          initiated_by?: string | null
+          recording_url?: string | null
+          region: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          call_sid?: string | null
+          call_type?: string
+          created_at?: string
+          direction?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          initiated_by?: string | null
+          recording_url?: string | null
+          region?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voip_calls_initiated_by_fkey"
+            columns: ["initiated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      voip_group_members: {
+        Row: {
+          added_at: string
+          display_name: string | null
+          group_id: string
+          id: string
+          is_active: boolean
+          phone_number: string
+          region: string
+          user_id: string | null
+        }
+        Insert: {
+          added_at?: string
+          display_name?: string | null
+          group_id: string
+          id?: string
+          is_active?: boolean
+          phone_number: string
+          region: string
+          user_id?: string | null
+        }
+        Update: {
+          added_at?: string
+          display_name?: string | null
+          group_id?: string
+          id?: string
+          is_active?: boolean
+          phone_number?: string
+          region?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voip_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "voip_call_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voip_group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       weekly_inspection_reports: {
         Row: {
           admin_decision: string | null
