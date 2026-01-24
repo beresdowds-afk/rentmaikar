@@ -1717,6 +1717,10 @@ export type Database = {
           ended_at: string | null
           id: string
           initiated_by: string | null
+          recording_duration_seconds: number | null
+          recording_size_bytes: number | null
+          recording_status: string | null
+          recording_stored_at: string | null
           recording_url: string | null
           region: string
           started_at: string | null
@@ -1732,6 +1736,10 @@ export type Database = {
           ended_at?: string | null
           id?: string
           initiated_by?: string | null
+          recording_duration_seconds?: number | null
+          recording_size_bytes?: number | null
+          recording_status?: string | null
+          recording_stored_at?: string | null
           recording_url?: string | null
           region: string
           started_at?: string | null
@@ -1747,6 +1755,10 @@ export type Database = {
           ended_at?: string | null
           id?: string
           initiated_by?: string | null
+          recording_duration_seconds?: number | null
+          recording_size_bytes?: number | null
+          recording_status?: string | null
+          recording_stored_at?: string | null
           recording_url?: string | null
           region?: string
           started_at?: string | null

@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { History, RefreshCw, Phone, Users, PhoneIncoming, PhoneOutgoing, Loader2 } from 'lucide-react';
+import { History, RefreshCw, Phone, Users, PhoneIncoming, PhoneOutgoing, Loader2, Play, Volume2 } from 'lucide-react';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import type { VoIPCall, CallRegion } from '@/types/voip';
 import { formatPhoneForDisplay } from '@/types/voip';
+import { RecordingPlaybackModal } from './RecordingPlaybackModal';
 
 interface CallHistoryProps {
   calls: VoIPCall[];
@@ -26,9 +27,17 @@ const statusColors: Record<string, string> = {
   canceled: 'bg-gray-400',
 };
 
+const recordingStatusIcons: Record<string, { icon: typeof Volume2; color: string }> = {
+  ready: { icon: Play, color: 'text-green-500' },
+  processing: { icon: Loader2, color: 'text-yellow-500' },
+  recording: { icon: Volume2, color: 'text-red-500' },
+};
+
 export const CallHistory = ({ calls, onRefresh, isLoading }: CallHistoryProps) => {
   const [regionFilter, setRegionFilter] = useState<CallRegion | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'individual' | 'group'>('all');
+  const [selectedCall, setSelectedCall] = useState<VoIPCall | null>(null);
+  const [isPlaybackOpen, setIsPlaybackOpen] = useState(false);
 
   const filteredCalls = calls.filter(call => {
     if (regionFilter !== 'all' && call.region !== regionFilter) return false;
@@ -100,13 +109,14 @@ export const CallHistory = ({ calls, onRefresh, isLoading }: CallHistoryProps) =
                 <TableHead>Participants</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Duration</TableHead>
+                <TableHead>Recording</TableHead>
                 <TableHead>Date/Time</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredCalls.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No calls found
                   </TableCell>
                 </TableRow>
@@ -154,6 +164,29 @@ export const CallHistory = ({ calls, onRefresh, isLoading }: CallHistoryProps) =
                     </TableCell>
                     <TableCell>{formatDuration(call.duration_seconds)}</TableCell>
                     <TableCell>
+                      {(call as any)?.recording_status === 'ready' ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedCall(call);
+                            setIsPlaybackOpen(true);
+                          }}
+                          className="text-green-600 hover:text-green-700"
+                        >
+                          <Play className="h-4 w-4 mr-1" />
+                          Play
+                        </Button>
+                      ) : (call as any)?.recording_status === 'processing' ? (
+                        <span className="flex items-center gap-1 text-yellow-600 text-sm">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Processing
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <div className="text-sm">
                         {format(new Date(call.created_at), 'MMM d, yyyy')}
                         <br />
@@ -168,6 +201,16 @@ export const CallHistory = ({ calls, onRefresh, isLoading }: CallHistoryProps) =
             </TableBody>
           </Table>
         </div>
+
+        {/* Recording Playback Modal */}
+        <RecordingPlaybackModal
+          call={selectedCall}
+          isOpen={isPlaybackOpen}
+          onClose={() => {
+            setIsPlaybackOpen(false);
+            setSelectedCall(null);
+          }}
+        />
       </CardContent>
     </Card>
   );
