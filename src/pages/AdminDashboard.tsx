@@ -22,6 +22,7 @@ import { AdminContactSettings } from "@/components/admin/AdminContactSettings";
 import { AdminSupportTaskManagement } from "@/components/admin/AdminSupportTaskManagement";
 import { AdminTaskPortal } from "@/components/admin/portal/AdminTaskPortal";
 import { VehiclePickupManagement } from "@/components/admin/VehiclePickupManagement";
+import { ApplicationManagement } from "@/components/admin/ApplicationManagement";
 import { PortalNavigation, type PortalType } from "@/components/admin/PortalNavigation";
 import { PortalAnalyticsCards } from "@/components/admin/PortalAnalyticsCards";
 import AdminOnboardingTour from "@/components/onboarding/AdminOnboardingTour";
@@ -406,6 +407,7 @@ const AdminDashboard = () => {
           {/* CRM Portal */}
           {portalView === 'crm' && (
             <div className="space-y-6">
+              {activeTab === 'applications' && <ApplicationManagement />}
               {activeTab === 'accounts' && <UserAccountsView />}
               {activeTab === 'negotiations' && <AdminPriceNegotiation />}
               {activeTab === 'approvals' && (

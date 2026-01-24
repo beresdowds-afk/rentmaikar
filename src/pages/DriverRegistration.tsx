@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { supabase } from "@/integrations/supabase/client";
 
 const driverSchema = z.object({
   firstName: z.string().min(2, "First name is required").max(50, "First name too long"),
@@ -86,12 +87,30 @@ const DriverRegistration = () => {
 
   const onSubmit = async (data: DriverFormData) => {
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      console.log("Driver registration:", data);
-      toast.success("Registration submitted successfully! We'll review your application.");
+      const { error } = await supabase.from('applications').insert({
+        application_type: 'driver' as const,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        phone_country: data.phoneCountry,
+        phone_number: data.phoneNumber,
+        country: data.country,
+        city: data.city,
+        zip_code: data.zipCode,
+        region: data.country === 'usa' ? 'usa' : 'nigeria',
+        rideshare_platforms: data.rideshareApproval,
+        has_driver_license: data.hasDriverLicense,
+        agreed_terms: data.agreeTerms,
+        agreed_privacy: data.agreePrivacy,
+        agreed_iot: data.agreeIoT,
+      });
+      
+      if (error) throw error;
+      
+      toast.success("Registration submitted successfully! We'll review your application within 24-48 hours.");
       navigate("/");
     } catch (error) {
+      console.error("Driver registration error:", error);
       toast.error("Something went wrong. Please try again.");
     }
   };

@@ -14,6 +14,126 @@ export type Database = {
   }
   public: {
     Tables: {
+      applications: {
+        Row: {
+          agreed_fees: boolean | null
+          agreed_iot: boolean
+          agreed_privacy: boolean
+          agreed_terms: boolean
+          application_type: Database["public"]["Enums"]["application_type"]
+          assigned_at: string | null
+          assigned_by: string | null
+          assigned_to: string | null
+          city: string
+          country: string
+          created_at: string
+          desired_weekly_price: number | null
+          email: string
+          first_name: string
+          has_driver_license: boolean | null
+          has_insurance: boolean | null
+          has_registration: boolean | null
+          id: string
+          last_name: string
+          phone_country: string
+          phone_number: string
+          region: string
+          rejection_reason: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rideshare_platforms: string[] | null
+          status: Database["public"]["Enums"]["application_status"]
+          updated_at: string
+          user_id: string | null
+          vehicle_color: string | null
+          vehicle_description: string | null
+          vehicle_make: string | null
+          vehicle_model: string | null
+          vehicle_plate: string | null
+          vehicle_year: number | null
+          zip_code: string
+        }
+        Insert: {
+          agreed_fees?: boolean | null
+          agreed_iot?: boolean
+          agreed_privacy?: boolean
+          agreed_terms?: boolean
+          application_type: Database["public"]["Enums"]["application_type"]
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          city: string
+          country: string
+          created_at?: string
+          desired_weekly_price?: number | null
+          email: string
+          first_name: string
+          has_driver_license?: boolean | null
+          has_insurance?: boolean | null
+          has_registration?: boolean | null
+          id?: string
+          last_name: string
+          phone_country: string
+          phone_number: string
+          region?: string
+          rejection_reason?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rideshare_platforms?: string[] | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+          user_id?: string | null
+          vehicle_color?: string | null
+          vehicle_description?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_plate?: string | null
+          vehicle_year?: number | null
+          zip_code: string
+        }
+        Update: {
+          agreed_fees?: boolean | null
+          agreed_iot?: boolean
+          agreed_privacy?: boolean
+          agreed_terms?: boolean
+          application_type?: Database["public"]["Enums"]["application_type"]
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          city?: string
+          country?: string
+          created_at?: string
+          desired_weekly_price?: number | null
+          email?: string
+          first_name?: string
+          has_driver_license?: boolean | null
+          has_insurance?: boolean | null
+          has_registration?: boolean | null
+          id?: string
+          last_name?: string
+          phone_country?: string
+          phone_number?: string
+          region?: string
+          rejection_reason?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rideshare_platforms?: string[] | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+          user_id?: string | null
+          vehicle_color?: string | null
+          vehicle_description?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_plate?: string | null
+          vehicle_year?: number | null
+          zip_code?: string
+        }
+        Relationships: []
+      }
       contact_settings: {
         Row: {
           contact_type: string
@@ -2102,6 +2222,13 @@ export type Database = {
         | "legal_support"
         | "iot_support"
         | "vehicle_support"
+      application_status:
+        | "pending"
+        | "under_review"
+        | "approved"
+        | "rejected"
+        | "needs_info"
+      application_type: "driver" | "owner"
       device_status: "inactive" | "active" | "offline" | "maintenance"
       incident_severity: "low" | "medium" | "high" | "critical"
       incident_status:
@@ -2288,6 +2415,14 @@ export const Constants = {
         "iot_support",
         "vehicle_support",
       ],
+      application_status: [
+        "pending",
+        "under_review",
+        "approved",
+        "rejected",
+        "needs_info",
+      ],
+      application_type: ["driver", "owner"],
       device_status: ["inactive", "active", "offline", "maintenance"],
       incident_severity: ["low", "medium", "high", "critical"],
       incident_status: [
