@@ -26,6 +26,7 @@ import { VehiclePickupManagement } from "@/components/admin/VehiclePickupManagem
 import { ApplicationManagement } from "@/components/admin/ApplicationManagement";
 import { PortalNavigation, type PortalType } from "@/components/admin/PortalNavigation";
 import { PortalAnalyticsCards } from "@/components/admin/PortalAnalyticsCards";
+import { GlobalSearch } from "@/components/admin/GlobalSearch";
 import AdminOnboardingTour from "@/components/onboarding/AdminOnboardingTour";
 import { useAdminOnboardingTour } from "@/hooks/useAdminOnboardingTour";
 import { Button } from "@/components/ui/button";
@@ -211,7 +212,7 @@ const AdminDashboard = () => {
       <Header />
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
                 <Shield className="w-6 h-6 text-primary-foreground" />
@@ -223,10 +224,18 @@ const AdminDashboard = () => {
                 <p className="text-muted-foreground">Manage vehicles, drivers, and payments</p>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={resetTour} className="gap-2">
-              <HelpCircle className="h-4 w-4" />
-              Tour
-            </Button>
+            <div className="flex items-center gap-2">
+              <GlobalSearch 
+                onNavigate={(portal, tab) => {
+                  setPortalView(portal);
+                  setActiveTab(tab);
+                }}
+              />
+              <Button variant="outline" size="sm" onClick={resetTour} className="gap-2">
+                <HelpCircle className="h-4 w-4" />
+                Tour
+              </Button>
+            </div>
           </div>
 
           {/* Stats Grid */}
