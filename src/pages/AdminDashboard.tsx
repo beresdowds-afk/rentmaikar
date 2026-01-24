@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff, Camera, BarChart3, Home, Inbox, MessageSquare, HelpCircle, Headphones, LayoutGrid, Phone } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff, Camera, BarChart3, Home, Inbox, MessageSquare, HelpCircle, Headphones, LayoutGrid, Phone, Building2, UsersRound } from "lucide-react";
 import { CallCenterPage } from "@/components/admin/voip/CallCenterPage";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
@@ -136,6 +136,7 @@ const AdminDashboard = () => {
   const { rates, isLoading: ratesLoading, convertToUSD, formatWithConversion, refetch: refetchRates } = useCurrencyConversion();
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
   const [approvingId, setApprovingId] = useState<number | null>(null);
+  const [portalView, setPortalView] = useState<'erp' | 'crm'>('crm');
   const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
 
   // Calculate converted values
@@ -378,487 +379,526 @@ const AdminDashboard = () => {
             </Card>
           </div>
 
-          <Tabs defaultValue="task-portal" className="space-y-6">
-            <TabsList className="flex-wrap">
-              <TabsTrigger value="task-portal" className="flex items-center gap-1" data-tour="admin-portal">
-                <LayoutGrid className="h-4 w-4" />
-                Task Portal
-              </TabsTrigger>
-              <TabsTrigger value="tracking">Vehicle Tracking</TabsTrigger>
-              <TabsTrigger value="inbox" className="flex items-center gap-1" data-tour="admin-inbox">
-                <Inbox className="h-4 w-4" />
-                Unified Inbox
-              </TabsTrigger>
-              <TabsTrigger value="call-center" className="flex items-center gap-1">
-                <Phone className="h-4 w-4" />
-                Call Center
-              </TabsTrigger>
-              <TabsTrigger value="contacts" className="flex items-center gap-1" data-tour="admin-contacts">
-                <MessageSquare className="h-4 w-4" />
-                Contact Settings
-              </TabsTrigger>
-              <TabsTrigger value="accounts" className="flex items-center gap-1" data-tour="admin-accounts">
-                <UserCircle className="h-4 w-4" />
-                User Accounts
-              </TabsTrigger>
-              <TabsTrigger value="assets" className="flex items-center gap-1" data-tour="admin-assets">
-                <ClipboardList className="h-4 w-4" />
-                Assets Registry
-              </TabsTrigger>
-              <TabsTrigger value="pickup-locations" className="flex items-center gap-1">
-                <MapPin className="h-4 w-4" />
-                Pickup Locations
-              </TabsTrigger>
-              <TabsTrigger value="hardware" className="flex items-center gap-1">
-                <Cpu className="h-4 w-4" />
-                Hardware
-              </TabsTrigger>
-              <TabsTrigger value="device-orders" className="flex items-center gap-1" data-tour="admin-device-orders">
-                <Package className="h-4 w-4" />
-                Device Orders
-              </TabsTrigger>
-              <TabsTrigger value="device-revenue" className="flex items-center gap-1">
-                <BarChart3 className="h-4 w-4" />
-                Device Revenue
-              </TabsTrigger>
-              <TabsTrigger value="pricing" className="flex items-center gap-1">
-                <Tag className="h-4 w-4" />
-                Category Pricing
-              </TabsTrigger>
-              <TabsTrigger value="negotiations" className="flex items-center gap-1" data-tour="admin-negotiations">
-                <HandshakeIcon className="h-4 w-4" />
-                Negotiations
-              </TabsTrigger>
-              <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
-              <TabsTrigger value="defaults">Payment Defaults</TabsTrigger>
-              <TabsTrigger value="incidents" className="flex items-center gap-1" data-tour="admin-incidents">
-                <Wrench className="h-4 w-4" />
-                Incidents
-              </TabsTrigger>
-              <TabsTrigger value="recalls" className="flex items-center gap-1">
-                <WifiOff className="h-4 w-4" />
-                Vehicle Recalls
-              </TabsTrigger>
-              <TabsTrigger value="daily-plans" className="flex items-center gap-1">
-                <Ban className="h-4 w-4" />
-                Daily Plans
-              </TabsTrigger>
-              <TabsTrigger value="weekly-reports" className="flex items-center gap-1" data-tour="admin-inspections">
-                <Camera className="h-4 w-4" />
-              Weekly Reports
-              </TabsTrigger>
-              <TabsTrigger value="legal-agreements" className="flex items-center gap-1" data-tour="admin-agreements">
-                <ClipboardList className="h-4 w-4" />
-                Legal Agreements
-              </TabsTrigger>
-              <TabsTrigger value="rent-to-own" className="flex items-center gap-1" data-tour="admin-rto">
-                <Home className="h-4 w-4" />
-                Rent to Own
-              </TabsTrigger>
-              <TabsTrigger value="fees">Fee Structure</TabsTrigger>
-              <TabsTrigger value="support-tasks" className="flex items-center gap-1">
-                <Headphones className="h-4 w-4" />
-                Support Tasks
-              </TabsTrigger>
-              <TabsTrigger value="secrets" className="flex items-center gap-1">
-                <KeyRound className="h-4 w-4" />
-                API Secrets
-              </TabsTrigger>
-              <TabsTrigger value="settings">Region Settings</TabsTrigger>
-              <TabsTrigger value="content">Content CMS</TabsTrigger>
-            </TabsList>
+          {/* Portal Selector */}
+          <div className="flex items-center gap-4 mb-6">
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                variant={portalView === 'crm' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setPortalView('crm')}
+                className="gap-2"
+              >
+                <UsersRound className="h-4 w-4" />
+                CRM Portal
+              </Button>
+              <Button
+                variant={portalView === 'erp' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setPortalView('erp')}
+                className="gap-2"
+              >
+                <Building2 className="h-4 w-4" />
+                ERP Portal
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground hidden md:block">
+              {portalView === 'crm' 
+                ? 'Customer relationships, communications & agreements' 
+                : 'Operations, assets, hardware & fleet management'}
+            </p>
+          </div>
 
-            <TabsContent value="task-portal">
-              <AdminTaskPortal />
-            </TabsContent>
+          {/* CRM Portal */}
+          {portalView === 'crm' && (
+            <Tabs defaultValue="task-portal" className="space-y-6">
+              <TabsList className="flex-wrap">
+                <TabsTrigger value="task-portal" className="flex items-center gap-1" data-tour="admin-portal">
+                  <LayoutGrid className="h-4 w-4" />
+                  Task Portal
+                </TabsTrigger>
+                <TabsTrigger value="inbox" className="flex items-center gap-1" data-tour="admin-inbox">
+                  <Inbox className="h-4 w-4" />
+                  Unified Inbox
+                </TabsTrigger>
+                <TabsTrigger value="call-center" className="flex items-center gap-1">
+                  <Phone className="h-4 w-4" />
+                  Call Center
+                </TabsTrigger>
+                <TabsTrigger value="contacts" className="flex items-center gap-1" data-tour="admin-contacts">
+                  <MessageSquare className="h-4 w-4" />
+                  Contact Settings
+                </TabsTrigger>
+                <TabsTrigger value="accounts" className="flex items-center gap-1" data-tour="admin-accounts">
+                  <UserCircle className="h-4 w-4" />
+                  User Accounts
+                </TabsTrigger>
+                <TabsTrigger value="negotiations" className="flex items-center gap-1" data-tour="admin-negotiations">
+                  <HandshakeIcon className="h-4 w-4" />
+                  Negotiations
+                </TabsTrigger>
+                <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
+                <TabsTrigger value="defaults">Payment Defaults</TabsTrigger>
+                <TabsTrigger value="legal-agreements" className="flex items-center gap-1" data-tour="admin-agreements">
+                  <ClipboardList className="h-4 w-4" />
+                  Legal Agreements
+                </TabsTrigger>
+                <TabsTrigger value="rent-to-own" className="flex items-center gap-1" data-tour="admin-rto">
+                  <Home className="h-4 w-4" />
+                  Rent to Own
+                </TabsTrigger>
+                <TabsTrigger value="support-tasks" className="flex items-center gap-1">
+                  <Headphones className="h-4 w-4" />
+                  Support Tasks
+                </TabsTrigger>
+                <TabsTrigger value="content">Content CMS</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="tracking">
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Live Vehicle Tracking</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Monitor vehicles across DMV states (USA) and Nigeria (Lagos, Abuja, Port Harcourt). 
-                  Click on markers to view details and send remote commands.
-                </p>
-                <VehicleTrackingMap />
-              </Card>
-            </TabsContent>
+              <TabsContent value="task-portal">
+                <AdminTaskPortal />
+              </TabsContent>
 
-            <TabsContent value="inbox">
-              <AdminUnifiedInbox />
-            </TabsContent>
+              <TabsContent value="inbox">
+                <AdminUnifiedInbox />
+              </TabsContent>
 
-            <TabsContent value="call-center">
-              <CallCenterPage />
-            </TabsContent>
+              <TabsContent value="call-center">
+                <CallCenterPage />
+              </TabsContent>
 
-            <TabsContent value="contacts">
-              <AdminContactSettings />
-            </TabsContent>
+              <TabsContent value="contacts">
+                <AdminContactSettings />
+              </TabsContent>
 
-            <TabsContent value="accounts">
-              <UserAccountsView />
-            </TabsContent>
+              <TabsContent value="accounts">
+                <UserAccountsView />
+              </TabsContent>
 
-            <TabsContent value="assets">
-              <AssetsRegistry />
-            </TabsContent>
+              <TabsContent value="negotiations">
+                <AdminPriceNegotiation />
+              </TabsContent>
 
-            <TabsContent value="pickup-locations">
-              <VehiclePickupManagement />
-            </TabsContent>
-
-            <TabsContent value="hardware">
-              <HardwareManagement />
-            </TabsContent>
-
-            <TabsContent value="device-orders">
-              <IoTDeviceOrders />
-            </TabsContent>
-
-            <TabsContent value="device-revenue">
-              <DeviceOrderRevenue />
-            </TabsContent>
-
-            <TabsContent value="pricing">
-              <CategoryPricing />
-            </TabsContent>
-
-            <TabsContent value="negotiations">
-              <AdminPriceNegotiation />
-            </TabsContent>
-
-            <TabsContent value="approvals">
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Pending Approvals ({pendingItems.length})</h3>
-                
-                {pendingItems.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <CheckCircle className="h-12 w-12 mx-auto mb-3 text-success" />
-                    <p>All approvals have been processed!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {pendingItems.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center">
-                            <Clock className="w-5 h-5 text-warning" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{item.name}</p>
-                            <p className="text-sm text-muted-foreground">{item.type} • {item.location}</p>
-                            <p className="text-xs text-muted-foreground">{item.email}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline"><Eye className="w-4 h-4" /></Button>
-                          <Button 
-                            size="sm" 
-                            variant="hero"
-                            disabled={approvingId === item.id}
-                            onClick={() => handleApproval(item)}
-                          >
-                            {approvingId === item.id ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                                Sending...
-                              </>
-                            ) : (
-                              <>
-                                <Mail className="w-4 h-4 mr-1" />
-                                Approve
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {approvedItems.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="text-sm font-medium text-muted-foreground mb-3">Recently Approved</h4>
-                    <div className="space-y-2">
-                      {approvedItems.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-success/10 border border-success/20">
-                          <div className="flex items-center gap-3">
-                            <CheckCircle className="w-5 h-5 text-success" />
+              <TabsContent value="approvals">
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">Pending Approvals ({pendingItems.length})</h3>
+                  
+                  {pendingItems.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <CheckCircle className="h-12 w-12 mx-auto mb-3 text-success" />
+                      <p>All approvals have been processed!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {pendingItems.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center">
+                              <Clock className="w-5 h-5 text-warning" />
+                            </div>
                             <div>
-                              <p className="font-medium text-sm">{item.name}</p>
-                              <p className="text-xs text-muted-foreground">{item.type} • {item.email}</p>
+                              <p className="font-medium">{item.name}</p>
+                              <p className="text-sm text-muted-foreground">{item.type} • {item.location}</p>
+                              <p className="text-xs text-muted-foreground">{item.email}</p>
                             </div>
                           </div>
-                          <span className="text-xs text-success font-medium">Email Sent ✓</span>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline"><Eye className="w-4 h-4" /></Button>
+                            <Button 
+                              size="sm" 
+                              variant="hero"
+                              disabled={approvingId === item.id}
+                              onClick={() => handleApproval(item)}
+                            >
+                              {approvingId === item.id ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                  Sending...
+                                </>
+                              ) : (
+                                <>
+                                  <Mail className="w-4 h-4 mr-1" />
+                                  Approve
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-              </Card>
-            </TabsContent>
+                  )}
 
-            <TabsContent value="defaults">
-              <div className="space-y-4">
+                  {approvedItems.length > 0 && (
+                    <div className="mt-6">
+                      <h4 className="text-sm font-medium text-muted-foreground mb-3">Recently Approved</h4>
+                      <div className="space-y-2">
+                        {approvedItems.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-success/10 border border-success/20">
+                            <div className="flex items-center gap-3">
+                              <CheckCircle className="w-5 h-5 text-success" />
+                              <div>
+                                <p className="font-medium text-sm">{item.name}</p>
+                                <p className="text-xs text-muted-foreground">{item.type} • {item.email}</p>
+                              </div>
+                            </div>
+                            <span className="text-xs text-success font-medium">Email Sent ✓</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="defaults">
+                <div className="space-y-4">
+                  <Card className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <AlertTriangle className="h-5 w-5 text-destructive" />
+                      <h3 className="text-lg font-semibold">Payment Defaults ({paymentDefaults.length})</h3>
+                    </div>
+                    <div className="p-3 mb-4 rounded-lg bg-muted text-sm space-y-1">
+                      <p><strong>Payment Default Protocol:</strong></p>
+                      <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                        <li>Auto-debit runs daily at 12:01 AM</li>
+                        <li><strong>Weekly Plans:</strong> 72-hour lockdown with 3 notifications at 24-hour intervals</li>
+                        <li><strong>Daily Plans:</strong> 36-hour lockdown with 3 notifications at 12-hour intervals</li>
+                        <li>Daily plans become forbidden after any payment default</li>
+                        <li>Deactivation only when vehicle is parked (speed &lt; 2 mph)</li>
+                      </ul>
+                    </div>
+                  </Card>
+                  
+                  {paymentDefaults.map((paymentDefault) => (
+                    <PaymentDefaultAlert
+                      key={paymentDefault.id}
+                      paymentDefault={paymentDefault}
+                      onInitiateDeactivation={() => {
+                        toast.info("Deactivation request initiated", {
+                          description: `Vehicle ${paymentDefault.vehicleId} will be deactivated when safely parked.`,
+                        });
+                      }}
+                      onContactSupport={() => {
+                        toast.info("Contacting driver...", {
+                          description: "Opening communication channel.",
+                        });
+                      }}
+                    />
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="legal-agreements">
+                <LegalAgreementsManagement />
+              </TabsContent>
+
+              <TabsContent value="rent-to-own">
+                <RentToOwnManagement />
+              </TabsContent>
+
+              <TabsContent value="support-tasks">
+                <AdminSupportTaskManagement />
+              </TabsContent>
+
+              <TabsContent value="content">
+                <Tabs defaultValue="faq" className="space-y-4">
+                  <TabsList>
+                    <TabsTrigger value="faq">FAQ Management</TabsTrigger>
+                    <TabsTrigger value="policies">Policy Versions</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="faq">
+                    <FAQManagement />
+                  </TabsContent>
+                  <TabsContent value="policies">
+                    <PolicyManagement />
+                  </TabsContent>
+                </Tabs>
+              </TabsContent>
+            </Tabs>
+          )}
+
+          {/* ERP Portal */}
+          {portalView === 'erp' && (
+            <Tabs defaultValue="tracking" className="space-y-6">
+              <TabsList className="flex-wrap">
+                <TabsTrigger value="tracking">Vehicle Tracking</TabsTrigger>
+                <TabsTrigger value="assets" className="flex items-center gap-1" data-tour="admin-assets">
+                  <ClipboardList className="h-4 w-4" />
+                  Assets Registry
+                </TabsTrigger>
+                <TabsTrigger value="pickup-locations" className="flex items-center gap-1">
+                  <MapPin className="h-4 w-4" />
+                  Pickup Locations
+                </TabsTrigger>
+                <TabsTrigger value="hardware" className="flex items-center gap-1">
+                  <Cpu className="h-4 w-4" />
+                  Hardware
+                </TabsTrigger>
+                <TabsTrigger value="device-orders" className="flex items-center gap-1" data-tour="admin-device-orders">
+                  <Package className="h-4 w-4" />
+                  Device Orders
+                </TabsTrigger>
+                <TabsTrigger value="device-revenue" className="flex items-center gap-1">
+                  <BarChart3 className="h-4 w-4" />
+                  Device Revenue
+                </TabsTrigger>
+                <TabsTrigger value="pricing" className="flex items-center gap-1">
+                  <Tag className="h-4 w-4" />
+                  Category Pricing
+                </TabsTrigger>
+                <TabsTrigger value="incidents" className="flex items-center gap-1" data-tour="admin-incidents">
+                  <Wrench className="h-4 w-4" />
+                  Incidents
+                </TabsTrigger>
+                <TabsTrigger value="recalls" className="flex items-center gap-1">
+                  <WifiOff className="h-4 w-4" />
+                  Vehicle Recalls
+                </TabsTrigger>
+                <TabsTrigger value="daily-plans" className="flex items-center gap-1">
+                  <Ban className="h-4 w-4" />
+                  Daily Plans
+                </TabsTrigger>
+                <TabsTrigger value="weekly-reports" className="flex items-center gap-1" data-tour="admin-inspections">
+                  <Camera className="h-4 w-4" />
+                  Weekly Reports
+                </TabsTrigger>
+                <TabsTrigger value="fees">Fee Structure</TabsTrigger>
+                <TabsTrigger value="secrets" className="flex items-center gap-1">
+                  <KeyRound className="h-4 w-4" />
+                  API Secrets
+                </TabsTrigger>
+                <TabsTrigger value="settings">Region Settings</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="tracking">
                 <Card className="p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <AlertTriangle className="h-5 w-5 text-destructive" />
-                    <h3 className="text-lg font-semibold">Payment Defaults ({paymentDefaults.length})</h3>
+                  <h3 className="text-lg font-semibold mb-4">Live Vehicle Tracking</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Monitor vehicles across DMV states (USA) and Nigeria (Lagos, Abuja, Port Harcourt). 
+                    Click on markers to view details and send remote commands.
+                  </p>
+                  <VehicleTrackingMap />
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="assets">
+                <AssetsRegistry />
+              </TabsContent>
+
+              <TabsContent value="pickup-locations">
+                <VehiclePickupManagement />
+              </TabsContent>
+
+              <TabsContent value="hardware">
+                <HardwareManagement />
+              </TabsContent>
+
+              <TabsContent value="device-orders">
+                <IoTDeviceOrders />
+              </TabsContent>
+
+              <TabsContent value="device-revenue">
+                <DeviceOrderRevenue />
+              </TabsContent>
+
+              <TabsContent value="pricing">
+                <CategoryPricing />
+              </TabsContent>
+
+              <TabsContent value="incidents">
+                <AdminIncidentManagement />
+              </TabsContent>
+
+              <TabsContent value="recalls">
+                <VehicleRecallManagement />
+              </TabsContent>
+
+              <TabsContent value="daily-plans">
+                <DailyPlanManagement />
+              </TabsContent>
+
+              <TabsContent value="weekly-reports">
+                <AdminWeeklyReportManagement />
+              </TabsContent>
+
+              <TabsContent value="fees">
+                <Card className="p-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Wallet className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-semibold">Fee Structure & Payment Gateways</h3>
                   </div>
-                  <div className="p-3 mb-4 rounded-lg bg-muted text-sm space-y-1">
-                    <p><strong>Payment Default Protocol:</strong></p>
-                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                      <li>Auto-debit runs daily at 12:01 AM</li>
-                      <li><strong>Weekly Plans:</strong> 72-hour lockdown with 3 notifications at 24-hour intervals</li>
-                      <li><strong>Daily Plans:</strong> 36-hour lockdown with 3 notifications at 12-hour intervals</li>
-                      <li>Daily plans become forbidden after any payment default</li>
-                      <li>Deactivation only when vehicle is parked (speed &lt; 2 mph)</li>
+                  
+                  <div className="grid md:grid-cols-2 gap-6 mb-6">
+                    {/* USA - PayPal */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🇺🇸</span>
+                        <h4 className="font-semibold">USA (PayPal)</h4>
+                      </div>
+                      <PaymentBreakdownCard
+                        baseAmount={48}
+                        currency="USD"
+                        gateway="paypal"
+                      />
+                      <PaymentBreakdownCard
+                        baseAmount={48}
+                        currency="USD"
+                        gateway="paypal"
+                        showOwnerView
+                      />
+                    </div>
+
+                    {/* Nigeria - Paystack */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🇳🇬</span>
+                        <h4 className="font-semibold">Nigeria (Paystack)</h4>
+                      </div>
+                      <PaymentBreakdownCard
+                        baseAmount={25000}
+                        currency="NGN"
+                        gateway="paystack"
+                      />
+                      <PaymentBreakdownCard
+                        baseAmount={25000}
+                        currency="NGN"
+                        gateway="paystack"
+                        showOwnerView
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-muted space-y-2">
+                    <h5 className="font-semibold flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      Payment Schedule
+                    </h5>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• <strong>Daily Auto-Debit:</strong> 12:01 AM local time</li>
+                      <li>• <strong>Owner Payouts:</strong> Every Friday (weekly)</li>
+                      <li>• <strong>Platform Fee:</strong> 40% total (20% admin + 20% management)</li>
                     </ul>
                   </div>
                 </Card>
-                
-                {paymentDefaults.map((paymentDefault) => (
-                  <PaymentDefaultAlert
-                    key={paymentDefault.id}
-                    paymentDefault={paymentDefault}
-                    onInitiateDeactivation={() => {
-                      toast.info("Deactivation request initiated", {
-                        description: `Vehicle ${paymentDefault.vehicleId} will be deactivated when safely parked.`,
-                      });
-                    }}
-                    onContactSupport={() => {
-                      toast.info("Contacting driver...", {
-                        description: "Opening communication channel.",
-                      });
-                    }}
-                  />
-                ))}
-              </div>
-            </TabsContent>
+              </TabsContent>
 
-            <TabsContent value="incidents">
-              <AdminIncidentManagement />
-            </TabsContent>
+              <TabsContent value="secrets">
+                <SecretsManagement />
+              </TabsContent>
 
-            <TabsContent value="recalls">
-              <VehicleRecallManagement />
-            </TabsContent>
-
-            <TabsContent value="daily-plans">
-              <DailyPlanManagement />
-            </TabsContent>
-
-            <TabsContent value="weekly-reports">
-              <AdminWeeklyReportManagement />
-            </TabsContent>
-
-            <TabsContent value="legal-agreements">
-              <LegalAgreementsManagement />
-            </TabsContent>
-
-            <TabsContent value="rent-to-own">
-              <RentToOwnManagement />
-            </TabsContent>
-
-            <TabsContent value="fees">
-              <Card className="p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <Wallet className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Fee Structure & Payment Gateways</h3>
-                </div>
-                
-                <div className="grid md:grid-cols-2 gap-6 mb-6">
-                  {/* USA - PayPal */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">🇺🇸</span>
-                      <h4 className="font-semibold">USA (PayPal)</h4>
-                    </div>
-                    <PaymentBreakdownCard
-                      baseAmount={48}
-                      currency="USD"
-                      gateway="paypal"
-                    />
-                    <PaymentBreakdownCard
-                      baseAmount={48}
-                      currency="USD"
-                      gateway="paypal"
-                      showOwnerView
-                    />
+              <TabsContent value="settings">
+                <Card className="p-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Settings className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-semibold">Region Detection Settings</h3>
                   </div>
 
-                  {/* Nigeria - Paystack */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">🇳🇬</span>
-                      <h4 className="font-semibold">Nigeria (Paystack)</h4>
-                    </div>
-                    <PaymentBreakdownCard
-                      baseAmount={25000}
-                      currency="NGN"
-                      gateway="paystack"
-                    />
-                    <PaymentBreakdownCard
-                      baseAmount={25000}
-                      currency="NGN"
-                      gateway="paystack"
-                      showOwnerView
-                    />
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-lg bg-muted space-y-2">
-                  <h5 className="font-semibold flex items-center gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    Payment Schedule
-                  </h5>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• <strong>Daily Auto-Debit:</strong> 12:01 AM local time</li>
-                    <li>• <strong>Owner Payouts:</strong> Every Friday (weekly)</li>
-                    <li>• <strong>Platform Fee:</strong> 40% total (20% admin + 20% management)</li>
-                  </ul>
-                </div>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="support-tasks">
-              <AdminSupportTaskManagement />
-            </TabsContent>
-
-            <TabsContent value="secrets">
-              <SecretsManagement />
-            </TabsContent>
-
-            <TabsContent value="settings">
-              <Card className="p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <Settings className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Region Detection Settings</h3>
-                </div>
-
-                <div className="space-y-6">
-                  {/* Auto vs Manual Toggle */}
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                    <div className="space-y-1">
-                      <Label htmlFor="region-mode" className="text-base font-medium">
-                        Automatic Region Detection
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        {regionMode === "auto" 
-                          ? "Region is detected automatically using IP address geolocation"
-                          : "Region is manually selected by users or admins"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Manual</span>
-                      <Switch
-                        id="region-mode"
-                        checked={regionMode === "auto"}
-                        onCheckedChange={(checked) => {
-                          setRegionMode(checked ? "auto" : "manual");
-                          toast.success(`Region detection set to ${checked ? "automatic" : "manual"}`);
-                        }}
-                      />
-                      <span className="text-sm text-muted-foreground">Auto</span>
-                    </div>
-                  </div>
-
-                  {/* Current Region Status */}
-                  <div className="p-4 rounded-lg border border-border">
-                    <div className="flex items-center gap-3 mb-4">
-                      <Globe className="h-5 w-5 text-accent" />
-                      <h4 className="font-medium">Current Region Status</h4>
-                      {isDetecting && (
-                        <span className="px-2 py-1 text-xs rounded-full bg-warning/10 text-warning animate-pulse">
-                          Detecting...
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-sm text-muted-foreground">Active Region</Label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-2xl">{country === "USA" ? "🇺🇸" : "🇳🇬"}</span>
-                          <span className="font-semibold">{country}</span>
-                        </div>
+                  <div className="space-y-6">
+                    {/* Auto vs Manual Toggle */}
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                      <div className="space-y-1">
+                        <Label htmlFor="region-mode" className="text-base font-medium">
+                          Automatic Region Detection
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          {regionMode === "auto" 
+                            ? "Region is detected automatically using IP address geolocation"
+                            : "Region is manually selected by users or admins"}
+                        </p>
                       </div>
-                      <div>
-                        <Label className="text-sm text-muted-foreground">Detection Mode</Label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className={`w-2 h-2 rounded-full ${regionMode === "auto" ? "bg-green-500" : "bg-yellow-500"}`} />
-                          <span className="font-medium capitalize">{regionMode}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Manual</span>
+                        <Switch
+                          id="region-mode"
+                          checked={regionMode === "auto"}
+                          onCheckedChange={(checked) => {
+                            setRegionMode(checked ? "auto" : "manual");
+                            toast.success(`Region detection set to ${checked ? "automatic" : "manual"}`);
+                          }}
+                        />
+                        <span className="text-sm text-muted-foreground">Auto</span>
+                      </div>
+                    </div>
+
+                    {/* Current Region Status */}
+                    <div className="p-4 rounded-lg border border-border">
+                      <div className="flex items-center gap-3 mb-4">
+                        <Globe className="h-5 w-5 text-accent" />
+                        <h4 className="font-medium">Current Region Status</h4>
+                        {isDetecting && (
+                          <span className="px-2 py-1 text-xs rounded-full bg-warning/10 text-warning animate-pulse">
+                            Detecting...
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Active Region</Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-2xl">{country === "USA" ? "🇺🇸" : "🇳🇬"}</span>
+                            <span className="font-semibold">{country}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Detection Mode</Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`w-2 h-2 rounded-full ${regionMode === "auto" ? "bg-green-500" : "bg-yellow-500"}`} />
+                            <span className="font-medium capitalize">{regionMode}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Manual Override (only in manual mode) */}
-                  {regionMode === "manual" && (
-                    <div className="p-4 rounded-lg border border-accent/30 bg-accent/5">
-                      <Label className="text-sm font-medium mb-2 block">Manual Region Override</Label>
-                      <Select
-                        value={country}
-                        onValueChange={(value: Country) => {
-                          setCountry(value);
-                          toast.success(`Region changed to ${value}`);
-                        }}
-                      >
-                        <SelectTrigger className="w-full md:w-64">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="USA">
-                            <span className="flex items-center gap-2">
-                              <span>🇺🇸</span> United States (USD)
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="Nigeria">
-                            <span className="flex items-center gap-2">
-                              <span>🇳🇬</span> Nigeria (NGN)
-                            </span>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        This will override the detected region for all users visiting the platform.
-                      </p>
+                    {/* Manual Override (only in manual mode) */}
+                    {regionMode === "manual" && (
+                      <div className="p-4 rounded-lg border border-accent/30 bg-accent/5">
+                        <Label className="text-sm font-medium mb-2 block">Manual Region Override</Label>
+                        <Select
+                          value={country}
+                          onValueChange={(value: Country) => {
+                            setCountry(value);
+                            toast.success(`Region changed to ${value}`);
+                          }}
+                        >
+                          <SelectTrigger className="w-full md:w-64">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="USA">
+                              <span className="flex items-center gap-2">
+                                <span>🇺🇸</span> United States (USD)
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="Nigeria">
+                              <span className="flex items-center gap-2">
+                                <span>🇳🇬</span> Nigeria (NGN)
+                              </span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          This will override the detected region for all users visiting the platform.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Info Box */}
+                    <div className="p-4 rounded-lg bg-muted space-y-2">
+                      <h5 className="font-semibold flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
+                        How Region Detection Works
+                      </h5>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• <strong>Automatic Mode:</strong> Uses IP geolocation (ip-api.com) to detect user's country</li>
+                        <li>• <strong>Manual Mode:</strong> Users can select their region, or admin can override for all</li>
+                        <li>• <strong>Fallback:</strong> If IP detection fails, timezone is used as backup</li>
+                        <li>• <strong>Supported Regions:</strong> USA (PayPal/USD) and Nigeria (Paystack/NGN)</li>
+                      </ul>
                     </div>
-                  )}
-
-                  {/* Info Box */}
-                  <div className="p-4 rounded-lg bg-muted space-y-2">
-                    <h5 className="font-semibold flex items-center gap-2">
-                      <Globe className="h-4 w-4" />
-                      How Region Detection Works
-                    </h5>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• <strong>Automatic Mode:</strong> Uses IP geolocation (ip-api.com) to detect user's country</li>
-                      <li>• <strong>Manual Mode:</strong> Users can select their region, or admin can override for all</li>
-                      <li>• <strong>Fallback:</strong> If IP detection fails, timezone is used as backup</li>
-                      <li>• <strong>Supported Regions:</strong> USA (PayPal/USD) and Nigeria (Paystack/NGN)</li>
-                    </ul>
                   </div>
-                </div>
-              </Card>
-            </TabsContent>
-
-            {/* Content Management Tab */}
-            <TabsContent value="content">
-              <Tabs defaultValue="faq" className="space-y-4">
-                <TabsList>
-                  <TabsTrigger value="faq">FAQ Management</TabsTrigger>
-                  <TabsTrigger value="policies">Policy Versions</TabsTrigger>
-                </TabsList>
-                <TabsContent value="faq">
-                  <FAQManagement />
-                </TabsContent>
-                <TabsContent value="policies">
-                  <PolicyManagement />
-                </TabsContent>
-              </Tabs>
-            </TabsContent>
-          </Tabs>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          )}
         </div>
       </main>
       <Footer />
