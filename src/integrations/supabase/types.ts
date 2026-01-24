@@ -942,6 +942,7 @@ export type Database = {
           daily_plan_forbidden_at: string | null
           daily_plan_forbidden_reason: string | null
           email: string | null
+          email_verified: boolean | null
           full_name: string | null
           id: string
           notification_email: boolean | null
@@ -961,6 +962,7 @@ export type Database = {
           daily_plan_forbidden_at?: string | null
           daily_plan_forbidden_reason?: string | null
           email?: string | null
+          email_verified?: boolean | null
           full_name?: string | null
           id?: string
           notification_email?: boolean | null
@@ -980,6 +982,7 @@ export type Database = {
           daily_plan_forbidden_at?: string | null
           daily_plan_forbidden_reason?: string | null
           email?: string | null
+          email_verified?: boolean | null
           full_name?: string | null
           id?: string
           notification_email?: boolean | null
@@ -1438,6 +1441,71 @@ export type Database = {
           },
           {
             foreignKeyName: "support_tasks_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_documents: {
+        Row: {
+          created_at: string
+          document_category: string
+          document_type: string
+          expires_at: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          rejection_reason: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          vehicle_id: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_category: string
+          document_type: string
+          expires_at?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          vehicle_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_category?: string
+          document_type?: string
+          expires_at?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          vehicle_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_documents_vehicle_id_fkey"
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"

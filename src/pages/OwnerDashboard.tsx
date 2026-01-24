@@ -16,12 +16,15 @@ import { useRegion } from '@/contexts/RegionContext';
 import { formatCurrency, PAYMENT_CONFIG } from '@/lib/payment-config';
 import { OwnerPriceNegotiation } from '@/components/negotiation/OwnerPriceNegotiation';
 import { PhoneVerification } from '@/components/phone/PhoneVerification';
+import { EmailVerification } from '@/components/auth/EmailVerification';
 import { NotificationPreferences } from '@/components/phone/NotificationPreferences';
 import { IoTDevicePurchase } from '@/components/owner/IoTDevicePurchase';
 import { OwnerWeeklyReportReview } from '@/components/inspection/OwnerWeeklyReportReview';
 import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { OwnerRentToOwnListing } from '@/components/owner/OwnerRentToOwnListing';
 import { VehiclePickupLocation } from '@/components/owner/VehiclePickupLocation';
+import { DocumentUpload } from '@/components/documents/DocumentUpload';
+import { VehicleDocumentUpload } from '@/components/documents/VehicleDocumentUpload';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,6 +49,7 @@ import {
   MessageSquare,
   ImageIcon,
   Home,
+  Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -389,6 +393,10 @@ export default function OwnerDashboard() {
               </TabsTrigger>
               <TabsTrigger value="earnings" data-tour="owner-earnings">Earnings</TabsTrigger>
               <TabsTrigger value="withdrawals" data-tour="owner-withdrawals">Withdrawals</TabsTrigger>
+              <TabsTrigger value="documents" className="flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                Documents
+              </TabsTrigger>
               <TabsTrigger value="settings" data-tour="owner-settings">Settings</TabsTrigger>
             </TabsList>
 
@@ -714,43 +722,23 @@ export default function OwnerDashboard() {
                 </CardContent>
               </Card>
 
+              {/* Email Verification */}
+              <EmailVerification />
+
               {/* Phone Verification */}
               <PhoneVerification onVerified={() => setPhoneVerified(true)} />
 
               {/* Notification Preferences */}
               <NotificationPreferences phoneVerified={phoneVerified} />
+            </TabsContent>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Document Verification</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5" />
-                        <div>
-                          <p className="font-medium">Government ID</p>
-                          <p className="text-sm text-muted-foreground">
-                            {isUSA ? 'Driver\'s License or Passport' : 'NIN or Passport'}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge className="bg-green-500">Verified</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5" />
-                        <div>
-                          <p className="font-medium">Proof of Vehicle Ownership</p>
-                          <p className="text-sm text-muted-foreground">Vehicle registration documents</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-green-500">Verified</Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Documents Tab */}
+            <TabsContent value="documents" className="space-y-6">
+              {/* Identification Documents */}
+              <DocumentUpload userType="owner" />
+
+              {/* Vehicle Documents */}
+              <VehicleDocumentUpload />
             </TabsContent>
           </Tabs>
         </div>
