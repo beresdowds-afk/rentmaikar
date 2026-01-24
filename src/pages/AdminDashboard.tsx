@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff, Camera, BarChart3, Home, Inbox, MessageSquare, HelpCircle, Headphones } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff, Camera, BarChart3, Home, Inbox, MessageSquare, HelpCircle, Headphones, LayoutGrid } from "lucide-react";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
@@ -20,6 +20,7 @@ import { PolicyManagement } from "@/components/admin/PolicyManagement";
 import { AdminUnifiedInbox } from "@/components/admin/AdminUnifiedInbox";
 import { AdminContactSettings } from "@/components/admin/AdminContactSettings";
 import { AdminSupportTaskManagement } from "@/components/admin/AdminSupportTaskManagement";
+import { AdminTaskPortal } from "@/components/admin/portal/AdminTaskPortal";
 import AdminOnboardingTour from "@/components/onboarding/AdminOnboardingTour";
 import { useAdminOnboardingTour } from "@/hooks/useAdminOnboardingTour";
 import { Button } from "@/components/ui/button";
@@ -375,8 +376,12 @@ const AdminDashboard = () => {
             </Card>
           </div>
 
-          <Tabs defaultValue="tracking" className="space-y-6">
+          <Tabs defaultValue="task-portal" className="space-y-6">
             <TabsList className="flex-wrap">
+              <TabsTrigger value="task-portal" className="flex items-center gap-1" data-tour="admin-portal">
+                <LayoutGrid className="h-4 w-4" />
+                Task Portal
+              </TabsTrigger>
               <TabsTrigger value="tracking">Vehicle Tracking</TabsTrigger>
               <TabsTrigger value="inbox" className="flex items-center gap-1" data-tour="admin-inbox">
                 <Inbox className="h-4 w-4" />
@@ -452,6 +457,10 @@ const AdminDashboard = () => {
               <TabsTrigger value="settings">Region Settings</TabsTrigger>
               <TabsTrigger value="content">Content CMS</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="task-portal">
+              <AdminTaskPortal />
+            </TabsContent>
 
             <TabsContent value="tracking">
               <Card className="p-6">
