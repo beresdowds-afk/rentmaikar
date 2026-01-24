@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff, Camera, BarChart3, Home, Inbox, MessageSquare, HelpCircle, Headphones, LayoutGrid, Phone, Building2, UsersRound } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, RefreshCw, TrendingUp, HelpCircle } from "lucide-react";
 import { CallCenterPage } from "@/components/admin/voip/CallCenterPage";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
@@ -23,6 +22,7 @@ import { AdminContactSettings } from "@/components/admin/AdminContactSettings";
 import { AdminSupportTaskManagement } from "@/components/admin/AdminSupportTaskManagement";
 import { AdminTaskPortal } from "@/components/admin/portal/AdminTaskPortal";
 import { VehiclePickupManagement } from "@/components/admin/VehiclePickupManagement";
+import { PortalNavigation, type PortalType } from "@/components/admin/PortalNavigation";
 import AdminOnboardingTour from "@/components/onboarding/AdminOnboardingTour";
 import { useAdminOnboardingTour } from "@/hooks/useAdminOnboardingTour";
 import { Button } from "@/components/ui/button";
@@ -133,10 +133,11 @@ const paymentDefaults: PaymentDefault[] = [
 
 const AdminDashboard = () => {
   const { country, setCountry, regionMode, setRegionMode, isDetecting } = useRegion();
-  const { rates, isLoading: ratesLoading, convertToUSD, formatWithConversion, refetch: refetchRates } = useCurrencyConversion();
+  const { rates, isLoading: ratesLoading, convertToUSD, refetch: refetchRates } = useCurrencyConversion();
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
   const [approvingId, setApprovingId] = useState<number | null>(null);
-  const [portalView, setPortalView] = useState<'erp' | 'crm'>('crm');
+  const [portalView, setPortalView] = useState<PortalType>('support');
+  const [activeTab, setActiveTab] = useState<string>('task-portal');
   const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
 
   // Calculate converted values
@@ -379,105 +380,31 @@ const AdminDashboard = () => {
             </Card>
           </div>
 
-          {/* Portal Selector */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex bg-muted rounded-lg p-1">
-              <Button
-                variant={portalView === 'crm' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setPortalView('crm')}
-                className="gap-2"
-              >
-                <UsersRound className="h-4 w-4" />
-                CRM Portal
-              </Button>
-              <Button
-                variant={portalView === 'erp' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setPortalView('erp')}
-                className="gap-2"
-              >
-                <Building2 className="h-4 w-4" />
-                ERP Portal
-              </Button>
+          {/* Portal Navigation */}
+          <PortalNavigation
+            activePortal={portalView}
+            activeTab={activeTab}
+            onPortalChange={setPortalView}
+            onTabChange={setActiveTab}
+          />
+
+          {/* Support Portal */}
+          {portalView === 'support' && (
+            <div className="space-y-6">
+              {activeTab === 'task-portal' && <AdminTaskPortal />}
+              {activeTab === 'inbox' && <AdminUnifiedInbox />}
+              {activeTab === 'call-center' && <CallCenterPage />}
+              {activeTab === 'contacts' && <AdminContactSettings />}
+              {activeTab === 'support-tasks' && <AdminSupportTaskManagement />}
             </div>
-            <p className="text-sm text-muted-foreground hidden md:block">
-              {portalView === 'crm' 
-                ? 'Customer relationships, communications & agreements' 
-                : 'Operations, assets, hardware & fleet management'}
-            </p>
-          </div>
+          )}
 
           {/* CRM Portal */}
           {portalView === 'crm' && (
-            <Tabs defaultValue="task-portal" className="space-y-6">
-              <TabsList className="flex-wrap">
-                <TabsTrigger value="task-portal" className="flex items-center gap-1" data-tour="admin-portal">
-                  <LayoutGrid className="h-4 w-4" />
-                  Task Portal
-                </TabsTrigger>
-                <TabsTrigger value="inbox" className="flex items-center gap-1" data-tour="admin-inbox">
-                  <Inbox className="h-4 w-4" />
-                  Unified Inbox
-                </TabsTrigger>
-                <TabsTrigger value="call-center" className="flex items-center gap-1">
-                  <Phone className="h-4 w-4" />
-                  Call Center
-                </TabsTrigger>
-                <TabsTrigger value="contacts" className="flex items-center gap-1" data-tour="admin-contacts">
-                  <MessageSquare className="h-4 w-4" />
-                  Contact Settings
-                </TabsTrigger>
-                <TabsTrigger value="accounts" className="flex items-center gap-1" data-tour="admin-accounts">
-                  <UserCircle className="h-4 w-4" />
-                  User Accounts
-                </TabsTrigger>
-                <TabsTrigger value="negotiations" className="flex items-center gap-1" data-tour="admin-negotiations">
-                  <HandshakeIcon className="h-4 w-4" />
-                  Negotiations
-                </TabsTrigger>
-                <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
-                <TabsTrigger value="defaults">Payment Defaults</TabsTrigger>
-                <TabsTrigger value="legal-agreements" className="flex items-center gap-1" data-tour="admin-agreements">
-                  <ClipboardList className="h-4 w-4" />
-                  Legal Agreements
-                </TabsTrigger>
-                <TabsTrigger value="rent-to-own" className="flex items-center gap-1" data-tour="admin-rto">
-                  <Home className="h-4 w-4" />
-                  Rent to Own
-                </TabsTrigger>
-                <TabsTrigger value="support-tasks" className="flex items-center gap-1">
-                  <Headphones className="h-4 w-4" />
-                  Support Tasks
-                </TabsTrigger>
-                <TabsTrigger value="content">Content CMS</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="task-portal">
-                <AdminTaskPortal />
-              </TabsContent>
-
-              <TabsContent value="inbox">
-                <AdminUnifiedInbox />
-              </TabsContent>
-
-              <TabsContent value="call-center">
-                <CallCenterPage />
-              </TabsContent>
-
-              <TabsContent value="contacts">
-                <AdminContactSettings />
-              </TabsContent>
-
-              <TabsContent value="accounts">
-                <UserAccountsView />
-              </TabsContent>
-
-              <TabsContent value="negotiations">
-                <AdminPriceNegotiation />
-              </TabsContent>
-
-              <TabsContent value="approvals">
+            <div className="space-y-6">
+              {activeTab === 'accounts' && <UserAccountsView />}
+              {activeTab === 'negotiations' && <AdminPriceNegotiation />}
+              {activeTab === 'approvals' && (
                 <Card className="p-6">
                   <h3 className="text-lg font-semibold mb-4">Pending Approvals ({pendingItems.length})</h3>
                   
@@ -546,9 +473,8 @@ const AdminDashboard = () => {
                     </div>
                   )}
                 </Card>
-              </TabsContent>
-
-              <TabsContent value="defaults">
+              )}
+              {activeTab === 'defaults' && (
                 <div className="space-y-4">
                   <Card className="p-6">
                     <div className="flex items-center gap-3 mb-4">
@@ -584,21 +510,10 @@ const AdminDashboard = () => {
                     />
                   ))}
                 </div>
-              </TabsContent>
-
-              <TabsContent value="legal-agreements">
-                <LegalAgreementsManagement />
-              </TabsContent>
-
-              <TabsContent value="rent-to-own">
-                <RentToOwnManagement />
-              </TabsContent>
-
-              <TabsContent value="support-tasks">
-                <AdminSupportTaskManagement />
-              </TabsContent>
-
-              <TabsContent value="content">
+              )}
+              {activeTab === 'legal-agreements' && <LegalAgreementsManagement />}
+              {activeTab === 'rent-to-own' && <RentToOwnManagement />}
+              {activeTab === 'content' && (
                 <Tabs defaultValue="faq" className="space-y-4">
                   <TabsList>
                     <TabsTrigger value="faq">FAQ Management</TabsTrigger>
@@ -611,64 +526,14 @@ const AdminDashboard = () => {
                     <PolicyManagement />
                   </TabsContent>
                 </Tabs>
-              </TabsContent>
-            </Tabs>
+              )}
+            </div>
           )}
 
           {/* ERP Portal */}
           {portalView === 'erp' && (
-            <Tabs defaultValue="tracking" className="space-y-6">
-              <TabsList className="flex-wrap">
-                <TabsTrigger value="tracking">Vehicle Tracking</TabsTrigger>
-                <TabsTrigger value="assets" className="flex items-center gap-1" data-tour="admin-assets">
-                  <ClipboardList className="h-4 w-4" />
-                  Assets Registry
-                </TabsTrigger>
-                <TabsTrigger value="pickup-locations" className="flex items-center gap-1">
-                  <MapPin className="h-4 w-4" />
-                  Pickup Locations
-                </TabsTrigger>
-                <TabsTrigger value="hardware" className="flex items-center gap-1">
-                  <Cpu className="h-4 w-4" />
-                  Hardware
-                </TabsTrigger>
-                <TabsTrigger value="device-orders" className="flex items-center gap-1" data-tour="admin-device-orders">
-                  <Package className="h-4 w-4" />
-                  Device Orders
-                </TabsTrigger>
-                <TabsTrigger value="device-revenue" className="flex items-center gap-1">
-                  <BarChart3 className="h-4 w-4" />
-                  Device Revenue
-                </TabsTrigger>
-                <TabsTrigger value="pricing" className="flex items-center gap-1">
-                  <Tag className="h-4 w-4" />
-                  Category Pricing
-                </TabsTrigger>
-                <TabsTrigger value="incidents" className="flex items-center gap-1" data-tour="admin-incidents">
-                  <Wrench className="h-4 w-4" />
-                  Incidents
-                </TabsTrigger>
-                <TabsTrigger value="recalls" className="flex items-center gap-1">
-                  <WifiOff className="h-4 w-4" />
-                  Vehicle Recalls
-                </TabsTrigger>
-                <TabsTrigger value="daily-plans" className="flex items-center gap-1">
-                  <Ban className="h-4 w-4" />
-                  Daily Plans
-                </TabsTrigger>
-                <TabsTrigger value="weekly-reports" className="flex items-center gap-1" data-tour="admin-inspections">
-                  <Camera className="h-4 w-4" />
-                  Weekly Reports
-                </TabsTrigger>
-                <TabsTrigger value="fees">Fee Structure</TabsTrigger>
-                <TabsTrigger value="secrets" className="flex items-center gap-1">
-                  <KeyRound className="h-4 w-4" />
-                  API Secrets
-                </TabsTrigger>
-                <TabsTrigger value="settings">Region Settings</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="tracking">
+            <div className="space-y-6">
+              {activeTab === 'tracking' && (
                 <Card className="p-6">
                   <h3 className="text-lg font-semibold mb-4">Live Vehicle Tracking</h3>
                   <p className="text-sm text-muted-foreground mb-4">
@@ -677,49 +542,18 @@ const AdminDashboard = () => {
                   </p>
                   <VehicleTrackingMap />
                 </Card>
-              </TabsContent>
-
-              <TabsContent value="assets">
-                <AssetsRegistry />
-              </TabsContent>
-
-              <TabsContent value="pickup-locations">
-                <VehiclePickupManagement />
-              </TabsContent>
-
-              <TabsContent value="hardware">
-                <HardwareManagement />
-              </TabsContent>
-
-              <TabsContent value="device-orders">
-                <IoTDeviceOrders />
-              </TabsContent>
-
-              <TabsContent value="device-revenue">
-                <DeviceOrderRevenue />
-              </TabsContent>
-
-              <TabsContent value="pricing">
-                <CategoryPricing />
-              </TabsContent>
-
-              <TabsContent value="incidents">
-                <AdminIncidentManagement />
-              </TabsContent>
-
-              <TabsContent value="recalls">
-                <VehicleRecallManagement />
-              </TabsContent>
-
-              <TabsContent value="daily-plans">
-                <DailyPlanManagement />
-              </TabsContent>
-
-              <TabsContent value="weekly-reports">
-                <AdminWeeklyReportManagement />
-              </TabsContent>
-
-              <TabsContent value="fees">
+              )}
+              {activeTab === 'assets' && <AssetsRegistry />}
+              {activeTab === 'pickup-locations' && <VehiclePickupManagement />}
+              {activeTab === 'hardware' && <HardwareManagement />}
+              {activeTab === 'device-orders' && <IoTDeviceOrders />}
+              {activeTab === 'device-revenue' && <DeviceOrderRevenue />}
+              {activeTab === 'pricing' && <CategoryPricing />}
+              {activeTab === 'incidents' && <AdminIncidentManagement />}
+              {activeTab === 'recalls' && <VehicleRecallManagement />}
+              {activeTab === 'daily-plans' && <DailyPlanManagement />}
+              {activeTab === 'weekly-reports' && <AdminWeeklyReportManagement />}
+              {activeTab === 'fees' && (
                 <Card className="p-6">
                   <div className="flex items-center gap-3 mb-6">
                     <Wallet className="h-5 w-5 text-primary" />
@@ -778,13 +612,9 @@ const AdminDashboard = () => {
                     </ul>
                   </div>
                 </Card>
-              </TabsContent>
-
-              <TabsContent value="secrets">
-                <SecretsManagement />
-              </TabsContent>
-
-              <TabsContent value="settings">
+              )}
+              {activeTab === 'secrets' && <SecretsManagement />}
+              {activeTab === 'settings' && (
                 <Card className="p-6">
                   <div className="flex items-center gap-3 mb-6">
                     <Settings className="h-5 w-5 text-primary" />
@@ -841,7 +671,7 @@ const AdminDashboard = () => {
                         <div>
                           <Label className="text-sm text-muted-foreground">Detection Mode</Label>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className={`w-2 h-2 rounded-full ${regionMode === "auto" ? "bg-green-500" : "bg-yellow-500"}`} />
+                            <span className={`w-2 h-2 rounded-full ${regionMode === "auto" ? "bg-success" : "bg-warning"}`} />
                             <span className="font-medium capitalize">{regionMode}</span>
                           </div>
                         </div>
@@ -896,8 +726,8 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 </Card>
-              </TabsContent>
-            </Tabs>
+              )}
+            </div>
           )}
         </div>
       </main>
