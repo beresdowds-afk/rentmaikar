@@ -23,6 +23,7 @@ import { AdminSupportTaskManagement } from "@/components/admin/AdminSupportTaskM
 import { AdminTaskPortal } from "@/components/admin/portal/AdminTaskPortal";
 import { VehiclePickupManagement } from "@/components/admin/VehiclePickupManagement";
 import { PortalNavigation, type PortalType } from "@/components/admin/PortalNavigation";
+import { PortalAnalyticsCards } from "@/components/admin/PortalAnalyticsCards";
 import AdminOnboardingTour from "@/components/onboarding/AdminOnboardingTour";
 import { useAdminOnboardingTour } from "@/hooks/useAdminOnboardingTour";
 import { Button } from "@/components/ui/button";
@@ -387,6 +388,9 @@ const AdminDashboard = () => {
             onPortalChange={setPortalView}
             onTabChange={setActiveTab}
           />
+
+          {/* Portal Analytics Cards */}
+          <PortalAnalyticsCards activePortal={portalView} />
 
           {/* Support Portal */}
           {portalView === 'support' && (

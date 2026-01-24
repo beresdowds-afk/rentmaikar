@@ -1,0 +1,236 @@
+import { useQuery } from "@tanstack/react-query";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { 
+  Inbox, 
+  Phone, 
+  Headphones, 
+  HandshakeIcon,
+  AlertTriangle,
+  FileText,
+  Car,
+  Cpu,
+  Package,
+  Wrench,
+  Home,
+  WifiOff
+} from "lucide-react";
+import { type PortalType } from "./PortalNavigation";
+
+interface PortalAnalyticsCardsProps {
+  activePortal: PortalType;
+}
+
+interface MetricCard {
+  label: string;
+  value: number | string;
+  icon: React.ReactNode;
+  color: string;
+  bgColor: string;
+}
+
+export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps) => {
+  // Fetch support metrics
+  const { data: supportMetrics, isLoading: supportLoading } = useQuery({
+    queryKey: ['support-metrics'],
+    queryFn: async () => {
+      const [inboxRes, callsRes, tasksRes] = await Promise.all([
+        supabase.from('inbox_conversations').select('id', { count: 'exact' }).eq('status', 'open'),
+        supabase.from('voip_call_requests').select('id', { count: 'exact' }).eq('status', 'pending'),
+        supabase.from('support_tasks').select('id', { count: 'exact' }).in('legal_status', ['document_review', 'pending_signature']),
+      ]);
+      
+      return {
+        openInbox: inboxRes.count || 0,
+        pendingCalls: callsRes.count || 0,
+        activeTasks: tasksRes.count || 0,
+      };
+    },
+    enabled: activePortal === 'support',
+    staleTime: 30000,
+  });
+
+  // Fetch CRM metrics
+  const { data: crmMetrics, isLoading: crmLoading } = useQuery({
+    queryKey: ['crm-metrics'],
+    queryFn: async () => {
+      const [negotiationsRes, defaultsRes, agreementsRes, rtoRes] = await Promise.all([
+        supabase.from('price_negotiations').select('id', { count: 'exact' }).eq('status', 'pending'),
+        supabase.from('payment_defaults').select('id', { count: 'exact' }).eq('status', 'active'),
+        supabase.from('legal_agreements').select('id', { count: 'exact' }).eq('status', 'pending'),
+        supabase.from('rent_to_own_listings').select('id', { count: 'exact' }).eq('status', 'pending'),
+      ]);
+      
+      return {
+        pendingNegotiations: negotiationsRes.count || 0,
+        activeDefaults: defaultsRes.count || 0,
+        pendingAgreements: agreementsRes.count || 0,
+        pendingRTO: rtoRes.count || 0,
+      };
+    },
+    enabled: activePortal === 'crm',
+    staleTime: 30000,
+  });
+
+  // Fetch ERP metrics
+  const { data: erpMetrics, isLoading: erpLoading } = useQuery({
+    queryKey: ['erp-metrics'],
+    queryFn: async () => {
+      const [vehiclesRes, devicesRes, ordersRes, incidentsRes, recallsRes] = await Promise.all([
+        supabase.from('vehicles').select('id', { count: 'exact' }).eq('status', 'active'),
+        supabase.from('iot_devices').select('id', { count: 'exact' }).eq('status', 'inactive'),
+        supabase.from('iot_device_orders').select('id', { count: 'exact' }).eq('shipping_status', 'pending'),
+        supabase.from('vehicle_incidents').select('id', { count: 'exact' }).in('status', ['reported', 'in_progress']),
+        supabase.from('vehicle_recalls').select('id', { count: 'exact' }).in('status', ['initiated', 'in_progress']),
+      ]);
+      
+      return {
+        activeVehicles: vehiclesRes.count || 0,
+        inventoryDevices: devicesRes.count || 0,
+        pendingOrders: ordersRes.count || 0,
+        openIncidents: incidentsRes.count || 0,
+        activeRecalls: recallsRes.count || 0,
+      };
+    },
+    enabled: activePortal === 'erp',
+    staleTime: 30000,
+  });
+
+  const getSupportCards = (): MetricCard[] => [
+    {
+      label: "Open Inbox",
+      value: supportMetrics?.openInbox ?? 0,
+      icon: <Inbox className="h-5 w-5" />,
+      color: "text-blue-600",
+      bgColor: "bg-blue-100",
+    },
+    {
+      label: "Pending Callbacks",
+      value: supportMetrics?.pendingCalls ?? 0,
+      icon: <Phone className="h-5 w-5" />,
+      color: "text-orange-600",
+      bgColor: "bg-orange-100",
+    },
+    {
+      label: "Active Tasks",
+      value: supportMetrics?.activeTasks ?? 0,
+      icon: <Headphones className="h-5 w-5" />,
+      color: "text-purple-600",
+      bgColor: "bg-purple-100",
+    },
+  ];
+
+  const getCRMCards = (): MetricCard[] => [
+    {
+      label: "Pending Negotiations",
+      value: crmMetrics?.pendingNegotiations ?? 0,
+      icon: <HandshakeIcon className="h-5 w-5" />,
+      color: "text-amber-600",
+      bgColor: "bg-amber-100",
+    },
+    {
+      label: "Payment Defaults",
+      value: crmMetrics?.activeDefaults ?? 0,
+      icon: <AlertTriangle className="h-5 w-5" />,
+      color: "text-red-600",
+      bgColor: "bg-red-100",
+    },
+    {
+      label: "Pending Agreements",
+      value: crmMetrics?.pendingAgreements ?? 0,
+      icon: <FileText className="h-5 w-5" />,
+      color: "text-indigo-600",
+      bgColor: "bg-indigo-100",
+    },
+    {
+      label: "Pending Rent-to-Own",
+      value: crmMetrics?.pendingRTO ?? 0,
+      icon: <Home className="h-5 w-5" />,
+      color: "text-teal-600",
+      bgColor: "bg-teal-100",
+    },
+  ];
+
+  const getERPCards = (): MetricCard[] => [
+    {
+      label: "Active Vehicles",
+      value: erpMetrics?.activeVehicles ?? 0,
+      icon: <Car className="h-5 w-5" />,
+      color: "text-emerald-600",
+      bgColor: "bg-emerald-100",
+    },
+    {
+      label: "Devices in Inventory",
+      value: erpMetrics?.inventoryDevices ?? 0,
+      icon: <Cpu className="h-5 w-5" />,
+      color: "text-cyan-600",
+      bgColor: "bg-cyan-100",
+    },
+    {
+      label: "Pending Orders",
+      value: erpMetrics?.pendingOrders ?? 0,
+      icon: <Package className="h-5 w-5" />,
+      color: "text-violet-600",
+      bgColor: "bg-violet-100",
+    },
+    {
+      label: "Open Incidents",
+      value: erpMetrics?.openIncidents ?? 0,
+      icon: <Wrench className="h-5 w-5" />,
+      color: "text-rose-600",
+      bgColor: "bg-rose-100",
+    },
+    {
+      label: "Active Recalls",
+      value: erpMetrics?.activeRecalls ?? 0,
+      icon: <WifiOff className="h-5 w-5" />,
+      color: "text-orange-600",
+      bgColor: "bg-orange-100",
+    },
+  ];
+
+  const getCards = (): MetricCard[] => {
+    switch (activePortal) {
+      case 'support': return getSupportCards();
+      case 'crm': return getCRMCards();
+      case 'erp': return getERPCards();
+    }
+  };
+
+  const isLoading = 
+    (activePortal === 'support' && supportLoading) ||
+    (activePortal === 'crm' && crmLoading) ||
+    (activePortal === 'erp' && erpLoading);
+
+  const cards = getCards();
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="p-4">
+            <Skeleton className="h-4 w-20 mb-2" />
+            <Skeleton className="h-8 w-12" />
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`grid grid-cols-2 md:grid-cols-3 ${cards.length > 4 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3 mb-6`}>
+      {cards.map((card, index) => (
+        <Card key={index} className="p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-muted-foreground">{card.label}</span>
+            <div className={`w-8 h-8 rounded-lg ${card.bgColor} flex items-center justify-center ${card.color}`}>
+              {card.icon}
+            </div>
+          </div>
+          <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
+        </Card>
+      ))}
+    </div>
+  );
+};
