@@ -1,4 +1,4 @@
-import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Inbox, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus } from "lucide-react";
+import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Inbox, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -22,6 +22,7 @@ export interface PortalTab {
 export const crmTabs: PortalTab[] = [
   { value: "applications", label: "Applications", icon: <UserPlus className="h-4 w-4" />, dataTour: "admin-applications" },
   { value: "accounts", label: "User Accounts", icon: <UserCircle className="h-4 w-4" />, dataTour: "admin-accounts" },
+  { value: "roles", label: "Role Management", icon: <Shield className="h-4 w-4" />, dataTour: "admin-roles" },
   { value: "negotiations", label: "Negotiations", icon: <HandshakeIcon className="h-4 w-4" />, dataTour: "admin-negotiations" },
   { value: "approvals", label: "Pending Approvals", icon: <ClipboardList className="h-4 w-4" /> },
   { value: "defaults", label: "Payment Defaults", icon: <Wallet className="h-4 w-4" /> },

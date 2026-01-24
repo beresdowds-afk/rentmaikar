@@ -8,6 +8,7 @@ import { SecretsManagement } from "@/components/admin/SecretsManagement";
 import { IoTDeviceOrders } from "@/components/admin/IoTDeviceOrders";
 import { DeviceOrderRevenue } from "@/components/admin/DeviceOrderRevenue";
 import { UserAccountsView } from "@/components/admin/UserAccountsView";
+import { RoleManagement } from "@/components/admin/RoleManagement";
 import { DailyPlanManagement } from "@/components/admin/DailyPlanManagement";
 import { AdminIncidentManagement } from "@/components/admin/AdminIncidentManagement";
 import { VehicleRecallManagement } from "@/components/admin/VehicleRecallManagement";
@@ -409,6 +410,7 @@ const AdminDashboard = () => {
             <div className="space-y-6">
               {activeTab === 'applications' && <ApplicationManagement />}
               {activeTab === 'accounts' && <UserAccountsView />}
+              {activeTab === 'roles' && <RoleManagement />}
               {activeTab === 'negotiations' && <AdminPriceNegotiation />}
               {activeTab === 'approvals' && (
                 <Card className="p-6">
