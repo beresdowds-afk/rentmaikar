@@ -27,6 +27,7 @@ import {
   UserPlus,
   Trash2,
   RefreshCw,
+  History,
 } from 'lucide-react';
 import { 
   LEGAL_STATUS_CONFIG, 
@@ -37,6 +38,7 @@ import {
   type SupportTaskType,
   type TaskPriority,
 } from '@/types/support';
+import TaskActivityLog from './TaskActivityLog';
 
 interface SupportStaffMember {
   id: string;
@@ -64,6 +66,8 @@ interface SupportTaskRow {
   iot_status?: string;
   vehicle_status?: string;
   assigned_to?: string;
+  vehicle_id?: string;
+  device_id?: string;
   created_at: string;
   assigned_staff?: {
     id: string;
@@ -71,6 +75,34 @@ interface SupportTaskRow {
       full_name: string;
     };
   };
+  vehicle?: {
+    make: string;
+    model: string;
+    year: number;
+    license_plate: string;
+  };
+  device?: {
+    serial_number: string;
+    device_model: string;
+  };
+}
+
+interface Vehicle {
+  id: string;
+  make: string;
+  model: string;
+  year: number;
+  license_plate: string;
+  status: string;
+}
+
+interface IoTDevice {
+  id: string;
+  serial_number: string;
+  device_model: string;
+  status: string;
+  is_linked: boolean;
+  vehicle_id?: string;
 }
 
 const TASK_TYPE_OPTIONS: { value: SupportTaskType; label: string; icon: typeof Scale }[] = [
@@ -83,10 +115,12 @@ const TASK_TYPE_OPTIONS: { value: SupportTaskType; label: string; icon: typeof S
 
 export const AdminSupportTaskManagement = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'tasks' | 'staff'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'staff' | 'activity'>('tasks');
   const [isLoading, setIsLoading] = useState(true);
   const [tasks, setTasks] = useState<SupportTaskRow[]>([]);
   const [staff, setStaff] = useState<SupportStaffMember[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [devices, setDevices] = useState<IoTDevice[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
@@ -122,24 +156,71 @@ export const AdminSupportTaskManagement = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch tasks
+      // Fetch tasks with joined vehicles and devices
       const { data: tasksData, error: tasksError } = await supabase
         .from('support_tasks')
-        .select('*')
+        .select(`
+          *,
+          vehicles (
+            make,
+            model,
+            year,
+            license_plate
+          ),
+          iot_devices (
+            serial_number,
+            device_model
+          )
+        `)
         .order('created_at', { ascending: false })
         .limit(100);
 
       if (tasksError) throw tasksError;
-      setTasks((tasksData || []) as SupportTaskRow[]);
+      
+      const formattedTasks = (tasksData || []).map((task: any) => ({
+        ...task,
+        vehicle: task.vehicles,
+        device: task.iot_devices,
+      }));
+      setTasks(formattedTasks as SupportTaskRow[]);
 
-      // Fetch staff
+      // Fetch staff with profiles
       const { data: staffData, error: staffError } = await supabase
         .from('support_staff')
-        .select('*')
+        .select(`
+          *,
+          profiles:user_id (
+            full_name,
+            email
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (staffError) throw staffError;
-      setStaff((staffData || []) as SupportStaffMember[]);
+      
+      const formattedStaff = (staffData || []).map((s: any) => ({
+        ...s,
+        profile: s.profiles,
+      }));
+      setStaff(formattedStaff as SupportStaffMember[]);
+
+      // Fetch vehicles
+      const { data: vehiclesData, error: vehiclesError } = await supabase
+        .from('vehicles')
+        .select('id, make, model, year, license_plate, status')
+        .order('created_at', { ascending: false });
+
+      if (vehiclesError) throw vehiclesError;
+      setVehicles((vehiclesData || []) as Vehicle[]);
+
+      // Fetch IoT devices
+      const { data: devicesData, error: devicesError } = await supabase
+        .from('iot_devices')
+        .select('id, serial_number, device_model, status, is_linked, vehicle_id')
+        .order('created_at', { ascending: false });
+
+      if (devicesError) throw devicesError;
+      setDevices((devicesData || []) as IoTDevice[]);
     } catch (err) {
       console.error('Error fetching data:', err);
       toast.error('Failed to load data');
@@ -151,6 +232,48 @@ export const AdminSupportTaskManagement = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Send task assignment notification
+  const sendTaskNotification = async (
+    staffId: string,
+    taskTitle: string,
+    taskType: string,
+    priority: string,
+    city: string,
+    scheduledDate?: string,
+    locationAddress?: string
+  ) => {
+    try {
+      // Find staff member details
+      const staffMember = staff.find(s => s.id === staffId);
+      if (!staffMember?.profile?.email) {
+        console.log('No email found for staff member');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('send-task-notification', {
+        body: {
+          staffEmail: staffMember.profile.email,
+          staffName: staffMember.profile.full_name || 'Team Member',
+          staffPhone: staffMember.phone,
+          taskTitle,
+          taskType,
+          priority,
+          city,
+          scheduledDate,
+          locationAddress,
+        },
+      });
+
+      if (response.error) {
+        console.error('Notification error:', response.error);
+      } else {
+        console.log('Notification sent successfully');
+      }
+    } catch (err) {
+      console.error('Failed to send notification:', err);
+    }
+  };
 
   // Create new task
   const handleCreateTask = async () => {
@@ -190,6 +313,19 @@ export const AdminSupportTaskManagement = () => {
         }]);
 
       if (error) throw error;
+
+      // Send notification if task is assigned
+      if (newTask.assigned_to) {
+        await sendTaskNotification(
+          newTask.assigned_to,
+          newTask.title,
+          newTask.task_type,
+          newTask.priority,
+          newTask.city,
+          newTask.scheduled_date,
+          newTask.location_address
+        );
+      }
 
       toast.success('Task created successfully');
       setIsCreateOpen(false);
@@ -312,7 +448,9 @@ export const AdminSupportTaskManagement = () => {
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = !searchQuery || 
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.city.toLowerCase().includes(searchQuery.toLowerCase());
+      task.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.vehicle?.license_plate?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.device?.serial_number?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = typeFilter === 'all' || task.task_type === typeFilter;
     return matchesSearch && matchesType;
   });
@@ -333,6 +471,24 @@ export const AdminSupportTaskManagement = () => {
         (taskType.startsWith('vehicle_') && s.support_type.startsWith('vehicle_'));
       return typeMatch && s.assigned_city === city && s.is_active;
     });
+  };
+
+  // Check if task type needs vehicle selection
+  const needsVehicle = (taskType: string) => {
+    return ['vehicle_recall', 'vehicle_maintenance', 'iot_installation', 'iot_maintenance'].includes(taskType);
+  };
+
+  // Check if task type needs device selection
+  const needsDevice = (taskType: string) => {
+    return ['iot_installation', 'iot_maintenance'].includes(taskType);
+  };
+
+  // Get filtered devices based on selected vehicle
+  const getFilteredDevices = () => {
+    if (newTask.vehicle_id) {
+      return devices.filter(d => d.vehicle_id === newTask.vehicle_id || !d.is_linked);
+    }
+    return devices;
   };
 
   return (
@@ -356,10 +512,14 @@ export const AdminSupportTaskManagement = () => {
       </CardHeader>
       
       <CardContent>
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'tasks' | 'staff')}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'tasks' | 'staff' | 'activity')}>
           <TabsList className="mb-4">
             <TabsTrigger value="tasks">Tasks ({tasks.length})</TabsTrigger>
             <TabsTrigger value="staff">Staff ({staff.length})</TabsTrigger>
+            <TabsTrigger value="activity" className="gap-2">
+              <History className="h-4 w-4" />
+              Activity
+            </TabsTrigger>
           </TabsList>
 
           {/* Tasks Tab */}
@@ -369,7 +529,7 @@ export const AdminSupportTaskManagement = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search tasks..."
+                  placeholder="Search tasks, vehicles, devices..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -408,7 +568,12 @@ export const AdminSupportTaskManagement = () => {
                         <Label>Task Type *</Label>
                         <Select 
                           value={newTask.task_type} 
-                          onValueChange={(v) => setNewTask(prev => ({ ...prev, task_type: v as SupportTaskType }))}
+                          onValueChange={(v) => setNewTask(prev => ({ 
+                            ...prev, 
+                            task_type: v as SupportTaskType,
+                            vehicle_id: '',
+                            device_id: '',
+                          }))}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select type" />
@@ -470,6 +635,67 @@ export const AdminSupportTaskManagement = () => {
 
                     <Separator />
 
+                    {/* Vehicle Selection */}
+                    {needsVehicle(newTask.task_type) && (
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <Car className="h-4 w-4" />
+                          Vehicle
+                        </Label>
+                        <Select 
+                          value={newTask.vehicle_id} 
+                          onValueChange={(v) => setNewTask(prev => ({ ...prev, vehicle_id: v, device_id: '' }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select vehicle (optional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">No vehicle selected</SelectItem>
+                            {vehicles.map(vehicle => (
+                              <SelectItem key={vehicle.id} value={vehicle.id}>
+                                {vehicle.year} {vehicle.make} {vehicle.model} - {vehicle.license_plate}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {vehicles.length === 0 && (
+                          <p className="text-xs text-muted-foreground">No vehicles registered yet</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Device Selection */}
+                    {needsDevice(newTask.task_type) && (
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <Cpu className="h-4 w-4" />
+                          IoT Device
+                        </Label>
+                        <Select 
+                          value={newTask.device_id} 
+                          onValueChange={(v) => setNewTask(prev => ({ ...prev, device_id: v }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select device (optional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">No device selected</SelectItem>
+                            {getFilteredDevices().map(device => (
+                              <SelectItem key={device.id} value={device.id}>
+                                {device.serial_number} ({device.device_model}) 
+                                {device.is_linked ? ' - Linked' : ' - Not Linked'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {devices.length === 0 && (
+                          <p className="text-xs text-muted-foreground">No IoT devices registered yet</p>
+                        )}
+                      </div>
+                    )}
+
+                    <Separator />
+
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Region *</Label>
@@ -519,7 +745,8 @@ export const AdminSupportTaskManagement = () => {
                             <SelectItem value="">Unassigned</SelectItem>
                             {getAvailableStaff(newTask.task_type, newTask.city).map(s => (
                               <SelectItem key={s.id} value={s.id}>
-                                {s.id.slice(0, 8)}... ({s.support_type})
+                                {s.profile?.full_name || s.profile?.email || s.id.slice(0, 8)}
+                                {' '}({s.support_type})
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -569,6 +796,7 @@ export const AdminSupportTaskManagement = () => {
                   <TableRow>
                     <TableHead>Title</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Vehicle/Device</TableHead>
                     <TableHead>City</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Status</TableHead>
@@ -578,13 +806,13 @@ export const AdminSupportTaskManagement = () => {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={7} className="text-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                       </TableCell>
                     </TableRow>
                   ) : filteredTasks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         No tasks found
                       </TableCell>
                     </TableRow>
@@ -601,6 +829,27 @@ export const AdminSupportTaskManagement = () => {
                             <Badge variant="outline">
                               {TASK_TYPE_OPTIONS.find(t => t.value === task.task_type)?.label || task.task_type}
                             </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {task.vehicle && (
+                              <div className="flex items-center gap-1">
+                                <Car className="h-3 w-3" />
+                                <span className="truncate max-w-[100px]">
+                                  {task.vehicle.license_plate}
+                                </span>
+                              </div>
+                            )}
+                            {task.device && (
+                              <div className="flex items-center gap-1">
+                                <Cpu className="h-3 w-3" />
+                                <span className="truncate max-w-[100px]">
+                                  {task.device.serial_number}
+                                </span>
+                              </div>
+                            )}
+                            {!task.vehicle && !task.device && (
+                              <span className="text-muted-foreground">-</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -740,7 +989,8 @@ export const AdminSupportTaskManagement = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>City</TableHead>
                     <TableHead>Region</TableHead>
@@ -752,21 +1002,24 @@ export const AdminSupportTaskManagement = () => {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
+                      <TableCell colSpan={8} className="text-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                       </TableCell>
                     </TableRow>
                   ) : staff.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         No staff members found
                       </TableCell>
                     </TableRow>
                   ) : (
                     staff.map(member => (
                       <TableRow key={member.id}>
-                        <TableCell className="font-mono text-sm">
-                          {member.id.slice(0, 8)}...
+                        <TableCell className="font-medium">
+                          {member.profile?.full_name || '-'}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {member.profile?.email || '-'}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
@@ -803,6 +1056,11 @@ export const AdminSupportTaskManagement = () => {
                 </TableBody>
               </Table>
             </ScrollArea>
+          </TabsContent>
+
+          {/* Activity Tab */}
+          <TabsContent value="activity">
+            <TaskActivityLog />
           </TabsContent>
         </Tabs>
       </CardContent>
