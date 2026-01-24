@@ -191,13 +191,13 @@ export const CallDialer = ({ onInitiateCall, groups, isLoading }: CallDialerProp
             {/* Existing Groups */}
             <div className="space-y-2">
               <Label>Select Existing Group</Label>
-              <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+              <Select value={selectedGroupId || "manual"} onValueChange={(v) => setSelectedGroupId(v === "manual" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose a group or add recipients manually" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Add recipients manually</SelectItem>
-                  {filteredGroups.map((group) => (
+                  <SelectItem value="manual">Add recipients manually</SelectItem>
+                  {filteredGroups.filter(g => g.id).map((group) => (
                     <SelectItem key={group.id} value={group.id}>
                       {group.name} ({group.members?.length || 0} members)
                     </SelectItem>
