@@ -13,11 +13,13 @@ import { formatCurrency, PAYMENT_CONFIG } from '@/lib/payment-config';
 import { PaymentOptionsSelector, type PaymentSelection } from '@/components/payment/PaymentOptionsSelector';
 import { DriverPriceNegotiation } from '@/components/negotiation/DriverPriceNegotiation';
 import { PhoneVerification } from '@/components/phone/PhoneVerification';
+import { EmailVerification } from '@/components/auth/EmailVerification';
 import { NotificationPreferences } from '@/components/phone/NotificationPreferences';
 import { IncidentReportForm } from '@/components/incidents/IncidentReportForm';
 import { WeeklyInspectionReport } from '@/components/inspection/WeeklyInspectionReport';
 import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { RentToOwnSearch } from '@/components/driver/RentToOwnSearch';
+import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,6 +42,7 @@ import {
   Wrench,
   Camera,
   Home,
+  Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -448,57 +451,14 @@ export default function DriverDashboard() {
 
             {/* Documents Tab */}
             <TabsContent value="documents" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Required Documents</CardTitle>
-                  <CardDescription>
-                    {isUSA 
-                      ? 'Upload your documents for verification'
-                      : 'Upload your documents including Police Report'
-                    }
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5" />
-                        <div>
-                          <p className="font-medium">Driver's License</p>
-                          <p className="text-sm text-muted-foreground">Valid government-issued license</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-green-500">Verified</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5" />
-                        <div>
-                          <p className="font-medium">Proof of Insurance</p>
-                          <p className="text-sm text-muted-foreground">Current insurance coverage</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-green-500">Verified</Badge>
-                    </div>
-                    {!isUSA && (
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-5 w-5" />
-                          <div>
-                            <p className="font-medium">Police Report</p>
-                            <p className="text-sm text-muted-foreground">Required for Nigerian drivers</p>
-                          </div>
-                        </div>
-                        <Badge variant="destructive">Required</Badge>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <DocumentUpload userType="driver" />
             </TabsContent>
 
             {/* Settings Tab */}
             <TabsContent value="settings" className="space-y-6">
+              {/* Email Verification */}
+              <EmailVerification />
+              
               {/* Phone Verification */}
               <PhoneVerification onVerified={() => setPhoneVerified(true)} />
 
