@@ -255,7 +255,7 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                   <SelectValue placeholder="Choose a driver" />
                 </SelectTrigger>
                 <SelectContent>
-                  {drivers.map(driver => (
+                  {drivers.filter(driver => driver.user_id).map(driver => (
                     <SelectItem key={driver.user_id} value={driver.user_id}>
                       {driver.full_name || driver.email || 'Unknown'}
                     </SelectItem>
@@ -284,7 +284,7 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                     <SelectValue placeholder={selectedDriver ? "Choose from driver's approved vehicles" : "Select driver first"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {driverNegotiations.map(negotiation => (
+                    {driverNegotiations.filter(n => n.id).map(negotiation => (
                       <SelectItem key={negotiation.id} value={negotiation.id}>
                         <div className="flex items-center gap-2">
                           <span>{getVehicleInfo(negotiation)}</span>

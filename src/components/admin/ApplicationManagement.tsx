@@ -478,7 +478,7 @@ const ApplicationCard = ({
                     <SelectValue placeholder="Assign" />
                   </SelectTrigger>
                   <SelectContent>
-                    {supportStaff.map((staff) => (
+                    {supportStaff.filter(staff => staff.id).map((staff) => (
                       <SelectItem key={staff.id} value={staff.id}>
                         {staff.support_type} - {staff.assigned_city}
                       </SelectItem>
