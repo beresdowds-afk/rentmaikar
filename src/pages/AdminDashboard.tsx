@@ -392,7 +392,13 @@ const AdminDashboard = () => {
           />
 
           {/* Portal Analytics Cards */}
-          <PortalAnalyticsCards activePortal={portalView} />
+          <PortalAnalyticsCards 
+            activePortal={portalView} 
+            onNavigate={(portal, tab) => {
+              setPortalView(portal);
+              setActiveTab(tab);
+            }}
+          />
 
           {/* Support Portal */}
           {portalView === 'support' && (

@@ -22,6 +22,7 @@ import { type PortalType } from "./PortalNavigation";
 
 interface PortalAnalyticsCardsProps {
   activePortal: PortalType;
+  onNavigate?: (portal: PortalType, tab: string) => void;
 }
 
 interface MetricCard {
@@ -30,9 +31,11 @@ interface MetricCard {
   icon: React.ReactNode;
   color: string;
   bgColor: string;
+  targetTab: string;
+  targetPortal: PortalType;
 }
 
-export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps) => {
+export const PortalAnalyticsCards = ({ activePortal, onNavigate }: PortalAnalyticsCardsProps) => {
   // Fetch support metrics
   const { data: supportMetrics, isLoading: supportLoading } = useQuery({
     queryKey: ['support-metrics'],
@@ -110,6 +113,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       icon: <Inbox className="h-5 w-5" />,
       color: "text-blue-600",
       bgColor: "bg-blue-100",
+      targetTab: "inbox",
+      targetPortal: "support",
     },
     {
       label: "Pending Callbacks",
@@ -117,6 +122,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       icon: <Phone className="h-5 w-5" />,
       color: "text-orange-600",
       bgColor: "bg-orange-100",
+      targetTab: "call-center",
+      targetPortal: "support",
     },
     {
       label: "Active Tasks",
@@ -124,6 +131,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       icon: <Headphones className="h-5 w-5" />,
       color: "text-purple-600",
       bgColor: "bg-purple-100",
+      targetTab: "support-tasks",
+      targetPortal: "support",
     },
   ];
 
@@ -134,6 +143,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       icon: <UserPlus className="h-5 w-5" />,
       color: "text-sky-600",
       bgColor: "bg-sky-100",
+      targetTab: "applications",
+      targetPortal: "crm",
     },
     {
       label: "Under Review",
@@ -141,6 +152,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       icon: <Clock className="h-5 w-5" />,
       color: "text-blue-600",
       bgColor: "bg-blue-100",
+      targetTab: "applications",
+      targetPortal: "crm",
     },
     {
       label: "Pending Negotiations",
@@ -148,6 +161,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       icon: <HandshakeIcon className="h-5 w-5" />,
       color: "text-amber-600",
       bgColor: "bg-amber-100",
+      targetTab: "negotiations",
+      targetPortal: "crm",
     },
     {
       label: "Payment Defaults",
@@ -155,6 +170,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       icon: <AlertTriangle className="h-5 w-5" />,
       color: "text-red-600",
       bgColor: "bg-red-100",
+      targetTab: "defaults",
+      targetPortal: "crm",
     },
     {
       label: "Pending Agreements",
@@ -162,6 +179,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       icon: <FileText className="h-5 w-5" />,
       color: "text-indigo-600",
       bgColor: "bg-indigo-100",
+      targetTab: "legal-agreements",
+      targetPortal: "crm",
     },
     {
       label: "Pending RTO",
@@ -169,6 +188,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       icon: <Home className="h-5 w-5" />,
       color: "text-teal-600",
       bgColor: "bg-teal-100",
+      targetTab: "rent-to-own",
+      targetPortal: "crm",
     },
   ];
 
@@ -179,6 +200,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       icon: <Car className="h-5 w-5" />,
       color: "text-emerald-600",
       bgColor: "bg-emerald-100",
+      targetTab: "tracking",
+      targetPortal: "erp",
     },
     {
       label: "Devices in Inventory",
@@ -186,6 +209,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       icon: <Cpu className="h-5 w-5" />,
       color: "text-cyan-600",
       bgColor: "bg-cyan-100",
+      targetTab: "hardware",
+      targetPortal: "erp",
     },
     {
       label: "Pending Orders",
@@ -193,6 +218,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       icon: <Package className="h-5 w-5" />,
       color: "text-violet-600",
       bgColor: "bg-violet-100",
+      targetTab: "device-orders",
+      targetPortal: "erp",
     },
     {
       label: "Open Incidents",
@@ -200,6 +227,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       icon: <Wrench className="h-5 w-5" />,
       color: "text-rose-600",
       bgColor: "bg-rose-100",
+      targetTab: "incidents",
+      targetPortal: "erp",
     },
     {
       label: "Active Recalls",
@@ -207,6 +236,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       icon: <WifiOff className="h-5 w-5" />,
       color: "text-orange-600",
       bgColor: "bg-orange-100",
+      targetTab: "recalls",
+      targetPortal: "erp",
     },
   ];
 
@@ -225,6 +256,12 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
 
   const cards = getCards();
 
+  const handleCardClick = (card: MetricCard) => {
+    if (onNavigate) {
+      onNavigate(card.targetPortal, card.targetTab);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
@@ -241,7 +278,11 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
   return (
     <div className={`grid grid-cols-2 md:grid-cols-3 ${cards.length > 4 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3 mb-6`}>
       {cards.map((card, index) => (
-        <Card key={index} className="p-4 hover:shadow-md transition-shadow">
+        <Card 
+          key={index} 
+          className="p-4 hover:shadow-md transition-all cursor-pointer hover:ring-2 hover:ring-primary/20 active:scale-[0.98]"
+          onClick={() => handleCardClick(card)}
+        >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-muted-foreground">{card.label}</span>
             <div className={`w-8 h-8 rounded-lg ${card.bgColor} flex items-center justify-center ${card.color}`}>
