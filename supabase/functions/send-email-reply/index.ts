@@ -38,10 +38,8 @@ serve(async (req) => {
     const emailSubject = subject || 
       (conversation?.subject ? `Re: ${conversation.subject}` : "Reply from Rentmaikar Support");
 
-    // Determine from email based on region
-    const fromEmail = conversation?.region === "Nigeria" 
-      ? "support@rentmaikar.ng" 
-      : "support@rentmaikar.com";
+    // Use unified support email for all regions
+    const fromEmail = "support@rentmaikar.com";
 
     console.log(`Sending email to ${recipientEmail} from ${fromEmail}`);
 
