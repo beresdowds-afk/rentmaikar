@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff, Camera, BarChart3, Home, Inbox, MessageSquare, HelpCircle, Headphones, LayoutGrid } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff, Camera, BarChart3, Home, Inbox, MessageSquare, HelpCircle, Headphones, LayoutGrid, Phone } from "lucide-react";
+import { CallCenterPage } from "@/components/admin/voip/CallCenterPage";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
@@ -387,6 +388,10 @@ const AdminDashboard = () => {
                 <Inbox className="h-4 w-4" />
                 Unified Inbox
               </TabsTrigger>
+              <TabsTrigger value="call-center" className="flex items-center gap-1">
+                <Phone className="h-4 w-4" />
+                Call Center
+              </TabsTrigger>
               <TabsTrigger value="contacts" className="flex items-center gap-1" data-tour="admin-contacts">
                 <MessageSquare className="h-4 w-4" />
                 Contact Settings
@@ -475,6 +480,10 @@ const AdminDashboard = () => {
 
             <TabsContent value="inbox">
               <AdminUnifiedInbox />
+            </TabsContent>
+
+            <TabsContent value="call-center">
+              <CallCenterPage />
             </TabsContent>
 
             <TabsContent value="contacts">
