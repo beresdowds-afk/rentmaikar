@@ -1,1 +1,4 @@
 project_id = "bwvocmhcledbwqlpcswp"
+
+[functions.recording-status-callback]
+verify_jwt = false
