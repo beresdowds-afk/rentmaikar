@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -101,6 +101,37 @@ export const ApplicationManagement = () => {
       return data as Application[];
     },
   });
+
+  // Real-time subscription for applications
+  useEffect(() => {
+    const channel = supabase
+      .channel('applications-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'applications',
+        },
+        (payload) => {
+          console.log('Application realtime update:', payload);
+          queryClient.invalidateQueries({ queryKey: ['applications'] });
+          
+          if (payload.eventType === 'INSERT') {
+            const app = payload.new as Application;
+            toast.info(`New ${app.application_type} application from ${app.first_name} ${app.last_name}`);
+          } else if (payload.eventType === 'UPDATE') {
+            const app = payload.new as Application;
+            toast.info(`Application from ${app.first_name} ${app.last_name} updated`);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   // Fetch support staff for assignment
   const { data: supportStaff = [] } = useQuery({
