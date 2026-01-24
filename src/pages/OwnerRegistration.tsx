@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { supabase } from "@/integrations/supabase/client";
 
 const ownerSchema = z.object({
   // Owner Details
@@ -96,11 +96,38 @@ const OwnerRegistration = () => {
 
   const onSubmit = async (data: OwnerFormData) => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      console.log("Owner registration:", data);
+      const { error } = await supabase.from('applications').insert({
+        application_type: 'owner' as const,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        phone_country: data.phoneCountry,
+        phone_number: data.phoneNumber,
+        country: data.country,
+        city: data.city,
+        zip_code: data.zipCode,
+        region: data.country === 'usa' ? 'usa' : 'nigeria',
+        vehicle_make: data.vehicleMake,
+        vehicle_model: data.vehicleModel,
+        vehicle_year: parseInt(data.vehicleYear),
+        vehicle_color: data.vehicleColor,
+        vehicle_plate: data.vehiclePlate,
+        desired_weekly_price: parseFloat(data.desiredPrice),
+        vehicle_description: data.vehicleDescription || null,
+        has_registration: data.hasRegistration,
+        has_insurance: data.hasInsurance,
+        agreed_terms: data.agreeTerms,
+        agreed_privacy: data.agreePrivacy,
+        agreed_iot: data.agreeIoT,
+        agreed_fees: data.agreeFees,
+      });
+      
+      if (error) throw error;
+      
       toast.success("Vehicle submitted for review! We'll contact you within 24-48 hours.");
       navigate("/");
     } catch (error) {
+      console.error("Owner registration error:", error);
       toast.error("Something went wrong. Please try again.");
     }
   };

@@ -14,7 +14,9 @@ import {
   Package,
   Wrench,
   Home,
-  WifiOff
+  WifiOff,
+  UserPlus,
+  Clock
 } from "lucide-react";
 import { type PortalType } from "./PortalNavigation";
 
@@ -55,11 +57,13 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
   const { data: crmMetrics, isLoading: crmLoading } = useQuery({
     queryKey: ['crm-metrics'],
     queryFn: async () => {
-      const [negotiationsRes, defaultsRes, agreementsRes, rtoRes] = await Promise.all([
+      const [negotiationsRes, defaultsRes, agreementsRes, rtoRes, pendingAppsRes, reviewAppsRes] = await Promise.all([
         supabase.from('price_negotiations').select('id', { count: 'exact' }).eq('status', 'pending'),
         supabase.from('payment_defaults').select('id', { count: 'exact' }).eq('status', 'active'),
         supabase.from('legal_agreements').select('id', { count: 'exact' }).eq('status', 'pending'),
         supabase.from('rent_to_own_listings').select('id', { count: 'exact' }).eq('status', 'pending'),
+        supabase.from('applications').select('id', { count: 'exact' }).eq('status', 'pending'),
+        supabase.from('applications').select('id', { count: 'exact' }).eq('status', 'under_review'),
       ]);
       
       return {
@@ -67,6 +71,8 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
         activeDefaults: defaultsRes.count || 0,
         pendingAgreements: agreementsRes.count || 0,
         pendingRTO: rtoRes.count || 0,
+        pendingApplications: pendingAppsRes.count || 0,
+        reviewApplications: reviewAppsRes.count || 0,
       };
     },
     enabled: activePortal === 'crm',
@@ -123,6 +129,20 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
 
   const getCRMCards = (): MetricCard[] => [
     {
+      label: "Pending Applications",
+      value: crmMetrics?.pendingApplications ?? 0,
+      icon: <UserPlus className="h-5 w-5" />,
+      color: "text-sky-600",
+      bgColor: "bg-sky-100",
+    },
+    {
+      label: "Under Review",
+      value: crmMetrics?.reviewApplications ?? 0,
+      icon: <Clock className="h-5 w-5" />,
+      color: "text-blue-600",
+      bgColor: "bg-blue-100",
+    },
+    {
       label: "Pending Negotiations",
       value: crmMetrics?.pendingNegotiations ?? 0,
       icon: <HandshakeIcon className="h-5 w-5" />,
@@ -144,7 +164,7 @@ export const PortalAnalyticsCards = ({ activePortal }: PortalAnalyticsCardsProps
       bgColor: "bg-indigo-100",
     },
     {
-      label: "Pending Rent-to-Own",
+      label: "Pending RTO",
       value: crmMetrics?.pendingRTO ?? 0,
       icon: <Home className="h-5 w-5" />,
       color: "text-teal-600",
