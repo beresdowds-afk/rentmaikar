@@ -22,6 +22,9 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
+import LegalSupportDashboard from "./pages/LegalSupportDashboard";
+import IoTSupportDashboard from "./pages/IoTSupportDashboard";
+import VehicleSupportDashboard from "./pages/VehicleSupportDashboard";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +77,31 @@ const App = () => (
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
                       <AdminDashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                {/* Support Dashboards */}
+                <Route 
+                  path="/support/legal" 
+                  element={
+                    <ProtectedRoute allowedRoles={['legal_support', 'admin']}>
+                      <LegalSupportDashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/support/iot" 
+                  element={
+                    <ProtectedRoute allowedRoles={['iot_support', 'admin']}>
+                      <IoTSupportDashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/support/vehicle" 
+                  element={
+                    <ProtectedRoute allowedRoles={['vehicle_support', 'admin']}>
+                      <VehicleSupportDashboard />
                     </ProtectedRoute>
                   } 
                 />

@@ -1101,6 +1101,230 @@ export type Database = {
         }
         Relationships: []
       }
+      support_staff: {
+        Row: {
+          assigned_city: string
+          assigned_region: string
+          created_at: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          phone: string | null
+          support_type: Database["public"]["Enums"]["support_task_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_city: string
+          assigned_region?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          phone?: string | null
+          support_type: Database["public"]["Enums"]["support_task_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_city?: string
+          assigned_region?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          phone?: string | null
+          support_type?: Database["public"]["Enums"]["support_task_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      support_task_updates: {
+        Row: {
+          attachments: Json | null
+          content: string
+          created_at: string
+          id: string
+          new_status: string | null
+          previous_status: string | null
+          task_id: string
+          update_type: string
+          user_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          content: string
+          created_at?: string
+          id?: string
+          new_status?: string | null
+          previous_status?: string | null
+          task_id: string
+          update_type: string
+          user_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          content?: string
+          created_at?: string
+          id?: string
+          new_status?: string | null
+          previous_status?: string | null
+          task_id?: string
+          update_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_task_updates_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "support_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tasks: {
+        Row: {
+          agreement_id: string | null
+          assigned_at: string | null
+          assigned_by: string | null
+          assigned_to: string | null
+          city: string
+          created_at: string
+          description: string | null
+          device_id: string | null
+          driver_id: string | null
+          estimated_duration_hours: number | null
+          id: string
+          iot_status: Database["public"]["Enums"]["iot_task_status"] | null
+          legal_status: Database["public"]["Enums"]["legal_task_status"] | null
+          location_address: string | null
+          location_lat: number | null
+          location_lng: number | null
+          owner_id: string | null
+          priority: string
+          recall_id: string | null
+          region: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          scheduled_date: string | null
+          scheduled_time: string | null
+          task_type: Database["public"]["Enums"]["support_task_type"]
+          title: string
+          updated_at: string
+          vehicle_id: string | null
+          vehicle_status:
+            | Database["public"]["Enums"]["vehicle_task_status"]
+            | null
+        }
+        Insert: {
+          agreement_id?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          city: string
+          created_at?: string
+          description?: string | null
+          device_id?: string | null
+          driver_id?: string | null
+          estimated_duration_hours?: number | null
+          id?: string
+          iot_status?: Database["public"]["Enums"]["iot_task_status"] | null
+          legal_status?: Database["public"]["Enums"]["legal_task_status"] | null
+          location_address?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          owner_id?: string | null
+          priority?: string
+          recall_id?: string | null
+          region?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          task_type: Database["public"]["Enums"]["support_task_type"]
+          title: string
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_status?:
+            | Database["public"]["Enums"]["vehicle_task_status"]
+            | null
+        }
+        Update: {
+          agreement_id?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          city?: string
+          created_at?: string
+          description?: string | null
+          device_id?: string | null
+          driver_id?: string | null
+          estimated_duration_hours?: number | null
+          id?: string
+          iot_status?: Database["public"]["Enums"]["iot_task_status"] | null
+          legal_status?: Database["public"]["Enums"]["legal_task_status"] | null
+          location_address?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          owner_id?: string | null
+          priority?: string
+          recall_id?: string | null
+          region?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          task_type?: Database["public"]["Enums"]["support_task_type"]
+          title?: string
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_status?:
+            | Database["public"]["Enums"]["vehicle_task_status"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tasks_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "legal_agreements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "support_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tasks_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "iot_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tasks_recall_id_fkey"
+            columns: ["recall_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_recalls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tasks_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -1513,6 +1737,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_support_staff_city: {
+        Args: {
+          _type: Database["public"]["Enums"]["support_task_type"]
+          _user_id: string
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1521,9 +1752,23 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      is_any_support_staff: { Args: { _user_id: string }; Returns: boolean }
+      is_support_staff: {
+        Args: {
+          _type: Database["public"]["Enums"]["support_task_type"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      app_role: "admin" | "owner" | "driver"
+      app_role:
+        | "admin"
+        | "owner"
+        | "driver"
+        | "legal_support"
+        | "iot_support"
+        | "vehicle_support"
       device_status: "inactive" | "active" | "offline" | "maintenance"
       incident_severity: "low" | "medium" | "high" | "critical"
       incident_status:
@@ -1538,12 +1783,43 @@ export type Database = {
         | "breakdown"
         | "theft"
         | "other"
+      iot_task_status:
+        | "assigned"
+        | "scheduled"
+        | "in_transit"
+        | "on_site"
+        | "installation_complete"
+        | "testing"
+        | "completed"
+        | "failed"
+      legal_task_status:
+        | "open"
+        | "document_review"
+        | "pending_signature"
+        | "escalated"
+        | "resolved"
+        | "closed"
       negotiation_status:
         | "pending"
         | "counter_offer"
         | "approved"
         | "rejected"
         | "locked"
+      support_task_type:
+        | "legal"
+        | "iot_installation"
+        | "iot_maintenance"
+        | "vehicle_recall"
+        | "vehicle_maintenance"
+      vehicle_task_status:
+        | "reported"
+        | "dispatched"
+        | "inspection"
+        | "repair_in_progress"
+        | "pending_parts"
+        | "quality_check"
+        | "completed"
+        | "escalated"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1671,7 +1947,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "owner", "driver"],
+      app_role: [
+        "admin",
+        "owner",
+        "driver",
+        "legal_support",
+        "iot_support",
+        "vehicle_support",
+      ],
       device_status: ["inactive", "active", "offline", "maintenance"],
       incident_severity: ["low", "medium", "high", "critical"],
       incident_status: [
@@ -1682,12 +1965,47 @@ export const Constants = {
         "closed",
       ],
       incident_type: ["accident", "maintenance", "breakdown", "theft", "other"],
+      iot_task_status: [
+        "assigned",
+        "scheduled",
+        "in_transit",
+        "on_site",
+        "installation_complete",
+        "testing",
+        "completed",
+        "failed",
+      ],
+      legal_task_status: [
+        "open",
+        "document_review",
+        "pending_signature",
+        "escalated",
+        "resolved",
+        "closed",
+      ],
       negotiation_status: [
         "pending",
         "counter_offer",
         "approved",
         "rejected",
         "locked",
+      ],
+      support_task_type: [
+        "legal",
+        "iot_installation",
+        "iot_maintenance",
+        "vehicle_recall",
+        "vehicle_maintenance",
+      ],
+      vehicle_task_status: [
+        "reported",
+        "dispatched",
+        "inspection",
+        "repair_in_progress",
+        "pending_parts",
+        "quality_check",
+        "completed",
+        "escalated",
       ],
     },
   },
