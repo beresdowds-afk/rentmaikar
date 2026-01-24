@@ -3,7 +3,7 @@ import Footer from "@/components/layout/Footer";
 import { Shield } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
+import { EMAIL_CONFIG } from "@/lib/email-config";
 const Privacy = () => {
   const { country } = useRegion();
 
@@ -169,7 +169,7 @@ const Privacy = () => {
           <li><strong>Right to Non-Discrimination:</strong> Equal service regardless of privacy choices</li>
         </ul>
         <p className="text-muted-foreground">
-          To exercise these rights, contact privacy@rentmaikar.com with "CCPA Request" in the subject line.
+          To exercise these rights, contact {EMAIL_CONFIG.privacy} with "CCPA Request" in the subject line.
         </p>
       </section>
 
@@ -209,7 +209,7 @@ const Privacy = () => {
         <h2 className="text-2xl font-semibold">12. Contact Us</h2>
         <p className="text-muted-foreground">
           For privacy-related inquiries or to exercise your rights:<br />
-          Email: privacy@rentmaikar.com<br />
+          Email: {EMAIL_CONFIG.privacy}<br />
           Phone: +1 (240) 393-0081<br />
           Address: Rentmaikar LLC, Montgomery County, Maryland, USA
         </p>
@@ -405,7 +405,7 @@ const Privacy = () => {
           <li><strong>Right to Lodge Complaint:</strong> File a complaint with NITDA</li>
         </ul>
         <p className="text-muted-foreground">
-          To exercise these rights, contact privacy@rentmaikar.com with "NDPR Request" in the subject line. 
+          To exercise these rights, contact {EMAIL_CONFIG.privacy} with "NDPR Request" in the subject line. 
           We will respond within 30 days as required by law.
         </p>
       </section>
@@ -438,7 +438,7 @@ const Privacy = () => {
         <h2 className="text-2xl font-semibold">12. Data Protection Officer</h2>
         <p className="text-muted-foreground">
           In compliance with NDPR, we have appointed a Data Protection Officer (DPO). For data protection enquiries:<br />
-          Email: dpo@rentmaikar.com<br />
+          Email: {EMAIL_CONFIG.dpo}<br />
           Phone: +234 803 555 0123
         </p>
       </section>
@@ -455,7 +455,7 @@ const Privacy = () => {
         <h2 className="text-2xl font-semibold">14. Contact Us</h2>
         <p className="text-muted-foreground">
           For privacy-related enquiries or to exercise your rights:<br />
-          Email: privacy@rentmaikar.com<br />
+          Email: {EMAIL_CONFIG.privacy}<br />
           Phone: +234 803 555 0123<br />
           Address: Rentmaikar Nigeria Limited, Lagos, Nigeria
         </p>

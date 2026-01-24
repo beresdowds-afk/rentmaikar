@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
+import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -38,10 +38,10 @@ serve(async (req) => {
     const emailSubject = subject || 
       (conversation?.subject ? `Re: ${conversation.subject}` : "Reply from Rentmaikar Support");
 
-    // Use unified support email for all regions
-    const fromEmail = "support@rentmaikar.com";
+    // Use centralized email config
+    const fromEmail = formatSenderEmail('support');
 
-    console.log(`Sending email to ${recipientEmail} from ${fromEmail}`);
+    console.log(`Sending email to ${recipientEmail} from ${EMAIL_CONFIG.support}`);
 
     // Send email using Resend API directly
     const emailResponse = await fetch("https://api.resend.com/emails", {
@@ -51,7 +51,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: `Rentmaikar Support <${fromEmail}>`,
+        from: fromEmail,
         to: [recipientEmail],
         subject: emailSubject,
         html: `

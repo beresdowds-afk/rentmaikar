@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
+import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -45,7 +45,7 @@ const handler = async (req: Request): Promise<Response> => {
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: "Rentmaikar <noreply@rentmaikar.com>",
+        from: formatSenderEmail('noreply'),
         to: [email],
         subject: "Your IoT Device Has Been Shipped! 📦",
         html: `
