@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff, Camera, BarChart3, Home, Inbox, MessageSquare, HelpCircle } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, MapPin, Power, Eye, CreditCard, Wallet, Globe, Settings, Mail, Loader2, Cpu, HandshakeIcon, ClipboardList, Tag, KeyRound, Package, UserCircle, RefreshCw, TrendingUp, Ban, Wrench, WifiOff, Camera, BarChart3, Home, Inbox, MessageSquare, HelpCircle, Headphones } from "lucide-react";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
@@ -19,6 +19,7 @@ import { FAQManagement } from "@/components/admin/FAQManagement";
 import { PolicyManagement } from "@/components/admin/PolicyManagement";
 import { AdminUnifiedInbox } from "@/components/admin/AdminUnifiedInbox";
 import { AdminContactSettings } from "@/components/admin/AdminContactSettings";
+import { AdminSupportTaskManagement } from "@/components/admin/AdminSupportTaskManagement";
 import AdminOnboardingTour from "@/components/onboarding/AdminOnboardingTour";
 import { useAdminOnboardingTour } from "@/hooks/useAdminOnboardingTour";
 import { Button } from "@/components/ui/button";
@@ -440,6 +441,10 @@ const AdminDashboard = () => {
                 Rent to Own
               </TabsTrigger>
               <TabsTrigger value="fees">Fee Structure</TabsTrigger>
+              <TabsTrigger value="support-tasks" className="flex items-center gap-1">
+                <Headphones className="h-4 w-4" />
+                Support Tasks
+              </TabsTrigger>
               <TabsTrigger value="secrets" className="flex items-center gap-1">
                 <KeyRound className="h-4 w-4" />
                 API Secrets
@@ -687,6 +692,10 @@ const AdminDashboard = () => {
                   </ul>
                 </div>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="support-tasks">
+              <AdminSupportTaskManagement />
             </TabsContent>
 
             <TabsContent value="secrets">
