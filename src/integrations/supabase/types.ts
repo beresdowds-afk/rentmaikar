@@ -1707,6 +1707,72 @@ export type Database = {
           },
         ]
       }
+      voip_call_requests: {
+        Row: {
+          admin_notes: string | null
+          callback_scheduled_at: string | null
+          called_back_at: string | null
+          called_back_by: string | null
+          created_at: string
+          id: string
+          phone_number: string
+          priority: string
+          reason: string | null
+          region: string
+          status: string
+          updated_at: string
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          callback_scheduled_at?: string | null
+          called_back_at?: string | null
+          called_back_by?: string | null
+          created_at?: string
+          id?: string
+          phone_number: string
+          priority?: string
+          reason?: string | null
+          region: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          user_type: string
+        }
+        Update: {
+          admin_notes?: string | null
+          callback_scheduled_at?: string | null
+          called_back_at?: string | null
+          called_back_by?: string | null
+          created_at?: string
+          id?: string
+          phone_number?: string
+          priority?: string
+          reason?: string | null
+          region?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          user_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voip_call_requests_called_back_by_fkey"
+            columns: ["called_back_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "voip_call_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       voip_calls: {
         Row: {
           call_sid: string | null
@@ -1817,6 +1883,47 @@ export type Database = {
           {
             foreignKeyName: "voip_group_members_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      voip_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          feature_key: string
+          id: string
+          is_enabled: boolean
+          region: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          feature_key: string
+          id?: string
+          is_enabled?: boolean
+          region?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          feature_key?: string
+          id?: string
+          is_enabled?: boolean
+          region?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voip_settings_updated_by_fkey"
+            columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]

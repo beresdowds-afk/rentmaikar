@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Phone, Users, History, Settings, PhoneCall, PhoneOff, Globe } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Phone, Users, History, Settings, PhoneCall, Globe } from 'lucide-react';
 import { useVoIPCalls } from '@/hooks/useVoIPCalls';
 import { CallDialer } from './CallDialer';
 import { CallHistory } from './CallHistory';
 import { CallGroups } from './CallGroups';
 import { ActiveCallPanel } from './ActiveCallPanel';
+import { VoIPFeatureSettings } from './VoIPFeatureSettings';
 import { Badge } from '@/components/ui/badge';
 
 export const CallCenterPage = () => {
-  const { calls, groups, isLoading, activeCall, setActiveCall, initiateCall, endCall, createGroup, deleteGroup, refreshCalls } = useVoIPCalls();
+  const { calls, groups, isLoading, activeCall, initiateCall, endCall, createGroup, deleteGroup, refreshCalls } = useVoIPCalls();
   const [selectedTab, setSelectedTab] = useState('dialer');
 
   const activeCalls = calls.filter(c => ['ringing', 'in-progress'].includes(c.status));
@@ -71,7 +72,7 @@ export const CallCenterPage = () => {
 
       {/* Main Content */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
           <TabsTrigger value="dialer" className="flex items-center gap-2">
             <Phone className="h-4 w-4" />
             <span className="hidden sm:inline">Make Call</span>
@@ -83,6 +84,10 @@ export const CallCenterPage = () => {
           <TabsTrigger value="history" className="flex items-center gap-2">
             <History className="h-4 w-4" />
             <span className="hidden sm:inline">History</span>
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            <span className="hidden sm:inline">Settings</span>
           </TabsTrigger>
         </TabsList>
 
@@ -109,6 +114,10 @@ export const CallCenterPage = () => {
             onRefresh={refreshCalls}
             isLoading={isLoading}
           />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <VoIPFeatureSettings />
         </TabsContent>
       </Tabs>
     </div>
