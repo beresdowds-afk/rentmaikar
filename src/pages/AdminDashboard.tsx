@@ -6,6 +6,8 @@ import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
 import { SecretsManagement } from "@/components/admin/SecretsManagement";
 import { ApiKeyManagement } from "@/components/admin/ApiKeyManagement";
+import { WebhookManagement } from "@/components/admin/WebhookManagement";
+import { ApiEndpointManagement } from "@/components/admin/ApiEndpointManagement";
 import { InsuranceSupportDashboard } from "@/components/admin/InsuranceSupportDashboard";
 import { PaymentAccountsSupportDashboard } from "@/components/admin/PaymentAccountsSupportDashboard";
 import { SocialMediaManagement } from "@/components/admin/SocialMediaManagement";
@@ -644,6 +646,8 @@ const AdminDashboard = () => {
               )}
               {activeTab === 'secrets' && <SecretsManagement />}
               {activeTab === 'api-keys' && <ApiKeyManagement />}
+              {activeTab === 'webhooks' && <WebhookManagement />}
+              {activeTab === 'api-endpoints' && <ApiEndpointManagement />}
               {activeTab === 'settings' && (
                 <Card className="p-6">
                   <div className="flex items-center gap-3 mb-6">
