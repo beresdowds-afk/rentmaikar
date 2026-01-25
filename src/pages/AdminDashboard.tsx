@@ -5,6 +5,7 @@ import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
 import { SecretsManagement } from "@/components/admin/SecretsManagement";
+import { ApiKeyManagement } from "@/components/admin/ApiKeyManagement";
 import { IoTDeviceOrders } from "@/components/admin/IoTDeviceOrders";
 import { DeviceOrderRevenue } from "@/components/admin/DeviceOrderRevenue";
 import { UserAccountsView } from "@/components/admin/UserAccountsView";
@@ -637,6 +638,7 @@ const AdminDashboard = () => {
                 </Card>
               )}
               {activeTab === 'secrets' && <SecretsManagement />}
+              {activeTab === 'api-keys' && <ApiKeyManagement />}
               {activeTab === 'settings' && (
                 <Card className="p-6">
                   <div className="flex items-center gap-3 mb-6">

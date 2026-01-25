@@ -45,6 +45,7 @@ export const erpTabs: PortalTab[] = [
   { value: "weekly-reports", label: "Weekly Reports", icon: <Camera className="h-4 w-4" />, dataTour: "admin-inspections" },
   { value: "fees", label: "Fee Structure", icon: <Wallet className="h-4 w-4" /> },
   { value: "secrets", label: "API Secrets", icon: <KeyRound className="h-4 w-4" /> },
+  { value: "api-keys", label: "API Keys", icon: <KeyRound className="h-4 w-4" /> },
   { value: "settings", label: "Region Settings", icon: <Settings className="h-4 w-4" /> },
 ];
 
