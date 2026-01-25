@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.generate-api-key]
 verify_jwt = false
+
+[functions.process-expiry-notifications]
+verify_jwt = false
