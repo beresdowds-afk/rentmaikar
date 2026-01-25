@@ -354,6 +354,48 @@ export type Database = {
           },
         ]
       }
+      expiry_notifications: {
+        Row: {
+          created_at: string
+          days_until_expiry: number
+          document_id: string | null
+          id: string
+          notification_channel: string
+          notification_type: string
+          recipient_id: string
+          recipient_type: string
+          sent_at: string
+          vehicle_id: string | null
+          voip_call_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          days_until_expiry: number
+          document_id?: string | null
+          id?: string
+          notification_channel: string
+          notification_type: string
+          recipient_id: string
+          recipient_type: string
+          sent_at?: string
+          vehicle_id?: string | null
+          voip_call_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          days_until_expiry?: number
+          document_id?: string | null
+          id?: string
+          notification_channel?: string
+          notification_type?: string
+          recipient_id?: string
+          recipient_type?: string
+          sent_at?: string
+          vehicle_id?: string | null
+          voip_call_id?: string | null
+        }
+        Relationships: []
+      }
       faq_categories: {
         Row: {
           created_at: string
@@ -1758,6 +1800,7 @@ export type Database = {
           document_category: string
           document_type: string
           expires_at: string | null
+          expiry_date: string | null
           file_name: string
           file_path: string
           file_size: number | null
@@ -1776,6 +1819,7 @@ export type Database = {
           document_category: string
           document_type: string
           expires_at?: string | null
+          expiry_date?: string | null
           file_name: string
           file_path: string
           file_size?: number | null
@@ -1794,6 +1838,7 @@ export type Database = {
           document_category?: string
           document_type?: string
           expires_at?: string | null
+          expiry_date?: string | null
           file_name?: string
           file_path?: string
           file_size?: number | null
@@ -2064,6 +2109,8 @@ export type Database = {
           color: string | null
           created_at: string | null
           id: string
+          inspection_expiry: string | null
+          insurance_expiry: string | null
           license_plate: string
           make: string
           model: string
@@ -2072,6 +2119,7 @@ export type Database = {
           pickup_city: string | null
           pickup_instructions: string | null
           pickup_location: string | null
+          registration_expiry: string | null
           status: string | null
           updated_at: string | null
           vin: string | null
@@ -2081,6 +2129,8 @@ export type Database = {
           color?: string | null
           created_at?: string | null
           id?: string
+          inspection_expiry?: string | null
+          insurance_expiry?: string | null
           license_plate: string
           make: string
           model: string
@@ -2089,6 +2139,7 @@ export type Database = {
           pickup_city?: string | null
           pickup_instructions?: string | null
           pickup_location?: string | null
+          registration_expiry?: string | null
           status?: string | null
           updated_at?: string | null
           vin?: string | null
@@ -2098,6 +2149,8 @@ export type Database = {
           color?: string | null
           created_at?: string | null
           id?: string
+          inspection_expiry?: string | null
+          insurance_expiry?: string | null
           license_plate?: string
           make?: string
           model?: string
@@ -2106,6 +2159,7 @@ export type Database = {
           pickup_city?: string | null
           pickup_instructions?: string | null
           pickup_location?: string | null
+          registration_expiry?: string | null
           status?: string | null
           updated_at?: string | null
           vin?: string | null
