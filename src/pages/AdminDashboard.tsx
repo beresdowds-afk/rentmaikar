@@ -10,6 +10,7 @@ import { WebhookManagement } from "@/components/admin/WebhookManagement";
 import { ApiEndpointManagement } from "@/components/admin/ApiEndpointManagement";
 import { InsuranceSupportDashboard } from "@/components/admin/InsuranceSupportDashboard";
 import { PaymentAccountsSupportDashboard } from "@/components/admin/PaymentAccountsSupportDashboard";
+import { ExpiryNotificationsWidget } from "@/components/admin/ExpiryNotificationsWidget";
 import { SocialMediaManagement } from "@/components/admin/SocialMediaManagement";
 import { IoTDeviceOrders } from "@/components/admin/IoTDeviceOrders";
 import { DeviceOrderRevenue } from "@/components/admin/DeviceOrderRevenue";
@@ -425,6 +426,7 @@ const AdminDashboard = () => {
               {activeTab === 'support-tasks' && <AdminSupportTaskManagement />}
               {activeTab === 'insurance' && <InsuranceSupportDashboard />}
               {activeTab === 'payment-accounts' && <PaymentAccountsSupportDashboard />}
+              {activeTab === 'expiry-notifications' && <ExpiryNotificationsWidget />}
             </div>
           )}
 
