@@ -6,6 +6,9 @@ import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
 import { SecretsManagement } from "@/components/admin/SecretsManagement";
 import { ApiKeyManagement } from "@/components/admin/ApiKeyManagement";
+import { InsuranceSupportDashboard } from "@/components/admin/InsuranceSupportDashboard";
+import { PaymentAccountsSupportDashboard } from "@/components/admin/PaymentAccountsSupportDashboard";
+import { SocialMediaManagement } from "@/components/admin/SocialMediaManagement";
 import { IoTDeviceOrders } from "@/components/admin/IoTDeviceOrders";
 import { DeviceOrderRevenue } from "@/components/admin/DeviceOrderRevenue";
 import { UserAccountsView } from "@/components/admin/UserAccountsView";
@@ -418,6 +421,8 @@ const AdminDashboard = () => {
               {activeTab === 'call-center' && <CallCenterPage />}
               {activeTab === 'contacts' && <AdminContactSettings />}
               {activeTab === 'support-tasks' && <AdminSupportTaskManagement />}
+              {activeTab === 'insurance' && <InsuranceSupportDashboard />}
+              {activeTab === 'payment-accounts' && <PaymentAccountsSupportDashboard />}
             </div>
           )}
 
@@ -752,6 +757,17 @@ const AdminDashboard = () => {
                   </div>
                 </Card>
               )}
+            </div>
+          )}
+
+          {/* Marketing Portal */}
+          {portalView === 'marketing' && (
+            <div className="space-y-6">
+              {activeTab === 'campaigns' && <SocialMediaManagement />}
+              {activeTab === 'facebook' && <SocialMediaManagement />}
+              {activeTab === 'instagram' && <SocialMediaManagement />}
+              {activeTab === 'linkedin' && <SocialMediaManagement />}
+              {activeTab === 'google' && <SocialMediaManagement />}
             </div>
           )}
         </div>
