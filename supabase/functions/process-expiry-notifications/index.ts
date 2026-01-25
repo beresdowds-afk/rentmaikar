@@ -22,7 +22,44 @@ interface ExpiringItem {
   driver_email?: string;
   driver_phone?: string;
   driver_name?: string;
+  owner_notification_sms?: boolean;
+  owner_notification_whatsapp?: boolean;
+  driver_notification_sms?: boolean;
+  driver_notification_whatsapp?: boolean;
 }
+
+const sendSmsOrWhatsApp = async (
+  phone: string,
+  message: string,
+  channel: 'sms' | 'whatsapp',
+  twilioAccountSid: string,
+  twilioAuthToken: string,
+  twilioPhoneNumber: string
+): Promise<boolean> => {
+  try {
+    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
+    const fromNumber = channel === 'whatsapp' ? `whatsapp:${twilioPhoneNumber}` : twilioPhoneNumber;
+    const toNumber = channel === 'whatsapp' ? `whatsapp:${phone}` : phone;
+
+    const response = await fetch(twilioUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        To: toNumber,
+        From: fromNumber,
+        Body: message,
+      }),
+    });
+
+    return response.ok;
+  } catch (e) {
+    console.error(`${channel} send failed:`, e);
+    return false;
+  }
+};
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -60,8 +97,7 @@ const handler = async (req: Request): Promise<Response> => {
         owner_id,
         insurance_expiry,
         registration_expiry,
-        inspection_expiry,
-        owner:profiles!vehicles_owner_id_fkey(user_id, email, full_name, phone)
+        inspection_expiry
       `)
       .or(`insurance_expiry.gte.${formatDate(today)},registration_expiry.gte.${formatDate(today)},inspection_expiry.gte.${formatDate(today)}`);
 
@@ -74,7 +110,17 @@ const handler = async (req: Request): Promise<Response> => {
     // Process vehicle expiry dates
     for (const vehicle of vehicles || []) {
       const vehicleInfo = `${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.plate_number})`;
-      const ownerProfile = vehicle.owner as any;
+      
+      // Fetch owner profile with notification preferences
+      let ownerProfile = null;
+      if (vehicle.owner_id) {
+        const { data: owner } = await supabase
+          .from('profiles')
+          .select('user_id, email, full_name, phone, notification_sms, notification_whatsapp')
+          .eq('user_id', vehicle.owner_id)
+          .maybeSingle();
+        ownerProfile = owner;
+      }
 
       const checkExpiry = (expiryDate: string | null, type: 'insurance' | 'registration' | 'inspection') => {
         if (!expiryDate) return;
@@ -93,6 +139,8 @@ const handler = async (req: Request): Promise<Response> => {
             owner_email: ownerProfile?.email,
             owner_phone: ownerProfile?.phone,
             owner_name: ownerProfile?.full_name,
+            owner_notification_sms: ownerProfile?.notification_sms,
+            owner_notification_whatsapp: ownerProfile?.notification_whatsapp,
           });
         }
       };
@@ -110,8 +158,7 @@ const handler = async (req: Request): Promise<Response> => {
         document_type,
         expiry_date,
         user_id,
-        vehicle_id,
-        user:profiles!user_documents_user_id_fkey(user_id, email, full_name, phone)
+        vehicle_id
       `)
       .not('expiry_date', 'is', null)
       .gte('expiry_date', formatDate(today));
@@ -124,7 +171,17 @@ const handler = async (req: Request): Promise<Response> => {
       if (!doc.expiry_date) continue;
       const expiry = new Date(doc.expiry_date);
       const daysUntil = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      const userProfile = doc.user as any;
+      
+      // Fetch user profile with notification preferences
+      let userProfile = null;
+      if (doc.user_id) {
+        const { data: user } = await supabase
+          .from('profiles')
+          .select('user_id, email, full_name, phone, notification_sms, notification_whatsapp')
+          .eq('user_id', doc.user_id)
+          .maybeSingle();
+        userProfile = user;
+      }
       
       if (daysUntil === 7 || daysUntil === 30) {
         expiringItems.push({
@@ -137,6 +194,8 @@ const handler = async (req: Request): Promise<Response> => {
           owner_email: userProfile?.email,
           owner_phone: userProfile?.phone,
           owner_name: userProfile?.full_name,
+          owner_notification_sms: userProfile?.notification_sms,
+          owner_notification_whatsapp: userProfile?.notification_whatsapp,
         });
       }
     }
@@ -150,12 +209,14 @@ const handler = async (req: Request): Promise<Response> => {
     const adminUserIds = (admins || []).map(a => a.user_id);
     const { data: adminProfiles } = await supabase
       .from('profiles')
-      .select('user_id, email, phone, full_name')
+      .select('user_id, email, phone, full_name, notification_sms, notification_whatsapp')
       .in('user_id', adminUserIds);
 
     const results = {
       processed: 0,
       emailsSent: 0,
+      smsSent: 0,
+      whatsappSent: 0,
       voipCallsMade: 0,
       errors: [] as string[],
     };
@@ -168,7 +229,7 @@ const handler = async (req: Request): Promise<Response> => {
         .eq('vehicle_id', item.vehicle_id || item.id)
         .eq('days_until_expiry', item.days_until_expiry)
         .eq('notification_type', item.type)
-        .single();
+        .maybeSingle();
 
       if (existingNotification) {
         continue; // Already notified
@@ -177,8 +238,9 @@ const handler = async (req: Request): Promise<Response> => {
       const typeLabel = item.type.charAt(0).toUpperCase() + item.type.slice(1);
       const subject = `⚠️ ${typeLabel} Expiring in ${item.days_until_expiry} Days`;
       const vehicleText = item.vehicle_info ? ` for ${item.vehicle_info}` : '';
+      const smsMessage = `RentMaiKar: Your ${item.type}${vehicleText} expires on ${item.expiry_date} (${item.days_until_expiry} days). Please renew immediately.`;
 
-      // Send to owner
+      // Send to owner - Email
       if (item.owner_email && resend) {
         try {
           await resend.emails.send({
@@ -210,8 +272,59 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
+      // Send to owner - SMS (if preferred)
+      if (item.owner_phone && item.owner_notification_sms && twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
+        const sent = await sendSmsOrWhatsApp(
+          item.owner_phone,
+          smsMessage,
+          'sms',
+          twilioAccountSid,
+          twilioAuthToken,
+          twilioPhoneNumber
+        );
+        
+        if (sent) {
+          await supabase.from('expiry_notifications').insert({
+            document_id: item.type === 'license' ? item.id : null,
+            vehicle_id: item.vehicle_id,
+            notification_type: item.type,
+            recipient_type: 'owner',
+            recipient_id: item.owner_id,
+            days_until_expiry: item.days_until_expiry,
+            notification_channel: 'sms',
+          });
+          results.smsSent++;
+        }
+      }
+
+      // Send to owner - WhatsApp (if preferred)
+      if (item.owner_phone && item.owner_notification_whatsapp && twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
+        const sent = await sendSmsOrWhatsApp(
+          item.owner_phone,
+          smsMessage,
+          'whatsapp',
+          twilioAccountSid,
+          twilioAuthToken,
+          twilioPhoneNumber
+        );
+        
+        if (sent) {
+          await supabase.from('expiry_notifications').insert({
+            document_id: item.type === 'license' ? item.id : null,
+            vehicle_id: item.vehicle_id,
+            notification_type: item.type,
+            recipient_type: 'owner',
+            recipient_id: item.owner_id,
+            days_until_expiry: item.days_until_expiry,
+            notification_channel: 'whatsapp',
+          });
+          results.whatsappSent++;
+        }
+      }
+
       // Send to admins
       for (const admin of adminProfiles || []) {
+        // Admin email
         if (admin.email && resend) {
           try {
             await resend.emails.send({
@@ -239,6 +352,32 @@ const handler = async (req: Request): Promise<Response> => {
             results.emailsSent++;
           } catch (e) {
             results.errors.push(`Email to admin failed: ${e}`);
+          }
+        }
+
+        // Admin SMS (if preferred)
+        if (admin.phone && admin.notification_sms && twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
+          const adminSmsMessage = `[Admin] ${smsMessage} Owner: ${item.owner_name || 'N/A'}`;
+          const sent = await sendSmsOrWhatsApp(
+            admin.phone,
+            adminSmsMessage,
+            'sms',
+            twilioAccountSid,
+            twilioAuthToken,
+            twilioPhoneNumber
+          );
+          
+          if (sent) {
+            await supabase.from('expiry_notifications').insert({
+              document_id: item.type === 'license' ? item.id : null,
+              vehicle_id: item.vehicle_id,
+              notification_type: item.type,
+              recipient_type: 'admin',
+              recipient_id: admin.user_id,
+              days_until_expiry: item.days_until_expiry,
+              notification_channel: 'sms',
+            });
+            results.smsSent++;
           }
         }
       }
