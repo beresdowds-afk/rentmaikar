@@ -109,6 +109,60 @@ export type Database = {
         }
         Relationships: []
       }
+      api_validation_endpoints: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean
+          method: string
+          name: string
+          path: string
+          rate_limit_per_minute: number | null
+          request_schema: Json | null
+          required_permissions: string[] | null
+          requires_auth: boolean
+          response_schema: Json | null
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          method?: string
+          name: string
+          path: string
+          rate_limit_per_minute?: number | null
+          request_schema?: Json | null
+          required_permissions?: string[] | null
+          requires_auth?: boolean
+          response_schema?: Json | null
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          method?: string
+          name?: string
+          path?: string
+          rate_limit_per_minute?: number | null
+          request_schema?: Json | null
+          required_permissions?: string[] | null
+          requires_auth?: boolean
+          response_schema?: Json | null
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       applications: {
         Row: {
           agreed_fees: boolean | null
@@ -2379,6 +2433,119 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      webhook_deliveries: {
+        Row: {
+          attempt_number: number
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          event_type: string
+          id: string
+          payload: Json
+          response_body: string | null
+          response_headers: Json | null
+          response_status: number | null
+          status: string
+          webhook_id: string
+        }
+        Insert: {
+          attempt_number?: number
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          payload: Json
+          response_body?: string | null
+          response_headers?: Json | null
+          response_status?: number | null
+          status?: string
+          webhook_id: string
+        }
+        Update: {
+          attempt_number?: number
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          response_body?: string | null
+          response_headers?: Json | null
+          response_status?: number | null
+          status?: string
+          webhook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_deliveries_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "webhooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhooks: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          events: string[]
+          failure_count: number
+          headers: Json | null
+          id: string
+          is_active: boolean
+          last_triggered_at: string | null
+          name: string
+          retry_count: number
+          secret: string | null
+          success_count: number
+          timeout_seconds: number
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          events?: string[]
+          failure_count?: number
+          headers?: Json | null
+          id?: string
+          is_active?: boolean
+          last_triggered_at?: string | null
+          name: string
+          retry_count?: number
+          secret?: string | null
+          success_count?: number
+          timeout_seconds?: number
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          events?: string[]
+          failure_count?: number
+          headers?: Json | null
+          id?: string
+          is_active?: boolean
+          last_triggered_at?: string | null
+          name?: string
+          retry_count?: number
+          secret?: string | null
+          success_count?: number
+          timeout_seconds?: number
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
       }
       weekly_inspection_reports: {
         Row: {

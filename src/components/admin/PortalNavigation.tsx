@@ -1,4 +1,4 @@
-import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Inbox, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp } from "lucide-react";
+import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Inbox, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -46,6 +46,8 @@ export const erpTabs: PortalTab[] = [
   { value: "fees", label: "Fee Structure", icon: <Wallet className="h-4 w-4" /> },
   { value: "secrets", label: "API Secrets", icon: <KeyRound className="h-4 w-4" /> },
   { value: "api-keys", label: "API Keys", icon: <KeyRound className="h-4 w-4" /> },
+  { value: "webhooks", label: "Webhooks", icon: <Webhook className="h-4 w-4" /> },
+  { value: "api-endpoints", label: "API Endpoints", icon: <Code className="h-4 w-4" /> },
   { value: "settings", label: "Region Settings", icon: <Settings className="h-4 w-4" /> },
 ];
 
