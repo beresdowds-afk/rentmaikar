@@ -1352,6 +1352,128 @@ export type Database = {
         }
         Relationships: []
       }
+      social_media_campaigns: {
+        Row: {
+          budget: number | null
+          campaign_type: string
+          content_text: string | null
+          created_at: string
+          created_by: string
+          currency: string
+          description: string | null
+          end_date: string | null
+          external_campaign_id: string | null
+          id: string
+          media_urls: string[] | null
+          metrics: Json | null
+          name: string
+          platform: string
+          region: string
+          start_date: string | null
+          status: string
+          target_audience: Json | null
+          updated_at: string
+        }
+        Insert: {
+          budget?: number | null
+          campaign_type: string
+          content_text?: string | null
+          created_at?: string
+          created_by: string
+          currency?: string
+          description?: string | null
+          end_date?: string | null
+          external_campaign_id?: string | null
+          id?: string
+          media_urls?: string[] | null
+          metrics?: Json | null
+          name: string
+          platform: string
+          region?: string
+          start_date?: string | null
+          status?: string
+          target_audience?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          budget?: number | null
+          campaign_type?: string
+          content_text?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string
+          description?: string | null
+          end_date?: string | null
+          external_campaign_id?: string | null
+          id?: string
+          media_urls?: string[] | null
+          metrics?: Json | null
+          name?: string
+          platform?: string
+          region?: string
+          start_date?: string | null
+          status?: string
+          target_audience?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      social_media_posts: {
+        Row: {
+          campaign_id: string | null
+          content: string
+          created_at: string
+          created_by: string
+          engagement_metrics: Json | null
+          external_post_id: string | null
+          id: string
+          media_urls: string[] | null
+          platform: string
+          published_at: string | null
+          scheduled_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          content: string
+          created_at?: string
+          created_by: string
+          engagement_metrics?: Json | null
+          external_post_id?: string | null
+          id?: string
+          media_urls?: string[] | null
+          platform: string
+          published_at?: string | null
+          scheduled_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string
+          engagement_metrics?: Json | null
+          external_post_id?: string | null
+          id?: string
+          media_urls?: string[] | null
+          platform?: string
+          published_at?: string | null
+          scheduled_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_media_posts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "social_media_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_staff: {
         Row: {
           assigned_city: string
@@ -2467,6 +2589,8 @@ export type Database = {
         | "iot_maintenance"
         | "vehicle_recall"
         | "vehicle_maintenance"
+        | "insurance"
+        | "payment_accounts"
       vehicle_task_status:
         | "reported"
         | "dispatched"
@@ -2660,6 +2784,8 @@ export const Constants = {
         "iot_maintenance",
         "vehicle_recall",
         "vehicle_maintenance",
+        "insurance",
+        "payment_accounts",
       ],
       vehicle_task_status: [
         "reported",
