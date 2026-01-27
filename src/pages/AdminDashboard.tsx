@@ -11,6 +11,7 @@ import { ApiEndpointManagement } from "@/components/admin/ApiEndpointManagement"
 import { InsuranceSupportDashboard } from "@/components/admin/InsuranceSupportDashboard";
 import { PaymentAccountsSupportDashboard } from "@/components/admin/PaymentAccountsSupportDashboard";
 import { ExpiryNotificationsWidget } from "@/components/admin/ExpiryNotificationsWidget";
+import { NigeriaDriverVerification } from "@/components/admin/NigeriaDriverVerification";
 import { SocialMediaManagement } from "@/components/admin/SocialMediaManagement";
 import { IoTDeviceOrders } from "@/components/admin/IoTDeviceOrders";
 import { DeviceOrderRevenue } from "@/components/admin/DeviceOrderRevenue";
@@ -425,6 +426,7 @@ const AdminDashboard = () => {
               {activeTab === 'contacts' && <AdminContactSettings />}
               {activeTab === 'support-tasks' && <AdminSupportTaskManagement />}
               {activeTab === 'insurance' && <InsuranceSupportDashboard />}
+              {activeTab === 'nigeria-verification' && <NigeriaDriverVerification />}
               {activeTab === 'payment-accounts' && <PaymentAccountsSupportDashboard />}
               {activeTab === 'expiry-notifications' && <ExpiryNotificationsWidget />}
             </div>

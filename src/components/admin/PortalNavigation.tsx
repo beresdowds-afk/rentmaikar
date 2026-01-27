@@ -1,4 +1,4 @@
-import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Inbox, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell } from "lucide-react";
+import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Inbox, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -58,6 +58,7 @@ export const supportTabs: PortalTab[] = [
   { value: "contacts", label: "Contact Settings", icon: <MessageSquare className="h-4 w-4" />, dataTour: "admin-contacts" },
   { value: "support-tasks", label: "Support Tasks", icon: <Headphones className="h-4 w-4" /> },
   { value: "insurance", label: "Insurance Support", icon: <Shield className="h-4 w-4" /> },
+  { value: "nigeria-verification", label: "🇳🇬 Nigeria Verification", icon: <Flag className="h-4 w-4" /> },
   { value: "payment-accounts", label: "Payment & Accounts", icon: <CreditCard className="h-4 w-4" /> },
   { value: "expiry-notifications", label: "Expiry Alerts", icon: <Bell className="h-4 w-4" /> },
 ];
