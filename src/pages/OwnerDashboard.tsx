@@ -27,6 +27,7 @@ import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import { VehicleDocumentUpload } from '@/components/documents/VehicleDocumentUpload';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
+import { VerificationGate } from '@/components/onboarding/VerificationGate';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -169,10 +170,11 @@ export default function OwnerDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <main className="pt-24 pb-16">
+    <VerificationGate userType="owner">
+      <div className="min-h-screen bg-background">
+        <Header />
+        
+        <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -742,11 +744,12 @@ export default function OwnerDashboard() {
             </TabsContent>
           </Tabs>
         </div>
-      </main>
+        </main>
 
-      <Footer />
-      <SupportChatWidget />
-      <CallSupportButton userType="owner" variant="floating" />
-    </div>
+        <Footer />
+        <SupportChatWidget />
+        <CallSupportButton userType="owner" variant="floating" />
+      </div>
+    </VerificationGate>
   );
 }
