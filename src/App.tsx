@@ -42,8 +42,31 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/driver/register" element={<DriverRegistration />} />
-                <Route path="/owner/register" element={<OwnerRegistration />} />
+                {/* Registration routes - protected, require account creation first */}
+                <Route 
+                  path="/driver/register" 
+                  element={<DriverRegistration />} 
+                />
+                <Route 
+                  path="/owner/register" 
+                  element={<OwnerRegistration />} 
+                />
+                <Route 
+                  path="/driver/registration" 
+                  element={
+                    <ProtectedRoute allowedRoles={['driver']}>
+                      <DriverRegistration />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/owner/registration" 
+                  element={
+                    <ProtectedRoute allowedRoles={['owner']}>
+                      <OwnerRegistration />
+                    </ProtectedRoute>
+                  } 
+                />
                 <Route 
                   path="/driver/dashboard" 
                   element={
