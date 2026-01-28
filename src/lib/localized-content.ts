@@ -83,11 +83,11 @@ export interface TestimonialContent {
 
 const usaHeroContent: HeroContent = {
   badge: "USA 🇺🇸 Rideshare Rentals",
-  headline: "Get the Right Car.",
+  headline: "Earn From Your Car.",
   highlightedWord: "Maximize Your Earnings",
-  description: "Drive more, earn more with a weekly rental that works for you. Browse rideshare-ready cars from trusted owners and get on the road fast.",
+  description: "Turn your vehicle into a profit machine. List with trusted drivers, collect weekly payments, and build passive income—while we handle the rest.",
   primaryCta: "Find My Car",
-  secondaryCta: "Earn From Your Car",
+  secondaryCta: "Owners Registration",
   whatsappCta: "Chat with Us",
   smsCta: "Text Us",
 };
