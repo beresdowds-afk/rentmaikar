@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Bell, 
@@ -23,16 +22,18 @@ interface NotificationPreviewProps {
   amountDue?: number;
   currency?: 'USD' | 'NGN';
   paymentFrequency?: PaymentFrequency;
+  showPreDueReminders?: boolean;
 }
 
 interface NotificationStage {
   number: number;
   hour: number;
-  severity: 'warning' | 'urgent' | 'critical';
+  severity: 'info' | 'warning' | 'urgent' | 'critical';
   title: string;
   icon: React.ReactNode;
-  channels: ('sms' | 'whatsapp')[];
+  channels: ('sms' | 'whatsapp' | 'email')[];
   message: string;
+  isPreDue?: boolean;
 }
 
 export function PaymentReminderPreview({
@@ -42,7 +43,7 @@ export function PaymentReminderPreview({
   paymentFrequency = 'weekly',
 }: NotificationPreviewProps) {
   const [selectedFrequency, setSelectedFrequency] = useState<PaymentFrequency>(paymentFrequency);
-  const [expandedNotification, setExpandedNotification] = useState<number | null>(1);
+  const [expandedNotification, setExpandedNotification] = useState<number | null>(null);
 
   const config = selectedFrequency === 'daily' 
     ? PAYMENT_CONFIG.DAILY_DEFAULT 
@@ -51,7 +52,87 @@ export function PaymentReminderPreview({
   const intervalLabel = selectedFrequency === 'daily' ? '12 hours' : '24 hours';
   const formattedAmount = formatCurrency(amountDue, currency);
 
-  const getNotificationStages = (): NotificationStage[] => {
+  // Pre-due reminder stages (before payment is due)
+  const getPreDueStages = (): NotificationStage[] => {
+    if (selectedFrequency === 'daily') {
+      return []; // Daily plans don't have pre-due reminders
+    }
+
+    return [
+      {
+        number: 1,
+        hour: -72,
+        severity: 'info',
+        title: 'Friendly Reminder',
+        icon: <Bell className="h-5 w-5" />,
+        channels: ['whatsapp', 'email'],
+        isPreDue: true,
+        message: `👋 *Friendly Reminder – Rentmaikar*
+
+Hi ${driverName}, this is a quick heads-up that your weekly rental payment is due in 3 days.
+
+🚗 Vehicle: Your rental vehicle
+💰 Amount due: ${formattedAmount}
+
+You can pay early anytime to stay uninterrupted.
+Reply *PAY* to make payment now.`,
+      },
+      {
+        number: 2,
+        hour: -48,
+        severity: 'info',
+        title: '2 Days Left',
+        icon: <Calendar className="h-5 w-5" />,
+        channels: ['whatsapp', 'email'],
+        isPreDue: true,
+        message: `📅 *Payment Reminder – 2 Days Left*
+
+Hi ${driverName}, your weekly Rentmaikar payment is due in 2 days.
+
+Amount: ${formattedAmount}
+
+Early payment keeps your ride uninterrupted.
+Reply *PAY* to make payment.`,
+      },
+      {
+        number: 3,
+        hour: -24,
+        severity: 'warning',
+        title: 'Due Tomorrow',
+        icon: <AlertTriangle className="h-5 w-5" />,
+        channels: ['whatsapp', 'email'],
+        isPreDue: true,
+        message: `🚨 *Due Tomorrow – Rentmaikar*
+
+This is a reminder that your weekly rental payment is due tomorrow.
+
+💰 Amount: ${formattedAmount}
+
+Paying today helps you avoid any disruption.
+Reply *PAY* to continue.`,
+      },
+      {
+        number: 4,
+        hour: -12,
+        severity: 'warning',
+        title: 'Due Today',
+        icon: <Clock className="h-5 w-5" />,
+        channels: ['whatsapp', 'email'],
+        isPreDue: true,
+        message: `⏳ *Final Reminder – Payment Due Today*
+
+Hi ${driverName}, your weekly Rentmaikar payment is due today.
+
+💰 Amount due: ${formattedAmount}
+
+Please make payment before the due time to keep your rental active.
+Reply *PAY* to pay now.`,
+      },
+    ];
+  };
+
+  // Overdue notification stages
+  const getOverdueStages = (): NotificationStage[] => {
     const hoursRemaining = (index: number) => config.LOCKDOWN_AFTER_HOURS - config.NOTIFICATION_HOURS[index];
     
     return [
@@ -117,10 +198,19 @@ Pay immediately to avoid lockdown.`,
     ];
   };
 
-  const stages = getNotificationStages();
+  // Pre-due stages available for future UI expansion
+  const _preDueStages = getPreDueStages();
+  const overdueStages = getOverdueStages();
 
   const getSeverityStyles = (severity: NotificationStage['severity']) => {
     switch (severity) {
+      case 'info':
+        return {
+          bg: 'bg-blue-50 border-blue-200',
+          text: 'text-blue-700',
+          badge: 'bg-blue-100 text-blue-800 border-blue-300',
+          icon: 'text-blue-600',
+        };
       case 'warning':
         return {
           bg: 'bg-amber-50 border-amber-200',
@@ -144,6 +234,8 @@ Pay immediately to avoid lockdown.`,
         };
     }
   };
+
+  // Pre-due stages available for future UI expansion: preDueStages
 
   return (
     <Card>
@@ -216,7 +308,7 @@ Pay immediately to avoid lockdown.`,
             </div>
 
             {/* Notification Stages */}
-            {stages.map((stage) => {
+            {overdueStages.map((stage) => {
               const styles = getSeverityStyles(stage.severity);
               const isExpanded = expandedNotification === stage.number;
 
