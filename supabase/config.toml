@@ -8,3 +8,12 @@ verify_jwt = false
 
 [functions.process-expiry-notifications]
 verify_jwt = false
+
+[functions.whatsapp-commands]
+verify_jwt = false
+
+[functions.process-predue-reminders]
+verify_jwt = false
+
+[functions.process-payment-unlock]
+verify_jwt = false
