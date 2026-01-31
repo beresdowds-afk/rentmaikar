@@ -214,9 +214,9 @@ const usaTestimonialContent: TestimonialContent = {
 
 const nigeriaHeroContent: HeroContent = {
   badge: "Nigeria 🇳🇬 Ride-Hailing Rentals",
-  headline: "Get Your Ride.",
+  headline: "Register Your Vehicle.",
   highlightedWord: "Grow Your Income",
-  description: "Join a community of smart drivers. Connect with verified vehicle owners and start earning with Bolt, Uber, and InDrive today.",
+  description: "Join a trusted network of vehicle owners. Connect with verified drivers and start earning passive income from Bolt, Uber, and InDrive rentals today.",
   primaryCta: "Find My Car",
   secondaryCta: "Earn From Your Car",
   whatsappCta: "Chat on WhatsApp",
