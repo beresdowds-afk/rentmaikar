@@ -17,6 +17,7 @@ import { PhoneVerification } from '@/components/phone/PhoneVerification';
 interface VerificationGateProps {
   children: React.ReactNode;
   userType: 'driver' | 'owner';
+  bypassForAdmin?: boolean;
 }
 
 interface VerificationStatus {
@@ -25,8 +26,8 @@ interface VerificationStatus {
   registrationComplete: boolean;
 }
 
-export const VerificationGate = ({ children, userType }: VerificationGateProps) => {
-  const { user } = useAuth();
+export const VerificationGate = ({ children, userType, bypassForAdmin = false }: VerificationGateProps) => {
+  const { user, userRole } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>({
@@ -37,9 +38,14 @@ export const VerificationGate = ({ children, userType }: VerificationGateProps) 
   const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [emailCountdown, setEmailCountdown] = useState(0);
 
+  // Allow admins to bypass verification when viewing dashboards
+  const shouldBypass = bypassForAdmin && userRole === 'admin';
+
   useEffect(() => {
-    checkVerificationStatus();
-  }, [user]);
+    if (!shouldBypass) {
+      checkVerificationStatus();
+    }
+  }, [user, shouldBypass]);
 
   // Email countdown timer
   useEffect(() => {
@@ -158,6 +164,11 @@ export const VerificationGate = ({ children, userType }: VerificationGateProps) 
       navigate('/owner/registration');
     }
   };
+
+  // Allow admins to bypass verification when viewing dashboards
+  if (shouldBypass) {
+    return <>{children}</>;
+  }
 
   if (isLoading) {
     return (
