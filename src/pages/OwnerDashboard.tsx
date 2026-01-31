@@ -28,6 +28,7 @@ import { VehicleDocumentUpload } from '@/components/documents/VehicleDocumentUpl
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
 import { VerificationGate } from '@/components/onboarding/VerificationGate';
+import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -110,7 +111,8 @@ const vehicleCategories = [
 
 export default function OwnerDashboard() {
   const { country, currency, currencySymbol } = useRegion();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
+  const isAdminView = userRole === 'admin';
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
@@ -170,12 +172,15 @@ export default function OwnerDashboard() {
   };
 
   return (
-    <VerificationGate userType="owner">
+    <VerificationGate userType="owner" bypassForAdmin={isAdminView}>
       <div className="min-h-screen bg-background">
         <Header />
         
         <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
+          {/* Admin View Banner */}
+          <AdminViewBanner dashboardType="owner" />
+          
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>

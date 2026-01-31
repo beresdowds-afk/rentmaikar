@@ -24,6 +24,7 @@ import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { PaymentReminderPreview } from '@/components/payment/PaymentReminderPreview';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
 import { VerificationGate } from '@/components/onboarding/VerificationGate';
+import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -86,7 +87,8 @@ const mockRentalData = {
 
 export default function DriverDashboard() {
   const { country, currency, currencySymbol } = useRegion();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
+  const isAdminView = userRole === 'admin';
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
@@ -135,12 +137,15 @@ export default function DriverDashboard() {
   };
 
   return (
-    <VerificationGate userType="driver">
+    <VerificationGate userType="driver" bypassForAdmin={isAdminView}>
       <div className="min-h-screen bg-background">
         <Header />
         
         <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
+          {/* Admin View Banner */}
+          <AdminViewBanner dashboardType="driver" />
+          
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
