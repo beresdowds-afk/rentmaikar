@@ -83,8 +83,38 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Security: Verify service role key authorization
+  const authHeader = req.headers.get('Authorization');
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  
+  if (!authHeader || !supabaseServiceKey) {
+    console.error('Missing authorization header or service key');
+    return new Response(
+      JSON.stringify({ success: false, error: 'Unauthorized' }),
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+
+  // Check if the authorization includes the service role key (Bearer token)
+  const token = authHeader.replace('Bearer ', '');
+  if (token !== supabaseServiceKey) {
+    console.error('Invalid authorization - service role key mismatch');
+    return new Response(
+      JSON.stringify({ success: false, error: 'Unauthorized' }),
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+
   try {
     const body: SMSNotificationRequest = await req.json();
+    
+    // Log request for audit (mask phone number)
+    console.log('SMS request:', {
+      timestamp: new Date().toISOString(),
+      phone: body.phone ? body.phone.substring(0, 6) + '****' : 'none',
+      channel: body.channel,
+      type: body.notificationType,
+    });
     
     // Validate phone
     if (!body.phone || !isValidPhone(body.phone)) {
