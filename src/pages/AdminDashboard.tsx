@@ -4,7 +4,6 @@ import { CallCenterPage } from "@/components/admin/voip/CallCenterPage";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
-import SecurityDepositManagement from "@/components/admin/SecurityDepositManagement";
 import { SecretsManagement } from "@/components/admin/SecretsManagement";
 import { ApiKeyManagement } from "@/components/admin/ApiKeyManagement";
 import { WebhookManagement } from "@/components/admin/WebhookManagement";
@@ -585,7 +584,6 @@ const AdminDashboard = () => {
               {activeTab === 'device-orders' && <IoTDeviceOrders />}
               {activeTab === 'device-revenue' && <DeviceOrderRevenue />}
               {activeTab === 'pricing' && <CategoryPricing />}
-              {activeTab === 'security-deposits' && <SecurityDepositManagement />}
               {activeTab === 'incidents' && <AdminIncidentManagement />}
               {activeTab === 'recalls' && <VehicleRecallManagement />}
               {activeTab === 'daily-plans' && <DailyPlanManagement />}
