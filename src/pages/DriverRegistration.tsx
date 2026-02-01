@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { User, Mail, Phone, MapPin, FileText, Car, Check, ArrowLeft, ExternalLink, Shield } from "lucide-react";
+import { User, Mail, Phone, MapPin, FileText, Car, Check, ArrowLeft, ExternalLink, Shield, Users, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -25,6 +26,20 @@ const driverSchema = z.object({
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
   rideshareApproval: z.array(z.string()).min(1, "Select at least one platform"),
   hasDriverLicense: z.boolean().refine(val => val, "Driver license is required"),
+  // Referee 1
+  referee1Name: z.string().min(2, "Referee 1 name is required").max(100, "Name too long"),
+  referee1Address: z.string().min(5, "Referee 1 address is required").max(255, "Address too long"),
+  referee1Phone: z.string().min(10, "Referee 1 phone is required").max(20, "Phone too long"),
+  // Referee 2
+  referee2Name: z.string().min(2, "Referee 2 name is required").max(100, "Name too long"),
+  referee2Address: z.string().min(5, "Referee 2 address is required").max(255, "Address too long"),
+  referee2Phone: z.string().min(10, "Referee 2 phone is required").max(20, "Phone too long"),
+  // Referee 3
+  referee3Name: z.string().min(2, "Referee 3 name is required").max(100, "Name too long"),
+  referee3Address: z.string().min(5, "Referee 3 address is required").max(255, "Address too long"),
+  referee3Phone: z.string().min(10, "Referee 3 phone is required").max(20, "Phone too long"),
+  // Security deposit acknowledgment
+  securityDepositAcknowledged: z.boolean().refine(val => val, "You must acknowledge the security deposit requirement"),
   agreeTerms: z.boolean().refine(val => val, "You must agree to Terms of Service"),
   agreePrivacy: z.boolean().refine(val => val, "You must agree to Privacy Policy"),
   agreeIoT: z.boolean().refine(val => val, "You must consent to IoT tracking"),
@@ -51,9 +66,15 @@ const ridesharePlatforms = [
   { id: "indrive", label: "InDrive" },
 ];
 
+interface SecurityDeposit {
+  amount: number;
+  currency: string;
+}
+
 const DriverRegistration = () => {
   const navigate = useNavigate();
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [securityDeposit, setSecurityDeposit] = useState<SecurityDeposit | null>(null);
   
   const {
     register,
@@ -68,6 +89,7 @@ const DriverRegistration = () => {
       country: "usa",
       rideshareApproval: [],
       hasDriverLicense: false,
+      securityDepositAcknowledged: false,
       agreeTerms: false,
       agreePrivacy: false,
       agreeIoT: false,
@@ -76,6 +98,25 @@ const DriverRegistration = () => {
 
   const selectedCountry = watch("country");
   const cities = selectedCountry === "usa" ? usaCities : nigeriaCities;
+
+  // Fetch security deposit based on selected country
+  useEffect(() => {
+    const fetchSecurityDeposit = async () => {
+      const region = selectedCountry === "usa" ? "USA" : "Nigeria";
+      const { data, error } = await supabase
+        .from('security_deposit_settings')
+        .select('amount, currency')
+        .eq('region', region)
+        .eq('is_active', true)
+        .single();
+      
+      if (!error && data) {
+        setSecurityDeposit(data);
+      }
+    };
+    
+    fetchSecurityDeposit();
+  }, [selectedCountry]);
 
   const handlePlatformChange = (platformId: string, checked: boolean) => {
     const updated = checked
@@ -103,6 +144,17 @@ const DriverRegistration = () => {
         agreed_terms: data.agreeTerms,
         agreed_privacy: data.agreePrivacy,
         agreed_iot: data.agreeIoT,
+        // Referee information
+        referee1_name: data.referee1Name,
+        referee1_address: data.referee1Address,
+        referee1_phone: data.referee1Phone,
+        referee2_name: data.referee2Name,
+        referee2_address: data.referee2Address,
+        referee2_phone: data.referee2Phone,
+        referee3_name: data.referee3Name,
+        referee3_address: data.referee3Address,
+        referee3_phone: data.referee3Phone,
+        security_deposit_acknowledged: data.securityDepositAcknowledged,
       });
       
       if (error) throw error;
@@ -311,6 +363,183 @@ const DriverRegistration = () => {
                 </div>
                 {errors.rideshareApproval && (
                   <p className="text-destructive text-sm">{errors.rideshareApproval.message}</p>
+                )}
+              </div>
+
+              {/* Referees Section */}
+              <div className="space-y-4 pt-4 border-t border-border">
+                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <Users className="w-5 h-5 text-accent" />
+                  Referees (3 Required)
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Please provide details of 3 referees who can vouch for your character
+                </p>
+
+                {/* Referee 1 */}
+                <div className="p-4 rounded-lg border border-border space-y-4">
+                  <h4 className="font-medium text-foreground">Referee 1</h4>
+                  <div className="space-y-2">
+                    <Label htmlFor="referee1Name">Full Name</Label>
+                    <Input
+                      id="referee1Name"
+                      placeholder="John Smith"
+                      {...register("referee1Name")}
+                    />
+                    {errors.referee1Name && (
+                      <p className="text-destructive text-sm">{errors.referee1Name.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="referee1Address">Address</Label>
+                    <Textarea
+                      id="referee1Address"
+                      placeholder="123 Main Street, City, State"
+                      {...register("referee1Address")}
+                    />
+                    {errors.referee1Address && (
+                      <p className="text-destructive text-sm">{errors.referee1Address.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="referee1Phone">Phone Number</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="referee1Phone"
+                        type="tel"
+                        placeholder="+1 (555) 123-4567"
+                        className="pl-10"
+                        {...register("referee1Phone")}
+                      />
+                    </div>
+                    {errors.referee1Phone && (
+                      <p className="text-destructive text-sm">{errors.referee1Phone.message}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Referee 2 */}
+                <div className="p-4 rounded-lg border border-border space-y-4">
+                  <h4 className="font-medium text-foreground">Referee 2</h4>
+                  <div className="space-y-2">
+                    <Label htmlFor="referee2Name">Full Name</Label>
+                    <Input
+                      id="referee2Name"
+                      placeholder="Jane Doe"
+                      {...register("referee2Name")}
+                    />
+                    {errors.referee2Name && (
+                      <p className="text-destructive text-sm">{errors.referee2Name.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="referee2Address">Address</Label>
+                    <Textarea
+                      id="referee2Address"
+                      placeholder="456 Oak Avenue, City, State"
+                      {...register("referee2Address")}
+                    />
+                    {errors.referee2Address && (
+                      <p className="text-destructive text-sm">{errors.referee2Address.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="referee2Phone">Phone Number</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="referee2Phone"
+                        type="tel"
+                        placeholder="+1 (555) 234-5678"
+                        className="pl-10"
+                        {...register("referee2Phone")}
+                      />
+                    </div>
+                    {errors.referee2Phone && (
+                      <p className="text-destructive text-sm">{errors.referee2Phone.message}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Referee 3 */}
+                <div className="p-4 rounded-lg border border-border space-y-4">
+                  <h4 className="font-medium text-foreground">Referee 3</h4>
+                  <div className="space-y-2">
+                    <Label htmlFor="referee3Name">Full Name</Label>
+                    <Input
+                      id="referee3Name"
+                      placeholder="Mike Johnson"
+                      {...register("referee3Name")}
+                    />
+                    {errors.referee3Name && (
+                      <p className="text-destructive text-sm">{errors.referee3Name.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="referee3Address">Address</Label>
+                    <Textarea
+                      id="referee3Address"
+                      placeholder="789 Pine Road, City, State"
+                      {...register("referee3Address")}
+                    />
+                    {errors.referee3Address && (
+                      <p className="text-destructive text-sm">{errors.referee3Address.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="referee3Phone">Phone Number</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="referee3Phone"
+                        type="tel"
+                        placeholder="+1 (555) 345-6789"
+                        className="pl-10"
+                        {...register("referee3Phone")}
+                      />
+                    </div>
+                    {errors.referee3Phone && (
+                      <p className="text-destructive text-sm">{errors.referee3Phone.message}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Security Deposit */}
+              <div className="space-y-4 pt-4 border-t border-border">
+                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-accent" />
+                  Security Deposit
+                </h3>
+                
+                {securityDeposit && (
+                  <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                    <p className="text-lg font-semibold text-foreground">
+                      {securityDeposit.currency === 'USD' ? '$' : '₦'}
+                      {securityDeposit.amount.toLocaleString()}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Required security deposit for {selectedCountry === 'usa' ? 'USA' : 'Nigeria'} drivers
+                    </p>
+                  </div>
+                )}
+
+                <label className="flex items-start gap-3 p-4 rounded-lg border border-border hover:border-accent/50 cursor-pointer">
+                  <Checkbox
+                    onCheckedChange={(checked) =>
+                      setValue("securityDepositAcknowledged", checked as boolean)
+                    }
+                  />
+                  <div>
+                    <span className="font-medium">I acknowledge the security deposit requirement</span>
+                    <p className="text-sm text-muted-foreground">
+                      I understand that a security deposit is required before I can start driving. This deposit is refundable upon satisfactory completion of my rental agreement.
+                    </p>
+                  </div>
+                </label>
+                {errors.securityDepositAcknowledged && (
+                  <p className="text-destructive text-sm">{errors.securityDepositAcknowledged.message}</p>
                 )}
               </div>
 

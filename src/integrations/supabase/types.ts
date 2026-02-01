@@ -186,12 +186,22 @@ export type Database = {
           last_name: string
           phone_country: string
           phone_number: string
+          referee1_address: string | null
+          referee1_name: string | null
+          referee1_phone: string | null
+          referee2_address: string | null
+          referee2_name: string | null
+          referee2_phone: string | null
+          referee3_address: string | null
+          referee3_name: string | null
+          referee3_phone: string | null
           region: string
           rejection_reason: string | null
           review_notes: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           rideshare_platforms: string[] | null
+          security_deposit_acknowledged: boolean | null
           status: Database["public"]["Enums"]["application_status"]
           updated_at: string
           user_id: string | null
@@ -225,12 +235,22 @@ export type Database = {
           last_name: string
           phone_country: string
           phone_number: string
+          referee1_address?: string | null
+          referee1_name?: string | null
+          referee1_phone?: string | null
+          referee2_address?: string | null
+          referee2_name?: string | null
+          referee2_phone?: string | null
+          referee3_address?: string | null
+          referee3_name?: string | null
+          referee3_phone?: string | null
           region?: string
           rejection_reason?: string | null
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           rideshare_platforms?: string[] | null
+          security_deposit_acknowledged?: boolean | null
           status?: Database["public"]["Enums"]["application_status"]
           updated_at?: string
           user_id?: string | null
@@ -264,12 +284,22 @@ export type Database = {
           last_name?: string
           phone_country?: string
           phone_number?: string
+          referee1_address?: string | null
+          referee1_name?: string | null
+          referee1_phone?: string | null
+          referee2_address?: string | null
+          referee2_name?: string | null
+          referee2_phone?: string | null
+          referee3_address?: string | null
+          referee3_name?: string | null
+          referee3_phone?: string | null
           region?: string
           rejection_reason?: string | null
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           rideshare_platforms?: string[] | null
+          security_deposit_acknowledged?: boolean | null
           status?: Database["public"]["Enums"]["application_status"]
           updated_at?: string
           user_id?: string | null
@@ -1445,6 +1475,42 @@ export type Database = {
           notes?: string | null
           old_role?: Database["public"]["Enums"]["app_role"] | null
           target_user_id?: string
+        }
+        Relationships: []
+      }
+      security_deposit_settings: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          is_active: boolean
+          region: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          region: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          region?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
