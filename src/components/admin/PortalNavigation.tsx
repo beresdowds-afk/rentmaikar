@@ -39,6 +39,7 @@ export const erpTabs: PortalTab[] = [
   { value: "device-orders", label: "Device Orders", icon: <Package className="h-4 w-4" />, dataTour: "admin-device-orders" },
   { value: "device-revenue", label: "Device Revenue", icon: <BarChart3 className="h-4 w-4" /> },
   { value: "pricing", label: "Category Pricing", icon: <Tag className="h-4 w-4" /> },
+  { value: "security-deposits", label: "Security Deposits", icon: <Shield className="h-4 w-4" /> },
   { value: "incidents", label: "Incidents", icon: <Wrench className="h-4 w-4" />, dataTour: "admin-incidents" },
   { value: "recalls", label: "Vehicle Recalls", icon: <WifiOff className="h-4 w-4" /> },
   { value: "daily-plans", label: "Daily Plans", icon: <Ban className="h-4 w-4" /> },
