@@ -1952,6 +1952,7 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          min_price: number | null
           price: number
           region: string
           updated_at: string
@@ -1961,6 +1962,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          min_price?: number | null
           price: number
           region: string
           updated_at?: string
@@ -1970,6 +1972,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          min_price?: number | null
           price?: number
           region?: string
           updated_at?: string

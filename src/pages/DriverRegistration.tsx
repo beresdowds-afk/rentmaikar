@@ -25,6 +25,20 @@ const driverSchema = z.object({
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
   rideshareApproval: z.array(z.string()).min(1, "Select at least one platform"),
   hasDriverLicense: z.boolean().refine(val => val, "Driver license is required"),
+  // Referee 1
+  referee1Name: z.string().min(2, "Referee 1 name is required").max(100, "Name too long"),
+  referee1Phone: z.string().min(10, "Referee 1 phone is required").max(20, "Phone too long"),
+  referee1Address: z.string().min(5, "Referee 1 address is required").max(200, "Address too long"),
+  // Referee 2
+  referee2Name: z.string().min(2, "Referee 2 name is required").max(100, "Name too long"),
+  referee2Phone: z.string().min(10, "Referee 2 phone is required").max(20, "Phone too long"),
+  referee2Address: z.string().min(5, "Referee 2 address is required").max(200, "Address too long"),
+  // Referee 3
+  referee3Name: z.string().min(2, "Referee 3 name is required").max(100, "Name too long"),
+  referee3Phone: z.string().min(10, "Referee 3 phone is required").max(20, "Phone too long"),
+  referee3Address: z.string().min(5, "Referee 3 address is required").max(200, "Address too long"),
+  // Security deposit acknowledgment
+  securityDepositAcknowledged: z.boolean().refine(val => val, "You must acknowledge the security deposit requirement"),
   agreeTerms: z.boolean().refine(val => val, "You must agree to Terms of Service"),
   agreePrivacy: z.boolean().refine(val => val, "You must agree to Privacy Policy"),
   agreeIoT: z.boolean().refine(val => val, "You must consent to IoT tracking"),
@@ -68,6 +82,16 @@ const DriverRegistration = () => {
       country: "usa",
       rideshareApproval: [],
       hasDriverLicense: false,
+      referee1Name: "",
+      referee1Phone: "",
+      referee1Address: "",
+      referee2Name: "",
+      referee2Phone: "",
+      referee2Address: "",
+      referee3Name: "",
+      referee3Phone: "",
+      referee3Address: "",
+      securityDepositAcknowledged: false,
       agreeTerms: false,
       agreePrivacy: false,
       agreeIoT: false,
@@ -100,6 +124,16 @@ const DriverRegistration = () => {
         region: data.country === 'usa' ? 'usa' : 'nigeria',
         rideshare_platforms: data.rideshareApproval,
         has_driver_license: data.hasDriverLicense,
+        referee1_name: data.referee1Name,
+        referee1_phone: data.referee1Phone,
+        referee1_address: data.referee1Address,
+        referee2_name: data.referee2Name,
+        referee2_phone: data.referee2Phone,
+        referee2_address: data.referee2Address,
+        referee3_name: data.referee3Name,
+        referee3_phone: data.referee3Phone,
+        referee3_address: data.referee3Address,
+        security_deposit_acknowledged: data.securityDepositAcknowledged,
         agreed_terms: data.agreeTerms,
         agreed_privacy: data.agreePrivacy,
         agreed_iot: data.agreeIoT,
@@ -314,6 +348,65 @@ const DriverRegistration = () => {
                 )}
               </div>
 
+              {/* Referees Section */}
+              <div className="space-y-4 pt-4 border-t border-border">
+                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <User className="w-5 h-5 text-accent" />
+                  Referees (3 Required)
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Please provide details for three referees who can vouch for your character
+                </p>
+
+                {[1, 2, 3].map((num) => (
+                  <div key={num} className="p-4 rounded-lg border border-border space-y-3">
+                    <h4 className="font-medium text-foreground">Referee {num}</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor={`referee${num}Name`}>Full Name</Label>
+                        <Input
+                          id={`referee${num}Name`}
+                          placeholder="Full name"
+                          {...register(`referee${num}Name` as keyof DriverFormData)}
+                        />
+                        {errors[`referee${num}Name` as keyof typeof errors] && (
+                          <p className="text-destructive text-sm">
+                            {errors[`referee${num}Name` as keyof typeof errors]?.message}
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`referee${num}Phone`}>Phone Number</Label>
+                        <Input
+                          id={`referee${num}Phone`}
+                          type="tel"
+                          placeholder="Phone number"
+                          {...register(`referee${num}Phone` as keyof DriverFormData)}
+                        />
+                        {errors[`referee${num}Phone` as keyof typeof errors] && (
+                          <p className="text-destructive text-sm">
+                            {errors[`referee${num}Phone` as keyof typeof errors]?.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`referee${num}Address`}>Residential Address</Label>
+                      <Input
+                        id={`referee${num}Address`}
+                        placeholder="Full residential address"
+                        {...register(`referee${num}Address` as keyof DriverFormData)}
+                      />
+                      {errors[`referee${num}Address` as keyof typeof errors] && (
+                        <p className="text-destructive text-sm">
+                          {errors[`referee${num}Address` as keyof typeof errors]?.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               {/* Requirements */}
               <div className="space-y-4 pt-4 border-t border-border">
                 <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
@@ -337,6 +430,35 @@ const DriverRegistration = () => {
                 {errors.hasDriverLicense && (
                   <p className="text-destructive text-sm">{errors.hasDriverLicense.message}</p>
                 )}
+
+                {/* Security Deposit Acknowledgment */}
+                <div className="p-4 rounded-lg border-2 border-warning/50 bg-warning/5">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <Checkbox
+                      onCheckedChange={(checked) =>
+                        setValue("securityDepositAcknowledged", checked as boolean)
+                      }
+                    />
+                    <div>
+                      <span className="font-medium flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-warning" />
+                        Security Deposit Required
+                      </span>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        I understand that a refundable security deposit of{" "}
+                        <strong className="text-foreground">
+                          {selectedCountry === "usa" ? "$200 USD" : "₦100,000 NGN"}
+                        </strong>{" "}
+                        is required before vehicle pickup.
+                      </p>
+                    </div>
+                  </label>
+                  {errors.securityDepositAcknowledged && (
+                    <p className="text-destructive text-sm mt-2">
+                      {errors.securityDepositAcknowledged.message}
+                    </p>
+                  )}
+                </div>
 
                 {selectedCountry === "nigeria" && (
                   <div className="p-4 rounded-lg bg-warning/10 border border-warning/30">
