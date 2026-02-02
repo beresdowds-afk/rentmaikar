@@ -19,16 +19,19 @@ export interface CategoryContent {
     title: string;
     description: string;
     priceLabel: string;
+    minPriceLabel: string;
   };
   standard: {
     title: string;
     description: string;
     priceLabel: string;
+    minPriceLabel: string;
   };
   premium: {
     title: string;
     description: string;
     priceLabel: string;
+    minPriceLabel: string;
   };
   viewCta: string;
 }
@@ -99,17 +102,20 @@ const usaCategoryContent: CategoryContent = {
   budget: {
     title: "The Smart Start",
     description: "Get started without big upfront costs. Reliable, fuel-efficient cars that let you keep more of your weekly earnings.",
-    priceLabel: "Up to $250",
+    priceLabel: "$250",
+    minPriceLabel: "$200",
   },
   standard: {
     title: "The Earnings Optimizer",
     description: "Boost your ratings and unlock better ride requests. Modern comforts and reliability that passengers love.",
-    priceLabel: "Up to $300",
+    priceLabel: "$300",
+    minPriceLabel: "$251",
   },
   premium: {
     title: "The Top Earner",
     description: "Command higher rates with Uber Comfort and Lyft Lux. Drive the latest models to attract premium rides and maximize your income.",
-    priceLabel: "Up to $350",
+    priceLabel: "$350",
+    minPriceLabel: "$301",
   },
   viewCta: "See Cars",
 };
@@ -230,17 +236,20 @@ const nigeriaCategoryContent: CategoryContent = {
   budget: {
     title: "The Smart Start",
     description: "Perfect for wise starters. Keep your costs low and your profits high with these reliable, fuel-saving champions.",
-    priceLabel: "Up to ₦60,000",
+    priceLabel: "₦60,000",
+    minPriceLabel: "₦48,000",
   },
   standard: {
     title: "The Profit Builder",
     description: "Boost your ratings and attract better rides. Modern comfort that passengers appreciate and reward with tips.",
-    priceLabel: "Up to ₦73,000",
+    priceLabel: "₦73,000",
+    minPriceLabel: "₦61,000",
   },
   premium: {
     title: "The Top Earner",
     description: "Command premium fares and VIP rides. Drive the latest models that passengers request by name.",
-    priceLabel: "Up to ₦93,000",
+    priceLabel: "₦93,000",
+    minPriceLabel: "₦74,000",
   },
   viewCta: "View Cars",
 };

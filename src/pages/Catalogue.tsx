@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DataPagination } from "@/components/ui/data-pagination";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { useRegion } from "@/contexts/RegionContext";
@@ -64,10 +65,10 @@ const mockVehicles: Record<string, Vehicle[]> = {
   ],
 };
 
-const categoryInfo: Record<string, { title: string; years: string; maxPrice: number; maxPriceNGN: number; color: string }> = {
-  budget: { title: "Budget Friendly", years: "2015 - 2016", maxPrice: 250, maxPriceNGN: 60000, color: "category-budget" },
-  standard: { title: "Standard Selection", years: "2017 - 2020", maxPrice: 300, maxPriceNGN: 73000, color: "category-standard" },
-  premium: { title: "Premium Fleet", years: "2021 - 2025", maxPrice: 350, maxPriceNGN: 93000, color: "category-premium" },
+const categoryInfo: Record<string, { title: string; years: string; minPrice: number; maxPrice: number; minPriceNGN: number; maxPriceNGN: number; color: string }> = {
+  budget: { title: "Budget Friendly", years: "2015 - 2016", minPrice: 200, maxPrice: 250, minPriceNGN: 48000, maxPriceNGN: 60000, color: "category-budget" },
+  standard: { title: "Standard Selection", years: "2017 - 2020", minPrice: 251, maxPrice: 300, minPriceNGN: 61000, maxPriceNGN: 73000, color: "category-standard" },
+  premium: { title: "Premium Fleet", years: "2021 - 2025", minPrice: 301, maxPrice: 350, minPriceNGN: 74000, maxPriceNGN: 93000, color: "category-premium" },
 };
 
 // Mock driver home location (in a real app, this would come from user profile)
@@ -84,6 +85,8 @@ const Catalogue = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("nearby");
   const [sortBy, setSortBy] = useState("price-low");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   const driverHome = getDriverHomeLocation(country);
   const info = categoryInfo[category] || categoryInfo.budget;
@@ -185,7 +188,7 @@ const Catalogue = () => {
                   {info.title}
                 </h1>
                 <p className="text-muted-foreground mt-1">
-                  {info.years} • Up to {currencySymbol}{country === "Nigeria" ? info.maxPriceNGN.toLocaleString() : info.maxPrice}/week
+                  {info.years} • {currencySymbol}{country === "Nigeria" ? info.minPriceNGN.toLocaleString() : info.minPrice} - {currencySymbol}{country === "Nigeria" ? info.maxPriceNGN.toLocaleString() : info.maxPrice}/week
                 </p>
               </div>
               
@@ -276,32 +279,41 @@ const Catalogue = () => {
           </div>
 
           {/* Vehicle Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredVehicles.map((vehicle, index) => {
-              // Show separator before first non-nearby vehicle when showing all
-              const showSeparator = locationFilter === "all" && 
-                !vehicle.isNearby && 
-                (index === 0 || filteredVehicles[index - 1]?.isNearby);
-              
-              return (
-                <React.Fragment key={vehicle.id}>
-                  {showSeparator && (
-                    <div key={`separator-${vehicle.id}`} className="col-span-full py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="h-px flex-1 bg-border" />
-                        <span className="text-sm font-medium text-muted-foreground px-3 py-1 bg-muted rounded-full">
-                          Vehicles from Nearby Cities
-                        </span>
-                        <div className="h-px flex-1 bg-border" />
+          {(() => {
+            const totalPages = Math.ceil(filteredVehicles.length / itemsPerPage);
+            const paginatedVehicles = filteredVehicles.slice(
+              (currentPage - 1) * itemsPerPage,
+              currentPage * itemsPerPage
+            );
+
+            return (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {paginatedVehicles.map((vehicle, index) => {
+                // Show separator before first non-nearby vehicle when showing all
+                const actualIndex = (currentPage - 1) * itemsPerPage + index;
+                const showSeparator = locationFilter === "all" && 
+                  !vehicle.isNearby && 
+                  (actualIndex === 0 || filteredVehicles[actualIndex - 1]?.isNearby);
+                
+                return (
+                  <React.Fragment key={vehicle.id}>
+                    {showSeparator && (
+                      <div key={`separator-${vehicle.id}`} className="col-span-full py-4">
+                        <div className="flex items-center gap-4">
+                          <div className="h-px flex-1 bg-border" />
+                          <span className="text-sm font-medium text-muted-foreground px-3 py-1 bg-muted rounded-full">
+                            Vehicles from Nearby Cities
+                          </span>
+                          <div className="h-px flex-1 bg-border" />
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  <div
-                    key={vehicle.id}
-                    className={`bg-card rounded-xl overflow-hidden shadow-card card-hover border ${
-                      vehicle.isNearby ? "border-border" : "border-muted"
-                    }`}
-                  >
+                    )}
+                    <div
+                      className={`bg-card rounded-xl overflow-hidden shadow-card card-hover border ${
+                        vehicle.isNearby ? "border-border" : "border-muted"
+                      }`}
+                    >
                     <div className="relative h-48 overflow-hidden">
                       <img
                         src={vehicle.image}
@@ -364,9 +376,20 @@ const Catalogue = () => {
                     </div>
                   </div>
                 </React.Fragment>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+
+              {/* Pagination */}
+              <DataPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                className="mt-8"
+              />
+            </>
+          );
+        })()}
 
           {filteredVehicles.length === 0 && (
             <div className="text-center py-16">
@@ -385,6 +408,7 @@ const Catalogue = () => {
                 onClick={() => {
                   setSearchQuery("");
                   setLocationFilter("nearby");
+                  setCurrentPage(1);
                 }}
               >
                 Clear Filters

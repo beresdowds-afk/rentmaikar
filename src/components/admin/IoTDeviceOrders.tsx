@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { DataPagination } from '@/components/ui/data-pagination';
 import { toast } from 'sonner';
 import { 
   Package, 
@@ -86,6 +87,8 @@ export function IoTDeviceOrders() {
   const [newPrice, setNewPrice] = useState('');
   const [priceDescription, setPriceDescription] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchData();
@@ -347,79 +350,98 @@ export function IoTDeviceOrders() {
               ) : orders.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">No orders yet</div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Order Date</TableHead>
-                      <TableHead>Owner Email</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Payment</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell>
-                          {new Date(order.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>{order.owner_email || 'N/A'}</TableCell>
-                        <TableCell>
-                          {formatCurrency(order.device_price, order.currency as 'USD' | 'NGN')}
-                        </TableCell>
-                        <TableCell>{getPaymentStatusBadge(order.payment_status)}</TableCell>
-                        <TableCell>
-                          {getShippingStatusBadge(order)}
-                          {order.tracking_number && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              #{order.tracking_number}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setSelectedOrder(order);
-                                setViewOrderOpen(true);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {order.payment_status === 'pending' && (
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedOrder(order);
-                                  setConfirmPaymentOpen(true);
-                                }}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Confirm
-                              </Button>
-                            )}
-                            {order.payment_status === 'confirmed' && order.shipping_status === 'pending' && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedOrder(order);
-                                  setShipDeviceOpen(true);
-                                }}
-                              >
-                                <Send className="h-4 w-4 mr-1" />
-                                Ship
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <>
+                  {(() => {
+                    const totalPages = Math.ceil(orders.length / itemsPerPage);
+                    const paginatedOrders = orders.slice(
+                      (currentPage - 1) * itemsPerPage,
+                      currentPage * itemsPerPage
+                    );
+                    return (
+                      <>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Order Date</TableHead>
+                              <TableHead>Owner Email</TableHead>
+                              <TableHead>Amount</TableHead>
+                              <TableHead>Payment</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {paginatedOrders.map((order) => (
+                              <TableRow key={order.id}>
+                                <TableCell>
+                                  {new Date(order.created_at).toLocaleDateString()}
+                                </TableCell>
+                                <TableCell>{order.owner_email || 'N/A'}</TableCell>
+                                <TableCell>
+                                  {formatCurrency(order.device_price, order.currency as 'USD' | 'NGN')}
+                                </TableCell>
+                                <TableCell>{getPaymentStatusBadge(order.payment_status)}</TableCell>
+                                <TableCell>
+                                  {getShippingStatusBadge(order)}
+                                  {order.tracking_number && (
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                      #{order.tracking_number}
+                                    </div>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        setSelectedOrder(order);
+                                        setViewOrderOpen(true);
+                                      }}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    {order.payment_status === 'pending' && (
+                                      <Button
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedOrder(order);
+                                          setConfirmPaymentOpen(true);
+                                        }}
+                                      >
+                                        <CheckCircle className="h-4 w-4 mr-1" />
+                                        Confirm
+                                      </Button>
+                                    )}
+                                    {order.payment_status === 'confirmed' && order.shipping_status === 'pending' && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setSelectedOrder(order);
+                                          setShipDeviceOpen(true);
+                                        }}
+                                      >
+                                        <Send className="h-4 w-4 mr-1" />
+                                        Ship
+                                      </Button>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                        <DataPagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          onPageChange={setCurrentPage}
+                          className="mt-6"
+                        />
+                      </>
+                    );
+                  })()}
+                </>
               )}
             </CardContent>
           </Card>

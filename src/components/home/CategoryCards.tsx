@@ -10,7 +10,8 @@ import categoryPremium from "@/assets/category-premium.jpg";
 interface CategoryCardProps {
   title: string;
   years: string;
-  price: string;
+  minPrice: string;
+  maxPrice: string;
   description: string;
   image: string;
   link: string;
@@ -21,7 +22,8 @@ interface CategoryCardProps {
 const CategoryCard = ({
   title,
   years,
-  price,
+  minPrice,
+  maxPrice,
   description,
   image,
   link,
@@ -72,9 +74,11 @@ const CategoryCard = ({
         <p className="text-muted-foreground text-sm mb-4">{description}</p>
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <DollarSign className={`w-5 h-5 ${textColors[variant]}`} />
-            <span className="text-lg font-bold text-foreground">{price}</span>
+            <span className="text-lg font-bold text-foreground">{minPrice}</span>
+            <span className="text-sm text-muted-foreground">-</span>
+            <span className="text-lg font-bold text-foreground">{maxPrice}</span>
             <span className="text-sm text-muted-foreground">/week</span>
           </div>
           
@@ -103,7 +107,8 @@ const CategoryCards = () => {
     {
       title: content.budget.title,
       years: "2015 - 2016",
-      price: content.budget.priceLabel,
+      minPrice: content.budget.minPriceLabel,
+      maxPrice: content.budget.priceLabel,
       description: content.budget.description,
       image: categoryBudget,
       link: "/catalogue/budget",
@@ -112,7 +117,8 @@ const CategoryCards = () => {
     {
       title: content.standard.title,
       years: "2017 - 2020",
-      price: content.standard.priceLabel,
+      minPrice: content.standard.minPriceLabel,
+      maxPrice: content.standard.priceLabel,
       description: content.standard.description,
       image: categoryStandard,
       link: "/catalogue/standard",
@@ -121,7 +127,8 @@ const CategoryCards = () => {
     {
       title: content.premium.title,
       years: "2021 - 2025",
-      price: content.premium.priceLabel,
+      minPrice: content.premium.minPriceLabel,
+      maxPrice: content.premium.priceLabel,
       description: content.premium.description,
       image: categoryPremium,
       link: "/catalogue/premium",

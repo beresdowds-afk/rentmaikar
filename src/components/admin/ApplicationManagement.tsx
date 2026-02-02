@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { DataPagination } from '@/components/ui/data-pagination';
 import {
   User, Car, Search, Eye, CheckCircle, XCircle, Clock, AlertCircle,
   Mail, Phone, MapPin, Calendar, RefreshCw, UserPlus, ClipboardList
@@ -79,6 +80,8 @@ export const ApplicationManagement = () => {
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [reviewNotes, setReviewNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Fetch applications
   const { data: applications = [], isLoading, refetch } = useQuery({
@@ -367,19 +370,38 @@ export const ApplicationManagement = () => {
               ) : filteredApps.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">No applications found</div>
               ) : (
-                <div className="space-y-3">
-                  {filteredApps.map((app) => (
-                    <ApplicationCard
-                      key={app.id}
-                      application={app}
-                      supportStaff={supportStaff}
-                      onApprove={() => handleQuickApprove(app)}
-                      onReject={() => handleQuickReject(app)}
-                      onMarkReview={() => handleMarkUnderReview(app)}
-                      onAssign={(staffId) => assignStaffMutation.mutate({ appId: app.id, staffId })}
-                    />
-                  ))}
-                </div>
+                <>
+                  {(() => {
+                    const totalPages = Math.ceil(filteredApps.length / itemsPerPage);
+                    const paginatedApps = filteredApps.slice(
+                      (currentPage - 1) * itemsPerPage,
+                      currentPage * itemsPerPage
+                    );
+                    return (
+                      <>
+                        <div className="space-y-3">
+                          {paginatedApps.map((app) => (
+                            <ApplicationCard
+                              key={app.id}
+                              application={app}
+                              supportStaff={supportStaff}
+                              onApprove={() => handleQuickApprove(app)}
+                              onReject={() => handleQuickReject(app)}
+                              onMarkReview={() => handleMarkUnderReview(app)}
+                              onAssign={(staffId) => assignStaffMutation.mutate({ appId: app.id, staffId })}
+                            />
+                          ))}
+                        </div>
+                        <DataPagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          onPageChange={setCurrentPage}
+                          className="mt-6"
+                        />
+                      </>
+                    );
+                  })()}
+                </>
               )}
             </TabsContent>
           </Tabs>
