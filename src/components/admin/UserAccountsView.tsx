@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { DataPagination } from '@/components/ui/data-pagination';
 import { supabase } from '@/integrations/supabase/client';
 import { Eye, Search, Users, Car, User, Loader2, Phone, Mail, FileText, Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -31,6 +32,8 @@ export function UserAccountsView() {
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [createAgreementOpen, setCreateAgreementOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchUsers();
@@ -205,13 +208,30 @@ export function UserAccountsView() {
                   <p>No users found</p>
                 </div>
               ) : (
-                <ScrollArea className="h-[500px]">
-                  <div className="space-y-3 pr-4">
-                    {filteredUsers.map(user => (
-                      <UserCard key={user.id} user={user} />
-                    ))}
-                  </div>
-                </ScrollArea>
+                (() => {
+                  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+                  const paginatedUsers = filteredUsers.slice(
+                    (currentPage - 1) * itemsPerPage,
+                    currentPage * itemsPerPage
+                  );
+                  return (
+                    <>
+                      <ScrollArea className="h-[500px]">
+                        <div className="space-y-3 pr-4">
+                          {paginatedUsers.map(user => (
+                            <UserCard key={user.id} user={user} />
+                          ))}
+                        </div>
+                      </ScrollArea>
+                      <DataPagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        className="mt-4"
+                      />
+                    </>
+                  );
+                })()
               )}
             </TabsContent>
 
@@ -222,13 +242,30 @@ export function UserAccountsView() {
                   <p>No owners found</p>
                 </div>
               ) : (
-                <ScrollArea className="h-[500px]">
-                  <div className="space-y-3 pr-4">
-                    {owners.map(user => (
-                      <UserCard key={user.id} user={user} />
-                    ))}
-                  </div>
-                </ScrollArea>
+                (() => {
+                  const totalPages = Math.ceil(owners.length / itemsPerPage);
+                  const paginatedOwners = owners.slice(
+                    (currentPage - 1) * itemsPerPage,
+                    currentPage * itemsPerPage
+                  );
+                  return (
+                    <>
+                      <ScrollArea className="h-[500px]">
+                        <div className="space-y-3 pr-4">
+                          {paginatedOwners.map(user => (
+                            <UserCard key={user.id} user={user} />
+                          ))}
+                        </div>
+                      </ScrollArea>
+                      <DataPagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        className="mt-4"
+                      />
+                    </>
+                  );
+                })()
               )}
             </TabsContent>
 
@@ -239,13 +276,30 @@ export function UserAccountsView() {
                   <p>No drivers found</p>
                 </div>
               ) : (
-                <ScrollArea className="h-[500px]">
-                  <div className="space-y-3 pr-4">
-                    {drivers.map(user => (
-                      <UserCard key={user.id} user={user} />
-                    ))}
-                  </div>
-                </ScrollArea>
+                (() => {
+                  const totalPages = Math.ceil(drivers.length / itemsPerPage);
+                  const paginatedDrivers = drivers.slice(
+                    (currentPage - 1) * itemsPerPage,
+                    currentPage * itemsPerPage
+                  );
+                  return (
+                    <>
+                      <ScrollArea className="h-[500px]">
+                        <div className="space-y-3 pr-4">
+                          {paginatedDrivers.map(user => (
+                            <UserCard key={user.id} user={user} />
+                          ))}
+                        </div>
+                      </ScrollArea>
+                      <DataPagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        className="mt-4"
+                      />
+                    </>
+                  );
+                })()
               )}
             </TabsContent>
           </Tabs>
