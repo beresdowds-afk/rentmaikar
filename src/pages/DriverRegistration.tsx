@@ -461,10 +461,16 @@ const DriverRegistration = () => {
                 </div>
 
                 {selectedCountry === "nigeria" && (
-                  <div className="p-4 rounded-lg bg-warning/10 border border-warning/30">
-                    <p className="text-sm font-medium text-warning">
-                      🇳🇬 Nigeria drivers must provide a Police Clearance Certificate
+                  <div className="p-4 rounded-lg bg-warning/10 border border-warning/30 space-y-3">
+                    <p className="text-sm font-medium text-warning flex items-center gap-2">
+                      <Shield className="w-4 h-4" />
+                      🇳🇬 Nigeria Driver Requirements
                     </p>
+                    <div className="text-sm text-muted-foreground space-y-2">
+                      <p>• Police Clearance Certificate is <strong>required</strong></p>
+                      <p>• Upload your police report during document verification (PDF, PNG, or JPG format accepted)</p>
+                      <p>• Maximum file size: 10MB</p>
+                    </div>
                   </div>
                 )}
               </div>

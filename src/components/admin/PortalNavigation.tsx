@@ -59,6 +59,7 @@ export const supportTabs: PortalTab[] = [
   { value: "support-tasks", label: "Support Tasks", icon: <Headphones className="h-4 w-4" /> },
   { value: "insurance", label: "Insurance Support", icon: <Shield className="h-4 w-4" /> },
   { value: "nigeria-verification", label: "🇳🇬 Nigeria Verification", icon: <Flag className="h-4 w-4" /> },
+  { value: "police-reports", label: "🇳🇬 Police Reports", icon: <FileText className="h-4 w-4" /> },
   { value: "payment-accounts", label: "Payment & Accounts", icon: <CreditCard className="h-4 w-4" /> },
   { value: "expiry-notifications", label: "Expiry Alerts", icon: <Bell className="h-4 w-4" /> },
 ];
