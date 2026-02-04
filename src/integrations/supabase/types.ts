@@ -1445,6 +1445,60 @@ export type Database = {
         }
         Relationships: []
       }
+      rideshare_profile_submissions: {
+        Row: {
+          admin_notes: string | null
+          admin_reviewed_at: string | null
+          admin_reviewed_by: string | null
+          created_at: string
+          current_rating: number | null
+          driver_id: string
+          id: string
+          platform: string | null
+          profile_photo_url: string | null
+          rating_screenshot_url: string | null
+          status: string | null
+          submitted_at: string | null
+          updated_at: string
+          vehicle_id: string | null
+          week_start_date: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          admin_reviewed_at?: string | null
+          admin_reviewed_by?: string | null
+          created_at?: string
+          current_rating?: number | null
+          driver_id: string
+          id?: string
+          platform?: string | null
+          profile_photo_url?: string | null
+          rating_screenshot_url?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+          week_start_date: string
+        }
+        Update: {
+          admin_notes?: string | null
+          admin_reviewed_at?: string | null
+          admin_reviewed_by?: string | null
+          created_at?: string
+          current_rating?: number | null
+          driver_id?: string
+          id?: string
+          platform?: string | null
+          profile_photo_url?: string | null
+          rating_screenshot_url?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+          week_start_date?: string
+        }
+        Relationships: []
+      }
       role_audit_log: {
         Row: {
           action: string
@@ -2695,7 +2749,11 @@ export type Database = {
           photo_front_view: string | null
           photo_interior: string | null
           photo_passenger_side: string | null
+          photo_rideshare_profile: string | null
           photo_timestamps: Json | null
+          region: string | null
+          report_frequency: string | null
+          report_type: string | null
           status: string | null
           submitted_at: string | null
           updated_at: string | null
@@ -2726,7 +2784,11 @@ export type Database = {
           photo_front_view?: string | null
           photo_interior?: string | null
           photo_passenger_side?: string | null
+          photo_rideshare_profile?: string | null
           photo_timestamps?: Json | null
+          region?: string | null
+          report_frequency?: string | null
+          report_type?: string | null
           status?: string | null
           submitted_at?: string | null
           updated_at?: string | null
@@ -2757,7 +2819,11 @@ export type Database = {
           photo_front_view?: string | null
           photo_interior?: string | null
           photo_passenger_side?: string | null
+          photo_rideshare_profile?: string | null
           photo_timestamps?: Json | null
+          region?: string | null
+          report_frequency?: string | null
+          report_type?: string | null
           status?: string | null
           submitted_at?: string | null
           updated_at?: string | null

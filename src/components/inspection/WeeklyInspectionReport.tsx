@@ -7,22 +7,32 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PhotoUploadSlot } from './PhotoUploadSlot';
 import { PhotoZoomModal } from './PhotoZoomModal';
-import { useWeeklyInspection, PHOTO_TYPES, getWeekStartDate, type PhotoType } from '@/hooks/useWeeklyInspection';
+import { useWeeklyInspection, PHOTO_TYPES, getWeekStartDate, getMonthStartDate, type PhotoType } from '@/hooks/useWeeklyInspection';
+import { useRegion } from '@/contexts/RegionContext';
 import { Camera, Calendar, Clock, CheckCircle, AlertTriangle, History, Loader2 } from 'lucide-react';
-import { format, parseISO, addDays, isAfter } from 'date-fns';
+import { format, parseISO, addDays, endOfMonth, isAfter } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface WeeklyInspectionReportProps {
   vehicleId: string;
   vehicleName: string;
   ownerId?: string | null;
+  region?: 'USA' | 'Nigeria';
 }
 
 export function WeeklyInspectionReport({
   vehicleId,
   vehicleName,
   ownerId = null,
+  region: propRegion,
 }: WeeklyInspectionReportProps) {
+  const { country } = useRegion();
+  const region = propRegion || country;
+  
+  // USA = monthly, Nigeria = weekly
+  const isMonthly = region === 'USA';
+  const periodLabel = isMonthly ? 'Monthly' : 'Weekly';
+
   const {
     reports,
     currentReport,
@@ -45,9 +55,11 @@ export function WeeklyInspectionReport({
   const isComplete = uploadedCount === PHOTO_TYPES.length;
   const isSubmitted = !!currentReport?.submitted_at;
 
-  // Check if overdue
-  const weekStart = getWeekStartDate();
-  const dueDate = addDays(parseISO(weekStart), 6); // Sunday
+  // Check if overdue - different logic for monthly vs weekly
+  const periodStart = isMonthly ? getMonthStartDate() : getWeekStartDate();
+  const dueDate = isMonthly 
+    ? endOfMonth(parseISO(periodStart)) 
+    : addDays(parseISO(periodStart), 6);
   const isOverdue = isAfter(new Date(), dueDate) && !isSubmitted;
 
   const handlePhotoUpload = async (photoType: PhotoType, file: File) => {
@@ -117,7 +129,7 @@ export function WeeklyInspectionReport({
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Camera className="h-5 w-5" />
-                Weekly Vehicle Inspection
+                {periodLabel} Vehicle Inspection
               </CardTitle>
               <CardDescription>{vehicleName}</CardDescription>
             </div>
@@ -128,7 +140,7 @@ export function WeeklyInspectionReport({
                 ) : isOverdue ? (
                   <><AlertTriangle className="h-3 w-3 mr-1" /> Overdue</>
                 ) : (
-                  <><Clock className="h-3 w-3 mr-1" /> Due {format(dueDate, 'EEEE')}</>
+                  <><Clock className="h-3 w-3 mr-1" /> Due {format(dueDate, isMonthly ? 'MMM d' : 'EEEE')}</>
                 )}
               </Badge>
               <Badge variant="outline">
@@ -157,7 +169,7 @@ export function WeeklyInspectionReport({
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Your weekly inspection report is overdue. Please upload all required photos and submit immediately.
+            Your {periodLabel.toLowerCase()} inspection report is overdue. Please upload all required photos and submit immediately.
           </AlertDescription>
         </Alert>
       )}
@@ -209,7 +221,7 @@ export function WeeklyInspectionReport({
                     <p className="font-medium">Ready to Submit?</p>
                     <p className="text-sm text-muted-foreground">
                       {isComplete 
-                        ? 'All photos uploaded. Submit your weekly report.'
+                        ? `All photos uploaded. Submit your ${periodLabel.toLowerCase()} report.`
                         : `Upload ${PHOTO_TYPES.length - uploadedCount} more photo(s) to complete.`
                       }
                     </p>
@@ -220,7 +232,7 @@ export function WeeklyInspectionReport({
                     className="w-full sm:w-auto"
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
-                    Submit Weekly Report
+                    Submit {periodLabel} Report
                   </Button>
                 </div>
               </CardContent>
@@ -231,7 +243,7 @@ export function WeeklyInspectionReport({
             <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
-                Your weekly inspection report was submitted on{' '}
+                Your {periodLabel.toLowerCase()} inspection report was submitted on{' '}
                 {format(new Date(currentReport!.submitted_at!), 'MMM d, yyyy h:mm a')}.
                 {currentReport?.status === 'pending' && ' Awaiting owner review.'}
               </AlertDescription>

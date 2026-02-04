@@ -68,6 +68,17 @@ export function getWeekStartDate(date: Date = new Date()): string {
   return d.toISOString().split('T')[0];
 }
 
+export function getMonthStartDate(date: Date = new Date()): string {
+  const d = new Date(date);
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().split('T')[0];
+}
+
+export function getPeriodStartDate(frequency: 'weekly' | 'monthly', date: Date = new Date()): string {
+  return frequency === 'monthly' ? getMonthStartDate(date) : getWeekStartDate(date);
+}
+
 export function useWeeklyInspection(vehicleId?: string) {
   const { user } = useAuth();
   const [reports, setReports] = useState<InspectionReport[]>([]);

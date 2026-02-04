@@ -19,6 +19,7 @@ import { IncidentReportForm } from '@/components/incidents/IncidentReportForm';
 import { WeeklyInspectionReport } from '@/components/inspection/WeeklyInspectionReport';
 import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { RentToOwnSearch } from '@/components/driver/RentToOwnSearch';
+import { RideshareProfileUpload } from '@/components/driver/RideshareProfileUpload';
 import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { PaymentReminderPreview } from '@/components/payment/PaymentReminderPreview';
@@ -218,7 +219,7 @@ export default function DriverDashboard() {
           </div>
 
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-flex">
+            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex lg:flex-wrap">
               <TabsTrigger value="overview" data-tour="driver-overview">Overview</TabsTrigger>
               <TabsTrigger value="payments" data-tour="driver-payments">Payments</TabsTrigger>
               <TabsTrigger value="negotiate" data-tour="driver-negotiate">Price Negotiation</TabsTrigger>
@@ -228,7 +229,11 @@ export default function DriverDashboard() {
               </TabsTrigger>
               <TabsTrigger value="inspection" className="flex items-center gap-1" data-tour="driver-inspection">
                 <Camera className="h-3 w-3" />
-                Weekly Report
+                {isUSA ? 'Monthly Report' : 'Weekly Report'}
+              </TabsTrigger>
+              <TabsTrigger value="rideshare-profile" className="flex items-center gap-1">
+                <Upload className="h-3 w-3" />
+                Rideshare Profile
               </TabsTrigger>
               <TabsTrigger value="incidents" className="flex items-center gap-1" data-tour="driver-incidents">
                 <Wrench className="h-3 w-3" />
@@ -443,13 +448,19 @@ export default function DriverDashboard() {
               <RentToOwnSearch />
             </TabsContent>
 
-            {/* Weekly Inspection Tab */}
+            {/* Vehicle Inspection Tab - Monthly for USA, Weekly for Nigeria */}
             <TabsContent value="inspection" className="space-y-6">
               <WeeklyInspectionReport
                 vehicleId={vehicle.id}
                 vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
                 ownerId={null}
+                region={country}
               />
+            </TabsContent>
+
+            {/* Rideshare Profile Tab - Weekly for all */}
+            <TabsContent value="rideshare-profile" className="space-y-6">
+              <RideshareProfileUpload vehicleId={vehicle.id} />
             </TabsContent>
 
             {/* Incidents Tab */}
