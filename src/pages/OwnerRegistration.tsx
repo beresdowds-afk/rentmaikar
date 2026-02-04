@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,7 +15,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { supabase } from "@/integrations/supabase/client";
 
-const ownerSchema = z.object({
+const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   // Owner Details
   firstName: z.string().min(2, "First name is required").max(50, "First name too long"),
   lastName: z.string().min(2, "Last name is required").max(50, "Last name too long"),
@@ -39,11 +40,16 @@ const ownerSchema = z.object({
   // Confirmations
   hasRegistration: z.boolean().refine(val => val, "Vehicle registration is required"),
   hasInsurance: z.boolean().refine(val => val, "Insurance is required"),
+  hasInspectionCertificate: country === "usa" 
+    ? z.boolean().refine(val => val, "Vehicle inspection certificate is required for USA")
+    : z.boolean().optional(),
   agreeTerms: z.boolean().refine(val => val, "You must agree to Terms of Service"),
   agreePrivacy: z.boolean().refine(val => val, "You must agree to Privacy Policy"),
   agreeIoT: z.boolean().refine(val => val, "You must consent to IoT tracking"),
   agreeFees: z.boolean().refine(val => val, "You must acknowledge platform fees"),
 });
+
+const ownerSchema = createOwnerSchema("usa");
 
 type OwnerFormData = z.infer<typeof ownerSchema>;
 
@@ -60,6 +66,7 @@ const years = Array.from({ length: 11 }, (_, i) => (currentYear - 10 + i).toStri
 
 const OwnerRegistration = () => {
   const navigate = useNavigate();
+  const [currentCountry, setCurrentCountry] = useState<"usa" | "nigeria">("usa");
   
   const {
     register,
@@ -68,12 +75,13 @@ const OwnerRegistration = () => {
     watch,
     formState: { errors, isSubmitting },
   } = useForm<OwnerFormData>({
-    resolver: zodResolver(ownerSchema),
+    resolver: zodResolver(createOwnerSchema(currentCountry)),
     defaultValues: {
       phoneCountry: "us",
       country: "usa",
       hasRegistration: false,
       hasInsurance: false,
+      hasInspectionCertificate: false,
       agreeTerms: false,
       agreePrivacy: false,
       agreeIoT: false,
@@ -244,7 +252,11 @@ const OwnerRegistration = () => {
                     <Label>Country</Label>
                     <Select
                       defaultValue="usa"
-                      onValueChange={(value) => setValue("country", value as "usa" | "nigeria")}
+                      onValueChange={(value) => {
+                        const country = value as "usa" | "nigeria";
+                        setValue("country", country);
+                        setCurrentCountry(country);
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -433,6 +445,31 @@ const OwnerRegistration = () => {
                 </label>
                 {errors.hasInsurance && (
                   <p className="text-destructive text-sm">{errors.hasInsurance.message}</p>
+                )}
+
+                {/* Vehicle Inspection Certificate - USA Only */}
+                {selectedCountry === "usa" && (
+                  <>
+                    <label className="flex items-start gap-3 p-4 rounded-lg border border-accent/30 bg-accent/5 hover:border-accent/50 cursor-pointer">
+                      <Checkbox
+                        onCheckedChange={(checked) =>
+                          setValue("hasInspectionCertificate", checked as boolean)
+                        }
+                      />
+                      <div>
+                        <span className="font-medium flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-accent" />
+                          Current Vehicle Inspection Certificate
+                        </span>
+                        <p className="text-sm text-muted-foreground">
+                          You have a valid state vehicle inspection certificate (required for USA)
+                        </p>
+                      </div>
+                    </label>
+                    {errors.hasInspectionCertificate && (
+                      <p className="text-destructive text-sm">{errors.hasInspectionCertificate.message}</p>
+                    )}
+                  </>
                 )}
               </div>
 
