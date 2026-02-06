@@ -8,6 +8,7 @@ import { useUserType } from "@/contexts/UserTypeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
+import rentmaikarBanner from "@/assets/rentmaikar-banner.jpg";
 
 interface HeaderProps {
   onRestartTour?: () => void;
@@ -55,6 +56,15 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
               className="h-10 md:h-12 w-auto object-contain"
             />
           </Link>
+
+          {/* Banner - Between Logo and Menu Button */}
+          <div className="flex-1 flex justify-center lg:hidden">
+            <img 
+              src={rentmaikarBanner} 
+              alt="Rent Mai Kar" 
+              className="h-6 md:h-8 w-auto object-contain"
+            />
+          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-1">
