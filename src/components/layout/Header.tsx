@@ -62,7 +62,7 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
             <img 
               src={rentmaikarBanner} 
               alt="Rent Mai Kar" 
-              className="h-6 md:h-8 w-auto object-contain"
+              className="h-12 md:h-16 w-auto object-contain scale-x-[1.2]"
             />
           </div>
 
