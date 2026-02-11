@@ -210,8 +210,7 @@ const Privacy = () => {
         <p className="text-muted-foreground">
           For privacy-related inquiries or to exercise your rights:<br />
           Email: {EMAIL_CONFIG.privacy}<br />
-          Phone: {COMPANY_INFO.USA.phone}<br />
-          Address: {COMPANY_INFO.USA.companyName}, {COMPANY_INFO.USA.fullAddress}
+          Phone: {COMPANY_INFO.USA.phone}
         </p>
       </section>
     </div>

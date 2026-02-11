@@ -183,8 +183,7 @@ const Terms = () => {
         <p className="text-muted-foreground">
           For questions about these Terms of Use:<br />
           Email: {EMAIL_CONFIG.legal}<br />
-          Phone: {COMPANY_INFO.USA.phone}<br />
-          Address: {COMPANY_INFO.USA.companyName}, {COMPANY_INFO.USA.fullAddress}
+          Phone: {COMPANY_INFO.USA.phone}
         </p>
       </section>
     </div>
