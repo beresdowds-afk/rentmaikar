@@ -120,10 +120,6 @@ const Footer = () => {
             <ul className="space-y-3 text-sm text-primary-foreground/70">
               <li>
                 <p className="font-medium text-primary-foreground">{COMPANY_INFO.USA.companyName}</p>
-                <p className="mt-1 flex items-start gap-2">
-                  <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                  {COMPANY_INFO.USA.fullAddress}
-                </p>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4 shrink-0" />
