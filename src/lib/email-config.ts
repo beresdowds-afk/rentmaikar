@@ -18,6 +18,9 @@ export const EMAIL_CONFIG = {
   
   // Data Protection Officer
   dpo: "dpo@rentmaikar.com",
+  
+  // Legal inquiries
+  legal: "legal@rentmaikar.com",
 } as const;
 
 /**

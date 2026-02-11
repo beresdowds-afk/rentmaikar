@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Mail, Phone, MapPin, Code, FileText, Shield, HelpCircle } from "lucide-react";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 import { useAuth } from "@/contexts/AuthContext";
+import { EMAIL_CONFIG } from "@/lib/email-config";
 
 const Footer = () => {
   const { userRole } = useAuth();
@@ -119,7 +120,7 @@ const Footer = () => {
             <ul className="space-y-2 text-sm text-primary-foreground/70">
               <li className="flex items-center gap-2">
                 <Mail className="w-4 h-4" />
-                support@rentmaikar.com
+                {EMAIL_CONFIG.support}
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4" />

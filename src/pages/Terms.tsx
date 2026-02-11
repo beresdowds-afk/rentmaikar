@@ -3,6 +3,7 @@ import Footer from "@/components/layout/Footer";
 import { FileText } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EMAIL_CONFIG } from "@/lib/email-config";
 
 const Terms = () => {
   const { country } = useRegion();
@@ -181,7 +182,7 @@ const Terms = () => {
         <h2 className="text-2xl font-semibold">13. Contact Information</h2>
         <p className="text-muted-foreground">
           For questions about these Terms of Use:<br />
-          Email: legal@rentmaikar.com<br />
+          Email: {EMAIL_CONFIG.legal}<br />
           Phone: +1 (240) 393-0081<br />
           Address: Rentmaikar LLC, Montgomery County, Maryland, USA
         </p>
@@ -367,7 +368,7 @@ const Terms = () => {
         <h2 className="text-2xl font-semibold">13. Contact Information</h2>
         <p className="text-muted-foreground">
           For questions about these Terms of Use:<br />
-          Email: legal@rentmaikar.com<br />
+          Email: {EMAIL_CONFIG.legal}<br />
           Phone: +234 803 555 0123<br />
           Address: Rentmaikar Nigeria Limited, Lagos, Nigeria
         </p>
