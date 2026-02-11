@@ -20,8 +20,8 @@ interface CallRequest {
 }
 
 const TWILIO_NUMBERS = {
-  USA: Deno.env.get('TWILIO_PHONE_NUMBER') || '+12403930081',
-  Nigeria: Deno.env.get('TWILIO_PHONE_NUMBER_NG') || '+12403930081', // Same number for now
+  USA: Deno.env.get('TWILIO_PHONE_NUMBER') || '+16083843932',
+  Nigeria: Deno.env.get('TWILIO_PHONE_NUMBER_NG') || '+16083843932', // Same number for now
 };
 
 const handler = async (req: Request): Promise<Response> => {
