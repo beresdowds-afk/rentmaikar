@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Mail, Phone, MapPin, Code, FileText, Shield, HelpCircle } from "lucide-react";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 import { useAuth } from "@/contexts/AuthContext";
-import { EMAIL_CONFIG } from "@/lib/email-config";
+import { EMAIL_CONFIG, COMPANY_INFO } from "@/lib/email-config";
 
 const Footer = () => {
   const { userRole } = useAuth();
@@ -117,18 +117,25 @@ const Footer = () => {
           {/* Contact */}
           <div>
             <h4 className="font-display font-semibold mb-4">Contact</h4>
-            <ul className="space-y-2 text-sm text-primary-foreground/70">
-              <li className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                {EMAIL_CONFIG.support}
+            <ul className="space-y-3 text-sm text-primary-foreground/70">
+              <li>
+                <p className="font-medium text-primary-foreground">{COMPANY_INFO.USA.companyName}</p>
+                <p className="mt-1 flex items-start gap-2">
+                  <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
+                  {COMPANY_INFO.USA.fullAddress}
+                </p>
               </li>
               <li className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                +1 (240) 393-0081
+                <Phone className="w-4 h-4 shrink-0" />
+                <a href={`tel:${COMPANY_INFO.USA.phoneRaw}`} className="hover:text-accent transition-colors">
+                  {COMPANY_INFO.USA.phone}
+                </a>
               </li>
               <li className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                +234 803 555 0123
+                <Mail className="w-4 h-4 shrink-0" />
+                <a href={`mailto:${EMAIL_CONFIG.support}`} className="hover:text-accent transition-colors">
+                  {EMAIL_CONFIG.support}
+                </a>
               </li>
             </ul>
           </div>

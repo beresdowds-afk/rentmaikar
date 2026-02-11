@@ -33,8 +33,8 @@ const regionConfig: Record<Country, RegionConfig> = {
     currency: "USD",
     currencySymbol: "$",
     phonePrefix: "+1",
-    whatsappNumber: "12403930081",
-    smsNumber: "12403930081",
+    whatsappNumber: "124078589931",
+    smsNumber: "124078589931",
   },
   Nigeria: {
     currency: "NGN",
