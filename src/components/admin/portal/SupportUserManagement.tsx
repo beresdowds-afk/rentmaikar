@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -25,6 +27,13 @@ import {
   CheckCircle,
   XCircle,
   RefreshCw,
+  MapPin,
+  ArrowRightLeft,
+  Pencil,
+  Save,
+  X,
+  BarChart3,
+  AlertTriangle,
 } from 'lucide-react';
 import { CITIES_BY_REGION, type SupportTaskType } from '@/types/support';
 import type { Database } from '@/integrations/supabase/types';
@@ -39,6 +48,7 @@ interface SupportStaffMember {
   assigned_region: string;
   is_active: boolean;
   phone?: string;
+  notes?: string;
   created_at: string;
   profile?: {
     full_name: string;
@@ -59,6 +69,22 @@ export const SupportUserManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<'staff' | 'coverage'>('staff');
+
+  // Inline editing state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    support_type: '',
+    assigned_city: '',
+    assigned_region: '',
+    phone: '',
+  });
+
+  // Transfer dialog state
+  const [transferTarget, setTransferTarget] = useState<SupportStaffMember | null>(null);
+  const [transferCity, setTransferCity] = useState('');
+  const [transferRegion, setTransferRegion] = useState('');
+  const [isTransferring, setIsTransferring] = useState(false);
 
   // Registration form state
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -126,7 +152,6 @@ export const SupportUserManagement = () => {
 
     setIsRegistering(true);
     try {
-      // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: newUser.email,
         password: newUser.password,
@@ -140,10 +165,8 @@ export const SupportUserManagement = () => {
       if (authError) throw authError;
       if (!authData.user) throw new Error('User creation failed');
 
-      // Wait for profile to be created by trigger
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Add to support_staff
       const { error: staffError } = await supabase
         .from('support_staff')
         .insert([{
@@ -157,7 +180,6 @@ export const SupportUserManagement = () => {
 
       if (staffError) throw staffError;
 
-      // Add role to user_roles
       const roleMap: Record<string, AppRole> = {
         'legal': 'legal_support',
         'iot_installation': 'iot_support',
@@ -205,7 +227,6 @@ export const SupportUserManagement = () => {
 
     setIsOnboarding(true);
     try {
-      // Find user by email
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('user_id, email')
@@ -218,7 +239,6 @@ export const SupportUserManagement = () => {
         return;
       }
 
-      // Check if already support staff
       const { data: existingStaff } = await supabase
         .from('support_staff')
         .select('id')
@@ -232,7 +252,6 @@ export const SupportUserManagement = () => {
         return;
       }
 
-      // Add to support_staff
       const { error: staffError } = await supabase
         .from('support_staff')
         .insert([{
@@ -246,7 +265,6 @@ export const SupportUserManagement = () => {
 
       if (staffError) throw staffError;
 
-      // Add role to user_roles
       const roleMap: Record<string, AppRole> = {
         'legal': 'legal_support',
         'iot_installation': 'iot_support',
@@ -305,7 +323,6 @@ export const SupportUserManagement = () => {
     if (!confirm('Are you sure you want to remove this support staff member? This will also remove their support role.')) return;
 
     try {
-      // Remove from support_staff
       const { error: staffError } = await supabase
         .from('support_staff')
         .delete()
@@ -313,7 +330,6 @@ export const SupportUserManagement = () => {
 
       if (staffError) throw staffError;
 
-      // Remove role
       const roleMap: Record<string, AppRole> = {
         'legal': 'legal_support',
         'iot_installation': 'iot_support',
@@ -339,6 +355,113 @@ export const SupportUserManagement = () => {
     }
   };
 
+  // Inline edit handlers
+  const startEditing = (member: SupportStaffMember) => {
+    setEditingId(member.id);
+    setEditForm({
+      support_type: member.support_type,
+      assigned_city: member.assigned_city,
+      assigned_region: member.assigned_region,
+      phone: member.phone || '',
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditForm({ support_type: '', assigned_city: '', assigned_region: '', phone: '' });
+  };
+
+  const saveEditing = async (member: SupportStaffMember) => {
+    try {
+      const updates: Record<string, any> = {};
+      let roleChanged = false;
+
+      if (editForm.assigned_city !== member.assigned_city) updates.assigned_city = editForm.assigned_city;
+      if (editForm.assigned_region !== member.assigned_region) updates.assigned_region = editForm.assigned_region;
+      if (editForm.phone !== (member.phone || '')) updates.phone = editForm.phone || null;
+      if (editForm.support_type !== member.support_type) {
+        updates.support_type = editForm.support_type;
+        roleChanged = true;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        cancelEditing();
+        return;
+      }
+
+      const { error } = await supabase
+        .from('support_staff')
+        .update(updates)
+        .eq('id', member.id);
+
+      if (error) throw error;
+
+      // Handle role change
+      if (roleChanged) {
+        const roleMap: Record<string, AppRole> = {
+          'legal': 'legal_support',
+          'iot_installation': 'iot_support',
+          'iot_maintenance': 'iot_support',
+          'vehicle_recall': 'vehicle_support',
+          'vehicle_maintenance': 'vehicle_support',
+        };
+
+        const oldRole = roleMap[member.support_type];
+        const newRole = roleMap[editForm.support_type];
+
+        if (oldRole && oldRole !== newRole) {
+          await supabase.from('user_roles').delete().eq('user_id', member.user_id).eq('role', oldRole);
+        }
+        if (newRole) {
+          await supabase.from('user_roles').upsert([{ user_id: member.user_id, role: newRole }], { onConflict: 'user_id,role' });
+        }
+      }
+
+      toast.success('Staff details updated');
+      cancelEditing();
+      fetchStaff();
+    } catch (err) {
+      console.error('Error saving edit:', err);
+      toast.error('Failed to update staff details');
+    }
+  };
+
+  // Transfer handler
+  const handleTransfer = async () => {
+    if (!transferTarget || !transferCity || !transferRegion) return;
+
+    setIsTransferring(true);
+    try {
+      const { error } = await supabase
+        .from('support_staff')
+        .update({
+          assigned_city: transferCity,
+          assigned_region: transferRegion,
+        })
+        .eq('id', transferTarget.id);
+
+      if (error) throw error;
+
+      // Log the transfer in role_audit_log
+      await supabase.from('role_audit_log').insert([{
+        action: 'city_transfer',
+        target_user_id: transferTarget.user_id,
+        notes: `Transferred from ${transferTarget.assigned_city}, ${transferTarget.assigned_region} to ${transferCity}, ${transferRegion} (${getTypeLabel(transferTarget.support_type)})`,
+      }]);
+
+      toast.success(`${transferTarget.profile?.full_name || 'Staff'} transferred to ${transferCity}`);
+      setTransferTarget(null);
+      setTransferCity('');
+      setTransferRegion('');
+      fetchStaff();
+    } catch (err) {
+      console.error('Error transferring staff:', err);
+      toast.error('Failed to transfer staff');
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
   const filteredStaff = staff.filter(s => {
     const matchesSearch = !searchQuery || 
       s.profile?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -356,6 +479,37 @@ export const SupportUserManagement = () => {
   const getTypeLabel = (type: string) => {
     const found = SUPPORT_TYPES.find(t => t.value === type);
     return found?.label || type;
+  };
+
+  // City coverage data
+  const getCoverageData = () => {
+    const coverage: Record<string, Record<string, { total: number; active: number; types: Record<string, number> }>> = {};
+
+    Object.entries(CITIES_BY_REGION).forEach(([region, cities]) => {
+      coverage[region] = {};
+      cities.forEach(city => {
+        coverage[region][city] = { total: 0, active: 0, types: {} };
+        SUPPORT_TYPES.forEach(t => {
+          coverage[region][city].types[t.value] = 0;
+        });
+      });
+    });
+
+    staff.forEach(s => {
+      const region = s.assigned_region;
+      const city = s.assigned_city;
+      if (coverage[region]?.[city]) {
+        coverage[region][city].total++;
+        if (s.is_active) {
+          coverage[region][city].active++;
+          if (coverage[region][city].types[s.support_type] !== undefined) {
+            coverage[region][city].types[s.support_type]++;
+          }
+        }
+      }
+    });
+
+    return coverage;
   };
 
   return (
@@ -598,113 +752,245 @@ export const SupportUserManagement = () => {
         </div>
       </CardHeader>
       <CardContent>
-        {/* Filters */}
-        <div className="flex gap-4 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, email, or city..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {SUPPORT_TYPES.map(type => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'staff' | 'coverage')}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="staff" className="gap-2">
+              <Users className="h-4 w-4" />
+              Staff Directory
+            </TabsTrigger>
+            <TabsTrigger value="coverage" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              City Coverage
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Staff Table */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : filteredStaff.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>No support staff found</p>
-          </div>
-        ) : (
-          <ScrollArea className="h-[500px]">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredStaff.map((member) => {
-                  const TypeIcon = getTypeIcon(member.support_type);
-                  return (
-                    <TableRow key={member.id}>
-                      <TableCell className="font-medium">
-                        {member.profile?.full_name || 'Unknown'}
-                      </TableCell>
-                      <TableCell>{member.profile?.email || '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="gap-1">
-                          <TypeIcon className="h-3 w-3" />
-                          {getTypeLabel(member.support_type)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {member.assigned_city}, {member.assigned_region}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={member.is_active}
-                            onCheckedChange={() => handleToggleActive(member.id, member.is_active)}
-                          />
-                          {member.is_active ? (
-                            <Badge variant="default" className="bg-green-500">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Active
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">
-                              <XCircle className="h-3 w-3 mr-1" />
-                              Inactive
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(member.created_at), 'MMM d, yyyy')}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleRemoveStaff(member.id, member.user_id, member.support_type)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+          {/* ===== STAFF DIRECTORY TAB ===== */}
+          <TabsContent value="staff">
+            {/* Filters */}
+            <div className="flex gap-4 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, email, or city..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {SUPPORT_TYPES.map(type => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Staff Table */}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredStaff.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No support staff found</p>
+              </div>
+            ) : (
+              <ScrollArea className="h-[500px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Joined</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </ScrollArea>
-        )}
+                  </TableHeader>
+                  <TableBody>
+                    {filteredStaff.map((member) => {
+                      const TypeIcon = getTypeIcon(member.support_type);
+                      const isEditing = editingId === member.id;
+
+                      return (
+                        <TableRow key={member.id}>
+                          <TableCell className="font-medium">
+                            {member.profile?.full_name || 'Unknown'}
+                          </TableCell>
+                          <TableCell className="text-sm">{member.profile?.email || '-'}</TableCell>
+                          <TableCell>
+                            {isEditing ? (
+                              <Select
+                                value={editForm.support_type}
+                                onValueChange={(value) => setEditForm(prev => ({ ...prev, support_type: value }))}
+                              >
+                                <SelectTrigger className="w-[160px] h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {SUPPORT_TYPES.map(type => (
+                                    <SelectItem key={type.value} value={type.value}>
+                                      {type.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Badge variant="outline" className="gap-1">
+                                <TypeIcon className="h-3 w-3" />
+                                {getTypeLabel(member.support_type)}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {isEditing ? (
+                              <div className="flex gap-1">
+                                <Select
+                                  value={editForm.assigned_region}
+                                  onValueChange={(value) => setEditForm(prev => ({ ...prev, assigned_region: value, assigned_city: '' }))}
+                                >
+                                  <SelectTrigger className="w-[100px] h-8">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Object.keys(CITIES_BY_REGION).map(region => (
+                                      <SelectItem key={region} value={region}>{region}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Select
+                                  value={editForm.assigned_city}
+                                  onValueChange={(value) => setEditForm(prev => ({ ...prev, assigned_city: value }))}
+                                >
+                                  <SelectTrigger className="w-[130px] h-8">
+                                    <SelectValue placeholder="City" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {(CITIES_BY_REGION[editForm.assigned_region] || []).map(city => (
+                                      <SelectItem key={city} value={city}>{city}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3 text-muted-foreground" />
+                                {member.assigned_city}, {member.assigned_region}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {isEditing ? (
+                              <Input
+                                value={editForm.phone}
+                                onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                                className="w-[130px] h-8"
+                                placeholder="Phone"
+                              />
+                            ) : (
+                              <span className="text-sm text-muted-foreground">{member.phone || '-'}</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={member.is_active}
+                                onCheckedChange={() => handleToggleActive(member.id, member.is_active)}
+                              />
+                              {member.is_active ? (
+                                <Badge variant="default" className="bg-green-500">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Active
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary">
+                                  <XCircle className="h-3 w-3 mr-1" />
+                                  Inactive
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {format(new Date(member.created_at), 'MMM d, yyyy')}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-end gap-1">
+                              {isEditing ? (
+                                <>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => saveEditing(member)}>
+                                    <Save className="h-4 w-4 text-green-600" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cancelEditing}>
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEditing(member)}>
+                                          <Pencil className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Edit details</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          onClick={() => {
+                                            setTransferTarget(member);
+                                            setTransferRegion(member.assigned_region);
+                                            setTransferCity('');
+                                          }}
+                                        >
+                                          <ArrowRightLeft className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Transfer to another city</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                    onClick={() => handleRemoveStaff(member.id, member.user_id, member.support_type)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            )}
+          </TabsContent>
+
+          {/* ===== CITY COVERAGE TAB ===== */}
+          <TabsContent value="coverage">
+            <CoverageOverview coverageData={getCoverageData()} />
+          </TabsContent>
+        </Tabs>
 
         {/* Stats Summary */}
         <div className="grid grid-cols-5 gap-4 mt-6 pt-4 border-t">
@@ -720,7 +1006,167 @@ export const SupportUserManagement = () => {
             );
           })}
         </div>
+
+        {/* Transfer Dialog */}
+        <Dialog open={!!transferTarget} onOpenChange={(open) => !open && setTransferTarget(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ArrowRightLeft className="h-5 w-5" />
+                Transfer Staff Member
+              </DialogTitle>
+              <DialogDescription>
+                Transfer <strong>{transferTarget?.profile?.full_name}</strong> from{' '}
+                <strong>{transferTarget?.assigned_city}, {transferTarget?.assigned_region}</strong> to a new city.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="p-3 rounded-lg bg-muted/50 text-sm">
+                <p><strong>Current:</strong> {transferTarget?.assigned_city}, {transferTarget?.assigned_region}</p>
+                <p><strong>Role:</strong> {getTypeLabel(transferTarget?.support_type || '')}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>New Region</Label>
+                  <Select value={transferRegion} onValueChange={(v) => { setTransferRegion(v); setTransferCity(''); }}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(CITIES_BY_REGION).map(r => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>New City</Label>
+                  <Select value={transferCity} onValueChange={setTransferCity}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select city" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(CITIES_BY_REGION[transferRegion] || []).map(city => (
+                        <SelectItem key={city} value={city}>{city}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setTransferTarget(null)}>Cancel</Button>
+              <Button onClick={handleTransfer} disabled={isTransferring || !transferCity}>
+                {isTransferring && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Confirm Transfer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
+  );
+};
+
+// ===== City Coverage Overview Component =====
+interface CoverageData {
+  [region: string]: {
+    [city: string]: {
+      total: number;
+      active: number;
+      types: Record<string, number>;
+    };
+  };
+}
+
+const SUPPORT_TYPE_LABELS: Record<string, { label: string; short: string }> = {
+  legal: { label: 'Legal', short: 'LGL' },
+  iot_installation: { label: 'IoT Install', short: 'IoT-I' },
+  iot_maintenance: { label: 'IoT Maint.', short: 'IoT-M' },
+  vehicle_recall: { label: 'Veh. Recall', short: 'VR' },
+  vehicle_maintenance: { label: 'Veh. Maint.', short: 'VM' },
+};
+
+const CoverageOverview = ({ coverageData }: { coverageData: CoverageData }) => {
+  return (
+    <div className="space-y-6">
+      {Object.entries(coverageData).map(([region, cities]) => {
+        const regionTotal = Object.values(cities).reduce((sum, c) => sum + c.active, 0);
+
+        return (
+          <div key={region}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                {region}
+              </h3>
+              <Badge variant="secondary">{regionTotal} active staff</Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {Object.entries(cities).map(([city, data]) => {
+                const hasGaps = Object.values(data.types).some(count => count === 0);
+                const isEmpty = data.active === 0;
+
+                return (
+                  <div
+                    key={city}
+                    className={`p-4 rounded-lg border ${
+                      isEmpty ? 'border-destructive/50 bg-destructive/5' :
+                      hasGaps ? 'border-yellow-500/50 bg-yellow-500/5' :
+                      'border-green-500/50 bg-green-500/5'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium">{city}</h4>
+                      <div className="flex items-center gap-1">
+                        {isEmpty && <AlertTriangle className="h-4 w-4 text-destructive" />}
+                        {hasGaps && !isEmpty && <AlertTriangle className="h-4 w-4 text-yellow-500" />}
+                        {!hasGaps && !isEmpty && <CheckCircle className="h-4 w-4 text-green-500" />}
+                        <span className="text-sm font-medium">{data.active}/{data.total}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(data.types).map(([type, count]) => (
+                        <TooltipProvider key={type}>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Badge
+                                variant={count > 0 ? 'default' : 'outline'}
+                                className={`text-xs ${count === 0 ? 'opacity-50 border-dashed' : ''}`}
+                              >
+                                {SUPPORT_TYPE_LABELS[type]?.short || type}: {count}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {SUPPORT_TYPE_LABELS[type]?.label || type} — {count} active
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Legend */}
+      <div className="flex items-center gap-6 text-xs text-muted-foreground pt-4 border-t">
+        <span className="flex items-center gap-1">
+          <CheckCircle className="h-3 w-3 text-green-500" />
+          Full coverage
+        </span>
+        <span className="flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3 text-yellow-500" />
+          Partial coverage (gaps)
+        </span>
+        <span className="flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3 text-destructive" />
+          No coverage
+        </span>
+      </div>
+    </div>
   );
 };
