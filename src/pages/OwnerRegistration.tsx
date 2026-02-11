@@ -33,7 +33,9 @@ const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   vehicleModel: z.string().min(1, "Vehicle model is required").max(50, "Model name too long"),
   vehicleYear: z.string().min(4, "Vehicle year is required"),
   vehicleColor: z.string().min(1, "Vehicle color is required").max(30, "Color name too long"),
-  vehiclePlate: z.string().min(1, "License plate is required").max(15, "License plate too long"),
+  vehiclePlate: country === "usa" 
+    ? z.string().min(1, "VIN is required").max(17, "VIN too long")
+    : z.string().min(1, "License plate is required").max(15, "License plate too long"),
   desiredPrice: z.string().min(1, "Desired weekly price is required"),
   vehicleDescription: z.string().max(500, "Description too long").optional(),
   
@@ -371,8 +373,14 @@ const OwnerRegistration = () => {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="vehiclePlate">License Plate</Label>
-                    <Input id="vehiclePlate" placeholder="ABC-1234" {...register("vehiclePlate")} />
+                    <Label htmlFor="vehiclePlate">
+                      {selectedCountry === "usa" ? "Vehicle Identification Number (VIN)" : "License Plate"}
+                    </Label>
+                    <Input 
+                      id="vehiclePlate" 
+                      placeholder={selectedCountry === "usa" ? "1HGBH41JXMN109186" : "ABC-1234"} 
+                      {...register("vehiclePlate")} 
+                    />
                     {errors.vehiclePlate && (
                       <p className="text-destructive text-sm">{errors.vehiclePlate.message}</p>
                     )}
