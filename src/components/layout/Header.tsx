@@ -49,20 +49,20 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/" className="flex-shrink-0">
             <img 
               src={rentmaikarLogo} 
               alt="Rentmaikar" 
-              className="h-10 md:h-12 w-auto object-contain"
+              className="h-9 md:h-11 w-auto object-contain"
             />
           </Link>
 
-          {/* Banner - Between Logo and Menu Button */}
-          <div className="flex-1 flex justify-center lg:hidden">
+          {/* Banner - Between Logo and Menu Button (mobile/tablet only) */}
+          <div className="flex-1 flex justify-center px-3 lg:hidden min-w-0">
             <img 
               src={rentmaikarBanner} 
               alt="Rent Mai Kar" 
-              className="h-12 md:h-16 w-auto object-contain scale-x-[1.2]"
+              className="h-9 md:h-12 w-auto max-w-[200px] md:max-w-[260px] object-contain"
             />
           </div>
 
@@ -150,10 +150,10 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
 
           {/* Mobile Menu Button */}
           <button
-            className="lg:hidden p-2 rounded-lg hover:bg-muted"
+            className="lg:hidden flex-shrink-0 p-2 rounded-lg hover:bg-muted"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
 
