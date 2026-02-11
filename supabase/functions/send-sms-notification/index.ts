@@ -28,8 +28,8 @@ interface SMSNotificationRequest {
   customMessage?: string;
 }
 
-const RENTMAIKAR_PHONE = "+12403930081";
-const RENTMAIKAR_WHATSAPP = "whatsapp:+12403930081";
+const RENTMAIKAR_PHONE = "+16083843932";
+const RENTMAIKAR_WHATSAPP = "whatsapp:+16083843932";
 
 const isValidPhone = (phone: string): boolean => {
   // Basic international phone format validation
