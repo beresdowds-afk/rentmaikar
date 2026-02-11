@@ -34,6 +34,36 @@ export const EMAIL_SENDER_NAMES = {
 } as const;
 
 /**
+ * Company / Contact Information by Region
+ */
+export const COMPANY_INFO = {
+  USA: {
+    companyName: "Inte-Gritty LLC",
+    address: "2002 East Marlboro Avenue, Apt 203",
+    city: "Hyattsville",
+    state: "Maryland",
+    country: "United States",
+    zip: "20785",
+    fullAddress: "2002 East Marlboro Avenue, Apt 203, Hyattsville, Maryland, United States 20785",
+    phone: "+1 (240) 785-8993 1",
+    phoneRaw: "+124078589931",
+    email: EMAIL_CONFIG.support,
+  },
+  NIGERIA: {
+    companyName: "Rentmaikar Nigeria",
+    address: "",
+    city: "Lagos",
+    state: "Lagos",
+    country: "Nigeria",
+    zip: "",
+    fullAddress: "Lagos, Nigeria",
+    phone: "+234 803 555 0123",
+    phoneRaw: "+2348035550123",
+    email: EMAIL_CONFIG.support,
+  },
+} as const;
+
+/**
  * Format email with display name for Resend API
  * @example formatSenderEmail('support') => "Rentmaikar Support <support@rentmaikar.com>"
  */

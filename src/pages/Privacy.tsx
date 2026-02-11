@@ -3,7 +3,7 @@ import Footer from "@/components/layout/Footer";
 import { Shield } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EMAIL_CONFIG } from "@/lib/email-config";
+import { EMAIL_CONFIG, COMPANY_INFO } from "@/lib/email-config";
 const Privacy = () => {
   const { country } = useRegion();
 
@@ -210,8 +210,8 @@ const Privacy = () => {
         <p className="text-muted-foreground">
           For privacy-related inquiries or to exercise your rights:<br />
           Email: {EMAIL_CONFIG.privacy}<br />
-          Phone: +1 (240) 393-0081<br />
-          Address: Rentmaikar LLC, Montgomery County, Maryland, USA
+          Phone: {COMPANY_INFO.USA.phone}<br />
+          Address: {COMPANY_INFO.USA.companyName}, {COMPANY_INFO.USA.fullAddress}
         </p>
       </section>
     </div>
