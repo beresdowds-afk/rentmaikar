@@ -1,6 +1,7 @@
 import React from 'react';
 import { useRegion } from '@/contexts/RegionContext';
 import { format } from 'date-fns';
+import { EMAIL_CONFIG } from '@/lib/email-config';
 
 interface Party {
   name: string;
@@ -251,7 +252,7 @@ const LegalAgreementDocument: React.FC<LegalAgreementDocumentProps> = ({
       {/* Footer */}
       <footer className="text-center text-xs text-gray-500 border-t pt-4">
         <p>This document was generated and witnessed through the RentMaiKar platform.</p>
-        <p>For questions or disputes, contact: support@rentmaikar.com</p>
+        <p>For questions or disputes, contact: {EMAIL_CONFIG.support}</p>
         <p className="mt-2">Agreement Version: 1.0 | Generated: {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}</p>
       </footer>
     </div>
