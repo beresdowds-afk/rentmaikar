@@ -42,6 +42,7 @@ const driverSchema = z.object({
   agreeTerms: z.boolean().refine(val => val, "You must agree to Terms of Service"),
   agreePrivacy: z.boolean().refine(val => val, "You must agree to Privacy Policy"),
   agreeIoT: z.boolean().refine(val => val, "You must consent to IoT tracking"),
+  agreeFees: z.boolean().refine(val => val, "You must acknowledge the late payment and default policy"),
 });
 
 type DriverFormData = z.infer<typeof driverSchema>;
@@ -95,6 +96,7 @@ const DriverRegistration = () => {
       agreeTerms: false,
       agreePrivacy: false,
       agreeIoT: false,
+      agreeFees: false,
     },
   });
 
@@ -137,6 +139,7 @@ const DriverRegistration = () => {
         agreed_terms: data.agreeTerms,
         agreed_privacy: data.agreePrivacy,
         agreed_iot: data.agreeIoT,
+        agreed_fees: data.agreeFees,
       });
       
       if (error) throw error;
@@ -566,6 +569,33 @@ const DriverRegistration = () => {
                   </label>
                   {errors.agreeIoT && (
                     <p className="text-destructive text-sm mt-2">{errors.agreeIoT.message}</p>
+                  )}
+                </div>
+
+                {/* Late Payment & Default Policy Consent */}
+                <div className="p-4 rounded-lg border-2 border-destructive/30 bg-destructive/5">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <Checkbox
+                      onCheckedChange={(checked) =>
+                        setValue("agreeFees", checked as boolean)
+                      }
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-destructive" />
+                        Late Payment & Default Policy
+                      </span>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        I acknowledge and agree that a <strong className="text-foreground">10% administrative fine</strong> will 
+                        be applied to any late payment or payment default. I also understand that payment defaults may result in 
+                        a <strong className="text-foreground">mandatory downgrade to a daily payment plan</strong> with additional 
+                        surcharges, and that repeated defaults may lead to permanent loss of daily payment plan eligibility and 
+                        vehicle deactivation.
+                      </p>
+                    </div>
+                  </label>
+                  {errors.agreeFees && (
+                    <p className="text-destructive text-sm mt-2">{errors.agreeFees.message}</p>
                   )}
                 </div>
               </div>
