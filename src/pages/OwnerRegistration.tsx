@@ -43,6 +43,16 @@ const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   hasInspectionCertificate: country === "usa" 
     ? z.boolean().refine(val => val, "Vehicle inspection certificate is required for USA")
     : z.boolean().optional(),
+  // Nigeria-specific
+  hasRoadWorthiness: country === "nigeria"
+    ? z.boolean().refine(val => val, "Road worthiness certificate is required for Nigeria")
+    : z.boolean().optional(),
+  hasProofOfOwnership: country === "nigeria"
+    ? z.boolean().refine(val => val, "Proof of ownership is required for Nigeria")
+    : z.boolean().optional(),
+  hasSafetyEquipment: country === "nigeria"
+    ? z.boolean().refine(val => val, "You must affirm provision of required safety equipment")
+    : z.boolean().optional(),
   agreeTerms: z.boolean().refine(val => val, "You must agree to Terms of Service"),
   agreePrivacy: z.boolean().refine(val => val, "You must agree to Privacy Policy"),
   agreeIoT: z.boolean().refine(val => val, "You must consent to IoT tracking"),
@@ -82,6 +92,9 @@ const OwnerRegistration = () => {
       hasRegistration: false,
       hasInsurance: false,
       hasInspectionCertificate: false,
+      hasRoadWorthiness: false,
+      hasProofOfOwnership: false,
+      hasSafetyEquipment: false,
       agreeTerms: false,
       agreePrivacy: false,
       agreeIoT: false,
@@ -469,6 +482,86 @@ const OwnerRegistration = () => {
                     {errors.hasInspectionCertificate && (
                       <p className="text-destructive text-sm">{errors.hasInspectionCertificate.message}</p>
                     )}
+                  </>
+                )}
+
+                {/* Nigeria-Specific Requirements */}
+                {selectedCountry === "nigeria" && (
+                  <>
+                    <div className="p-4 rounded-lg bg-warning/10 border border-warning/30">
+                      <p className="text-sm font-medium text-warning flex items-center gap-2 mb-3">
+                        <Shield className="w-4 h-4" />
+                        🇳🇬 Nigeria Owner Requirements
+                      </p>
+                    </div>
+
+                    <label className="flex items-start gap-3 p-4 rounded-lg border border-warning/30 bg-warning/5 hover:border-warning/50 cursor-pointer">
+                      <Checkbox
+                        onCheckedChange={(checked) =>
+                          setValue("hasRoadWorthiness", checked as boolean)
+                        }
+                      />
+                      <div>
+                        <span className="font-medium flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-warning" />
+                          Road Worthiness Certificate
+                        </span>
+                        <p className="text-sm text-muted-foreground">
+                          You have a valid road worthiness certificate for your vehicle (required for Nigeria)
+                        </p>
+                      </div>
+                    </label>
+                    {errors.hasRoadWorthiness && (
+                      <p className="text-destructive text-sm">{errors.hasRoadWorthiness.message}</p>
+                    )}
+
+                    <label className="flex items-start gap-3 p-4 rounded-lg border border-warning/30 bg-warning/5 hover:border-warning/50 cursor-pointer">
+                      <Checkbox
+                        onCheckedChange={(checked) =>
+                          setValue("hasProofOfOwnership", checked as boolean)
+                        }
+                      />
+                      <div>
+                        <span className="font-medium flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-warning" />
+                          Proof of Ownership
+                        </span>
+                        <p className="text-sm text-muted-foreground">
+                          You have valid proof of vehicle ownership documentation ready for upload
+                        </p>
+                      </div>
+                    </label>
+                    {errors.hasProofOfOwnership && (
+                      <p className="text-destructive text-sm">{errors.hasProofOfOwnership.message}</p>
+                    )}
+
+                    <div className="p-4 rounded-lg border-2 border-warning/50 bg-warning/5">
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <Checkbox
+                          onCheckedChange={(checked) =>
+                            setValue("hasSafetyEquipment", checked as boolean)
+                          }
+                        />
+                        <div>
+                          <span className="font-medium flex items-center gap-2">
+                            <Shield className="w-4 h-4 text-warning" />
+                            Safety Equipment Affirmation
+                          </span>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            I affirm that my vehicle is equipped with or I will provide the following mandatory safety items:
+                          </p>
+                          <ul className="text-sm text-muted-foreground mt-2 space-y-1 ml-4 list-disc">
+                            <li><strong className="text-foreground">C-Caution Sign</strong> (reflective warning triangle)</li>
+                            <li><strong className="text-foreground">Fire Extinguisher</strong> (valid and not expired)</li>
+                            <li><strong className="text-foreground">Jack</strong> (functional vehicle jack)</li>
+                            <li><strong className="text-foreground">Extra/Spare Tyre</strong> (in good condition)</li>
+                          </ul>
+                        </div>
+                      </label>
+                      {errors.hasSafetyEquipment && (
+                        <p className="text-destructive text-sm mt-2">{errors.hasSafetyEquipment.message}</p>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
