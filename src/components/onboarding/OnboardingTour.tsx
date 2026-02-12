@@ -58,6 +58,13 @@ const tourSteps: TourStep[] = [
     position: "top"
   },
   {
+    id: "training",
+    title: "Mandatory Driver Training 📚",
+    description: "All drivers must complete our online training program before driving. Training is a precondition for group insurance eligibility and must be refreshed every 6 months.",
+    icon: FileText,
+    position: "center"
+  },
+  {
     id: "payments",
     title: "Flexible Payment Options",
     description: "Choose between daily or weekly payment plans. We support PayPal in the USA and Paystack (bank transfers) in Nigeria.",
@@ -89,7 +96,7 @@ const tourSteps: TourStep[] = [
   {
     id: "policies",
     title: "Terms & Policies",
-    description: "During registration, you'll review and accept our Terms of Service, Privacy Policy, and platform-specific agreements for transparency and trust.",
+    description: "During registration, you'll review and accept our Terms of Service (including mandatory driver training and group insurance requirements), Privacy Policy, and platform-specific agreements.",
     icon: FileText,
     position: "center"
   },

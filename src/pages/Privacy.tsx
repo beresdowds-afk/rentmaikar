@@ -10,7 +10,7 @@ const Privacy = () => {
   const USAPrivacy = () => (
     <div className="prose prose-lg max-w-none space-y-8">
       <p className="text-muted-foreground text-lg">
-        Last updated: January 19, 2026
+        Last updated: February 12, 2026
       </p>
       
       <section className="space-y-4">
@@ -81,7 +81,8 @@ const Privacy = () => {
           <li><strong>Process Payments:</strong> Handle rental payments through PayPal and manage financial transactions</li>
           <li><strong>Vehicle Tracking:</strong> Provide real-time location tracking for safety, security, and fleet management</li>
           <li><strong>Safety Features:</strong> Enable accident detection, emergency alerts, and remote vehicle deactivation</li>
-          <li><strong>Communications:</strong> Send notifications about rentals, payments, inspections, and Platform updates</li>
+          <li><strong>Driver Training & Insurance:</strong> Track mandatory training completion and refresh status to determine eligibility for group insurance coverage</li>
+          <li><strong>Communications:</strong> Send notifications about rentals, payments, inspections, training deadlines, and Platform updates</li>
           <li><strong>Compliance:</strong> Meet legal obligations and respond to law enforcement requests</li>
           <li><strong>Improvement:</strong> Analyze usage patterns to enhance Platform features and user experience</li>
         </ul>
@@ -219,7 +220,7 @@ const Privacy = () => {
   const NigeriaPrivacy = () => (
     <div className="prose prose-lg max-w-none space-y-8">
       <p className="text-muted-foreground text-lg">
-        Last updated: January 19, 2026
+        Last updated: February 12, 2026
       </p>
       
       <section className="space-y-4">
@@ -304,7 +305,8 @@ const Privacy = () => {
           <li><strong>Process Payments:</strong> Handle rental payments through Paystack and manage financial transactions in Naira</li>
           <li><strong>Vehicle Tracking:</strong> Provide real-time location tracking for safety, security, and fleet management</li>
           <li><strong>Safety Features:</strong> Enable accident detection, emergency alerts, and remote vehicle deactivation</li>
-          <li><strong>Communications:</strong> Send notifications about rentals, payments, inspections, and Platform updates via SMS, WhatsApp, and email</li>
+          <li><strong>Driver Training & Insurance:</strong> Track mandatory training completion and refresh status to determine eligibility for group insurance coverage</li>
+          <li><strong>Communications:</strong> Send notifications about rentals, payments, inspections, training deadlines, and Platform updates via SMS, WhatsApp, and email</li>
           <li><strong>Compliance:</strong> Meet legal obligations and respond to requests from regulatory authorities (NITDA, Police, FRSC)</li>
           <li><strong>Improvement:</strong> Analyse usage patterns to enhance Platform features and user experience</li>
         </ul>
