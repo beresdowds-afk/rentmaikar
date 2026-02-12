@@ -111,7 +111,7 @@ const Privacy = () => {
           <li>Law enforcement agencies with valid legal process</li>
           <li>Insurance companies in the event of accidents or claims</li>
           <li>Emergency responders when accidents are detected</li>
-          <li>Legal proceedings to protect our rights or comply with court orders</li>
+          <li>Regulatory or legal authorities when required by applicable law</li>
         </ul>
       </section>
 

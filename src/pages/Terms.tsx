@@ -168,31 +168,36 @@ const Terms = () => {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold">11. Limitation of Liability</h2>
         <p className="text-muted-foreground">
-          TO THE MAXIMUM EXTENT PERMITTED BY LAW, RENTMAIKAR LLC SHALL NOT BE LIABLE FOR:
+          Rentmaikar LLC endeavors to provide a reliable platform. However, Rentmaikar's role is limited to that of an intermediary and facilitator. Users acknowledge that:
         </p>
         <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-          <li>Vehicle condition, mechanical failures, or safety defects</li>
-          <li>Accidents, injuries, or property damage during vehicle operation</li>
-          <li>Disputes between Owners and Drivers</li>
-          <li>Loss of income, earnings, or consequential damages</li>
-          <li>Actions of third parties, including rideshare passengers</li>
-          <li>Service interruptions, data loss, or technical failures</li>
+          <li>Vehicle condition, maintenance, and safety remain the responsibility of the Owner</li>
+          <li>Driving conduct and compliance with traffic laws remain the responsibility of the Driver</li>
+          <li>Rentmaikar does not guarantee uninterrupted service availability</li>
+          <li>Users are encouraged to resolve concerns through the Platform's mediation and dispute resolution channels</li>
         </ul>
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">12. Indemnification</h2>
+        <h2 className="text-2xl font-semibold">12. Mediation & Dispute Resolution</h2>
         <p className="text-muted-foreground">
-          You agree to indemnify, defend, and hold harmless Rentmaikar LLC, its officers, directors, employees, and agents 
-          from any claims, damages, losses, or expenses arising from your use of the Platform or violation of these Terms.
+          Rentmaikar is committed to resolving all disputes amicably through structured mediation:
+        </p>
+        <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+          <li><strong>Step 1 — Internal Mediation:</strong> All disputes between Owners, Drivers, and the Platform must first be submitted to Rentmaikar's administrative mediation team for review and resolution</li>
+          <li><strong>Step 2 — Independent Mediation:</strong> If internal mediation does not resolve the matter within 30 days, either party may request independent mediation through a mutually agreed-upon mediator</li>
+          <li><strong>Step 3 — Alternative Dispute Resolution (ADR):</strong> As a final step, unresolved disputes may be submitted to alternative dispute resolution in accordance with the laws of the State of Maryland, USA</li>
+        </ul>
+        <p className="text-muted-foreground">
+          Both parties agree to participate in good faith in the mediation process before pursuing any other remedies.
         </p>
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">13. Governing Law & Dispute Resolution</h2>
+        <h2 className="text-2xl font-semibold">13. Cooperation & Good Faith</h2>
         <p className="text-muted-foreground">
-          These Terms are governed by the laws of the State of Maryland, USA. Any disputes shall be resolved through 
-          binding arbitration in accordance with the American Arbitration Association rules, with proceedings held in Montgomery County, Maryland.
+          All users agree to cooperate in good faith with Rentmaikar's mediation and dispute resolution processes. 
+          Users acknowledge that collaborative resolution benefits all parties and helps maintain a trusted platform community.
         </p>
       </section>
 
@@ -370,32 +375,36 @@ const Terms = () => {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold">11. Limitation of Liability</h2>
         <p className="text-muted-foreground">
-          TO THE MAXIMUM EXTENT PERMITTED BY NIGERIAN LAW, RENTMAIKAR NIGERIA LIMITED SHALL NOT BE LIABLE FOR:
+          Rentmaikar Nigeria Limited endeavors to provide a reliable platform. However, Rentmaikar's role is limited to that of an intermediary and facilitator. Users acknowledge that:
         </p>
         <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-          <li>Vehicle condition, mechanical failures, or safety defects</li>
-          <li>Accidents, injuries, or property damage during vehicle operation</li>
-          <li>Disputes between Owners and Drivers</li>
-          <li>Loss of income, earnings, or consequential damages</li>
-          <li>Actions of third parties, including rideshare passengers</li>
-          <li>Service interruptions, data loss, or technical failures</li>
-          <li>Actions by law enforcement or regulatory authorities</li>
+          <li>Vehicle condition, maintenance, and safety remain the responsibility of the Owner</li>
+          <li>Driving conduct and compliance with traffic laws remain the responsibility of the Driver</li>
+          <li>Rentmaikar does not guarantee uninterrupted service availability</li>
+          <li>Users are encouraged to resolve concerns through the Platform's mediation and dispute resolution channels</li>
         </ul>
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">12. Indemnification</h2>
+        <h2 className="text-2xl font-semibold">12. Mediation & Dispute Resolution</h2>
         <p className="text-muted-foreground">
-          You agree to indemnify, defend, and hold harmless Rentmaikar Nigeria Limited, its officers, directors, employees, and agents 
-          from any claims, damages, losses, or expenses arising from your use of the Platform or violation of these Terms.
+          Rentmaikar is committed to resolving all disputes amicably through structured mediation:
+        </p>
+        <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+          <li><strong>Step 1 — Internal Mediation:</strong> All disputes between Owners, Drivers, and the Platform must first be submitted to Rentmaikar's administrative mediation team for review and resolution</li>
+          <li><strong>Step 2 — Independent Mediation:</strong> If internal mediation does not resolve the matter within 30 days, either party may request independent mediation through a mutually agreed-upon mediator</li>
+          <li><strong>Step 3 — Alternative Dispute Resolution (ADR):</strong> As a final step, unresolved disputes may be submitted to alternative dispute resolution in accordance with the laws of the Federal Republic of Nigeria</li>
+        </ul>
+        <p className="text-muted-foreground">
+          Both parties agree to participate in good faith in the mediation process before pursuing any other remedies.
         </p>
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">13. Governing Law & Dispute Resolution</h2>
+        <h2 className="text-2xl font-semibold">13. Cooperation & Good Faith</h2>
         <p className="text-muted-foreground">
-          These Terms are governed by the laws of the Federal Republic of Nigeria. Any disputes shall be resolved through 
-          arbitration in accordance with the Arbitration and Conciliation Act, with proceedings held in Lagos, Nigeria.
+          All users agree to cooperate in good faith with Rentmaikar's mediation and dispute resolution processes. 
+          Users acknowledge that collaborative resolution benefits all parties and helps maintain a trusted platform community.
         </p>
       </section>
 
