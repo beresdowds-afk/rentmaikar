@@ -1499,6 +1499,54 @@ export type Database = {
         }
         Relationships: []
       }
+      roadside_partners: {
+        Row: {
+          coverage_area: string
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string
+          rating: number | null
+          region: string
+          response_time_minutes: number | null
+          service_type: string
+          updated_at: string
+        }
+        Insert: {
+          coverage_area: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone: string
+          rating?: number | null
+          region?: string
+          response_time_minutes?: number | null
+          service_type: string
+          updated_at?: string
+        }
+        Update: {
+          coverage_area?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string
+          rating?: number | null
+          region?: string
+          response_time_minutes?: number | null
+          service_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       role_audit_log: {
         Row: {
           action: string
@@ -1689,6 +1737,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subscription_plans: {
+        Row: {
+          billing_interval: string
+          created_at: string
+          currency: string
+          description: string | null
+          eligible_roles: string[]
+          id: string
+          is_active: boolean
+          name: string
+          plan_type: string
+          price: number
+          region: string
+          updated_at: string
+        }
+        Insert: {
+          billing_interval?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          eligible_roles?: string[]
+          id?: string
+          is_active?: boolean
+          name: string
+          plan_type: string
+          price: number
+          region: string
+          updated_at?: string
+        }
+        Update: {
+          billing_interval?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          eligible_roles?: string[]
+          id?: string
+          is_active?: boolean
+          name?: string
+          plan_type?: string
+          price?: number
+          region?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       support_staff: {
         Row: {
@@ -1914,6 +2007,113 @@ export type Database = {
           },
         ]
       }
+      training_completions: {
+        Row: {
+          completed_at: string
+          id: string
+          module_id: string
+          score: number | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          module_id: string
+          score?: number | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          module_id?: string
+          score?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_completions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "training_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_modules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          is_active: boolean
+          module_order: number
+          region: string
+          script_content: string | null
+          title: string
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_active?: boolean
+          module_order?: number
+          region?: string
+          script_content?: string | null
+          title: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_active?: boolean
+          module_order?: number
+          region?: string
+          script_content?: string | null
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
+      training_refresh_requirements: {
+        Row: {
+          created_at: string
+          id: string
+          last_completed_at: string | null
+          next_due_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_completed_at?: string | null
+          next_due_at: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_completed_at?: string | null
+          next_due_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_documents: {
         Row: {
           created_at: string
@@ -1999,6 +2199,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          auto_renew: boolean
+          created_at: string
+          expires_at: string
+          id: string
+          payment_method: string | null
+          payment_reference: string | null
+          plan_id: string
+          started_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_renew?: boolean
+          created_at?: string
+          expires_at: string
+          id?: string
+          payment_method?: string | null
+          payment_reference?: string | null
+          plan_id: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_renew?: boolean
+          created_at?: string
+          expires_at?: string
+          id?: string
+          payment_method?: string | null
+          payment_reference?: string | null
+          plan_id?: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vehicle_category_prices: {
         Row: {
