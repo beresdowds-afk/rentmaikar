@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_daily_tasks: {
+        Row: {
+          category: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_completed: boolean
+          priority: string
+          source_id: string | null
+          source_table: string | null
+          task_date: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_completed?: boolean
+          priority?: string
+          source_id?: string | null
+          source_table?: string | null
+          task_date?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_completed?: boolean
+          priority?: string
+          source_id?: string | null
+          source_table?: string | null
+          task_date?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       api_key_usage_log: {
         Row: {
           api_key_id: string
