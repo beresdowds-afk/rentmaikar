@@ -58,6 +58,7 @@ import { useRegion, type Country } from "@/contexts/RegionContext";
 import { useCurrencyConversion } from "@/hooks/useCurrencyConversion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { AdminDailyTodoList } from "@/components/admin/AdminDailyTodoList";
 
 // Mock financial data - in production, this would come from the database
 const mockFinancialData = {
@@ -434,6 +435,11 @@ const AdminDashboard = () => {
                 </div>
               </div>
             </Card>
+          </div>
+
+          {/* Daily To-Do List */}
+          <div className="mb-8">
+            <AdminDailyTodoList />
           </div>
 
           {/* Portal Navigation */}
