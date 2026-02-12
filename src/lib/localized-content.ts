@@ -89,8 +89,8 @@ const usaHeroContent: HeroContent = {
   headline: "Earn From Your Car.",
   highlightedWord: "Maximize Your Earnings",
   description: "Turn your vehicle into a profit machine. List with trusted drivers, collect weekly payments, and build passive income—while we handle the rest.",
-  primaryCta: "Find My Car",
-  secondaryCta: "Owners Registration",
+  primaryCta: "Drivers, Find Your Car",
+  secondaryCta: "Owners, Earn From Your Car",
   whatsappCta: "Chat with Us",
   smsCta: "Text Us",
 };
@@ -178,14 +178,14 @@ const usaFeaturesContent: FeaturesContent = {
 
 const usaCTAContent: CTAContent = {
   driver: {
-    title: "Ready to Maximize Your Earnings?",
+    title: "Drivers, Ready to Maximize Your Earnings?",
     description: "Join thousands of drivers who've unlocked their earning potential. Fast approval, flexible terms, and support when you need it.",
-    cta: "Find My Car Now",
+    cta: "Drivers, Find Your Car Now",
   },
   owner: {
-    title: "Turn Your Vehicle into Income",
+    title: "Owners, Turn Your Vehicle into Income",
     description: "List your car and earn passive income. We handle driver screening, weekly payments, and all support.",
-    cta: "Start Earning",
+    cta: "Owners, Start Earning",
   },
 };
 
@@ -223,8 +223,8 @@ const nigeriaHeroContent: HeroContent = {
   headline: "Register Your Vehicle.",
   highlightedWord: "Grow Your Income",
   description: "Join a trusted network of vehicle owners. Connect with verified drivers and start earning passive income from Bolt, Uber, and InDrive rentals today.",
-  primaryCta: "Find My Car",
-  secondaryCta: "Earn From Your Car",
+  primaryCta: "Drivers, Find Your Car",
+  secondaryCta: "Owners, Earn From Your Car",
   whatsappCta: "Chat on WhatsApp",
   smsCta: "Send SMS",
 };
@@ -312,14 +312,14 @@ const nigeriaFeaturesContent: FeaturesContent = {
 
 const nigeriaCTAContent: CTAContent = {
   driver: {
-    title: "Ready to Join the Community?",
+    title: "Drivers, Ready to Join the Community?",
     description: "Join thousands of Nigerian drivers who are growing their income with verified vehicles. We're here to support your success.",
-    cta: "Get Started Now",
+    cta: "Drivers, Get Started Now",
   },
   owner: {
-    title: "Let Your Car Work for You",
+    title: "Owners, Let Your Car Work for You",
     description: "List your vehicle and earn steady income. We handle driver verification, secure payments, and full support.",
-    cta: "List Your Car",
+    cta: "Owners, List Your Car",
   },
 };
 
