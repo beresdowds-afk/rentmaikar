@@ -246,6 +246,7 @@ export const PortalAnalyticsCards = ({ activePortal, onNavigate }: PortalAnalyti
       case 'support': return getSupportCards();
       case 'crm': return getCRMCards();
       case 'erp': return getERPCards();
+      default: return [];
     }
   };
 
