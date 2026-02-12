@@ -1,4 +1,4 @@
-import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Inbox, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag } from "lucide-react";
+import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Inbox, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -29,6 +29,9 @@ export const crmTabs: PortalTab[] = [
   { value: "legal-agreements", label: "Legal Agreements", icon: <FileText className="h-4 w-4" />, dataTour: "admin-agreements" },
   { value: "rent-to-own", label: "Rent to Own", icon: <Home className="h-4 w-4" />, dataTour: "admin-rto" },
   { value: "content", label: "Content CMS", icon: <HelpCircle className="h-4 w-4" /> },
+  { value: "subscriptions", label: "Subscriptions", icon: <CreditCard className="h-4 w-4" /> },
+  { value: "training", label: "Driver Training", icon: <GraduationCap className="h-4 w-4" /> },
+  { value: "roadside-partners", label: "Roadside Partners", icon: <Truck className="h-4 w-4" /> },
 ];
 
 export const erpTabs: PortalTab[] = [

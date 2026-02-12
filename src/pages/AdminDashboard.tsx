@@ -34,6 +34,9 @@ import { AdminTaskPortal } from "@/components/admin/portal/AdminTaskPortal";
 import { VehiclePickupManagement } from "@/components/admin/VehiclePickupManagement";
 import { ApplicationManagement } from "@/components/admin/ApplicationManagement";
 import { PortalNavigation, type PortalType } from "@/components/admin/PortalNavigation";
+import { TrainingModuleManagement } from "@/components/admin/TrainingModuleManagement";
+import { SubscriptionManagement } from "@/components/admin/SubscriptionManagement";
+import { RoadsidePartnerManagement } from "@/components/admin/RoadsidePartnerManagement";
 import { PortalAnalyticsCards } from "@/components/admin/PortalAnalyticsCards";
 import { GlobalSearch } from "@/components/admin/GlobalSearch";
 import AdminOnboardingTour from "@/components/onboarding/AdminOnboardingTour";
@@ -596,6 +599,9 @@ const AdminDashboard = () => {
                   </TabsContent>
                 </Tabs>
               )}
+              {activeTab === 'subscriptions' && <SubscriptionManagement />}
+              {activeTab === 'training' && <TrainingModuleManagement />}
+              {activeTab === 'roadside-partners' && <RoadsidePartnerManagement />}
             </div>
           )}
 
