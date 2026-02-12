@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { user, isLoading, userRole } = useAuth();
+  const { user, isLoading, userRole, twoFactorVerified } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -26,6 +26,11 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
 
   if (!user) {
     // Save the attempted location for redirect after login
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  // Check if 2FA has been verified for this session
+  if (!twoFactorVerified) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 

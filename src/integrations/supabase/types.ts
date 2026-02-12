@@ -2114,6 +2114,81 @@ export type Database = {
         }
         Relationships: []
       }
+      two_factor_audit_log: {
+        Row: {
+          action: string
+          channel: string | null
+          created_at: string
+          failure_reason: string | null
+          id: string
+          ip_address: string | null
+          phone_number: string | null
+          success: boolean
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          channel?: string | null
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          ip_address?: string | null
+          phone_number?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          channel?: string | null
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          ip_address?: string | null
+          phone_number?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      two_factor_settings: {
+        Row: {
+          created_at: string
+          enabled_at: string | null
+          id: string
+          is_enabled: boolean
+          is_mandatory: boolean
+          phone_number: string | null
+          preferred_channel: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled_at?: string | null
+          id?: string
+          is_enabled?: boolean
+          is_mandatory?: boolean
+          phone_number?: string | null
+          preferred_channel?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled_at?: string | null
+          id?: string
+          is_enabled?: boolean
+          is_mandatory?: boolean
+          phone_number?: string | null
+          preferred_channel?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_documents: {
         Row: {
           created_at: string

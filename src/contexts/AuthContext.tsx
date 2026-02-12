@@ -4,15 +4,28 @@ import { supabase } from '@/integrations/supabase/client';
 
 type AppRole = 'admin' | 'owner' | 'driver' | 'legal_support' | 'iot_support' | 'vehicle_support';
 
+interface TwoFactorStatus {
+  requires_2fa: boolean;
+  is_setup: boolean;
+  is_mandatory: boolean;
+  has_phone: boolean;
+  preferred_channel: string;
+  phone?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
   userRole: AppRole | null;
+  twoFactorStatus: TwoFactorStatus | null;
+  twoFactorVerified: boolean;
+  setTwoFactorVerified: (verified: boolean) => void;
   signUp: (email: string, password: string, fullName: string, role: AppRole) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null; userId?: string }>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
+  check2FAStatus: (userId: string) => Promise<TwoFactorStatus | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,6 +35,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState<AppRole | null>(null);
+  const [twoFactorStatus, setTwoFactorStatus] = useState<TwoFactorStatus | null>(null);
+  const [twoFactorVerified, setTwoFactorVerified] = useState(false);
 
   const fetchUserRole = async (userId: string) => {
     try {
@@ -43,6 +58,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const check2FAStatus = async (userId: string): Promise<TwoFactorStatus | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-2fa-code', {
+        body: { action: 'status', user_id: userId },
+      });
+      if (error || !data?.success) return null;
+
+      // Also get the phone number from 2FA settings
+      const { data: settings } = await supabase
+        .from('two_factor_settings')
+        .select('phone_number, preferred_channel')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      const status: TwoFactorStatus = {
+        requires_2fa: data.requires_2fa,
+        is_setup: data.is_setup,
+        is_mandatory: data.is_mandatory,
+        has_phone: data.has_phone,
+        preferred_channel: data.preferred_channel || 'sms',
+        phone: settings?.phone_number || undefined,
+      };
+      setTwoFactorStatus(status);
+      return status;
+    } catch {
+      return null;
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -57,6 +101,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }, 0);
         } else {
           setUserRole(null);
+          setTwoFactorStatus(null);
+          setTwoFactorVerified(false);
         }
         
         setIsLoading(false);
@@ -70,6 +116,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (session?.user) {
         fetchUserRole(session.user.id).then(setUserRole);
+        // For existing sessions, assume 2FA was previously verified
+        setTwoFactorVerified(true);
       }
       
       setIsLoading(false);
@@ -116,12 +164,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      return { error };
+      if (error) {
+        return { error };
+      }
+
+      // Don't mark 2FA as verified yet — the Auth page will handle the challenge
+      setTwoFactorVerified(false);
+
+      return { error: null, userId: data.user?.id };
     } catch (err) {
       return { error: err as Error };
     }
@@ -132,6 +187,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     setSession(null);
     setUserRole(null);
+    setTwoFactorStatus(null);
+    setTwoFactorVerified(false);
   };
 
   const hasRole = (role: AppRole) => {
@@ -145,10 +202,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         session,
         isLoading,
         userRole,
+        twoFactorStatus,
+        twoFactorVerified,
+        setTwoFactorVerified,
         signUp,
         signIn,
         signOut,
         hasRole,
+        check2FAStatus,
       }}
     >
       {children}
