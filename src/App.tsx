@@ -25,6 +25,7 @@ import NotFound from "./pages/NotFound";
 import LegalSupportDashboard from "./pages/LegalSupportDashboard";
 import IoTSupportDashboard from "./pages/IoTSupportDashboard";
 import VehicleSupportDashboard from "./pages/VehicleSupportDashboard";
+import DriverTraining from "./pages/DriverTraining";
 
 const queryClient = new QueryClient();
 
@@ -125,6 +126,14 @@ const App = () => (
                   element={
                     <ProtectedRoute allowedRoles={['vehicle_support', 'admin']}>
                       <VehicleSupportDashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/driver/training" 
+                  element={
+                    <ProtectedRoute allowedRoles={['driver', 'admin']}>
+                      <DriverTraining />
                     </ProtectedRoute>
                   } 
                 />
