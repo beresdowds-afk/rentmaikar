@@ -387,6 +387,38 @@ const AdminDashboard = () => {
               </div>
             </Card>
 
+            {/* Admin Balance */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Admin Balance</p>
+                  <p className="text-2xl font-bold text-emerald-600 mt-1">
+                    ${(totalIncomeUsd - totalPayoutsUsd).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
+                  <CreditCard className="w-6 h-6" />
+                </div>
+              </div>
+              <div className="space-y-1.5 pt-2 border-t">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <span>🇺🇸</span> USD
+                  </span>
+                  <span className="font-medium">${(mockFinancialData.income.usd - mockFinancialData.ownerPayouts.usd).toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <span>🇳🇬</span> NGN
+                  </span>
+                  <span className="font-medium">₦{(mockFinancialData.income.ngn - mockFinancialData.ownerPayouts.ngn).toLocaleString()}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground pt-1">
+                  Available platform balance
+                </p>
+              </div>
+            </Card>
+
             {/* Payment Defaults */}
             <Card className="p-6">
               <div className="flex items-center justify-between">
