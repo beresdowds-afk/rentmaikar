@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.email-webhook]
 verify_jwt = false
+
+[functions.send-2fa-code]
+verify_jwt = false

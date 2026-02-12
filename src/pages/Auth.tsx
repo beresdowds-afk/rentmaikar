@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, AlertCircle, User, Shield, Users, ArrowLeft, Mail, CheckCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
+import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -45,7 +46,7 @@ type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signIn, signUp, isLoading: authLoading, userRole } = useAuth();
+  const { user, signIn, signUp, isLoading: authLoading, userRole, twoFactorVerified, setTwoFactorVerified, check2FAStatus } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
@@ -55,12 +56,18 @@ const Auth = () => {
   const [activeTab, setActiveTab] = useState('login');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  
+  // 2FA state
+  const [show2FA, setShow2FA] = useState(false);
+  const [twoFAUserId, setTwoFAUserId] = useState<string>('');
+  const [twoFAPhone, setTwoFAPhone] = useState<string>('');
+  const [twoFAChannel, setTwoFAChannel] = useState<string>('sms');
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
-  // Redirect authenticated users
+  // Redirect authenticated users (only if 2FA is verified or not required)
   useEffect(() => {
-    if (user && !authLoading) {
+    if (user && !authLoading && twoFactorVerified && !show2FA) {
       if (userRole === 'admin') {
         navigate('/admin', { replace: true });
       } else if (userRole === 'owner') {
@@ -71,7 +78,7 @@ const Auth = () => {
         navigate(from, { replace: true });
       }
     }
-  }, [user, authLoading, userRole, navigate, from]);
+  }, [user, authLoading, userRole, navigate, from, twoFactorVerified, show2FA]);
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -105,7 +112,7 @@ const Auth = () => {
     setError(null);
     setShowEmailVerification(false);
 
-    const { error } = await signIn(data.email, data.password);
+    const { error, userId } = await signIn(data.email, data.password);
 
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
@@ -117,10 +124,27 @@ const Auth = () => {
       } else {
         setError(error.message);
       }
-    } else {
-      toast.success('Welcome back!');
+      setIsSubmitting(false);
+      return;
     }
 
+    // Check 2FA status
+    if (userId) {
+      const status = await check2FAStatus(userId);
+      if (status && (status.requires_2fa || status.is_setup) && status.has_phone && status.phone) {
+        // Show 2FA challenge
+        setTwoFAUserId(userId);
+        setTwoFAPhone(status.phone);
+        setTwoFAChannel(status.preferred_channel);
+        setShow2FA(true);
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    // No 2FA required — mark as verified and proceed
+    setTwoFactorVerified(true);
+    toast.success('Welcome back!');
     setIsSubmitting(false);
   };
 
@@ -224,6 +248,26 @@ const Auth = () => {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  // Two-Factor Authentication Challenge
+  if (show2FA) {
+    return (
+      <TwoFactorChallenge
+        userId={twoFAUserId}
+        phone={twoFAPhone}
+        channel={twoFAChannel}
+        onVerified={() => {
+          setShow2FA(false);
+          setTwoFactorVerified(true);
+          toast.success('Welcome back!');
+        }}
+        onCancel={async () => {
+          setShow2FA(false);
+          await supabase.auth.signOut();
+        }}
+      />
     );
   }
 
