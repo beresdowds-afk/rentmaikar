@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { X, ChevronLeft, ChevronRight, Shield, Inbox, MessageSquare, Users, Car, CreditCard, Settings, AlertTriangle, Camera, FileText, Home, Package } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Shield, Inbox, MessageSquare, Users, Car, CreditCard, Settings, AlertTriangle, Camera, FileText, Home, Package, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 
@@ -102,6 +102,14 @@ const tourSteps: TourStep[] = [
     description: "Generate, manage, and witness legal agreements between drivers and owners. Export signed documents as PDFs.",
     target: "[data-tour='admin-agreements']",
     icon: FileText,
+    position: "bottom"
+  },
+  {
+    id: "training",
+    title: "Driver Training & Insurance",
+    description: "Manage mandatory driver training modules. Training completion is a precondition for group insurance eligibility. Monitor 6-month refresh compliance and subscription status.",
+    target: "[data-tour='admin-training']",
+    icon: GraduationCap,
     position: "bottom"
   },
   {

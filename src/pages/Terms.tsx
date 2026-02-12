@@ -11,7 +11,7 @@ const Terms = () => {
   const USATerms = () => (
     <div className="prose prose-lg max-w-none space-y-8">
       <p className="text-muted-foreground text-lg">
-        Last updated: January 19, 2026
+        Last updated: February 12, 2026
       </p>
       
       <section className="space-y-4">
@@ -132,7 +132,25 @@ const Terms = () => {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">9. Incident Reporting</h2>
+        <h2 className="text-2xl font-semibold">9. Mandatory Driver Training & Group Insurance</h2>
+        <p className="text-muted-foreground">
+          All Drivers must complete Rentmaikar's online Driver Training Program before being eligible to operate any vehicle on the Platform:
+        </p>
+        <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+          <li><strong>Prerequisite for Insurance:</strong> Completion of the Driver Training Program is a mandatory precondition for enrollment in Rentmaikar's group insurance coverage. Drivers who have not completed or whose training has lapsed are <strong>not eligible</strong> for group insurance benefits</li>
+          <li><strong>Mandatory Completion:</strong> Training must be completed in full before the Driver may begin any rental period</li>
+          <li><strong>Compulsory Refresh:</strong> Drivers must complete a training refresh every six (6) months to maintain active status and continued insurance eligibility</li>
+          <li><strong>Training Subscription:</strong> An annual training subscription fee of $24 USD applies</li>
+          <li><strong>Suspension for Non-Compliance:</strong> Failure to complete the initial training or mandatory refresh will result in immediate suspension of driving privileges and group insurance coverage until training is brought current</li>
+          <li><strong>Training Records:</strong> All training completions and refresh dates are logged and auditable</li>
+        </ul>
+        <p className="text-muted-foreground font-medium">
+          <strong>Important:</strong> No group insurance claim will be processed for any Driver whose training status is not current at the time of the incident.
+        </p>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">10. Incident Reporting</h2>
         <p className="text-muted-foreground">
           Drivers must report all incidents immediately through the Platform:
         </p>
@@ -148,7 +166,7 @@ const Terms = () => {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">10. Limitation of Liability</h2>
+        <h2 className="text-2xl font-semibold">11. Limitation of Liability</h2>
         <p className="text-muted-foreground">
           TO THE MAXIMUM EXTENT PERMITTED BY LAW, RENTMAIKAR LLC SHALL NOT BE LIABLE FOR:
         </p>
@@ -163,7 +181,7 @@ const Terms = () => {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">11. Indemnification</h2>
+        <h2 className="text-2xl font-semibold">12. Indemnification</h2>
         <p className="text-muted-foreground">
           You agree to indemnify, defend, and hold harmless Rentmaikar LLC, its officers, directors, employees, and agents 
           from any claims, damages, losses, or expenses arising from your use of the Platform or violation of these Terms.
@@ -171,7 +189,7 @@ const Terms = () => {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">12. Governing Law & Dispute Resolution</h2>
+        <h2 className="text-2xl font-semibold">13. Governing Law & Dispute Resolution</h2>
         <p className="text-muted-foreground">
           These Terms are governed by the laws of the State of Maryland, USA. Any disputes shall be resolved through 
           binding arbitration in accordance with the American Arbitration Association rules, with proceedings held in Montgomery County, Maryland.
@@ -179,7 +197,7 @@ const Terms = () => {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">13. Contact Information</h2>
+        <h2 className="text-2xl font-semibold">14. Contact Information</h2>
         <p className="text-muted-foreground">
           For questions about these Terms of Use:<br />
           Email: {EMAIL_CONFIG.legal}<br />
@@ -192,7 +210,7 @@ const Terms = () => {
   const NigeriaTerms = () => (
     <div className="prose prose-lg max-w-none space-y-8">
       <p className="text-muted-foreground text-lg">
-        Last updated: January 19, 2026
+        Last updated: February 12, 2026
       </p>
       
       <section className="space-y-4">
@@ -316,7 +334,25 @@ const Terms = () => {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">9. Incident Reporting</h2>
+        <h2 className="text-2xl font-semibold">9. Mandatory Driver Training & Group Insurance</h2>
+        <p className="text-muted-foreground">
+          All Drivers must complete Rentmaikar's online Driver Training Program before being eligible to operate any vehicle on the Platform:
+        </p>
+        <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+          <li><strong>Prerequisite for Insurance:</strong> Completion of the Driver Training Program is a mandatory precondition for enrollment in Rentmaikar's group insurance coverage. Drivers who have not completed or whose training has lapsed are <strong>not eligible</strong> for group insurance benefits</li>
+          <li><strong>Mandatory Completion:</strong> Training must be completed in full before the Driver may begin any rental period</li>
+          <li><strong>Compulsory Refresh:</strong> Drivers must complete a training refresh every six (6) months to maintain active status and continued insurance eligibility</li>
+          <li><strong>Training Subscription:</strong> An annual training subscription fee of ₦30,000 NGN applies</li>
+          <li><strong>Suspension for Non-Compliance:</strong> Failure to complete the initial training or mandatory refresh will result in immediate suspension of driving privileges and group insurance coverage until training is brought current</li>
+          <li><strong>Training Records:</strong> All training completions and refresh dates are logged and auditable</li>
+        </ul>
+        <p className="text-muted-foreground font-medium">
+          <strong>Important:</strong> No group insurance claim will be processed for any Driver whose training status is not current at the time of the incident.
+        </p>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">10. Incident Reporting</h2>
         <p className="text-muted-foreground">
           Drivers must report all incidents immediately through the Platform:
         </p>
@@ -332,7 +368,7 @@ const Terms = () => {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">10. Limitation of Liability</h2>
+        <h2 className="text-2xl font-semibold">11. Limitation of Liability</h2>
         <p className="text-muted-foreground">
           TO THE MAXIMUM EXTENT PERMITTED BY NIGERIAN LAW, RENTMAIKAR NIGERIA LIMITED SHALL NOT BE LIABLE FOR:
         </p>
@@ -348,7 +384,7 @@ const Terms = () => {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">11. Indemnification</h2>
+        <h2 className="text-2xl font-semibold">12. Indemnification</h2>
         <p className="text-muted-foreground">
           You agree to indemnify, defend, and hold harmless Rentmaikar Nigeria Limited, its officers, directors, employees, and agents 
           from any claims, damages, losses, or expenses arising from your use of the Platform or violation of these Terms.
@@ -356,7 +392,7 @@ const Terms = () => {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">12. Governing Law & Dispute Resolution</h2>
+        <h2 className="text-2xl font-semibold">13. Governing Law & Dispute Resolution</h2>
         <p className="text-muted-foreground">
           These Terms are governed by the laws of the Federal Republic of Nigeria. Any disputes shall be resolved through 
           arbitration in accordance with the Arbitration and Conciliation Act, with proceedings held in Lagos, Nigeria.
@@ -364,7 +400,7 @@ const Terms = () => {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">13. Contact Information</h2>
+        <h2 className="text-2xl font-semibold">14. Contact Information</h2>
         <p className="text-muted-foreground">
           For questions about these Terms of Use:<br />
           Email: {EMAIL_CONFIG.legal}<br />
