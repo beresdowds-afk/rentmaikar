@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Copy, Check, Code, Shield, Zap, Database, Bell, CreditCard, Car, AlertTriangle } from "lucide-react";
+import { Copy, Check, Code, Shield, Zap, Database, Bell, CreditCard, Car, AlertTriangle, Globe, Key } from "lucide-react";
 import { toast } from "sonner";
 
 interface Endpoint {
@@ -202,6 +202,96 @@ const endpoints: Endpoint[] = [
   "notificationsSent": 3,
   "accountsLocked": 1
 }`
+  },
+  // Communication - Region-Aware Routing
+  {
+    method: "POST",
+    path: "/functions/v1/send-inbox-reply",
+    description: "Send region-routed SMS/WhatsApp reply via Twilio (US) or Termii (NG)",
+    auth: true,
+    category: "communication",
+    requestBody: `{
+  "conversationId": "uuid",
+  "messageContent": "Your vehicle is ready for pickup.",
+  "channel": "sms",
+  "recipientPhone": "+2348012345678"
+}`,
+    responseBody: `{
+  "success": true,
+  "messageSid": "msg_abc123",
+  "status": "sent",
+  "provider": "termii"
+}`,
+    headers: [
+      { name: "Authorization", value: "Bearer <service_role_key>", required: true },
+      { name: "Content-Type", value: "application/json", required: true }
+    ]
+  },
+  {
+    method: "POST",
+    path: "/functions/v1/send-sms-notification",
+    description: "Region-aware SMS notification — routes to Twilio (US +1) or Termii (NG +234) automatically",
+    auth: true,
+    category: "communication",
+    requestBody: `{
+  "recipientPhone": "+2348012345678",
+  "notificationType": "payment_reminder",
+  "channel": "sms",
+  "amount": 50000,
+  "currency": "NGN",
+  "dueDate": "2026-02-20"
+}`,
+    responseBody: `{
+  "success": true,
+  "messageId": "msg_termii_456",
+  "provider": "termii",
+  "region": "NG"
+}`,
+    headers: [
+      { name: "Authorization", value: "Bearer <service_role_key>", required: true },
+      { name: "Content-Type", value: "application/json", required: true }
+    ]
+  },
+  {
+    method: "POST",
+    path: "/api/webhook/termii/inbound",
+    description: "Termii inbound webhook — receives incoming SMS from Nigerian numbers, forwards to operational line",
+    auth: false,
+    category: "communication",
+    requestBody: `{
+  "sms": {
+    "from": "+2348012345678",
+    "to": "RENTMAIKAR",
+    "message": "I need roadside assistance",
+    "type": "plain",
+    "channel": "generic"
+  }
+}`,
+    responseBody: `{
+  "success": true,
+  "conversationId": "uuid",
+  "forwarded": true,
+  "forwardedTo": "+234XXXXXXXXXX"
+}`
+  },
+  {
+    method: "POST",
+    path: "/api/webhook/twilio/inbound",
+    description: "Twilio inbound webhook — receives incoming SMS from US numbers, forwards to operational line",
+    auth: false,
+    category: "communication",
+    requestBody: `{
+  "From": "+12025551234",
+  "To": "+18005551234",
+  "Body": "When is my next payment due?",
+  "MessageSid": "SM1234567890"
+}`,
+    responseBody: `{
+  "success": true,
+  "conversationId": "uuid",
+  "forwarded": true,
+  "forwardedTo": "+1XXXXXXXXXX"
+}`
   }
 ];
 
@@ -211,7 +301,8 @@ const categories = [
   { id: "iot", label: "IoT & Tracking", icon: Car },
   { id: "auth", label: "Authentication", icon: Shield },
   { id: "orders", label: "Orders", icon: Database },
-  { id: "payments", label: "Payments", icon: CreditCard }
+  { id: "payments", label: "Payments", icon: CreditCard },
+  { id: "communication", label: "Communication", icon: Globe }
 ];
 
 const methodColors: Record<string, string> = {
@@ -414,6 +505,58 @@ const ApiDocs = () => {
           </TabsContent>
 
           <TabsContent value="webhooks" className="space-y-6">
+            {/* Communication Secrets Reference */}
+            <Card className="border-primary/30 bg-primary/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5 text-primary" />
+                  Communication Provider Secrets
+                </CardTitle>
+                <CardDescription>
+                  Required secrets for region-aware SMS/Voice routing. Configure these in Lovable Cloud → Secrets.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h4 className="font-semibold text-sm mb-2">🇺🇸 Twilio (USA — +1)</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-0.5 rounded">TWILIO_ACCOUNT_SID</code>
+                      <span className="text-muted-foreground">— Account SID from Twilio Console</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-0.5 rounded">TWILIO_AUTH_TOKEN</code>
+                      <span className="text-muted-foreground">— Auth Token from Twilio Console</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-0.5 rounded">TWILIO_PHONE_NUMBER</code>
+                      <span className="text-muted-foreground">— Platform phone number for US SMS/Voice</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm mb-2">🇳🇬 Termii (Nigeria — +234)</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-0.5 rounded">TERMII_API_KEY</code>
+                      <span className="text-muted-foreground">— API key from <a href="https://accounts.termii.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">Termii Dashboard</a> → Settings → API Keys</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-2 py-0.5 rounded">TERMII_SENDER_ID</code>
+                      <span className="text-muted-foreground">— Registered Sender ID (e.g. "RENTMAIKAR") from Termii → Sender IDs</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-2 border-t">
+                  <h4 className="font-semibold text-sm mb-2">Provider Registry</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Region routing is configured via the <code className="bg-muted px-1 py-0.5 rounded">communication_providers</code> table. 
+                    Admins can update forwarding numbers, sender IDs, and toggle providers on/off from the Communication Settings panel.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Webhook Events</CardTitle>
