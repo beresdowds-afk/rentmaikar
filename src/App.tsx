@@ -8,6 +8,7 @@ import { UserTypeProvider } from "@/contexts/UserTypeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import CookieConsent from "@/components/CookieConsent";
+import MessageConsent from "@/components/MessageConsent";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -39,6 +40,7 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <CookieConsent />
+              <MessageConsent />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
