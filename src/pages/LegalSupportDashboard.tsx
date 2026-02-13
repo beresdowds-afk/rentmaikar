@@ -9,6 +9,8 @@ import { LegalSupportOnboardingTour } from '@/components/onboarding/LegalSupport
 import { useLegalSupportOnboarding } from '@/hooks/useLegalSupportOnboarding';
 import { useSupportTasks } from '@/hooks/useSupportTasks';
 import { LEGAL_STATUS_CONFIG } from '@/types/support';
+import { IncomingCallAlerts } from '@/components/voice/IncomingCallAlerts';
+import { useVoiceCall } from '@/hooks/useVoiceCall';
 
 const LEGAL_STATUSES = Object.keys(LEGAL_STATUS_CONFIG) as (keyof typeof LEGAL_STATUS_CONFIG)[];
 
@@ -17,6 +19,7 @@ export default function LegalSupportDashboard() {
   const { tasks, staffProfile, isLoading, fetchTasks, updateTaskStatus, addTaskUpdate } = useSupportTasks({
     taskTypes: ['legal'],
   });
+  const { incomingRequests, acceptCallRequest, rejectCallRequest, escalateCallRequest } = useVoiceCall('legal_support');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -59,6 +62,13 @@ export default function LegalSupportDashboard() {
         stats={stats}
       >
         <div className="space-y-6">
+          <IncomingCallAlerts
+            requests={incomingRequests}
+            onAccept={acceptCallRequest}
+            onReject={rejectCallRequest}
+            onEscalate={escalateCallRequest}
+            userRole="legal_support"
+          />
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4" data-tour="filters">
             <div className="relative flex-1" data-tour="search">

@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Phone, PhoneOff, Users, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Phone, PhoneOff, Users, Mic, MicOff, Volume2, VolumeX, Circle } from 'lucide-react';
 import type { VoIPCall } from '@/types/voip';
 import { formatPhoneForDisplay } from '@/types/voip';
 
@@ -15,6 +17,7 @@ export const ActiveCallPanel = ({ call, onEndCall }: ActiveCallPanelProps) => {
   const [duration, setDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
+  const [isRecording, setIsRecording] = useState(false);
 
   useEffect(() => {
     const startTime = call.started_at ? new Date(call.started_at).getTime() : Date.now();
@@ -92,6 +95,19 @@ export const ActiveCallPanel = ({ call, onEndCall }: ActiveCallPanelProps) => {
 
             {/* Call Controls */}
             <div className="flex items-center gap-2">
+              {/* Recording Toggle */}
+              <div className="flex items-center gap-1.5 mr-2 px-2 py-1 rounded-md border bg-background">
+                <Circle className={`h-3 w-3 ${isRecording ? 'text-red-500 fill-red-500 animate-pulse' : 'text-muted-foreground'}`} />
+                <Label htmlFor="recording-toggle" className="text-xs cursor-pointer">
+                  {isRecording ? 'Recording' : 'Record'}
+                </Label>
+                <Switch
+                  id="recording-toggle"
+                  checked={isRecording}
+                  onCheckedChange={setIsRecording}
+                  className="scale-75"
+                />
+              </div>
               <Button
                 variant={isMuted ? 'destructive' : 'outline'}
                 size="icon"
