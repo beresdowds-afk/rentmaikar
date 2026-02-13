@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -30,6 +30,7 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isValidSession, setIsValidSession] = useState<boolean | null>(null);
+  const sessionFoundRef = useRef(false);
 
   const form = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
@@ -40,33 +41,39 @@ const ResetPassword = () => {
   });
 
   useEffect(() => {
-    // Check if user has a valid recovery session
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // User should have a session from clicking the reset link
-      if (session) {
-        setIsValidSession(true);
-      } else {
-        // Listen for auth state changes (recovery link will trigger this)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
-            setIsValidSession(true);
-          }
-        });
-
-        // Give it a moment to process the recovery token from URL
-        setTimeout(() => {
-          if (isValidSession === null) {
-            setIsValidSession(false);
-          }
-        }, 2000);
-
-        return () => subscription.unsubscribe();
-      }
+    const markValid = () => {
+      sessionFoundRef.current = true;
+      setIsValidSession(true);
     };
 
-    checkSession();
+    // Listen for auth state changes FIRST (recovery link will trigger this)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[ResetPassword] Auth event:', event);
+      if (event === 'PASSWORD_RECOVERY') {
+        markValid();
+      } else if (event === 'SIGNED_IN' && session) {
+        markValid();
+      }
+    });
+
+    // Then check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        markValid();
+      }
+    });
+
+    // Fallback timeout — use ref to avoid stale closure
+    const timeout = setTimeout(() => {
+      if (!sessionFoundRef.current) {
+        setIsValidSession(false);
+      }
+    }, 4000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleResetPassword = async (data: ResetPasswordFormData) => {
