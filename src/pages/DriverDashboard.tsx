@@ -24,6 +24,9 @@ import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { PaymentReminderPreview } from '@/components/payment/PaymentReminderPreview';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
+import { VoiceCallButton } from '@/components/voice/VoiceCallButton';
+import { VoiceCallHistory } from '@/components/voice/VoiceCallHistory';
+import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { VerificationGate } from '@/components/onboarding/VerificationGate';
 import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -93,6 +96,7 @@ export default function DriverDashboard() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const { callHistory, isLoading: callsLoading, refreshHistory } = useVoiceCall('driver');
 
   const isUSA = country === 'USA';
   const rental = mockRentalData.rental;
@@ -161,10 +165,7 @@ export default function DriverDashboard() {
                 <MessageSquare className="h-4 w-4" />
                 {isUSA ? 'Contact Support' : 'WhatsApp Support'}
               </Button>
-              <Button variant="outline" className="gap-2">
-                <Phone className="h-4 w-4" />
-                {isUSA ? 'Call Admin' : 'Call Admin'}
-              </Button>
+              <VoiceCallButton userRole="driver" targetRole="admin" />
             </div>
           </div>
 
@@ -244,6 +245,10 @@ export default function DriverDashboard() {
                 Agreements
               </TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="call-history" className="flex items-center gap-1">
+                <Phone className="h-3 w-3" />
+                Call History
+              </TabsTrigger>
               <TabsTrigger value="settings" data-tour="driver-settings">Settings</TabsTrigger>
             </TabsList>
 
@@ -481,6 +486,16 @@ export default function DriverDashboard() {
               <DocumentUpload userType="driver" />
             </TabsContent>
 
+            {/* Call History Tab */}
+            <TabsContent value="call-history" className="space-y-6">
+              <VoiceCallHistory
+                calls={callHistory}
+                isLoading={callsLoading}
+                onRefresh={refreshHistory}
+                userRole="driver"
+              />
+            </TabsContent>
+
             {/* Settings Tab */}
             <TabsContent value="settings" className="space-y-6">
               {/* Email Verification */}
@@ -499,6 +514,7 @@ export default function DriverDashboard() {
         <Footer />
         <SupportChatWidget />
         <CallSupportButton userType="driver" variant="floating" />
+        <VoiceCallButton userRole="driver" targetRole="admin" variant="floating" />
       </div>
     </VerificationGate>
   );

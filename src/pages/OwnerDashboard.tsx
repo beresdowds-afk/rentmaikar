@@ -27,6 +27,9 @@ import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import { VehicleDocumentUpload } from '@/components/documents/VehicleDocumentUpload';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
+import { VoiceCallButton } from '@/components/voice/VoiceCallButton';
+import { VoiceCallHistory } from '@/components/voice/VoiceCallHistory';
+import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { VerificationGate } from '@/components/onboarding/VerificationGate';
 import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -118,6 +121,7 @@ export default function OwnerDashboard() {
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const { callHistory, isLoading: callsLoading, refreshHistory } = useVoiceCall('owner');
 
   const isUSA = country === 'USA';
 
@@ -404,6 +408,7 @@ export default function OwnerDashboard() {
                 <FileText className="h-4 w-4" />
                 Documents
               </TabsTrigger>
+              <TabsTrigger value="call-history">Call History</TabsTrigger>
               <TabsTrigger value="settings" data-tour="owner-settings">Settings</TabsTrigger>
             </TabsList>
 
@@ -747,6 +752,15 @@ export default function OwnerDashboard() {
               {/* Vehicle Documents */}
               <VehicleDocumentUpload />
             </TabsContent>
+            {/* Call History Tab */}
+            <TabsContent value="call-history" className="space-y-6">
+              <VoiceCallHistory
+                calls={callHistory}
+                isLoading={callsLoading}
+                onRefresh={refreshHistory}
+                userRole="owner"
+              />
+            </TabsContent>
           </Tabs>
         </div>
         </main>
@@ -754,6 +768,7 @@ export default function OwnerDashboard() {
         <Footer />
         <SupportChatWidget />
         <CallSupportButton userType="owner" variant="floating" />
+        <VoiceCallButton userRole="owner" targetRole="driver" variant="floating" />
       </div>
     </VerificationGate>
   );
