@@ -17,11 +17,14 @@ interface CallRequest {
   region: 'USA' | 'Nigeria';
   recipients: Recipient[];
   groupId?: string;
+  callerRole?: string;
+  receiverRole?: string;
+  receiverId?: string;
 }
 
 const TWILIO_NUMBERS = {
   USA: Deno.env.get('TWILIO_PHONE_NUMBER') || '+16083843932',
-  Nigeria: Deno.env.get('TWILIO_PHONE_NUMBER_NG') || '+16083843932', // Same number for now
+  Nigeria: Deno.env.get('TWILIO_PHONE_NUMBER_NG') || '+16083843932',
 };
 
 const handler = async (req: Request): Promise<Response> => {
@@ -53,13 +56,65 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const body: CallRequest = await req.json();
-    const { callType, region, recipients } = body;
+    const { callType, region, recipients, callerRole, receiverRole, receiverId } = body;
 
     if (!recipients || recipients.length === 0) {
       return new Response(
         JSON.stringify({ error: 'At least one recipient is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // ─── ROLE-BASED PERMISSION VALIDATION ───
+    if (callerRole && receiverRole) {
+      // Check if this caller role is permitted to call this receiver role
+      const { data: permission, error: permError } = await supabase
+        .from('voice_call_permissions')
+        .select('*')
+        .eq('caller_role', callerRole)
+        .eq('receiver_role', receiverRole)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (permError || !permission) {
+        return new Response(
+          JSON.stringify({ error: `${callerRole} is not permitted to call ${receiverRole}` }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // If rental link required (owner → driver), verify active rental exists
+      if (permission.requires_rental_link && receiverId) {
+        const { data: rental } = await supabase
+          .from('vehicles')
+          .select('id')
+          .eq('owner_id', user.id)
+          .eq('assigned_driver_id', receiverId)
+          .limit(1)
+          .maybeSingle();
+
+        if (!rental) {
+          return new Response(
+            JSON.stringify({ error: 'No active rental link found with this user' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
+      // Verify caller actually has the claimed role
+      const { data: callerRoleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', callerRole)
+        .maybeSingle();
+
+      if (!callerRoleData) {
+        return new Response(
+          JSON.stringify({ error: 'You do not have the required role to make this call' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Get Twilio credentials
@@ -74,7 +129,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Create call record in database
+    // Create call record in database with role tracking
     const { data: callRecord, error: callError } = await supabase
       .from('voip_calls')
       .insert({
@@ -84,6 +139,9 @@ const handler = async (req: Request): Promise<Response> => {
         status: 'pending',
         direction: 'outbound',
         started_at: new Date().toISOString(),
+        caller_role: callerRole || null,
+        receiver_id: receiverId || null,
+        receiver_role: receiverRole || null,
       })
       .select()
       .single();
@@ -104,10 +162,8 @@ const handler = async (req: Request): Promise<Response> => {
     const callResults = [];
     for (const recipient of recipients) {
       try {
-        // Determine recipient region from phone number
         const recipientRegion = recipient.phoneNumber.startsWith('+234') ? 'Nigeria' : 'USA';
 
-        // Build TwiML for the call
         let twiml;
         if (isConference) {
           twiml = `<Response><Dial><Conference>${conferenceName}</Conference></Dial></Response>`;
@@ -115,19 +171,15 @@ const handler = async (req: Request): Promise<Response> => {
           twiml = `<Response><Say>Connecting you to RentMaikar support.</Say><Dial>${recipient.phoneNumber}</Dial></Response>`;
         }
 
-        // Make the Twilio API call
         const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`;
         const formData = new URLSearchParams();
         formData.append('To', recipient.phoneNumber);
         formData.append('From', fromNumber);
         formData.append('Twiml', twiml);
-        
-        // Enable call recording
         formData.append('Record', 'true');
         formData.append('RecordingStatusCallback', `${supabaseUrl}/functions/v1/recording-status-callback`);
         formData.append('RecordingStatusCallbackEvent', 'completed');
         
-        // Add status callback for call updates
         const callbackUrl = `${supabaseUrl}/functions/v1/voip-status-callback`;
         formData.append('StatusCallback', callbackUrl);
         formData.append('StatusCallbackEvent', 'initiated ringing answered completed');

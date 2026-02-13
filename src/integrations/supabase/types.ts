@@ -2663,6 +2663,95 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_call_permissions: {
+        Row: {
+          caller_role: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          receiver_role: string
+          requires_rental_link: boolean
+          updated_at: string
+        }
+        Insert: {
+          caller_role: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          receiver_role: string
+          requires_rental_link?: boolean
+          updated_at?: string
+        }
+        Update: {
+          caller_role?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          receiver_role?: string
+          requires_rental_link?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      voice_call_requests: {
+        Row: {
+          assigned_to: string | null
+          call_id: string | null
+          created_at: string
+          id: string
+          reason: string | null
+          region: string
+          requester_id: string
+          requester_role: string
+          resolved_at: string | null
+          status: string
+          target_id: string | null
+          target_role: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          call_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          region?: string
+          requester_id: string
+          requester_role: string
+          resolved_at?: string | null
+          status?: string
+          target_id?: string | null
+          target_role: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          call_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          region?: string
+          requester_id?: string
+          requester_role?: string
+          resolved_at?: string | null
+          status?: string
+          target_id?: string | null
+          target_role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_call_requests_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "voip_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       voip_call_groups: {
         Row: {
           created_at: string
@@ -2831,12 +2920,15 @@ export type Database = {
         Row: {
           call_sid: string | null
           call_type: string
+          caller_role: string | null
           created_at: string
           direction: string
           duration_seconds: number | null
           ended_at: string | null
           id: string
           initiated_by: string | null
+          receiver_id: string | null
+          receiver_role: string | null
           recording_duration_seconds: number | null
           recording_size_bytes: number | null
           recording_status: string | null
@@ -2850,12 +2942,15 @@ export type Database = {
         Insert: {
           call_sid?: string | null
           call_type: string
+          caller_role?: string | null
           created_at?: string
           direction?: string
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
           initiated_by?: string | null
+          receiver_id?: string | null
+          receiver_role?: string | null
           recording_duration_seconds?: number | null
           recording_size_bytes?: number | null
           recording_status?: string | null
@@ -2869,12 +2964,15 @@ export type Database = {
         Update: {
           call_sid?: string | null
           call_type?: string
+          caller_role?: string | null
           created_at?: string
           direction?: string
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
           initiated_by?: string | null
+          receiver_id?: string | null
+          receiver_role?: string | null
           recording_duration_seconds?: number | null
           recording_size_bytes?: number | null
           recording_status?: string | null
