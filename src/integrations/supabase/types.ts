@@ -361,6 +361,54 @@ export type Database = {
         }
         Relationships: []
       }
+      communication_providers: {
+        Row: {
+          country_code_prefix: string
+          created_at: string
+          forwarding_number: string | null
+          id: string
+          is_active: boolean
+          region_code: string
+          region_name: string
+          retry_count: number
+          sender_id: string | null
+          sms_provider: string
+          updated_at: string
+          updated_by: string | null
+          voice_provider: string
+        }
+        Insert: {
+          country_code_prefix: string
+          created_at?: string
+          forwarding_number?: string | null
+          id?: string
+          is_active?: boolean
+          region_code: string
+          region_name: string
+          retry_count?: number
+          sender_id?: string | null
+          sms_provider?: string
+          updated_at?: string
+          updated_by?: string | null
+          voice_provider?: string
+        }
+        Update: {
+          country_code_prefix?: string
+          created_at?: string
+          forwarding_number?: string | null
+          id?: string
+          is_active?: boolean
+          region_code?: string
+          region_name?: string
+          retry_count?: number
+          sender_id?: string | null
+          sms_provider?: string
+          updated_at?: string
+          updated_by?: string | null
+          voice_provider?: string
+        }
+        Relationships: []
+      }
       contact_settings: {
         Row: {
           contact_type: string
@@ -2236,6 +2284,83 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      unified_message_log: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          delivery_status: string
+          direction: string
+          error_message: string | null
+          forwarded_at: string | null
+          forwarded_message_id: string | null
+          forwarded_to: string | null
+          id: string
+          message_body: string
+          message_type: string
+          metadata: Json | null
+          provider: string
+          provider_message_id: string | null
+          region: string
+          retry_count: number
+          updated_at: string
+          user_id: string | null
+          user_name: string | null
+          user_phone: string | null
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          delivery_status?: string
+          direction: string
+          error_message?: string | null
+          forwarded_at?: string | null
+          forwarded_message_id?: string | null
+          forwarded_to?: string | null
+          id?: string
+          message_body: string
+          message_type?: string
+          metadata?: Json | null
+          provider: string
+          provider_message_id?: string | null
+          region: string
+          retry_count?: number
+          updated_at?: string
+          user_id?: string | null
+          user_name?: string | null
+          user_phone?: string | null
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          delivery_status?: string
+          direction?: string
+          error_message?: string | null
+          forwarded_at?: string | null
+          forwarded_message_id?: string | null
+          forwarded_to?: string | null
+          id?: string
+          message_body?: string
+          message_type?: string
+          metadata?: Json | null
+          provider?: string
+          provider_message_id?: string | null
+          region?: string
+          retry_count?: number
+          updated_at?: string
+          user_id?: string | null
+          user_name?: string | null
+          user_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unified_message_log_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "inbox_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_documents: {
         Row: {
