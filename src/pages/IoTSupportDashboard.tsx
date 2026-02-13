@@ -8,6 +8,8 @@ import { IoTSupportOnboardingTour } from '@/components/onboarding/IoTSupportOnbo
 import { useIoTSupportOnboarding } from '@/hooks/useIoTSupportOnboarding';
 import { useSupportTasks } from '@/hooks/useSupportTasks';
 import { IOT_STATUS_CONFIG } from '@/types/support';
+import { IncomingCallAlerts } from '@/components/voice/IncomingCallAlerts';
+import { useVoiceCall } from '@/hooks/useVoiceCall';
 
 const IOT_STATUSES = Object.keys(IOT_STATUS_CONFIG) as (keyof typeof IOT_STATUS_CONFIG)[];
 
@@ -16,6 +18,7 @@ export default function IoTSupportDashboard() {
   const { tasks, staffProfile, isLoading, fetchTasks, updateTaskStatus, addTaskUpdate } = useSupportTasks({
     taskTypes: ['iot_installation', 'iot_maintenance'],
   });
+  const { incomingRequests, acceptCallRequest, rejectCallRequest, escalateCallRequest } = useVoiceCall('iot_support');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -61,6 +64,13 @@ export default function IoTSupportDashboard() {
         stats={stats}
       >
         <div className="space-y-6">
+          <IncomingCallAlerts
+            requests={incomingRequests}
+            onAccept={acceptCallRequest}
+            onReject={rejectCallRequest}
+            onEscalate={escalateCallRequest}
+            userRole="iot_support"
+          />
           <div className="flex flex-col sm:flex-row gap-4" data-tour="filters">
             <div className="relative flex-1" data-tour="search">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
