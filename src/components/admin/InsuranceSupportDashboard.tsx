@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Shield, AlertTriangle, Clock, CheckCircle, RefreshCw, FileText, Car, User, Calendar, CreditCard, Eye, MapPin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -75,10 +77,40 @@ export const InsuranceSupportDashboard = () => {
   const [ownerProfile, setOwnerProfile] = useState<OwnerProfile | null>(null);
   const [documents, setDocuments] = useState<InsuranceDocument[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [insuranceEnabled, setInsuranceEnabled] = useState(true);
+  const [togglingInsurance, setTogglingInsurance] = useState(false);
 
   useEffect(() => {
     fetchTasks();
+    fetchInsuranceSetting();
   }, []);
+
+  const fetchInsuranceSetting = async () => {
+    const { data } = await supabase
+      .from('voip_settings')
+      .select('is_enabled')
+      .eq('feature_key', 'insurance_support')
+      .maybeSingle();
+    if (data) setInsuranceEnabled(data.is_enabled);
+  };
+
+  const toggleInsuranceSupport = async (enabled: boolean) => {
+    setTogglingInsurance(true);
+    try {
+      const { error } = await supabase
+        .from('voip_settings')
+        .update({ is_enabled: enabled, updated_at: new Date().toISOString() })
+        .eq('feature_key', 'insurance_support');
+      if (error) throw error;
+      setInsuranceEnabled(enabled);
+      toast.success(`Insurance support ${enabled ? 'enabled' : 'disabled'} for owners`);
+    } catch (error) {
+      console.error('Error toggling insurance support:', error);
+      toast.error('Failed to update insurance support setting');
+    } finally {
+      setTogglingInsurance(false);
+    }
+  };
 
   const fetchTasks = async () => {
     try {
@@ -246,6 +278,29 @@ export const InsuranceSupportDashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Master Switch */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="insurance-toggle" className="text-base font-medium">
+                Insurance Support Availability
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {insuranceEnabled
+                  ? 'Owners can submit insurance support requests from their dashboard'
+                  : 'Insurance support is disabled — owners cannot submit requests'}
+              </p>
+            </div>
+            <Switch
+              id="insurance-toggle"
+              checked={insuranceEnabled}
+              disabled={togglingInsurance}
+              onCheckedChange={toggleInsuranceSupport}
+            />
+          </div>
+        </CardContent>
+      </Card>
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>

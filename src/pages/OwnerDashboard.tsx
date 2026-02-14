@@ -25,6 +25,7 @@ import { OwnerRentToOwnListing } from '@/components/owner/OwnerRentToOwnListing'
 import { VehiclePickupLocation } from '@/components/owner/VehiclePickupLocation';
 import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import { VehicleDocumentUpload } from '@/components/documents/VehicleDocumentUpload';
+import { OwnerInsuranceSupport } from '@/components/owner/OwnerInsuranceSupport';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
 import { VoiceCallButton } from '@/components/voice/VoiceCallButton';
@@ -379,7 +380,7 @@ export default function OwnerDashboard() {
           </div>
 
           <Tabs defaultValue="vehicles" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-10 lg:w-auto lg:inline-flex">
+            <TabsList className="grid w-full grid-cols-11 lg:w-auto lg:inline-flex">
               <TabsTrigger value="vehicles" data-tour="owner-vehicles">My Vehicles</TabsTrigger>
               <TabsTrigger value="pickup-locations" className="flex items-center gap-1">
                 <MapPin className="h-4 w-4" />
@@ -397,6 +398,10 @@ export default function OwnerDashboard() {
               <TabsTrigger value="rent-to-own" className="flex items-center gap-1" data-tour="owner-rto">
                 <Home className="h-4 w-4" />
                 Rent to Own
+              </TabsTrigger>
+              <TabsTrigger value="insurance" className="flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                Insurance
               </TabsTrigger>
               <TabsTrigger value="agreements" className="flex items-center gap-1" data-tour="owner-agreements">
                 <FileText className="h-4 w-4" />
@@ -430,6 +435,11 @@ export default function OwnerDashboard() {
             {/* Pricing Tab */}
             <TabsContent value="pricing">
               <OwnerPriceNegotiation />
+            </TabsContent>
+
+            {/* Insurance Tab */}
+            <TabsContent value="insurance">
+              <OwnerInsuranceSupport />
             </TabsContent>
 
             {/* Agreements Tab */}
