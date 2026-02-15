@@ -1,5 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  getCallPriority,
+  getRegionFromPhone,
+  getRetryDecision,
+  getNextDayRetryTimestamp,
+  CHANNEL_ESCALATION,
+  type CallPriority,
+} from "../_shared/call-strategy.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -105,42 +113,93 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // ─── RETRY LOGIC: Schedule retry for busy/no-answer ───
+    // ─── SMART RETRY & ESCALATION LOGIC ───
     if (callStatus === 'busy' || callStatus === 'no-answer') {
       const { data: callRecord } = await supabase
         .from('voip_calls')
-        .select('id, initiated_by, region, caller_role, receiver_role, receiver_id')
+        .select('id, initiated_by, region, caller_role, receiver_role, receiver_id, call_type')
         .eq('call_sid', callSid)
         .single();
 
       if (callRecord) {
-        // Check existing retry count (max 2 retries)
-        const { count: retryCount } = await supabase
+        // Count existing attempts in last 24h for this user+type
+        const { count: attemptCount } = await supabase
           .from('voip_calls')
           .select('id', { count: 'exact', head: true })
           .eq('initiated_by', callRecord.initiated_by)
           .eq('receiver_id', callRecord.receiver_id)
-          .gte('created_at', new Date(Date.now() - 3600000).toISOString()) // Last hour
-          .in('status', ['busy', 'no-answer', 'ringing', 'pending']);
+          .gte('created_at', new Date(Date.now() - 86400000).toISOString());
 
-        if ((retryCount || 0) < 3) {
-          console.log(`[VoIP Callback] Scheduling retry for ${callSid} (attempt ${(retryCount || 0) + 1}/3)`);
-          // Create a retry call record (the cron/scheduler will pick it up)
-          await supabase
-            .from('voip_calls')
-            .insert({
+        const currentAttempt = attemptCount || 1;
+        const priority = getCallPriority(callRecord.call_type || 'medium');
+        const region = callRecord.region || getRegionFromPhone(to || '');
+        const decision = getRetryDecision(currentAttempt, priority, region);
+
+        console.log(`[VoIP Callback] Retry decision for ${callSid}:`, {
+          attempt: currentAttempt,
+          priority,
+          region,
+          decision,
+        });
+
+        if (decision.shouldRetry) {
+          if (decision.shouldEscalateChannel && decision.nextChannel) {
+            // Escalate to alternate channel (SMS/WhatsApp/Email)
+            const channel = decision.nextChannel.fallback;
+            console.log(`[VoIP Callback] Escalating to ${channel} for ${callSid}`);
+            
+            if (channel === 'sms' || channel === 'whatsapp') {
+              const smsUrl = `${supabaseUrl}/functions/v1/send-sms-notification`;
+              await fetch(smsUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${supabaseServiceKey}`,
+                },
+                body: JSON.stringify({
+                  phone: to,
+                  channel: channel,
+                  notificationType: 'general',
+                  customMessage: `We tried to reach you by phone regarding your Rentmaikar account. Please call us back or reply HELP for assistance.`,
+                }),
+              });
+            }
+            // For email escalation, the calling function handles it
+          }
+
+          if (decision.shouldScheduleNextDay) {
+            // Schedule retry for next day at start of calling hours
+            const retryAt = getNextDayRetryTimestamp(region);
+            console.log(`[VoIP Callback] Scheduling next-day retry at ${retryAt}`);
+            await supabase.from('voip_calls').insert({
               initiated_by: callRecord.initiated_by,
-              call_type: 'individual',
+              call_type: callRecord.call_type || 'individual',
               region: callRecord.region,
               status: 'pending',
               direction: 'outbound',
               caller_role: callRecord.caller_role,
               receiver_id: callRecord.receiver_id,
               receiver_role: callRecord.receiver_role,
-              started_at: new Date(Date.now() + 900000).toISOString(), // Retry in 15 min
+              started_at: retryAt,
             });
+          } else if (decision.retryDelayMs !== null) {
+            // Schedule retry with calculated delay
+            const retryAt = new Date(Date.now() + decision.retryDelayMs).toISOString();
+            console.log(`[VoIP Callback] Scheduling retry in ${decision.retryDelayMs / 60000}min at ${retryAt}`);
+            await supabase.from('voip_calls').insert({
+              initiated_by: callRecord.initiated_by,
+              call_type: callRecord.call_type || 'individual',
+              region: callRecord.region,
+              status: 'pending',
+              direction: 'outbound',
+              caller_role: callRecord.caller_role,
+              receiver_id: callRecord.receiver_id,
+              receiver_role: callRecord.receiver_role,
+              started_at: retryAt,
+            });
+          }
         } else {
-          console.log(`[VoIP Callback] Max retries reached for ${callSid}`);
+          console.log(`[VoIP Callback] All retries exhausted for ${callSid} (${priority} priority)`);
         }
       }
     }
