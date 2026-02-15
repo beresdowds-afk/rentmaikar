@@ -1,4 +1,4 @@
-import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Inbox, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck } from "lucide-react";
+import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Inbox, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-export type PortalType = 'crm' | 'erp' | 'support' | 'marketing';
+export type PortalType = 'crm' | 'erp' | 'support' | 'marketing' | 'docs';
 
 export interface PortalTab {
   value: string;
@@ -75,6 +75,12 @@ export const marketingTabs: PortalTab[] = [
   { value: "google", label: "Google Ads", icon: <Chrome className="h-4 w-4" /> },
 ];
 
+export const docsTabs: PortalTab[] = [
+  { value: "messaging-docs", label: "SMS & WhatsApp", icon: <MessageSquare className="h-4 w-4" /> },
+  { value: "email-docs", label: "Email System", icon: <Mail className="h-4 w-4" /> },
+  { value: "voip-docs", label: "VoIP & IVR", icon: <Phone className="h-4 w-4" /> },
+];
+
 interface PortalNavigationProps {
   activePortal: PortalType;
   activeTab: string;
@@ -94,6 +100,7 @@ export const PortalNavigation = ({
       case 'erp': return erpTabs;
       case 'support': return supportTabs;
       case 'marketing': return marketingTabs;
+      case 'docs': return docsTabs;
     }
   };
 
@@ -103,6 +110,7 @@ export const PortalNavigation = ({
       case 'erp': return <Building2 className="h-4 w-4" />;
       case 'support': return <Headphones className="h-4 w-4" />;
       case 'marketing': return <Share2 className="h-4 w-4" />;
+      case 'docs': return <BookOpen className="h-4 w-4" />;
     }
   };
 
@@ -112,6 +120,7 @@ export const PortalNavigation = ({
       case 'erp': return 'ERP';
       case 'support': return 'Support';
       case 'marketing': return 'Marketing';
+      case 'docs': return 'Docs';
     }
   };
 
@@ -121,6 +130,7 @@ export const PortalNavigation = ({
       case 'erp': return 'Operations, assets & fleet management';
       case 'support': return 'Communications & task management';
       case 'marketing': return 'Social media & campaign management';
+      case 'docs': return 'Communication system documentation';
     }
   };
 
@@ -131,7 +141,7 @@ export const PortalNavigation = ({
     <div className="flex flex-col gap-4 mb-6">
       {/* Portal Buttons with Dropdowns */}
       <div className="flex flex-wrap items-center gap-2">
-        {(['crm', 'erp', 'support', 'marketing'] as PortalType[]).map((portal) => (
+        {(['crm', 'erp', 'support', 'marketing', 'docs'] as PortalType[]).map((portal) => (
           <DropdownMenu key={portal}>
             <DropdownMenuTrigger asChild>
               <Button
