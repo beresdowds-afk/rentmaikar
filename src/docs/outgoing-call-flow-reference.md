@@ -203,6 +203,14 @@ sequenceDiagram
 | Document Expiry Batch (Daily 8 AM) | `process-expiry-notifications` | `0 8 * * *` | Multi-tier (30/15/7/5-day) document expiry alerts with VoIP+IVR |
 | Quarterly Inspections (1st of quarter) | `process-inspection-reminders` | `0 10 1 */3 *` | Vehicle inspection due reminders to owners |
 
+### Voicemail System
+
+Dynamic voicemail drops with AMD detection and SMS follow-ups. See **[voicemail-system-reference.md](./voicemail-system-reference.md)** for:
+- Script definitions (payment default day 1/2, document expiry, welcome call)
+- Variable replacement and personalization
+- SMS follow-up templates per script type
+- `voicemail_logs` table schema and logging flow
+
 ### Localized Call Scripts
 
 All outbound calls use region-aware multilingual scripts. See **[call-scripts-reference.md](./call-scripts-reference.md)** for:

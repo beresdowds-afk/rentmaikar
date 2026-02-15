@@ -8,6 +8,12 @@ import {
   CHANNEL_ESCALATION,
   type CallPriority,
 } from "../_shared/call-strategy.ts";
+import {
+  VOICEMAIL_SCRIPTS,
+  personalizeScript,
+  getCallbackNumber,
+  generateFollowUpSMS,
+} from "../_shared/voicemail-system.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,8 +48,9 @@ const handler = async (req: Request): Promise<Response> => {
     const callStatus = formData.get('CallStatus') as string;
     const duration = formData.get('CallDuration') as string;
     const to = formData.get('To') as string;
+    const answeredBy = formData.get('AnsweredBy') as string; // AMD result
 
-    console.log('VoIP Status Callback:', { callSid, callStatus, duration, to });
+    console.log('VoIP Status Callback:', { callSid, callStatus, duration, to, answeredBy });
 
     if (!callSid) {
       return new Response('Missing CallSid', { status: 400 });
@@ -227,6 +234,66 @@ const handler = async (req: Request): Promise<Response> => {
         }
       } catch (smsErr) {
         console.error('[VoIP Callback] Post-call SMS failed:', smsErr);
+      }
+    }
+
+    // ─── VOICEMAIL DETECTION & LOGGING ───
+    if (callStatus === 'completed' && answeredBy && answeredBy.startsWith('machine')) {
+      try {
+        const { data: callRecord } = await supabase
+          .from('voip_calls')
+          .select('id, initiated_by, receiver_id, call_type, region')
+          .eq('call_sid', callSid)
+          .single();
+
+        if (callRecord && callRecord.call_type) {
+          const scriptType = callRecord.call_type;
+          const script = VOICEMAIL_SCRIPTS[scriptType];
+          const region = callRecord.region || getRegionFromPhone(to || '');
+          const callbackNumber = getCallbackNumber(region);
+
+          // Log voicemail
+          await supabase.from('voicemail_logs').insert({
+            user_id: callRecord.receiver_id || callRecord.initiated_by,
+            call_sid: callSid,
+            script_type: scriptType,
+            personalized_message: script ? personalizeScript(script.message, { number: callbackNumber }) : null,
+            callback_queue: script?.callbackQueue || null,
+            voicemail_detected: true,
+            region,
+          });
+
+          // Send SMS follow-up if configured
+          if (script && (script.smsFollowup || script.smsLink || script.smsWelcome) && to) {
+            const smsMessage = generateFollowUpSMS(scriptType, callbackNumber);
+            const smsUrl = `${supabaseUrl}/functions/v1/send-sms-notification`;
+            await fetch(smsUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseServiceKey}`,
+              },
+              body: JSON.stringify({
+                phone: to,
+                channel: 'sms',
+                notificationType: 'general',
+                customMessage: smsMessage,
+              }),
+            });
+
+            // Update log with SMS sent flag
+            await supabase.from('voicemail_logs')
+              .update({
+                sms_followup_sent: script.smsFollowup,
+                sms_link_sent: script.smsLink,
+              })
+              .eq('call_sid', callSid);
+
+            console.log(`[VoIP Callback] Voicemail SMS follow-up sent for ${scriptType}`);
+          }
+        }
+      } catch (vmErr) {
+        console.error('[VoIP Callback] Voicemail logging failed:', vmErr);
       }
     }
 
