@@ -540,6 +540,54 @@ export type Database = {
         }
         Relationships: []
       }
+      email_campaigns: {
+        Row: {
+          category: string | null
+          click_count: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          open_count: number | null
+          scheduled_date: string | null
+          sent_count: number | null
+          status: string | null
+          target_audience: Json | null
+          template: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          click_count?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          open_count?: number | null
+          scheduled_date?: string | null
+          sent_count?: number | null
+          status?: string | null
+          target_audience?: Json | null
+          template?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          click_count?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          open_count?: number | null
+          scheduled_date?: string | null
+          sent_count?: number | null
+          status?: string | null
+          target_audience?: Json | null
+          template?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_clicks: {
         Row: {
           clicked_at: string
@@ -717,6 +765,48 @@ export type Database = {
           source_message_id?: string | null
           suppressed_at?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      email_templates: {
+        Row: {
+          category: string | null
+          created_at: string
+          html_content: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          subject: string
+          text_content: string | null
+          updated_at: string
+          variables: Json | null
+          version: number | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          html_content?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject: string
+          text_content?: string | null
+          updated_at?: string
+          variables?: Json | null
+          version?: number | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          html_content?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject?: string
+          text_content?: string | null
+          updated_at?: string
+          variables?: Json | null
+          version?: number | null
         }
         Relationships: []
       }
