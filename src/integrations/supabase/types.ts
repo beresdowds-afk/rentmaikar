@@ -510,6 +510,93 @@ export type Database = {
         }
         Relationships: []
       }
+      email_bounces: {
+        Row: {
+          bounce_type: string
+          bounced_at: string
+          created_at: string
+          details: string | null
+          id: string
+          message_id: string
+          recipient: string
+        }
+        Insert: {
+          bounce_type: string
+          bounced_at?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          message_id: string
+          recipient: string
+        }
+        Update: {
+          bounce_type?: string
+          bounced_at?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          message_id?: string
+          recipient?: string
+        }
+        Relationships: []
+      }
+      email_clicks: {
+        Row: {
+          clicked_at: string
+          created_at: string
+          id: string
+          is_conversion: boolean
+          link: string
+          message_id: string
+          recipient: string
+        }
+        Insert: {
+          clicked_at?: string
+          created_at?: string
+          id?: string
+          is_conversion?: boolean
+          link: string
+          message_id: string
+          recipient: string
+        }
+        Update: {
+          clicked_at?: string
+          created_at?: string
+          id?: string
+          is_conversion?: boolean
+          link?: string
+          message_id?: string
+          recipient?: string
+        }
+        Relationships: []
+      }
+      email_complaints: {
+        Row: {
+          complained_at: string
+          complaint_type: string | null
+          created_at: string
+          id: string
+          message_id: string
+          recipient: string
+        }
+        Insert: {
+          complained_at?: string
+          complaint_type?: string | null
+          created_at?: string
+          id?: string
+          message_id: string
+          recipient: string
+        }
+        Update: {
+          complained_at?: string
+          complaint_type?: string | null
+          created_at?: string
+          id?: string
+          message_id?: string
+          recipient?: string
+        }
+        Relationships: []
+      }
       email_logs: {
         Row: {
           category: string
@@ -566,6 +653,69 @@ export type Database = {
           sent_at?: string | null
           status?: string
           template?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_opens: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: string | null
+          message_id: string
+          opened_at: string
+          recipient: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          message_id: string
+          opened_at?: string
+          recipient: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          message_id?: string
+          opened_at?: string
+          recipient?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      email_suppression_list: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          reason: string
+          source_message_id: string | null
+          suppressed_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          reason: string
+          source_message_id?: string | null
+          suppressed_at?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          reason?: string
+          source_message_id?: string | null
+          suppressed_at?: string
           updated_at?: string
         }
         Relationships: []

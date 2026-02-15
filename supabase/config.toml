@@ -68,3 +68,9 @@ verify_jwt = false
 
 [functions.sms-commands]
 verify_jwt = false
+
+[functions.email-tracking]
+verify_jwt = false
+
+[functions.send-outbound-email]
+verify_jwt = false
