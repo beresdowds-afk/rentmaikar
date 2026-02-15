@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, Eye, CreditCard, Wallet, Mail, Loader2, RefreshCw, TrendingUp, HelpCircle, Inbox, Phone } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, Eye, CreditCard, Wallet, Mail, Loader2, RefreshCw, TrendingUp, HelpCircle, Inbox, Phone, Headphones } from "lucide-react";
 import { CallCenterPage } from "@/components/admin/voip/CallCenterPage";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
@@ -471,6 +471,14 @@ const AdminDashboard = () => {
               >
                 <Phone className="h-4 w-4" />
                 Call Center
+              </Button>
+              <Button
+                variant={activeTab === 'support-tasks' ? 'default' : 'outline'}
+                className="gap-2"
+                onClick={() => { setPortalView('support'); setActiveTab('support-tasks'); }}
+              >
+                <Headphones className="h-4 w-4" />
+                Support Tasks
               </Button>
             </div>
           </div>

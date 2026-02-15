@@ -58,7 +58,6 @@ export const erpTabs: PortalTab[] = [
 export const supportTabs: PortalTab[] = [
   { value: "task-portal", label: "Task Portal", icon: <LayoutGrid className="h-4 w-4" />, dataTour: "admin-portal" },
   { value: "contacts", label: "Contact Settings", icon: <MessageSquare className="h-4 w-4" />, dataTour: "admin-contacts" },
-  { value: "support-tasks", label: "Support Tasks", icon: <Headphones className="h-4 w-4" /> },
   { value: "insurance", label: "Insurance Support", icon: <Shield className="h-4 w-4" /> },
   { value: "nigeria-verification", label: "🇳🇬 Nigeria Verification", icon: <Flag className="h-4 w-4" /> },
   { value: "police-reports", label: "🇳🇬 Police Reports", icon: <FileText className="h-4 w-4" /> },
