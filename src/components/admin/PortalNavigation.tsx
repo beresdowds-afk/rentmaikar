@@ -51,6 +51,7 @@ export const erpTabs: PortalTab[] = [
   { value: "api-keys", label: "API Keys", icon: <KeyRound className="h-4 w-4" /> },
   { value: "webhooks", label: "Webhooks", icon: <Webhook className="h-4 w-4" /> },
   { value: "api-endpoints", label: "API Endpoints", icon: <Code className="h-4 w-4" /> },
+  { value: "security", label: "Security", icon: <Shield className="h-4 w-4" /> },
   { value: "settings", label: "Region Settings", icon: <Settings className="h-4 w-4" /> },
 ];
 
