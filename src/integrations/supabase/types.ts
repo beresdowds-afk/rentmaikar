@@ -3084,6 +3084,51 @@ export type Database = {
           },
         ]
       }
+      voicemail_logs: {
+        Row: {
+          call_sid: string | null
+          callback_queue: string | null
+          created_at: string
+          id: string
+          personalized_message: string | null
+          region: string | null
+          script_type: string
+          sms_followup_sent: boolean | null
+          sms_link_sent: boolean | null
+          updated_at: string
+          user_id: string
+          voicemail_detected: boolean | null
+        }
+        Insert: {
+          call_sid?: string | null
+          callback_queue?: string | null
+          created_at?: string
+          id?: string
+          personalized_message?: string | null
+          region?: string | null
+          script_type: string
+          sms_followup_sent?: boolean | null
+          sms_link_sent?: boolean | null
+          updated_at?: string
+          user_id: string
+          voicemail_detected?: boolean | null
+        }
+        Update: {
+          call_sid?: string | null
+          callback_queue?: string | null
+          created_at?: string
+          id?: string
+          personalized_message?: string | null
+          region?: string | null
+          script_type?: string
+          sms_followup_sent?: boolean | null
+          sms_link_sent?: boolean | null
+          updated_at?: string
+          user_id?: string
+          voicemail_detected?: boolean | null
+        }
+        Relationships: []
+      }
       voip_call_groups: {
         Row: {
           created_at: string
