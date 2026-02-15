@@ -190,22 +190,33 @@ sequenceDiagram
 | `vehicle-return-ivr` | Twilio `<Gather>` callback — Press 1 (confirm return + SMS) / Press 2 (extension check) / Press 3 (issue) / Press 4 (agent) |
 | `vehicle-shutdown-warning` | CRITICAL — immediate call with moving/parked-aware TwiML + SMS + admin alert |
 | `shutdown-warning-ivr` | Twilio `<Gather>` callback — Moving: Press 1 (pulled over) / Press 2 (emergency). Parked: Press 1 (dispute) / Press 2 (agent) |
+| `process-daily-debits` | Daily 12:01 AM — payment success/failure notifications to drivers via SMS/WhatsApp/email |
+| `process-owner-payouts` | Friday 5 PM — weekly payout confirmation/pending notifications to vehicle owners |
+| `process-inspection-reminders` | Quarterly 1st of quarter — vehicle inspection due reminders to owners |
+
+### Batch Notification Schedules
+
+| Schedule | Edge Function | Cron | Description |
+|---|---|---|---|
+| Daily Payment Debits (12:01 AM) | `process-daily-debits` | `1 0 * * *` | Notifies drivers of successful/failed daily payment processing |
+| Weekly Owner Payouts (Fri 5 PM) | `process-owner-payouts` | `0 17 * * 5` | Sends payout confirmation/pending notifications to vehicle owners |
+| Document Expiry Batch (Daily 8 AM) | `process-expiry-notifications` | `0 8 * * *` | Multi-tier (30/15/7/5-day) document expiry alerts with VoIP+IVR |
+| Quarterly Inspections (1st of quarter) | `process-inspection-reminders` | `0 10 1 */3 *` | Vehicle inspection due reminders to owners |
 
 ### Not Yet Implemented (Blueprint Only)
 
 | Trigger | Notes |
 |---|---|
 | Rental Extension Offer | Partially handled via vehicle-return-ivr Press 2 |
-| Owner Payout Confirmation | Requires payout processing integration |
 | Driver Welcome Call | Requires onboarding automation trigger |
 
 ### Call Execution Flow
 
 1. Edge function creates `voip_calls` record with `status: 'pending'`, `caller_role: 'system'`
-2. Twilio REST API called with `<Gather>` TwiML pointing to `payment-default-ivr`
+2. Twilio REST API called with `<Gather>` TwiML pointing to IVR handler
 3. Answering Machine Detection enabled (`MachineDetection: DetectMessageEnd`)
 4. `StatusCallback` → `voip-status-callback` receives real-time updates
-5. On answered: IVR menu plays, driver presses 1 or 2
+5. On answered: IVR menu plays, user presses option key
 6. On busy/no-answer: retry scheduled (up to 3x @ 15min intervals)
 7. On completion: duration logged, summary SMS sent
 8. On max retries exhausted: marked as permanently failed
