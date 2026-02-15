@@ -1,10 +1,29 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+/**
+ * Fetch email config from DB, falling back to hardcoded defaults
+ */
+async function getEmailConfig(supabase: any, key: string) {
+  const { data } = await supabase
+    .from("platform_email_config")
+    .select("email, sender_name")
+    .eq("key", key)
+    .eq("is_active", true)
+    .single();
+
+  if (data) {
+    const name = data.sender_name || "Rentmaikar";
+    return { email: data.email, formatted: `${name} <${data.email}>` };
+  }
+  // Fallback
+  return { email: "support@rentmaikar.com", formatted: "Rentmaikar Support <support@rentmaikar.com>" };
+}
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -38,10 +57,11 @@ serve(async (req) => {
     const emailSubject = subject || 
       (conversation?.subject ? `Re: ${conversation.subject}` : "Reply from Rentmaikar Support");
 
-    // Use centralized email config
-    const fromEmail = formatSenderEmail('support');
+    // Use DB-driven email config with fallback
+    const supportConfig = await getEmailConfig(supabase, 'support');
+    const fromEmail = supportConfig.formatted;
 
-    console.log(`Sending email to ${recipientEmail} from ${EMAIL_CONFIG.support}`);
+    console.log(`Sending email to ${recipientEmail} from ${supportConfig.email}`);
 
     // Send email using Resend API directly
     const emailResponse = await fetch("https://api.resend.com/emails", {
