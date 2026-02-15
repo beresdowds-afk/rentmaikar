@@ -1756,6 +1756,9 @@ export type Database = {
           country_id: string
           created_at: string
           display_order: number
+          forwarding_notes: string | null
+          forwarding_sms: string | null
+          forwarding_whatsapp: string | null
           id: string
           is_active: boolean
           map_zoom: number | null
@@ -1770,6 +1773,9 @@ export type Database = {
           country_id: string
           created_at?: string
           display_order?: number
+          forwarding_notes?: string | null
+          forwarding_sms?: string | null
+          forwarding_whatsapp?: string | null
           id?: string
           is_active?: boolean
           map_zoom?: number | null
@@ -1784,6 +1790,9 @@ export type Database = {
           country_id?: string
           created_at?: string
           display_order?: number
+          forwarding_notes?: string | null
+          forwarding_sms?: string | null
+          forwarding_whatsapp?: string | null
           id?: string
           is_active?: boolean
           map_zoom?: number | null

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -237,6 +237,21 @@ const AddContactForm = ({ region, onAdded }: { region: string; onAdded: () => vo
 export const AdminContactSettings = () => {
   const { settings, isLoading, updateSetting, fetchSettings: refetch } = useContactSettings();
 
+  const [forwardingRegions, setForwardingRegions] = useState<any[]>([]);
+  const [forwardingLoading, setForwardingLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchForwarding = async () => {
+      const { data } = await supabase
+        .from('platform_regions')
+        .select('id, name, code, forwarding_sms, forwarding_whatsapp, forwarding_notes, platform_countries!inner(name, flag)')
+        .order('display_order');
+      if (data) setForwardingRegions(data);
+      setForwardingLoading(false);
+    };
+    fetchForwarding();
+  }, []);
+
   const usaSettings = settings.filter(s => s.region === 'USA');
   const nigeriaSettings = settings.filter(s => s.region === 'Nigeria');
 
@@ -369,6 +384,68 @@ export const AdminContactSettings = () => {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Message Forwarding Numbers */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Phone className="h-4 w-4 text-primary" />
+            Message Forwarding Numbers by Region
+          </CardTitle>
+          <CardDescription>
+            Local numbers that receive copies of all SMS and WhatsApp messages sent through the central messaging system. Managed in ERP → Regional Operations.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {forwardingLoading ? (
+            <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          ) : forwardingRegions.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No regions configured yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {forwardingRegions.map((region: any) => {
+                const country = region.platform_countries as { name: string; flag: string };
+                const hasFwd = region.forwarding_sms || region.forwarding_whatsapp;
+                return (
+                  <div key={region.id} className="p-3 rounded-lg bg-muted/50 border">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span>{country.flag}</span>
+                      <span className="font-medium text-sm">{region.name}</span>
+                      <Badge variant="outline" className="text-[10px]">{region.code}</Badge>
+                      {!hasFwd && <Badge variant="secondary" className="text-[10px]">No forwarding</Badge>}
+                    </div>
+                    {hasFwd ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                        {region.forwarding_sms && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-xs">SMS:</span>
+                            <span className="font-mono text-xs">{region.forwarding_sms}</span>
+                            <CopyButton value={region.forwarding_sms} />
+                          </div>
+                        )}
+                        {region.forwarding_whatsapp && (
+                          <div className="flex items-center gap-2">
+                            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-xs">WhatsApp:</span>
+                            <span className="font-mono text-xs">{region.forwarding_whatsapp}</span>
+                            <CopyButton value={region.forwarding_whatsapp} />
+                          </div>
+                        )}
+                        {region.forwarding_notes && (
+                          <p className="text-[10px] text-muted-foreground col-span-2">{region.forwarding_notes}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">Configure in ERP → Regional Operations → {region.name}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
