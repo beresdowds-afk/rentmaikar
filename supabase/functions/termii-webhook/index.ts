@@ -6,6 +6,152 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ─── Classify Termii inbound message type ───
+interface ParsedTermiiMessage {
+  type: "text" | "image" | "document" | "location" | "interactive" | "unknown";
+  content: string;
+  mediaUrl?: string;
+  mediaType?: string;
+  latitude?: number;
+  longitude?: number;
+  interactivePayload?: string;
+}
+
+const parseTermiiMessage = (payload: Record<string, unknown>): ParsedTermiiMessage => {
+  const text = (payload.text || payload.body || payload.message || "") as string;
+  const mediaUrl = payload.media_url as string | undefined;
+  const mediaType = payload.media_type as string | undefined;
+  const latitude = payload.latitude as number | undefined;
+  const longitude = payload.longitude as number | undefined;
+  const interactive = payload.interactive as Record<string, unknown> | undefined;
+
+  // Location
+  if (latitude && longitude) {
+    return {
+      type: "location",
+      content: text || `📍 Location: ${latitude}, ${longitude}`,
+      latitude,
+      longitude,
+    };
+  }
+
+  // Interactive reply
+  if (interactive) {
+    return {
+      type: "interactive",
+      content: text || (interactive.body as string) || "Interactive reply",
+      interactivePayload: JSON.stringify(interactive),
+    };
+  }
+
+  // Media (image or document)
+  if (mediaUrl) {
+    const isImage = mediaType?.startsWith("image/") ||
+      mediaUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+    return {
+      type: isImage ? "image" : "document",
+      content: text || (isImage ? "📷 Image" : "📄 Document"),
+      mediaUrl,
+      mediaType,
+    };
+  }
+
+  return { type: "text", content: text };
+};
+
+// ─── Process media from Termii ───
+const processTermiiMedia = async (
+  supabase: ReturnType<typeof createClient>,
+  mediaUrl: string,
+  mediaType: string | undefined,
+  cleanFrom: string,
+  messageId: string,
+) => {
+  try {
+    const mediaResponse = await fetch(mediaUrl);
+    if (!mediaResponse.ok) {
+      console.warn("Failed to download Termii media:", mediaResponse.status);
+      return { storagePath: null, publicUrl: mediaUrl };
+    }
+
+    const mediaBlob = await mediaResponse.blob();
+    const contentType = mediaType || mediaResponse.headers.get("content-type") || "application/octet-stream";
+    const ext = contentType.includes("pdf") ? "pdf"
+      : contentType.includes("png") ? "png"
+      : contentType.includes("jpeg") || contentType.includes("jpg") ? "jpg"
+      : contentType.includes("word") ? "docx"
+      : "bin";
+
+    const storagePath = `whatsapp/${cleanFrom.replace("+", "")}/${messageId || Date.now()}.${ext}`;
+    const bucket = contentType.startsWith("image/") ? "chat-attachments" : "user-documents";
+
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(storagePath, mediaBlob, { contentType, upsert: true });
+
+    if (uploadError) {
+      console.warn("Termii media upload failed:", uploadError.message);
+      return { storagePath: null, publicUrl: mediaUrl };
+    }
+
+    console.log(`Termii media uploaded to ${bucket}/${storagePath}`);
+    return { storagePath: `${bucket}/${storagePath}`, publicUrl: mediaUrl };
+  } catch (err) {
+    console.warn("Termii media processing error:", err);
+    return { storagePath: null, publicUrl: mediaUrl };
+  }
+};
+
+// ─── Process location: update vehicle tracking ───
+const processLocationMessage = async (
+  supabase: ReturnType<typeof createClient>,
+  cleanFrom: string,
+  latitude: number,
+  longitude: number,
+) => {
+  try {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .eq("phone", cleanFrom)
+      .single();
+
+    if (!profile) return null;
+
+    const { data: rental } = await supabase
+      .from("rentals")
+      .select("id, vehicle_id")
+      .eq("driver_id", profile.user_id)
+      .eq("status", "active")
+      .limit(1)
+      .single();
+
+    if (rental) {
+      await supabase
+        .from("iot_devices")
+        .update({
+          latitude,
+          longitude,
+          last_ping: new Date().toISOString(),
+        })
+        .eq("vehicle_id", rental.vehicle_id);
+
+      console.log(`Location updated for vehicle ${rental.vehicle_id}`);
+      return rental.vehicle_id;
+    }
+    return null;
+  } catch (err) {
+    console.warn("Location processing error:", err);
+    return null;
+  }
+};
+
+// Self-service command keywords
+const COMMAND_KEYWORDS = [
+  "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "SUPPORT",
+  "OK", "DONE", "1", "BOOKING", "2", "3", "4", "HUMAN", "DOCS", "RULES", "IOT",
+];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -16,16 +162,13 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Parse incoming Termii webhook (JSON payload)
     const payload = await req.json();
 
-    // Termii inbound webhook fields vary by event type
-    const from = payload.from || payload.mobile || payload.phone || "";
-    const body = payload.text || payload.body || payload.message || "";
-    const messageId = payload.message_id || payload.id || "";
-    const channel = payload.channel || "sms"; // 'sms' or 'whatsapp'
+    const from = (payload.from || payload.mobile || payload.phone || "") as string;
+    const messageId = (payload.message_id || payload.id || "") as string;
+    const channel = (payload.channel || "sms") as string;
 
-    // Normalize Nigerian phone number to international format
+    // Normalize Nigerian phone
     let cleanFrom = from;
     if (cleanFrom && !cleanFrom.startsWith("+")) {
       cleanFrom = cleanFrom.startsWith("234") ? `+${cleanFrom}` : `+234${cleanFrom}`;
@@ -33,47 +176,76 @@ serve(async (req) => {
 
     const inboundChannel = channel === "whatsapp" ? "whatsapp" : "sms";
 
-    console.log("Termii inbound message:", {
+    // ─── Parse message type ───
+    const parsed = parseTermiiMessage(payload);
+
+    console.log("Termii inbound:", {
       from: cleanFrom,
       channel: inboundChannel,
-      body: body?.substring(0, 50) + "...",
+      type: parsed.type,
+      content: parsed.content?.substring(0, 50) + "...",
       messageId,
     });
 
-    // ─── Check for WhatsApp self-service commands ───
-    const upperBody = (body || "").trim().toUpperCase();
-    const isCommand = ["PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "SUPPORT",
-      "OK", "DONE", "1", "BOOKING", "2", "3", "4", "HUMAN", "DOCS", "RULES", "IOT"].includes(upperBody);
+    // ─── Route text commands to whatsapp-commands ───
+    if (parsed.type === "text" && inboundChannel === "whatsapp") {
+      const upperBody = parsed.content.trim().toUpperCase();
+      if (COMMAND_KEYWORDS.includes(upperBody)) {
+        console.log(`Forwarding command "${upperBody}" to whatsapp-commands`);
 
-    if (inboundChannel === "whatsapp" && isCommand) {
-      // Forward to whatsapp-commands function for processing
-      console.log(`Forwarding WhatsApp command "${upperBody}" to whatsapp-commands`);
-
-      const commandResponse = await fetch(
-        `${supabaseUrl}/functions/v1/whatsapp-commands`,
-        {
+        await fetch(`${supabaseUrl}/functions/v1/whatsapp-commands`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${supabaseServiceKey}`,
           },
-          body: JSON.stringify({
-            from: cleanFrom,
-            text: body,
-            channel: "whatsapp",
-          }),
-        }
-      );
+          body: JSON.stringify({ from: cleanFrom, text: parsed.content, channel: "whatsapp" }),
+        });
 
-      console.log("whatsapp-commands response:", commandResponse.status);
-      return new Response(JSON.stringify({ success: true, routed: "whatsapp-commands" }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+        return new Response(
+          JSON.stringify({ success: true, routed: "whatsapp-commands" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
-    // ─── Route to Unified Inbox ───
-    // Check for existing conversation
+    // ─── Process media ───
+    let mediaMetadata: Record<string, unknown> = {};
+
+    if ((parsed.type === "image" || parsed.type === "document") && parsed.mediaUrl) {
+      const media = await processTermiiMedia(
+        supabase, parsed.mediaUrl, parsed.mediaType, cleanFrom, messageId
+      );
+      mediaMetadata = {
+        message_type: parsed.type,
+        media_url: media.publicUrl,
+        storage_path: media.storagePath,
+        media_type: parsed.mediaType,
+      };
+    }
+
+    // ─── Process location ───
+    if (parsed.type === "location" && parsed.latitude && parsed.longitude) {
+      const vehicleId = await processLocationMessage(
+        supabase, cleanFrom, parsed.latitude, parsed.longitude
+      );
+      mediaMetadata = {
+        message_type: "location",
+        latitude: parsed.latitude,
+        longitude: parsed.longitude,
+        vehicle_id: vehicleId,
+      };
+    }
+
+    // ─── Interactive metadata ───
+    if (parsed.type === "interactive") {
+      mediaMetadata = {
+        message_type: "interactive",
+        interactive_payload: parsed.interactivePayload,
+      };
+    }
+
+    // ─── Upsert conversation ───
     const { data: existingConversation } = await supabase
       .from("inbox_conversations")
       .select("*")
@@ -96,8 +268,6 @@ serve(async (req) => {
           updated_at: new Date().toISOString(),
         })
         .eq("id", conversationId);
-
-      console.log("Updated existing conversation:", conversationId);
     } else {
       const { data: newConversation, error: createError } = await supabase
         .from("inbox_conversations")
@@ -106,61 +276,49 @@ serve(async (req) => {
           region: "NIGERIA",
           user_phone: cleanFrom,
           status: "open",
-          priority: "normal",
-          subject: `New ${inboundChannel.toUpperCase()} message from ${cleanFrom}`,
+          priority: parsed.type === "location" ? "high" : "normal",
+          subject: `New ${inboundChannel.toUpperCase()} ${parsed.type} from ${cleanFrom}`,
           last_message_at: new Date().toISOString(),
         })
         .select()
         .single();
 
-      if (createError) {
-        console.error("Error creating conversation:", createError);
-        throw createError;
-      }
-
+      if (createError) throw createError;
       conversationId = newConversation.id;
-      console.log("Created new conversation:", conversationId);
     }
 
-    // Save the message
+    // ─── Save message ───
     const { error: messageError } = await supabase
       .from("inbox_messages")
       .insert({
         conversation_id: conversationId,
         channel: inboundChannel,
-        content: body || "",
+        content: parsed.content || "",
         sender_type: "user",
         sender_name: cleanFrom,
         external_id: messageId,
         metadata: {
           provider: "termii",
           region: "NIGERIA",
+          message_type: parsed.type,
+          ...mediaMetadata,
           raw_payload: payload,
         },
       });
 
-    if (messageError) {
-      console.error("Error saving message:", messageError);
-      throw messageError;
-    }
+    if (messageError) throw messageError;
 
-    console.log("Termii message saved successfully");
+    console.log(`Termii ${parsed.type} message saved successfully`);
 
     return new Response(
       JSON.stringify({ success: true }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Termii webhook error:", error);
     return new Response(
       JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Unknown error" }),
-      {
-        status: 200, // Return 200 to prevent retries
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

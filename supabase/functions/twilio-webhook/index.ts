@@ -6,8 +6,178 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ─── Classify message type from Twilio fields ───
+interface ParsedMessage {
+  type: "text" | "image" | "document" | "location" | "interactive" | "button" | "unknown";
+  content: string;
+  mediaUrl?: string;
+  mediaContentType?: string;
+  latitude?: string;
+  longitude?: string;
+  buttonPayload?: string;
+}
+
+const parseMessageType = (formData: FormData): ParsedMessage => {
+  const body = formData.get("Body") as string || "";
+  const numMedia = parseInt(formData.get("NumMedia") as string || "0");
+  const latitude = formData.get("Latitude") as string;
+  const longitude = formData.get("Longitude") as string;
+  const buttonPayload = formData.get("ButtonPayload") as string;
+
+  // Location message
+  if (latitude && longitude) {
+    return {
+      type: "location",
+      content: body || `📍 Location: ${latitude}, ${longitude}`,
+      latitude,
+      longitude,
+    };
+  }
+
+  // Button/interactive reply
+  if (buttonPayload) {
+    return {
+      type: "button",
+      content: body || buttonPayload,
+      buttonPayload,
+    };
+  }
+
+  // Media messages (image or document)
+  if (numMedia > 0) {
+    const mediaUrl = formData.get("MediaUrl0") as string;
+    const mediaContentType = formData.get("MediaContentType0") as string || "";
+
+    if (mediaContentType.startsWith("image/")) {
+      return {
+        type: "image",
+        content: body || "📷 Image",
+        mediaUrl,
+        mediaContentType,
+      };
+    }
+
+    // PDF, Word, etc.
+    return {
+      type: "document",
+      content: body || "📄 Document",
+      mediaUrl,
+      mediaContentType,
+    };
+  }
+
+  // Default: text
+  return { type: "text", content: body };
+};
+
+// ─── Handle media: store reference in Supabase storage ───
+const processMediaAttachment = async (
+  supabase: ReturnType<typeof createClient>,
+  mediaUrl: string,
+  mediaContentType: string,
+  cleanFrom: string,
+  messageSid: string,
+) => {
+  try {
+    // Download media from Twilio
+    const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
+    const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
+
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
+      console.warn("Twilio credentials missing, skipping media download");
+      return { storagePath: null, publicUrl: mediaUrl };
+    }
+
+    const mediaResponse = await fetch(mediaUrl, {
+      headers: {
+        "Authorization": `Basic ${btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`)}`,
+      },
+    });
+
+    if (!mediaResponse.ok) {
+      console.warn("Failed to download media from Twilio:", mediaResponse.status);
+      return { storagePath: null, publicUrl: mediaUrl };
+    }
+
+    const mediaBlob = await mediaResponse.blob();
+    const ext = mediaContentType.includes("pdf") ? "pdf"
+      : mediaContentType.includes("image/png") ? "png"
+      : mediaContentType.includes("image/jpeg") ? "jpg"
+      : mediaContentType.includes("word") ? "docx"
+      : "bin";
+
+    const storagePath = `whatsapp/${cleanFrom.replace("+", "")}/${messageSid}.${ext}`;
+
+    // Determine bucket based on type
+    const bucket = mediaContentType.startsWith("image/") ? "chat-attachments" : "user-documents";
+
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(storagePath, mediaBlob, {
+        contentType: mediaContentType,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.warn("Storage upload failed:", uploadError.message);
+      return { storagePath: null, publicUrl: mediaUrl };
+    }
+
+    console.log(`Media uploaded to ${bucket}/${storagePath}`);
+    return { storagePath: `${bucket}/${storagePath}`, publicUrl: mediaUrl };
+  } catch (err) {
+    console.warn("Media processing error:", err);
+    return { storagePath: null, publicUrl: mediaUrl };
+  }
+};
+
+// ─── Handle location: update vehicle tracking if driver ───
+const processLocationMessage = async (
+  supabase: ReturnType<typeof createClient>,
+  cleanFrom: string,
+  latitude: string,
+  longitude: string,
+) => {
+  try {
+    // Check if the sender is a driver with active rental
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .eq("phone", cleanFrom)
+      .single();
+
+    if (!profile) return null;
+
+    const { data: rental } = await supabase
+      .from("rentals")
+      .select("id, vehicle_id")
+      .eq("driver_id", profile.user_id)
+      .eq("status", "active")
+      .limit(1)
+      .single();
+
+    if (rental) {
+      // Update IoT device location for the vehicle
+      await supabase
+        .from("iot_devices")
+        .update({
+          latitude: parseFloat(latitude),
+          longitude: parseFloat(longitude),
+          last_ping: new Date().toISOString(),
+        })
+        .eq("vehicle_id", rental.vehicle_id);
+
+      console.log(`Location updated for vehicle ${rental.vehicle_id}`);
+      return rental.vehicle_id;
+    }
+    return null;
+  } catch (err) {
+    console.warn("Location processing error:", err);
+    return null;
+  }
+};
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -19,39 +189,75 @@ serve(async (req) => {
 
     // Parse Twilio webhook payload (form-urlencoded)
     const formData = await req.formData();
-    
+
     const from = formData.get("From") as string;
     const to = formData.get("To") as string;
-    const body = formData.get("Body") as string;
     const messageSid = formData.get("MessageSid") as string;
     const accountSid = formData.get("AccountSid") as string;
-    const numMedia = formData.get("NumMedia") as string;
-    
-    // Determine channel type (SMS or WhatsApp)
+
+    // Determine channel type
     const channel = from?.startsWith("whatsapp:") ? "whatsapp" : "sms";
-    
-    // Clean phone number (remove whatsapp: prefix if present)
     const cleanFrom = from?.replace("whatsapp:", "");
     const cleanTo = to?.replace("whatsapp:", "");
-    
-    // Determine region based on phone number
-    // +1 = USA, +234 = Nigeria
+
+    // Determine region
     let region = "USA";
     if (cleanFrom?.startsWith("+234") || cleanTo?.startsWith("+234")) {
-      region = "Nigeria";
+      region = "NIGERIA";
     }
+
+    // ─── Parse message type ───
+    const parsed = parseMessageType(formData);
 
     console.log("Received message:", {
       from: cleanFrom,
-      to: cleanTo,
       channel,
       region,
-      body: body?.substring(0, 50) + "...",
+      type: parsed.type,
+      content: parsed.content?.substring(0, 50) + "...",
       messageSid,
     });
 
-    // Check if there's an existing conversation with this phone number
-    const { data: existingConversation, error: findError } = await supabase
+    // ─── Process media attachments ───
+    let mediaMetadata: Record<string, unknown> = {};
+
+    if (parsed.type === "image" || parsed.type === "document") {
+      if (parsed.mediaUrl && parsed.mediaContentType) {
+        const media = await processMediaAttachment(
+          supabase, parsed.mediaUrl, parsed.mediaContentType, cleanFrom, messageSid
+        );
+        mediaMetadata = {
+          message_type: parsed.type,
+          media_url: media.publicUrl,
+          storage_path: media.storagePath,
+          media_content_type: parsed.mediaContentType,
+        };
+      }
+    }
+
+    // ─── Process location messages ───
+    if (parsed.type === "location" && parsed.latitude && parsed.longitude) {
+      const vehicleId = await processLocationMessage(
+        supabase, cleanFrom, parsed.latitude, parsed.longitude
+      );
+      mediaMetadata = {
+        message_type: "location",
+        latitude: parsed.latitude,
+        longitude: parsed.longitude,
+        vehicle_id: vehicleId,
+      };
+    }
+
+    // ─── Button / interactive metadata ───
+    if (parsed.type === "button" || parsed.type === "interactive") {
+      mediaMetadata = {
+        message_type: parsed.type,
+        button_payload: parsed.buttonPayload,
+      };
+    }
+
+    // ─── Upsert conversation ───
+    const { data: existingConversation } = await supabase
       .from("inbox_conversations")
       .select("*")
       .eq("user_phone", cleanFrom)
@@ -64,9 +270,7 @@ serve(async (req) => {
     let conversationId: string;
 
     if (existingConversation) {
-      // Update existing conversation
       conversationId = existingConversation.id;
-      
       await supabase
         .from("inbox_conversations")
         .update({
@@ -75,10 +279,7 @@ serve(async (req) => {
           updated_at: new Date().toISOString(),
         })
         .eq("id", conversationId);
-      
-      console.log("Updated existing conversation:", conversationId);
     } else {
-      // Create new conversation
       const { data: newConversation, error: createError } = await supabase
         .from("inbox_conversations")
         .insert({
@@ -86,71 +287,50 @@ serve(async (req) => {
           region,
           user_phone: cleanFrom,
           status: "open",
-          priority: "normal",
-          subject: `New ${channel.toUpperCase()} message from ${cleanFrom}`,
+          priority: parsed.type === "location" ? "high" : "normal",
+          subject: `New ${channel.toUpperCase()} ${parsed.type} from ${cleanFrom}`,
           last_message_at: new Date().toISOString(),
         })
         .select()
         .single();
 
-      if (createError) {
-        console.error("Error creating conversation:", createError);
-        throw createError;
-      }
-
+      if (createError) throw createError;
       conversationId = newConversation.id;
-      console.log("Created new conversation:", conversationId);
     }
 
-    // Add the message to the conversation
+    // ─── Save message ───
     const { error: messageError } = await supabase
       .from("inbox_messages")
       .insert({
         conversation_id: conversationId,
         channel,
-        content: body || "",
+        content: parsed.content || "",
         sender_type: "user",
         sender_name: cleanFrom,
         external_id: messageSid,
         metadata: {
+          provider: "twilio",
           accountSid,
-          numMedia: parseInt(numMedia || "0"),
           rawFrom: from,
           rawTo: to,
+          message_type: parsed.type,
+          ...mediaMetadata,
         },
       });
 
-    if (messageError) {
-      console.error("Error creating message:", messageError);
-      throw messageError;
-    }
+    if (messageError) throw messageError;
 
-    console.log("Message saved successfully");
+    console.log(`${parsed.type} message saved successfully`);
 
-    // Return TwiML response (empty response to acknowledge receipt)
     return new Response(
-      `<?xml version="1.0" encoding="UTF-8"?>
-<Response></Response>`,
-      {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/xml",
-        },
-      }
+      `<?xml version="1.0" encoding="UTF-8"?>\n<Response></Response>`,
+      { headers: { ...corsHeaders, "Content-Type": "application/xml" } }
     );
   } catch (error) {
     console.error("Twilio webhook error:", error);
-    
-    // Still return success to Twilio to prevent retries
     return new Response(
-      `<?xml version="1.0" encoding="UTF-8"?>
-<Response></Response>`,
-      {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/xml",
-        },
-      }
+      `<?xml version="1.0" encoding="UTF-8"?>\n<Response></Response>`,
+      { headers: { ...corsHeaders, "Content-Type": "application/xml" } }
     );
   }
 });
