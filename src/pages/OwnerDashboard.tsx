@@ -28,7 +28,7 @@ import { VehicleDocumentUpload } from '@/components/documents/VehicleDocumentUpl
 import { OwnerInsuranceSupport } from '@/components/owner/OwnerInsuranceSupport';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
-import { VoiceCallButton } from '@/components/voice/VoiceCallButton';
+
 import { VoiceCallHistory } from '@/components/voice/VoiceCallHistory';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { VerificationGate } from '@/components/onboarding/VerificationGate';
@@ -778,7 +778,6 @@ export default function OwnerDashboard() {
         <Footer />
         <SupportChatWidget />
         <CallSupportButton userType="owner" variant="floating" />
-        <VoiceCallButton userRole="owner" targetRole="driver" variant="floating" />
       </div>
     </VerificationGate>
   );

@@ -514,7 +514,6 @@ export default function DriverDashboard() {
         <Footer />
         <SupportChatWidget />
         <CallSupportButton userType="driver" variant="floating" />
-        <VoiceCallButton userRole="driver" targetRole="admin" variant="floating" />
       </div>
     </VerificationGate>
   );
