@@ -480,6 +480,96 @@ export type Database = {
           },
         ]
       }
+      email_analytics: {
+        Row: {
+          category: string
+          count: number
+          created_at: string
+          date: string
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          count?: number
+          created_at?: string
+          date?: string
+          id?: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          count?: number
+          created_at?: string
+          date?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_logs: {
+        Row: {
+          category: string
+          country: string | null
+          created_at: string
+          delivered_at: string | null
+          error: string | null
+          failed_at: string | null
+          id: string
+          message_id: string | null
+          metadata: Json | null
+          priority: string
+          recipient: string
+          retry_count: number
+          scheduled_for: string | null
+          sent_at: string | null
+          status: string
+          template: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          country?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          error?: string | null
+          failed_at?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          priority?: string
+          recipient: string
+          retry_count?: number
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: string
+          template: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          country?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          error?: string | null
+          failed_at?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          priority?: string
+          recipient?: string
+          retry_count?: number
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: string
+          template?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expiry_notifications: {
         Row: {
           created_at: string
