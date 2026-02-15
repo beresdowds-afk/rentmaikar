@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          target_id: string | null
+          target_table: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_table?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_table?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       admin_daily_tasks: {
         Row: {
           category: string
@@ -59,6 +95,36 @@ export type Database = {
           task_date?: string
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      admin_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: string | null
+          is_active: boolean
+          last_activity: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean
+          last_activity?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean
+          last_activity?: string
+          user_agent?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -1768,6 +1834,33 @@ export type Database = {
           phone_verified?: boolean | null
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      rate_limit_log: {
+        Row: {
+          created_at: string
+          endpoint: string
+          id: string
+          identifier: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          id?: string
+          identifier: string
+          request_count?: number
+          window_start?: string
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          id?: string
+          identifier?: string
+          request_count?: number
+          window_start?: string
         }
         Relationships: []
       }
@@ -4246,6 +4339,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      log_admin_action: {
+        Args: {
+          _action: string
+          _details?: Json
+          _target_id?: string
+          _target_table?: string
+        }
+        Returns: string
       }
     }
     Enums: {

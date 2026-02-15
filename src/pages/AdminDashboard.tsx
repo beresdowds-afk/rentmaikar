@@ -44,6 +44,7 @@ import { useAdminOnboardingTour } from "@/hooks/useAdminOnboardingTour";
 import { MessagingDocs } from "@/components/admin/docs/MessagingDocs";
 import { EmailDocs } from "@/components/admin/docs/EmailDocs";
 import { VoIPDocs } from "@/components/admin/docs/VoIPDocs";
+import { AdminSecurityDashboard } from "@/components/admin/AdminSecurityDashboard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -701,6 +702,7 @@ const AdminDashboard = () => {
               {activeTab === 'api-keys' && <ApiKeyManagement />}
               {activeTab === 'webhooks' && <WebhookManagement />}
               {activeTab === 'api-endpoints' && <ApiEndpointManagement />}
+              {activeTab === 'security' && <AdminSecurityDashboard />}
               {activeTab === 'settings' && (
                 <Card className="p-6">
                   <div className="flex items-center gap-3 mb-6">
