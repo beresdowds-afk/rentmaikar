@@ -7,9 +7,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Notification tiers aligned with the expiry flow diagram
+const NOTIFICATION_TIERS = [30, 15, 7, 5] as const;
+
+type NotificationTier = typeof NOTIFICATION_TIERS[number];
+
 interface ExpiringItem {
   id: string;
-  type: 'insurance' | 'registration' | 'inspection' | 'license';
+  type: 'insurance' | 'registration' | 'inspection' | 'license' | 'police_report';
   expiry_date: string;
   days_until_expiry: number;
   vehicle_id?: string;
@@ -26,7 +31,133 @@ interface ExpiringItem {
   owner_notification_whatsapp?: boolean;
   driver_notification_sms?: boolean;
   driver_notification_whatsapp?: boolean;
+  region?: string;
 }
+
+/**
+ * Determine the call flow based on document type (diagram routing):
+ * - Driver License → Driver Call Flow
+ * - Insurance → Owner Call Flow  
+ * - Police Report → Nigeria Special Flow
+ */
+const getCallFlowType = (item: ExpiringItem): 'driver' | 'owner' | 'nigeria_special' => {
+  if (item.type === 'police_report') return 'nigeria_special';
+  if (item.type === 'license') return 'driver';
+  // insurance, registration, inspection → owner
+  return 'owner';
+};
+
+/**
+ * Get the primary recipient for VoIP calls based on document type routing
+ */
+const getPrimaryRecipient = (item: ExpiringItem) => {
+  const flowType = getCallFlowType(item);
+  switch (flowType) {
+    case 'driver':
+      return {
+        phone: item.driver_phone || item.owner_phone,
+        name: item.driver_name || item.owner_name,
+        id: item.driver_id || item.owner_id,
+        type: 'driver' as const,
+      };
+    case 'nigeria_special':
+      return {
+        phone: item.driver_phone || item.owner_phone,
+        name: item.driver_name || item.owner_name,
+        id: item.driver_id || item.owner_id,
+        type: 'driver' as const,
+      };
+    case 'owner':
+    default:
+      return {
+        phone: item.owner_phone,
+        name: item.owner_name,
+        id: item.owner_id,
+        type: 'owner' as const,
+      };
+  }
+};
+
+/**
+ * Get urgency level for the notification tier
+ */
+const getTierUrgency = (days: number): 'standard' | 'priority' | 'urgent' | 'critical' => {
+  if (days === 30) return 'standard';
+  if (days === 15) return 'priority';
+  if (days === 7) return 'urgent';
+  return 'critical'; // 5 days
+};
+
+/**
+ * Generate TwiML with IVR menu for 30-day and 15-day calls,
+ * critical alert for 7-day and 5-day calls
+ */
+const generateExpiryTwiML = (
+  item: ExpiringItem,
+  recipientName: string,
+  supabaseUrl: string,
+  tier: NotificationTier
+): string => {
+  const typeLabel = item.type.replace('_', ' ');
+  const vehicleText = item.vehicle_info ? ` for vehicle ${item.vehicle_info}` : '';
+  const urgency = getTierUrgency(tier);
+  const flowType = getCallFlowType(item);
+  
+  // Nigeria special flow: bilingual greeting
+  const nigeriaGreeting = flowType === 'nigeria_special' 
+    ? `<Say voice="alice" language="en-GB">This message is also available in Pidgin English.</Say>
+       <Pause length="1"/>` 
+    : '';
+
+  if (urgency === 'critical') {
+    // 5-day: Critical alert — no IVR, just urgent warning + SMS
+    return `<Response>
+      ${nigeriaGreeting}
+      <Say voice="alice">
+        CRITICAL ALERT. Hello ${recipientName}. This is an urgent message from Rent My Car.
+        Your ${typeLabel}${vehicleText} will expire in ${tier} days on ${item.expiry_date}.
+        Your account will be restricted if this document is not renewed.
+        An upload link has been sent to your phone. Please act immediately.
+        Thank you.
+      </Say>
+    </Response>`;
+  }
+
+  if (urgency === 'urgent') {
+    // 7-day: Urgent with IVR
+    return `<Response>
+      ${nigeriaGreeting}
+      <Gather numDigits="1" action="${supabaseUrl}/functions/v1/expiry-notification-ivr?itemId=${item.id}&type=${item.type}&vehicleId=${item.vehicle_id || ''}&tier=${tier}" method="POST" timeout="8">
+        <Say voice="alice">
+          URGENT REMINDER. Hello ${recipientName}. This is Rent My Car.
+          Your ${typeLabel}${vehicleText} will expire in ${tier} days on ${item.expiry_date}.
+          Failure to renew will result in account restrictions.
+          Press 1 to receive a document upload link by S M S.
+          Press 2 to request a renewal extension.
+          Press 3 to speak with a support agent.
+        </Say>
+      </Gather>
+      <Say voice="alice">We did not receive your selection. A document upload link will be sent to your phone. Goodbye.</Say>
+    </Response>`;
+  }
+
+  // 30-day / 15-day: Standard/Priority with IVR
+  const priorityPrefix = urgency === 'priority' ? 'PRIORITY REMINDER. ' : '';
+  return `<Response>
+    ${nigeriaGreeting}
+    <Gather numDigits="1" action="${supabaseUrl}/functions/v1/expiry-notification-ivr?itemId=${item.id}&type=${item.type}&vehicleId=${item.vehicle_id || ''}&tier=${tier}" method="POST" timeout="8">
+      <Say voice="alice">
+        ${priorityPrefix}Hello ${recipientName}. This is Rent My Car.
+        Your ${typeLabel}${vehicleText} will expire in ${tier} days on ${item.expiry_date}.
+        Please ensure you renew it before the expiry date to avoid service interruptions.
+        Press 1 to receive a document upload link by S M S.
+        Press 2 to request a renewal extension.
+        Press 3 to speak with a support agent.
+      </Say>
+    </Gather>
+    <Say voice="alice">We did not receive your selection. A document upload link will be sent to your phone. Goodbye.</Say>
+  </Response>`;
+};
 
 const sendSmsOrWhatsApp = async (
   phone: string,
@@ -78,26 +209,21 @@ const handler = async (req: Request): Promise<Response> => {
     const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
     const today = new Date();
-    const in7Days = new Date(today);
-    in7Days.setDate(today.getDate() + 7);
-    const in30Days = new Date(today);
-    in30Days.setDate(today.getDate() + 30);
-
     const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+    // Calculate target dates for all tiers
+    const tierDates = NOTIFICATION_TIERS.map(days => {
+      const d = new Date(today);
+      d.setDate(today.getDate() + days);
+      return { days, date: formatDate(d) };
+    });
 
     // Fetch vehicles with expiring documents
     const { data: vehicles, error: vehiclesError } = await supabase
       .from('vehicles')
       .select(`
-        id,
-        make,
-        model,
-        year,
-        plate_number,
-        owner_id,
-        insurance_expiry,
-        registration_expiry,
-        inspection_expiry
+        id, make, model, year, plate_number, owner_id,
+        insurance_expiry, registration_expiry, inspection_expiry
       `)
       .or(`insurance_expiry.gte.${formatDate(today)},registration_expiry.gte.${formatDate(today)},inspection_expiry.gte.${formatDate(today)}`);
 
@@ -111,7 +237,6 @@ const handler = async (req: Request): Promise<Response> => {
     for (const vehicle of vehicles || []) {
       const vehicleInfo = `${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.plate_number})`;
       
-      // Fetch owner profile with notification preferences
       let ownerProfile = null;
       if (vehicle.owner_id) {
         const { data: owner } = await supabase
@@ -127,7 +252,8 @@ const handler = async (req: Request): Promise<Response> => {
         const expiry = new Date(expiryDate);
         const daysUntil = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         
-        if (daysUntil === 7 || daysUntil === 30) {
+        // Check all notification tiers
+        if (NOTIFICATION_TIERS.includes(daysUntil as NotificationTier)) {
           expiringItems.push({
             id: vehicle.id,
             type,
@@ -150,16 +276,10 @@ const handler = async (req: Request): Promise<Response> => {
       checkExpiry(vehicle.inspection_expiry, 'inspection');
     }
 
-    // Fetch user documents with expiry dates
+    // Fetch user documents with expiry dates (license, police_report, etc.)
     const { data: documents, error: docsError } = await supabase
       .from('user_documents')
-      .select(`
-        id,
-        document_type,
-        expiry_date,
-        user_id,
-        vehicle_id
-      `)
+      .select('id, document_type, expiry_date, user_id, vehicle_id')
       .not('expiry_date', 'is', null)
       .gte('expiry_date', formatDate(today));
 
@@ -172,7 +292,8 @@ const handler = async (req: Request): Promise<Response> => {
       const expiry = new Date(doc.expiry_date);
       const daysUntil = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       
-      // Fetch user profile with notification preferences
+      if (!NOTIFICATION_TIERS.includes(daysUntil as NotificationTier)) continue;
+
       let userProfile = null;
       if (doc.user_id) {
         const { data: user } = await supabase
@@ -182,25 +303,39 @@ const handler = async (req: Request): Promise<Response> => {
           .maybeSingle();
         userProfile = user;
       }
-      
-      if (daysUntil === 7 || daysUntil === 30) {
-        expiringItems.push({
-          id: doc.id,
-          type: 'license',
-          expiry_date: doc.expiry_date,
-          days_until_expiry: daysUntil,
-          vehicle_id: doc.vehicle_id,
-          owner_id: userProfile?.user_id,
-          owner_email: userProfile?.email,
-          owner_phone: userProfile?.phone,
-          owner_name: userProfile?.full_name,
-          owner_notification_sms: userProfile?.notification_sms,
-          owner_notification_whatsapp: userProfile?.notification_whatsapp,
-        });
+
+      // Map document_type to our type enum
+      const docType = doc.document_type?.toLowerCase();
+      let itemType: ExpiringItem['type'] = 'license';
+      if (docType?.includes('police') || docType?.includes('clearance')) {
+        itemType = 'police_report';
+      } else if (docType?.includes('insurance')) {
+        itemType = 'insurance';
+      } else if (docType?.includes('registration')) {
+        itemType = 'registration';
       }
+
+      // Determine region from phone number
+      const phone = userProfile?.phone || '';
+      const region = phone.startsWith('+234') ? 'Nigeria' : 'USA';
+
+      expiringItems.push({
+        id: doc.id,
+        type: itemType,
+        expiry_date: doc.expiry_date,
+        days_until_expiry: daysUntil,
+        vehicle_id: doc.vehicle_id,
+        driver_id: userProfile?.user_id,
+        driver_email: userProfile?.email,
+        driver_phone: userProfile?.phone,
+        driver_name: userProfile?.full_name,
+        driver_notification_sms: userProfile?.notification_sms,
+        driver_notification_whatsapp: userProfile?.notification_whatsapp,
+        region,
+      });
     }
 
-    // Get admin emails for notifications
+    // Get admin profiles
     const { data: admins } = await supabase
       .from('user_roles')
       .select('user_id')
@@ -218,11 +353,12 @@ const handler = async (req: Request): Promise<Response> => {
       smsSent: 0,
       whatsappSent: 0,
       voipCallsMade: 0,
+      accountsRestricted: 0,
       errors: [] as string[],
     };
 
     for (const item of expiringItems) {
-      // Check if notification already sent
+      // Dedup check
       const { data: existingNotification } = await supabase
         .from('expiry_notifications')
         .select('id')
@@ -231,65 +367,78 @@ const handler = async (req: Request): Promise<Response> => {
         .eq('notification_type', item.type)
         .maybeSingle();
 
-      if (existingNotification) {
-        continue; // Already notified
-      }
+      if (existingNotification) continue;
 
-      const typeLabel = item.type.charAt(0).toUpperCase() + item.type.slice(1);
-      const subject = `⚠️ ${typeLabel} Expiring in ${item.days_until_expiry} Days`;
+      const typeLabel = item.type.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const urgency = getTierUrgency(item.days_until_expiry);
+      const urgencyPrefix = urgency === 'critical' ? '🚨 CRITICAL: ' 
+        : urgency === 'urgent' ? '⚠️ URGENT: ' 
+        : urgency === 'priority' ? '📋 PRIORITY: ' 
+        : '⚠️ ';
+      const subject = `${urgencyPrefix}${typeLabel} Expiring in ${item.days_until_expiry} Days`;
       const vehicleText = item.vehicle_info ? ` for ${item.vehicle_info}` : '';
-      const smsMessage = `RentMaiKar: Your ${item.type}${vehicleText} expires on ${item.expiry_date} (${item.days_until_expiry} days). Please renew immediately.`;
+      
+      // Determine primary recipient based on document-type routing
+      const flowType = getCallFlowType(item);
+      const primaryEmail = flowType === 'driver' ? (item.driver_email || item.owner_email) : item.owner_email;
+      const primaryName = flowType === 'driver' ? (item.driver_name || item.owner_name) : item.owner_name;
+      const primaryPhone = flowType === 'driver' ? (item.driver_phone || item.owner_phone) : item.owner_phone;
+      const primaryId = flowType === 'driver' ? (item.driver_id || item.owner_id) : item.owner_id;
+      const primarySms = flowType === 'driver' ? (item.driver_notification_sms || item.owner_notification_sms) : item.owner_notification_sms;
+      const primaryWhatsapp = flowType === 'driver' ? (item.driver_notification_whatsapp || item.owner_notification_whatsapp) : item.owner_notification_whatsapp;
+      const recipientType = flowType === 'driver' ? 'driver' : 'owner';
 
-      // Send to owner - Email
-      if (item.owner_email && resend) {
+      // Restrict messaging based on urgency
+      const restrictionWarning = item.days_until_expiry <= 5 
+        ? '<p style="color:red;font-weight:bold;">⚠️ Your account will be restricted if not renewed within 5 days.</p>' 
+        : '';
+
+      const smsMessage = item.days_until_expiry <= 5
+        ? `RentMaiKar CRITICAL: Your ${item.type}${vehicleText} expires on ${item.expiry_date} (${item.days_until_expiry} days). Account will be RESTRICTED. Renew immediately.`
+        : `RentMaiKar: Your ${item.type}${vehicleText} expires on ${item.expiry_date} (${item.days_until_expiry} days). Please renew to avoid service interruptions.`;
+
+      // === SEND EMAIL ===
+      if (primaryEmail && resend) {
         try {
           await resend.emails.send({
             from: "RentMaiKar <noreply@rentmaikar.com>",
-            to: [item.owner_email],
+            to: [primaryEmail],
             subject,
             html: `
               <h2>${typeLabel} Expiry Notice</h2>
-              <p>Dear ${item.owner_name || 'Vehicle Owner'},</p>
+              <p>Dear ${primaryName || 'User'},</p>
               <p>Your ${item.type}${vehicleText} will expire on <strong>${item.expiry_date}</strong> (${item.days_until_expiry} days from now).</p>
+              ${restrictionWarning}
               <p>Please ensure you renew it before the expiry date to avoid any service interruptions.</p>
               <p>Best regards,<br>RentMaiKar Team</p>
             `,
           });
           
           await supabase.from('expiry_notifications').insert({
-            document_id: item.type === 'license' ? item.id : null,
+            document_id: ['license', 'police_report'].includes(item.type) ? item.id : null,
             vehicle_id: item.vehicle_id,
             notification_type: item.type,
-            recipient_type: 'owner',
-            recipient_id: item.owner_id,
+            recipient_type: recipientType,
+            recipient_id: primaryId,
             days_until_expiry: item.days_until_expiry,
             notification_channel: 'email',
           });
-          
           results.emailsSent++;
         } catch (e) {
-          results.errors.push(`Email to owner failed: ${e}`);
+          results.errors.push(`Email to ${recipientType} failed: ${e}`);
         }
       }
 
-      // Send to owner - SMS (if preferred)
-      if (item.owner_phone && item.owner_notification_sms && twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
-        const sent = await sendSmsOrWhatsApp(
-          item.owner_phone,
-          smsMessage,
-          'sms',
-          twilioAccountSid,
-          twilioAuthToken,
-          twilioPhoneNumber
-        );
-        
+      // === SEND SMS ===
+      if (primaryPhone && primarySms && twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
+        const sent = await sendSmsOrWhatsApp(primaryPhone, smsMessage, 'sms', twilioAccountSid, twilioAuthToken, twilioPhoneNumber);
         if (sent) {
           await supabase.from('expiry_notifications').insert({
-            document_id: item.type === 'license' ? item.id : null,
+            document_id: ['license', 'police_report'].includes(item.type) ? item.id : null,
             vehicle_id: item.vehicle_id,
             notification_type: item.type,
-            recipient_type: 'owner',
-            recipient_id: item.owner_id,
+            recipient_type: recipientType,
+            recipient_id: primaryId,
             days_until_expiry: item.days_until_expiry,
             notification_channel: 'sms',
           });
@@ -297,24 +446,16 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
-      // Send to owner - WhatsApp (if preferred)
-      if (item.owner_phone && item.owner_notification_whatsapp && twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
-        const sent = await sendSmsOrWhatsApp(
-          item.owner_phone,
-          smsMessage,
-          'whatsapp',
-          twilioAccountSid,
-          twilioAuthToken,
-          twilioPhoneNumber
-        );
-        
+      // === SEND WHATSAPP ===
+      if (primaryPhone && primaryWhatsapp && twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
+        const sent = await sendSmsOrWhatsApp(primaryPhone, smsMessage, 'whatsapp', twilioAccountSid, twilioAuthToken, twilioPhoneNumber);
         if (sent) {
           await supabase.from('expiry_notifications').insert({
-            document_id: item.type === 'license' ? item.id : null,
+            document_id: ['license', 'police_report'].includes(item.type) ? item.id : null,
             vehicle_id: item.vehicle_id,
             notification_type: item.type,
-            recipient_type: 'owner',
-            recipient_id: item.owner_id,
+            recipient_type: recipientType,
+            recipient_id: primaryId,
             days_until_expiry: item.days_until_expiry,
             notification_channel: 'whatsapp',
           });
@@ -322,9 +463,8 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
-      // Send to admins
+      // === ADMIN NOTIFICATIONS ===
       for (const admin of adminProfiles || []) {
-        // Admin email
         if (admin.email && resend) {
           try {
             await resend.emails.send({
@@ -334,13 +474,13 @@ const handler = async (req: Request): Promise<Response> => {
               html: `
                 <h2>Admin Alert: ${typeLabel} Expiry Notice</h2>
                 <p>The following ${item.type}${vehicleText} will expire on <strong>${item.expiry_date}</strong> (${item.days_until_expiry} days).</p>
-                <p><strong>Owner:</strong> ${item.owner_name || 'N/A'} (${item.owner_email || 'N/A'})</p>
-                <p>Please follow up to ensure timely renewal.</p>
+                <p><strong>User:</strong> ${primaryName || 'N/A'} (${primaryEmail || 'N/A'})</p>
+                <p><strong>Flow:</strong> ${flowType} | <strong>Urgency:</strong> ${urgency}</p>
+                ${item.days_until_expiry <= 5 ? '<p style="color:red;">⚠️ Account restriction pending.</p>' : ''}
               `,
             });
-            
             await supabase.from('expiry_notifications').insert({
-              document_id: item.type === 'license' ? item.id : null,
+              document_id: ['license', 'police_report'].includes(item.type) ? item.id : null,
               vehicle_id: item.vehicle_id,
               notification_type: item.type,
               recipient_type: 'admin',
@@ -348,28 +488,18 @@ const handler = async (req: Request): Promise<Response> => {
               days_until_expiry: item.days_until_expiry,
               notification_channel: 'email',
             });
-            
             results.emailsSent++;
           } catch (e) {
             results.errors.push(`Email to admin failed: ${e}`);
           }
         }
 
-        // Admin SMS (if preferred)
         if (admin.phone && admin.notification_sms && twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
-          const adminSmsMessage = `[Admin] ${smsMessage} Owner: ${item.owner_name || 'N/A'}`;
-          const sent = await sendSmsOrWhatsApp(
-            admin.phone,
-            adminSmsMessage,
-            'sms',
-            twilioAccountSid,
-            twilioAuthToken,
-            twilioPhoneNumber
-          );
-          
+          const adminSmsMessage = `[Admin] ${smsMessage} User: ${primaryName || 'N/A'}`;
+          const sent = await sendSmsOrWhatsApp(admin.phone, adminSmsMessage, 'sms', twilioAccountSid, twilioAuthToken, twilioPhoneNumber);
           if (sent) {
             await supabase.from('expiry_notifications').insert({
-              document_id: item.type === 'license' ? item.id : null,
+              document_id: ['license', 'police_report'].includes(item.type) ? item.id : null,
               vehicle_id: item.vehicle_id,
               notification_type: item.type,
               recipient_type: 'admin',
@@ -382,42 +512,19 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
-      // 7-day notifications: Make VoIP calls
-      if (item.days_until_expiry === 7 && twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
-        const recipientsToCall = [
-          { phone: item.owner_phone, name: item.owner_name, type: 'owner', id: item.owner_id },
-        ];
-
-        // Add admins with phone numbers
-        for (const admin of adminProfiles || []) {
-          if (admin.phone) {
-            recipientsToCall.push({
-              phone: admin.phone,
-              name: admin.full_name,
-              type: 'admin',
-              id: admin.user_id,
-            });
-          }
-        }
-
-        for (const recipient of recipientsToCall) {
-          if (!recipient.phone) continue;
-
+      // === VoIP CALLS — all tiers now get calls ===
+      if (twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
+        const recipient = getPrimaryRecipient(item);
+        
+        if (recipient.phone) {
           try {
-            // Create TwiML for automated voice message
-            const twiml = `
-              <Response>
-                <Say voice="alice">
-                  Hello ${recipient.name || ''}. This is an urgent reminder from Rent My Car.
-                  Your ${item.type} ${item.vehicle_info ? `for vehicle ${item.vehicle_info}` : ''} 
-                  will expire in 7 days on ${item.expiry_date}.
-                  Please renew it immediately to avoid service interruption.
-                  Thank you.
-                </Say>
-              </Response>
-            `.trim();
+            const twiml = generateExpiryTwiML(
+              item,
+              recipient.name || 'User',
+              supabaseUrl,
+              item.days_until_expiry as NotificationTier
+            );
 
-            // Create call record first
             const { data: callRecord, error: callError } = await supabase
               .from('voip_calls')
               .insert({
@@ -433,38 +540,43 @@ const handler = async (req: Request): Promise<Response> => {
               .select()
               .single();
 
-            if (callError) {
-              throw new Error(`Failed to create call record: ${callError.message}`);
+            if (callError) throw new Error(`Call record creation failed: ${callError.message}`);
+
+            const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`;
+            
+            const callParams: Record<string, string> = {
+              To: recipient.phone,
+              From: twilioPhoneNumber,
+              Twiml: twiml,
+              StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
+              MachineDetection: 'DetectMessageEnd',
+              AsyncAmd: 'true',
+            };
+
+            // For 5-day critical calls, also set a machine detection URL for voicemail
+            if (item.days_until_expiry <= 5) {
+              callParams.AsyncAmdStatusCallback = `${supabaseUrl}/functions/v1/voip-status-callback`;
             }
 
-            // Make the call via Twilio
-            const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`;
             const callResponse = await fetch(twilioUrl, {
               method: 'POST',
               headers: {
                 'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
                 'Content-Type': 'application/x-www-form-urlencoded',
               },
-              body: new URLSearchParams({
-                To: recipient.phone,
-                From: twilioPhoneNumber,
-                Twiml: twiml,
-                StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
-              }),
+              body: new URLSearchParams(callParams),
             });
 
             const callData = await callResponse.json();
 
             if (callResponse.ok) {
-              // Update call record with Twilio SID
               await supabase
                 .from('voip_calls')
                 .update({ call_sid: callData.sid, status: 'ringing' })
                 .eq('id', callRecord.id);
 
-              // Log notification
               await supabase.from('expiry_notifications').insert({
-                document_id: item.type === 'license' ? item.id : null,
+                document_id: ['license', 'police_report'].includes(item.type) ? item.id : null,
                 vehicle_id: item.vehicle_id,
                 notification_type: item.type,
                 recipient_type: recipient.type,
@@ -473,19 +585,97 @@ const handler = async (req: Request): Promise<Response> => {
                 notification_channel: 'voip',
                 voip_call_id: callRecord.id,
               });
-
               results.voipCallsMade++;
             } else {
-              // Update call as failed
               await supabase
                 .from('voip_calls')
                 .update({ status: 'failed' })
                 .eq('id', callRecord.id);
-              
               results.errors.push(`VoIP call to ${recipient.phone} failed: ${callData.message}`);
             }
           } catch (e) {
             results.errors.push(`VoIP call failed: ${e}`);
+          }
+        }
+
+        // For 5-day critical: also call admins
+        if (item.days_until_expiry <= 5) {
+          for (const admin of adminProfiles || []) {
+            if (!admin.phone) continue;
+            try {
+              const adminTwiml = `<Response>
+                <Say voice="alice">
+                  Admin alert. A ${item.type.replace('_', ' ')} ${item.vehicle_info ? `for vehicle ${item.vehicle_info}` : ''} 
+                  will expire in ${item.days_until_expiry} days. The user account will be restricted.
+                  Please review and take action.
+                </Say>
+              </Response>`;
+
+              const { data: adminCallRecord } = await supabase
+                .from('voip_calls')
+                .insert({
+                  initiated_by: admin.user_id,
+                  call_type: 'individual',
+                  region: admin.phone.startsWith('+234') ? 'Nigeria' : 'USA',
+                  status: 'pending',
+                  direction: 'outbound',
+                  started_at: new Date().toISOString(),
+                  duration_seconds: 0,
+                  caller_role: 'system',
+                })
+                .select()
+                .single();
+
+              if (adminCallRecord) {
+                const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`;
+                const callResponse = await fetch(twilioUrl, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                  },
+                  body: new URLSearchParams({
+                    To: admin.phone,
+                    From: twilioPhoneNumber,
+                    Twiml: adminTwiml,
+                    StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
+                  }),
+                });
+
+                const callData = await callResponse.json();
+                if (callResponse.ok) {
+                  await supabase.from('voip_calls')
+                    .update({ call_sid: callData.sid, status: 'ringing' })
+                    .eq('id', adminCallRecord.id);
+                  results.voipCallsMade++;
+                }
+              }
+            } catch (e) {
+              results.errors.push(`Admin VoIP call failed: ${e}`);
+            }
+          }
+        }
+      }
+
+      // === 5-DAY: ACCOUNT RESTRICTION ===
+      if (item.days_until_expiry <= 5) {
+        // Restrict the user's daily plan eligibility as a soft restriction
+        const restrictUserId = item.driver_id || item.owner_id;
+        if (restrictUserId) {
+          try {
+            await supabase
+              .from('profiles')
+              .update({
+                daily_plan_forbidden: true,
+                daily_plan_forbidden_at: new Date().toISOString(),
+                daily_plan_forbidden_reason: `Document expiry restriction: ${item.type} expires ${item.expiry_date}`,
+              })
+              .eq('user_id', restrictUserId);
+            
+            results.accountsRestricted++;
+            console.log(`Account restricted for user ${restrictUserId}: ${item.type} expires in ${item.days_until_expiry} days`);
+          } catch (e) {
+            results.errors.push(`Account restriction failed for ${restrictUserId}: ${e}`);
           }
         }
       }

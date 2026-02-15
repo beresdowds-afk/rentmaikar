@@ -36,5 +36,8 @@ verify_jwt = false
 [functions.voice-call-request]
 verify_jwt = false
 
+[functions.expiry-notification-ivr]
+verify_jwt = false
+
 [functions.payment-default-ivr]
 verify_jwt = false
