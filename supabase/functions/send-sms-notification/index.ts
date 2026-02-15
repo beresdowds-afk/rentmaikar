@@ -124,7 +124,59 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get Twilio credentials
+    // Determine provider based on region
+    const isNigeria = body.phone.startsWith('+234');
+    const message = getMessageContent(body);
+
+    if (isNigeria) {
+      // ─── TERMII (Nigeria) ───
+      const termiiApiKey = Deno.env.get("TERMII_API_KEY");
+      const termiiSenderId = Deno.env.get("TERMII_SENDER_ID") || "Rentmaikar";
+
+      if (!termiiApiKey) {
+        console.error("Termii credentials not configured for Nigeria");
+        throw new Error("Nigeria SMS service not configured");
+      }
+
+      const isWhatsApp = body.channel === 'whatsapp';
+      const termiiChannel = isWhatsApp ? 'whatsapp' : 'generic';
+
+      console.log(`Sending ${body.channel.toUpperCase()} via Termii to ${body.phone}: ${body.notificationType}`);
+
+      const termiiResponse = await fetch('https://api.ng.termii.com/api/sms/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: body.phone.replace('+', ''),
+          from: termiiSenderId,
+          sms: message,
+          type: 'plain',
+          channel: termiiChannel,
+          api_key: termiiApiKey,
+        }),
+      });
+
+      const termiiData = await termiiResponse.json();
+
+      if (!termiiResponse.ok || termiiData.code !== 'ok') {
+        console.error("Termii API error:", termiiData);
+        throw new Error(termiiData.message || `Failed to send ${body.channel} via Termii`);
+      }
+
+      console.log(`${body.channel.toUpperCase()} sent via Termii:`, termiiData.message_id);
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          messageId: termiiData.message_id,
+          channel: body.channel,
+          provider: 'termii',
+        }), 
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // ─── TWILIO (USA / Default) ───
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER") || RENTMAIKAR_PHONE;
@@ -134,14 +186,13 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("SMS service not configured");
     }
 
-    const message = getMessageContent(body);
     const isWhatsApp = body.channel === 'whatsapp';
     
     // Format phone numbers for Twilio
     const fromNumber = isWhatsApp ? RENTMAIKAR_WHATSAPP : twilioPhone;
     const toNumber = isWhatsApp ? `whatsapp:${body.phone}` : body.phone;
 
-    console.log(`Sending ${body.channel.toUpperCase()} to ${body.phone}: ${body.notificationType}`);
+    console.log(`Sending ${body.channel.toUpperCase()} via Twilio to ${body.phone}: ${body.notificationType}`);
 
     // Send via Twilio
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
@@ -168,7 +219,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(responseData.message || `Failed to send ${body.channel}`);
     }
 
-    console.log(`${body.channel.toUpperCase()} sent successfully:`, responseData.sid);
+    console.log(`${body.channel.toUpperCase()} sent via Twilio:`, responseData.sid);
 
     return new Response(
       JSON.stringify({ 

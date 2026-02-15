@@ -170,6 +170,7 @@ const sendNotification = async (
 };
 
 // Initiate VoIP call with IVR for payment default
+// Routes via Twilio (USA) or Termii (Nigeria) based on phone prefix
 const initiateDefaultCall = async (
   paymentDefault: PaymentDefault,
   notificationNumber: number,
@@ -177,6 +178,14 @@ const initiateDefaultCall = async (
   supabaseUrl: string,
   supabase: any
 ): Promise<{ success: boolean; callId?: string }> => {
+  const isNigeria = profile.phone.startsWith('+234');
+
+  // For Nigeria, use Termii Voice API
+  if (isNigeria) {
+    return await initiateTermiiCall(paymentDefault, notificationNumber, profile, supabaseUrl, supabase);
+  }
+
+  // For USA, use Twilio
   const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
   const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
   const twilioPhone = Deno.env.get('TWILIO_PHONE_NUMBER') || '+16083843932';
@@ -257,6 +266,94 @@ const initiateDefaultCall = async (
     }
   } catch (err) {
     console.error(`[PaymentDefaults] VoIP call error:`, err);
+    return { success: false };
+  }
+};
+
+// Initiate voice call via Termii for Nigerian numbers
+const initiateTermiiCall = async (
+  paymentDefault: PaymentDefault,
+  notificationNumber: number,
+  profile: { full_name: string | null; phone: string },
+  supabaseUrl: string,
+  supabase: any
+): Promise<{ success: boolean; callId?: string }> => {
+  const termiiApiKey = Deno.env.get('TERMII_API_KEY');
+  const termiiSenderId = Deno.env.get('TERMII_SENDER_ID') || 'Rentmaikar';
+
+  if (!termiiApiKey) {
+    console.log('[PaymentDefaults] Termii credentials not configured, skipping Nigeria VoIP');
+    return { success: false };
+  }
+
+  try {
+    const driverName = profile.full_name || 'Driver';
+    const sym = getCurrencySymbol(paymentDefault.currency);
+    const amount = `${sym}${paymentDefault.amount_due}`;
+    const config = CONFIG[paymentDefault.payment_frequency];
+    const hoursRemaining = config.lockdownAfterHours - paymentDefault.hours_overdue;
+
+    const voiceMessage = notificationNumber === 3
+      ? `Hello ${driverName}. Critical alert from Rentmaikar. Your payment of ${amount} is critically overdue. Immediate action required to prevent vehicle shutdown.`
+      : notificationNumber === 2
+      ? `Hello ${driverName}. Urgent notice from Rentmaikar. Your payment of ${amount} remains outstanding. Vehicle deactivation in ${hoursRemaining} hours.`
+      : `Hello ${driverName}. This is Rentmaikar regarding your payment. Your payment of ${amount} is overdue. You have ${hoursRemaining} hours before vehicle lockdown.`;
+
+    // Create call record
+    const { data: callRecord, error: callErr } = await supabase
+      .from('voip_calls')
+      .insert({
+        initiated_by: paymentDefault.driver_id,
+        call_type: 'individual',
+        region: 'Nigeria',
+        status: 'pending',
+        direction: 'outbound',
+        started_at: new Date().toISOString(),
+        caller_role: 'system',
+        receiver_id: paymentDefault.driver_id,
+        receiver_role: 'driver',
+      })
+      .select()
+      .single();
+
+    if (callErr || !callRecord) {
+      console.error('[PaymentDefaults] Failed to create NG call record:', callErr);
+      return { success: false };
+    }
+
+    // Initiate voice call via Termii
+    const termiiResponse = await fetch('https://api.ng.termii.com/api/sms/otp/call', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: termiiApiKey,
+        phone_number: profile.phone.replace('+', ''),
+        code: notificationNumber * 1000, // Termii requires a code for voice calls
+        pin_placeholder: '< code >',
+        message_text: voiceMessage,
+        message_type: 'ALPHANUMERIC',
+      }),
+    });
+
+    const termiiData = await termiiResponse.json();
+
+    if (termiiResponse.ok && termiiData.pinId) {
+      await supabase
+        .from('voip_calls')
+        .update({ call_sid: termiiData.pinId, status: 'ringing' })
+        .eq('id', callRecord.id);
+      console.log(`[PaymentDefaults] Termii voice call (stage ${notificationNumber}) initiated for ${paymentDefault.id}`);
+      return { success: true, callId: callRecord.id };
+    } else {
+      await supabase
+        .from('voip_calls')
+        .update({ status: 'failed' })
+        .eq('id', callRecord.id);
+      console.error('[PaymentDefaults] Termii voice call failed:', termiiData);
+      return { success: false };
+    }
+  } catch (err) {
+    console.error('[PaymentDefaults] Termii call error:', err);
     return { success: false };
   }
 };

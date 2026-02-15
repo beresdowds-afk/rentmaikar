@@ -38,36 +38,59 @@ interface SecretConfig {
   name: string;
   displayName: string;
   description: string;
-  category: "sms" | "email" | "payment" | "system";
+  category: "sms" | "sms_ng" | "email" | "payment" | "system";
   testable: boolean;
   docsUrl?: string;
+  region?: "USA" | "Nigeria";
 }
 
 const secrets: SecretConfig[] = [
-  // SMS/WhatsApp
+  // SMS/WhatsApp — USA (Twilio)
   {
     name: "TWILIO_ACCOUNT_SID",
     displayName: "Twilio Account SID",
-    description: "Your Twilio account identifier for SMS and WhatsApp messaging",
+    description: "Your Twilio account identifier for USA SMS, WhatsApp, and VoIP",
     category: "sms",
     testable: true,
     docsUrl: "https://www.twilio.com/docs/usage/api",
+    region: "USA",
   },
   {
     name: "TWILIO_AUTH_TOKEN",
     displayName: "Twilio Auth Token",
-    description: "Authentication token for Twilio API access",
+    description: "Authentication token for Twilio API access (USA)",
     category: "sms",
     testable: true,
     docsUrl: "https://www.twilio.com/docs/usage/api",
+    region: "USA",
   },
   {
     name: "TWILIO_PHONE_NUMBER",
-    displayName: "Twilio Phone Number",
-    description: "The phone number used to send SMS messages",
+    displayName: "Twilio Phone Number (USA)",
+    description: "The USA phone number used for SMS, WhatsApp, and VoIP calls",
     category: "sms",
     testable: true,
     docsUrl: "https://www.twilio.com/docs/phone-numbers",
+    region: "USA",
+  },
+  // SMS/Voice — Nigeria (Termii)
+  {
+    name: "TERMII_API_KEY",
+    displayName: "Termii API Key",
+    description: "API key for Termii SMS, OTP, and Voice services in Nigeria",
+    category: "sms_ng",
+    testable: true,
+    docsUrl: "https://developers.termii.com/",
+    region: "Nigeria",
+  },
+  {
+    name: "TERMII_SENDER_ID",
+    displayName: "Termii Sender ID",
+    description: "Authorized sender ID/number for Nigerian SMS and voice communications",
+    category: "sms_ng",
+    testable: true,
+    docsUrl: "https://developers.termii.com/",
+    region: "Nigeria",
   },
   // Email
   {
@@ -86,6 +109,7 @@ const secrets: SecretConfig[] = [
     category: "payment",
     testable: false,
     docsUrl: "https://developer.paypal.com/api/rest/",
+    region: "USA",
   },
   {
     name: "PAYPAL_CLIENT_SECRET",
@@ -94,6 +118,7 @@ const secrets: SecretConfig[] = [
     category: "payment",
     testable: false,
     docsUrl: "https://developer.paypal.com/api/rest/",
+    region: "USA",
   },
   // Payment - Paystack (Nigeria)
   {
@@ -103,6 +128,7 @@ const secrets: SecretConfig[] = [
     category: "payment",
     testable: false,
     docsUrl: "https://paystack.com/docs/api/",
+    region: "Nigeria",
   },
   {
     name: "PAYSTACK_PUBLIC_KEY",
@@ -111,11 +137,13 @@ const secrets: SecretConfig[] = [
     category: "payment",
     testable: false,
     docsUrl: "https://paystack.com/docs/api/",
+    region: "Nigeria",
   },
 ];
 
 const categoryConfig = {
-  sms: { icon: Phone, label: "SMS/WhatsApp", color: "bg-blue-500", region: null },
+  sms: { icon: Phone, label: "SMS/WhatsApp/VoIP — USA (Twilio)", color: "bg-blue-500", region: "USA" },
+  sms_ng: { icon: Phone, label: "SMS/Voice — Nigeria (Termii)", color: "bg-emerald-600", region: "Nigeria" },
   email: { icon: Mail, label: "Email", color: "bg-green-500", region: null },
   payment: { icon: CreditCard, label: "Payment Gateways", color: "bg-purple-500", region: null },
   system: { icon: Shield, label: "System", color: "bg-gray-500", region: null },

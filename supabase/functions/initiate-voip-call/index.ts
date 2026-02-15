@@ -22,9 +22,9 @@ interface CallRequest {
   receiverId?: string;
 }
 
-const TWILIO_NUMBERS = {
+const OUTBOUND_NUMBERS = {
   USA: Deno.env.get('TWILIO_PHONE_NUMBER') || '+16083843932',
-  Nigeria: Deno.env.get('TWILIO_PHONE_NUMBER_NG') || '+16083843932',
+  Nigeria: Deno.env.get('TERMII_SENDER_ID') || 'Rentmaikar',
 };
 
 const handler = async (req: Request): Promise<Response> => {
@@ -120,7 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get Twilio credentials
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
     const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
-    const fromNumber = TWILIO_NUMBERS[region];
+    const fromNumber = OUTBOUND_NUMBERS[region];
 
     if (!accountSid || !authToken) {
       return new Response(
@@ -158,12 +158,74 @@ const handler = async (req: Request): Promise<Response> => {
     const isConference = callType === 'group' || recipients.length > 1;
     const conferenceName = isConference ? `RentMaikar_${callRecord.id}` : null;
 
-    // Initiate calls to each recipient via Twilio
+    // Initiate calls to each recipient via Twilio (USA) or Termii (Nigeria)
     const callResults = [];
+    const termiiApiKey = Deno.env.get('TERMII_API_KEY');
+
     for (const recipient of recipients) {
       try {
         const recipientRegion = recipient.phoneNumber.startsWith('+234') ? 'Nigeria' : 'USA';
 
+        // ─── TERMII (Nigeria) ───
+        if (recipientRegion === 'Nigeria') {
+          if (!termiiApiKey) {
+            callResults.push({
+              recipient: recipient.phoneNumber,
+              success: false,
+              error: 'Termii credentials not configured for Nigeria',
+            });
+            continue;
+          }
+
+          const termiiSenderId = Deno.env.get('TERMII_SENDER_ID') || 'Rentmaikar';
+
+          // Termii voice call
+          const termiiResponse = await fetch('https://api.ng.termii.com/api/sms/otp/call', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              api_key: termiiApiKey,
+              phone_number: recipient.phoneNumber.replace('+', ''),
+              code: 1234,
+              pin_placeholder: '< code >',
+              message_text: 'Connecting you to Rentmaikar support.',
+              message_type: 'ALPHANUMERIC',
+            }),
+          });
+
+          const termiiData = await termiiResponse.json();
+
+          if (termiiResponse.ok && termiiData.pinId) {
+            // Add participant record
+            await supabase
+              .from('voip_call_participants')
+              .insert({
+                call_id: callRecord.id,
+                user_id: recipient.userId || null,
+                phone_number: recipient.phoneNumber,
+                participant_type: 'recipient',
+                display_name: recipient.displayName,
+                region: recipientRegion,
+                status: 'ringing',
+              });
+
+            callResults.push({
+              recipient: recipient.phoneNumber,
+              success: true,
+              callSid: termiiData.pinId,
+            });
+          } else {
+            console.error('Termii error:', termiiData);
+            callResults.push({
+              recipient: recipient.phoneNumber,
+              success: false,
+              error: termiiData.message || 'Termii call failed',
+            });
+          }
+          continue;
+        }
+
+        // ─── TWILIO (USA) ───
         let twiml;
         if (isConference) {
           twiml = `<Response><Dial><Conference>${conferenceName}</Conference></Dial></Response>`;
