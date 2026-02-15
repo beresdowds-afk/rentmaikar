@@ -45,8 +45,12 @@ graph TB
     end
 
     subgraph "Call Execution Engine"
-        AA --> AB[Twilio API]
-        AB --> AC{Call Attempt}
+        AA --> AB1{Region Detection}
+        AB1 -->|USA +1| AB2[Twilio Voice API]
+        AB1 -->|Nigeria +234| AB3[Termii Voice API]
+        
+        AB2 --> AC{Call Attempt}
+        AB3 --> AC
         
         AC -->|Answered| AD[Connect Call]
         AC -->|Busy| AE[Schedule Retry]

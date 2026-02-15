@@ -6,13 +6,18 @@ graph TB
     subgraph "Incoming Call Entry Points"
         A[Incoming Call] --> B{Call Type Detection}
         B -->|USA Number +1-202-555-0123| C[USA Call Router]
-        B -->|Nigeria Number +234-1-234-5678| D[Nigeria Call Router]
+        B -->|Nigeria Number via Termii| D[Nigeria Call Router]
         B -->|Toll-Free Support| E[Global Support Queue]
     end
 
+    subgraph "Provider Routing"
+        C --> F1[Twilio Voice API — USA]
+        D --> F2[Termii Voice API — Nigeria]
+    end
+
     subgraph "IVR Menu System"
-        C --> F[USA IVR Menu]
-        D --> G[Nigeria IVR Menu]
+        F1 --> F[USA IVR Menu]
+        F2 --> G[Nigeria IVR Menu]
         
         F --> H{Language Selection}
         H -->|English| I[USA English Menu]
@@ -87,13 +92,17 @@ graph TB
     end
 
     subgraph "Integration Systems"
-        Q --> BD[Twilio Voice API]
-        R --> BD
+        Q --> BD1[Twilio Voice API — USA]
+        R --> BD1
+        Q --> BD2[Termii Voice API — Nigeria]
+        R --> BD2
         T --> BE[Emergency Services API]
         U --> BF[Payment Gateway API]
         
-        BD --> BG[Call Recording S3]
-        BD --> BH[Transcription Service]
+        BD1 --> BG[Call Recording S3]
+        BD2 --> BG
+        BD1 --> BH[Transcription Service]
+        BD2 --> BH
         BG --> BI[Compliance Archive]
         BH --> BJ[Analytics DB]
     end
@@ -120,3 +129,10 @@ graph TB
         BR --> BV[Survey Request]
     end
 ```
+
+## Provider Mapping
+
+| Region | Voice Provider | SMS Provider | Number/Sender ID |
+|---|---|---|---|
+| **USA** | Twilio | Twilio | `TWILIO_PHONE_NUMBER` (+1) |
+| **Nigeria** | Termii | Termii | `TERMII_SENDER_ID` (Rentmaikar) |

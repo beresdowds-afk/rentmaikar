@@ -2,30 +2,45 @@
 
 ```mermaid
 graph LR
-    A[Incoming Call] --> B[Twilio Elastic SIP Trunking]
-    B --> C[Twilio Studio Flow]
+    A[Incoming Call] --> B{Region Detection}
     
-    C --> D{Call Router}
-    D --> E[USA Region]
-    D --> F[Nigeria Region]
+    B -->|USA +1| C[Twilio Elastic SIP Trunking]
+    B -->|Nigeria +234| D[Termii Voice API]
     
-    E --> G[USA IVR]
-    F --> H[Nigeria IVR]
+    C --> E[Twilio Studio Flow]
+    D --> F[Termii Call Router]
     
-    G --> I[Twilio Functions]
-    H --> I
+    E --> G{Call Router}
+    F --> G
     
-    I --> J[AWS Lambda]
+    G --> H[USA IVR]
+    G --> I[Nigeria IVR]
+    
+    H --> J[Edge Functions]
+    I --> J
+    
     J --> K[Rentmaikar DB]
     J --> L[CRM System]
     J --> M[Payment Gateway]
     
-    I --> N[Call Recording]
+    J --> N[Call Recording]
     N --> O[S3 Storage]
     O --> P[Transcription Service]
     P --> Q[Analytics]
     
-    I --> R[SMS/WhatsApp]
-    R --> S[Twilio Messaging]
-    S --> T[User Phone]
+    J --> R[SMS/WhatsApp]
+    R --> S1[Twilio Messaging — USA]
+    R --> S2[Termii Messaging — Nigeria]
+    S1 --> T[User Phone]
+    S2 --> T
 ```
+
+## Provider Stack
+
+| Component | USA | Nigeria |
+|---|---|---|
+| **Voice Calls** | Twilio Voice API | Termii Voice API |
+| **SMS** | Twilio SMS | Termii SMS |
+| **WhatsApp** | Twilio WhatsApp | Termii WhatsApp |
+| **OTP** | Twilio Verify | Termii Token |
+| **Payments** | PayPal | Paystack |
