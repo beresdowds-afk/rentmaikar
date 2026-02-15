@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Mail, MessageSquare, Phone, Loader2, Save, Globe, Building2, Copy, CheckCircle, Plus, Trash2 } from 'lucide-react';
 import { useContactSettings, ContactSetting } from '@/hooks/useUnifiedInbox';
-import { EMAIL_CONFIG, COMPANY_INFO, EMAIL_SENDER_NAMES } from '@/lib/email-config';
+import { COMPANY_INFO } from '@/lib/email-config';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -234,11 +234,85 @@ const AddContactForm = ({ region, onAdded }: { region: string; onAdded: () => vo
   );
 };
 
+const EmailConfigRow = ({ entry, onSave }: { 
+  entry: { id: string; key: string; email: string; sender_name: string | null; description: string | null; is_active: boolean };
+  onSave: () => void;
+}) => {
+  const [editing, setEditing] = useState(false);
+  const [email, setEmail] = useState(entry.email);
+  const [senderName, setSenderName] = useState(entry.sender_name || '');
+  const [desc, setDesc] = useState(entry.description || '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const { error } = await supabase
+      .from('platform_email_config')
+      .update({ email, sender_name: senderName || null, description: desc || null })
+      .eq('id', entry.id);
+    if (error) { toast.error('Failed to save'); } else { toast.success('Email config updated'); setEditing(false); onSave(); }
+    setSaving(false);
+  };
+
+  const handleToggle = async (active: boolean) => {
+    await supabase.from('platform_email_config').update({ is_active: active }).eq('id', entry.id);
+    onSave();
+  };
+
+  if (editing) {
+    return (
+      <tr className="border-b border-border/50">
+        <td className="p-2.5"><Badge variant="outline" className="font-normal">{entry.key}</Badge></td>
+        <td className="p-2.5"><Input value={email} onChange={e => setEmail(e.target.value)} className="h-8 text-xs font-mono" /></td>
+        <td className="p-2.5"><Input value={senderName} onChange={e => setSenderName(e.target.value)} placeholder="Sender name" className="h-8 text-xs" /></td>
+        <td className="p-2.5"><Input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description" className="h-8 text-xs" /></td>
+        <td className="p-2.5 text-right">
+          <div className="flex gap-1 justify-end">
+            <Button size="sm" className="h-7 px-2" onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditing(false)}>Cancel</Button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr className="border-b border-border/50 group">
+      <td className="p-2.5">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="font-normal">{entry.key}</Badge>
+          {!entry.is_active && <Badge variant="secondary" className="text-[10px]">Inactive</Badge>}
+        </div>
+      </td>
+      <td className="p-2.5 font-mono text-xs">{entry.email}</td>
+      <td className="p-2.5 text-muted-foreground text-xs">{entry.sender_name || '—'}</td>
+      <td className="p-2.5 text-muted-foreground text-xs">{entry.description || '—'}</td>
+      <td className="p-2.5 text-right">
+        <div className="flex gap-1 justify-end items-center">
+          <Switch checked={entry.is_active} onCheckedChange={handleToggle} className="scale-75" />
+          <Button size="sm" variant="ghost" className="h-7 px-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setEditing(true)}>Edit</Button>
+          <CopyButton value={entry.email} />
+        </div>
+      </td>
+    </tr>
+  );
+};
+
 export const AdminContactSettings = () => {
   const { settings, isLoading, updateSetting, fetchSettings: refetch } = useContactSettings();
 
   const [forwardingRegions, setForwardingRegions] = useState<any[]>([]);
   const [forwardingLoading, setForwardingLoading] = useState(true);
+  const [emailConfigs, setEmailConfigs] = useState<any[]>([]);
+  const [emailConfigLoading, setEmailConfigLoading] = useState(true);
+
+  const fetchEmailConfigs = async () => {
+    const { data } = await supabase.from('platform_email_config').select('*').order('key');
+    if (data) setEmailConfigs(data);
+    setEmailConfigLoading(false);
+  };
 
   useEffect(() => {
     const fetchForwarding = async () => {
@@ -250,6 +324,7 @@ export const AdminContactSettings = () => {
       setForwardingLoading(false);
     };
     fetchForwarding();
+    fetchEmailConfigs();
   }, []);
 
   const usaSettings = settings.filter(s => s.region === 'USA');
@@ -264,14 +339,6 @@ export const AdminContactSettings = () => {
       refetch();
     }
   };
-
-  // Build platform directory from email-config
-  const platformEmails = Object.entries(EMAIL_CONFIG).map(([key, email]) => ({
-    key,
-    email,
-    label: key.charAt(0).toUpperCase() + key.slice(1),
-    senderName: EMAIL_SENDER_NAMES[key as keyof typeof EMAIL_SENDER_NAMES] || null,
-  }));
 
   const companyPhones = [
     { region: 'USA', ...COMPANY_INFO.USA },
@@ -298,7 +365,7 @@ export const AdminContactSettings = () => {
         </p>
       </div>
 
-      {/* Platform Email Directory */}
+      {/* Platform Email Directory - DB-driven editable */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -306,34 +373,32 @@ export const AdminContactSettings = () => {
             Platform Email Addresses
           </CardTitle>
           <CardDescription>
-            All official @rentmaikar.com email addresses used across the platform. These are configured in the central email configuration.
+            All official @rentmaikar.com email addresses used across the platform. Click Edit to modify.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left p-2.5 font-semibold">Purpose</th>
-                  <th className="text-left p-2.5 font-semibold">Email Address</th>
-                  <th className="text-left p-2.5 font-semibold">Sender Name</th>
-                  <th className="text-right p-2.5 font-semibold w-12"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {platformEmails.map((item) => (
-                  <tr key={item.key} className="border-b border-border/50">
-                    <td className="p-2.5">
-                      <Badge variant="outline" className="font-normal">{item.label}</Badge>
-                    </td>
-                    <td className="p-2.5 font-mono text-xs">{item.email}</td>
-                    <td className="p-2.5 text-muted-foreground text-xs">{item.senderName || '—'}</td>
-                    <td className="p-2.5 text-right"><CopyButton value={item.email} /></td>
+          {emailConfigLoading ? (
+            <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left p-2.5 font-semibold">Purpose</th>
+                    <th className="text-left p-2.5 font-semibold">Email Address</th>
+                    <th className="text-left p-2.5 font-semibold">Sender Name</th>
+                    <th className="text-left p-2.5 font-semibold">Description</th>
+                    <th className="text-right p-2.5 font-semibold w-32"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {emailConfigs.map((entry) => (
+                    <EmailConfigRow key={entry.id} entry={entry} onSave={fetchEmailConfigs} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

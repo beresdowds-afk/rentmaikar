@@ -1644,6 +1644,39 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_email_config: {
+        Row: {
+          description: string | null
+          email: string
+          id: string
+          is_active: boolean
+          key: string
+          sender_name: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          email: string
+          id?: string
+          is_active?: boolean
+          key: string
+          sender_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          email?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          sender_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       platform_feature_overrides: {
         Row: {
           city_id: string | null
