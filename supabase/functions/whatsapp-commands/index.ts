@@ -5,6 +5,8 @@ import {
   paymentLinkMessage,
   rentalStatusMessage,
   helpMessage,
+  fillTemplate,
+  detectTemplateLanguage,
 } from "../_shared/whatsapp-templates.ts";
 
 const corsHeaders = {
@@ -113,7 +115,7 @@ const intentToCommand = (intent: string): string | null => {
     vehicle_list: "STATUS",
     rental_extend: "STATUS",
     rental_return: "DONE",
-    rental_available: "1",
+    rental_available: "CARS",
     support: "HUMAN",
     emergency: "EMERGENCY",
   };
@@ -325,6 +327,145 @@ const getDocumentExpiryDays = (docType: string, country: string): number | null 
 
 
 // ═══════════════════════════════════════════════════════════
+// WhatsApp Analytics & Message Tracking
+// ═══════════════════════════════════════════════════════════
+
+const trackWhatsAppMessage = async (
+  supabase: ReturnType<typeof createClient>,
+  data: {
+    messageId?: string;
+    userId?: string;
+    direction: "inbound" | "outbound";
+    messageType: string;
+    content: string;
+    templateName?: string;
+    language?: string;
+    status?: string;
+    metadata?: Record<string, unknown>;
+  }
+) => {
+  try {
+    await supabase.from("whatsapp_messages").insert({
+      message_id: data.messageId || crypto.randomUUID(),
+      user_id: data.userId || null,
+      direction: data.direction,
+      message_type: data.messageType,
+      content: data.content?.substring(0, 5000) || "",
+      template_name: data.templateName || null,
+      language: data.language || null,
+      status: data.status || "sent",
+      metadata: data.metadata || {},
+    });
+  } catch (err) {
+    console.error("[Analytics] Failed to track message:", err);
+  }
+};
+
+const trackTemplateUsage = async (
+  supabase: ReturnType<typeof createClient>,
+  templateName: string,
+  language: string,
+  userId?: string
+) => {
+  try {
+    await supabase.from("whatsapp_template_usage").insert({
+      template_name: templateName,
+      language,
+      user_id: userId || null,
+      status: "sent",
+    });
+  } catch (err) {
+    console.error("[Analytics] Failed to track template usage:", err);
+  }
+};
+
+// ═══════════════════════════════════════════════════════════
+// Payment Reminder Helper (Template-based)
+// ═══════════════════════════════════════════════════════════
+
+const sendPaymentReminder = async (
+  supabase: ReturnType<typeof createClient>,
+  user: { userId: string; phone: string; language?: string; country?: string },
+  payment: { amount: number; dueDate: string; vehicleName: string; defaultDay?: number; currency: string }
+) => {
+  const templateName = `payment_reminder_day${payment.defaultDay || 1}`;
+  const lang = detectTemplateLanguage(user.country || "US");
+
+  const filled = fillTemplate(templateName, lang, [
+    payment.amount.toLocaleString(),
+    payment.dueDate,
+    payment.vehicleName,
+  ]);
+
+  // Build text message whether or not structured template exists
+  const curr = payment.currency === "NGN" ? "₦" : "$";
+  const message = filled
+    ? `⏰ *Payment Reminder*\n\nAmount Due: ${curr}${payment.amount.toLocaleString()}\nVehicle: ${payment.vehicleName}\nDue: ${payment.dueDate}\n\nReply *PAY* to settle now.`
+    : `⏰ *Payment Reminder*\n\nAmount: ${curr}${payment.amount.toLocaleString()}\nDue: ${payment.dueDate}\n\nReply *PAY* to pay now.`;
+
+  await sendWhatsAppMessage(user.phone, message);
+
+  // Track
+  await trackWhatsAppMessage(supabase, {
+    userId: user.userId,
+    direction: "outbound",
+    messageType: "template",
+    content: message,
+    templateName,
+    language: lang,
+    status: "sent",
+  });
+
+  await trackTemplateUsage(supabase, templateName, lang, user.userId);
+};
+
+// ═══════════════════════════════════════════════════════════
+// Document Request Helper
+// ═══════════════════════════════════════════════════════════
+
+const requestDocument = async (
+  supabase: ReturnType<typeof createClient>,
+  user: { userId: string; phone: string; fullName?: string },
+  docType: string,
+  reason?: string
+) => {
+  const docLabel = formatDocumentType(docType);
+  const message = [
+    `📄 *Document Required*`,
+    ``,
+    `Type: ${docLabel}`,
+    reason ? `Reason: ${reason}` : "",
+    ``,
+    `Please upload your ${docLabel}:`,
+    `1️⃣ Send the file directly in this chat`,
+    `2️⃣ Or upload at: https://rentmaikar.lovable.app/driver/dashboard`,
+    ``,
+    `Supported: PDF, JPG, PNG (Max 10MB)`,
+  ].filter(Boolean).join("\n");
+
+  await sendWhatsAppMessage(user.phone, message);
+
+  await trackWhatsAppMessage(supabase, {
+    userId: user.userId,
+    direction: "outbound",
+    messageType: "interactive",
+    content: message,
+    status: "sent",
+    metadata: { docType, reason },
+  });
+
+  // Create interactive flow for document upload tracking
+  await supabase.from("whatsapp_interactive_flows").insert({
+    user_id: user.userId,
+    flow_id: `doc_upload_${docType}_${Date.now()}`,
+    flow_type: "document_upload",
+    current_step: 0,
+    data: { docType, reason, requestedAt: new Date().toISOString() },
+    completed: false,
+  });
+};
+
+// ═══════════════════════════════════════════════════════════
 // Main Handler
 // ═══════════════════════════════════════════════════════════
 
@@ -525,6 +666,55 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
+      // ─── Internal document request handler ───
+      if (jsonData.action === "document_request") {
+        const { userId, documentType, reason } = jsonData;
+        console.log(`[Document Request] user=${userId} type=${documentType}`);
+
+        const { data: userProfile } = await supabase.from("profiles")
+          .select("phone, full_name").eq("user_id", userId).single();
+
+        if (userProfile?.phone) {
+          await requestDocument(supabase, {
+            userId,
+            phone: userProfile.phone,
+            fullName: userProfile.full_name || undefined,
+          }, documentType, reason || "Document required for verification");
+        }
+
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      // ─── Internal payment reminder handler ───
+      if (jsonData.action === "send_payment_reminder") {
+        const { userId, amount, dueDate, vehicleName, defaultDay, currency, country } = jsonData;
+        console.log(`[Payment Reminder] user=${userId} amount=${amount}`);
+
+        const { data: userProfile } = await supabase.from("profiles")
+          .select("phone, full_name").eq("user_id", userId).single();
+
+        if (userProfile?.phone) {
+          await sendPaymentReminder(supabase, {
+            userId,
+            phone: userProfile.phone,
+            language: undefined,
+            country: country || (userProfile.phone.startsWith("+234") ? "NG" : "US"),
+          }, {
+            amount: Number(amount),
+            dueDate,
+            vehicleName: vehicleName || "your vehicle",
+            defaultDay: defaultDay || 1,
+            currency: currency || "USD",
+          });
+        }
+
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
       from = jsonData.from || jsonData.mobile || jsonData.phone || "";
       rawBody = (jsonData.text || jsonData.body || jsonData.message || "").trim();
       if (from && !from.startsWith("+")) {
@@ -584,7 +774,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const exactCommands = [
       "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "SUPPORT",
-      "OK", "DONE", "1", "BOOKING", "2", "3", "4", "HUMAN",
+      "OK", "DONE", "1", "BOOKING", "2", "3", "4", "HUMAN", "CARS", "DOCS",
     ];
 
     if (!exactCommands.includes(body)) {
@@ -853,10 +1043,41 @@ const handler = async (req: Request): Promise<Response> => {
         break;
       }
 
+      case "CARS": {
+        // Show available vehicles by region
+        const { data: vehicles } = await supabase
+          .from("vehicles")
+          .select("id, make, model, year, category, daily_rate, currency")
+          .eq("status", "available")
+          .eq("region", region === "NIGERIA" ? "nigeria" : "usa")
+          .order("daily_rate", { ascending: true })
+          .limit(10);
+
+        if (vehicles && vehicles.length > 0) {
+          const vehicleLines = vehicles.map((v, i) => {
+            const curr = v.currency === "NGN" ? "₦" : "$";
+            return `${i + 1}. ${v.year} ${v.make} ${v.model} (${v.category || "Standard"})\n   💰 ${curr}${v.daily_rate}/day`;
+          });
+
+          responseMessage = [
+            `🚗 *Available Vehicles*`,
+            ``,
+            ...vehicleLines,
+            ``,
+            `📱 Browse all: https://rentmaikar.lovable.app/catalogue`,
+            ``,
+            `_Reply *1* for booking support or *4* to speak with an agent._`,
+          ].join("\n");
+        } else {
+          responseMessage = `🚗 *Available Vehicles*\n\nNo vehicles currently available in your region.\n\nCheck back soon or visit: https://rentmaikar.lovable.app/catalogue`;
+        }
+        break;
+      }
+
       default: {
         // If intent was classified but below threshold, or truly unknown
         if (intentResult && intentResult.confidence > 0 && intentResult.confidence < 0.3) {
-          responseMessage = `🤔 I'm not sure I understood that.\n\nDid you mean one of these?\n\n• *PAY* - Make a payment\n• *STATUS* - Check rental status\n• *BALANCE* - View balance\n• *HELP* - Get support\n\nOr reply *4* to talk to a human.`;
+          responseMessage = `🤔 I'm not sure I understood that.\n\nDid you mean one of these?\n\n• *PAY* - Make a payment\n• *STATUS* - Check rental status\n• *BALANCE* - View balance\n• *CARS* - Browse vehicles\n• *HELP* - Get support\n\nOr reply *4* to talk to a human.`;
         } else {
           responseMessage = selfServiceMenuMessage();
         }
@@ -865,6 +1086,32 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     await sendWhatsAppMessage(from, responseMessage);
+
+    // ─── Track inbound + outbound messages ───
+    await trackWhatsAppMessage(supabase, {
+      userId: profile.user_id,
+      direction: "inbound",
+      messageType: "text",
+      content: rawBody,
+      language: detectLanguage(from, region),
+      status: "received",
+      metadata: {
+        command,
+        intent: intentResult?.intent,
+        confidence: intentResult?.confidence,
+        region,
+      },
+    });
+
+    await trackWhatsAppMessage(supabase, {
+      userId: profile.user_id,
+      direction: "outbound",
+      messageType: "text",
+      content: responseMessage,
+      language: detectLanguage(from, region),
+      status: "sent",
+      metadata: { command, region },
+    });
 
     // Log the intent classification for analytics
     if (intentResult) {
