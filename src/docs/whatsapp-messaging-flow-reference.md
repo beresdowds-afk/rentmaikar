@@ -138,6 +138,52 @@ verify_jwt = false
 
 All inbound webhooks have JWT verification disabled to allow unauthenticated delivery from external providers.
 
+## WhatsApp Platform Configuration
+
+### Provider API Settings
+
+| Setting | USA (Twilio) | Nigeria (Termii) |
+|---|---|---|
+| **API Version** | Twilio REST v2010 | Termii v1 |
+| **Base URL** | `https://api.twilio.com/2010-04-01/` | `https://api.ng.termii.com/api/` |
+| **Auth Method** | Basic Auth (SID:Token) | API Key in body |
+| **WhatsApp Format** | `whatsapp:+1XXXXXXXXXX` prefix | `channel: "whatsapp"` field |
+| **SMS Format** | Direct phone number | `channel: "generic"` field |
+
+### Webhook Endpoints
+
+| Webhook | Provider | URL Pattern | Format |
+|---|---|---|---|
+| **Incoming Messages** | Twilio | `{SUPABASE_URL}/functions/v1/twilio-webhook` | form-data |
+| **Incoming Messages** | Termii | `{SUPABASE_URL}/functions/v1/termii-webhook` | JSON |
+| **Message Status** | Twilio | `{SUPABASE_URL}/functions/v1/voip-status-callback` | form-data |
+| **WhatsApp Commands** | Internal | `{SUPABASE_URL}/functions/v1/whatsapp-commands` | JSON / form-data |
+
+### Rate Limits
+
+| Limit | Twilio (USA) | Termii (Nigeria) |
+|---|---|---|
+| **Per Second** | 80 messages | 50 messages |
+| **Per Day** | 1,000,000 | 500,000 |
+| **Concurrent** | 50 | 30 |
+| **Template Messages** | Unlimited (approved) | Subject to approval |
+
+### Regional Numbers
+
+| Region | WhatsApp Number | Provider | SMS Sender |
+|---|---|---|---|
+| USA (+1) | Twilio WhatsApp-enabled number | Twilio | `TWILIO_PHONE_NUMBER` |
+| Nigeria (+234) | Termii WhatsApp-enabled number | Termii | `TERMII_SENDER_ID` |
+
+### Message Types Supported
+
+| Type | Description | Provider Support |
+|---|---|---|
+| **Text** | Plain text messages | Twilio ✅ / Termii ✅ |
+| **Template** | Pre-approved templates | Twilio ✅ / Termii ✅ |
+| **Interactive** | Buttons & list menus | Twilio ✅ / Termii (via text fallback) |
+| **Media** | Images, documents, audio | Twilio ✅ / Termii ✅ |
+
 ## Secrets Required
 
 | Secret | Provider | Usage |
