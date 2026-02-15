@@ -6,8 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Mail, MessageSquare, Phone, Loader2, Save, Globe } from 'lucide-react';
+import { Mail, MessageSquare, Phone, Loader2, Save, Globe, Building2, Copy, CheckCircle, Plus, Trash2 } from 'lucide-react';
 import { useContactSettings, ContactSetting } from '@/hooks/useUnifiedInbox';
+import { EMAIL_CONFIG, COMPANY_INFO, EMAIL_SENDER_NAMES } from '@/lib/email-config';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const channelIcons = {
   email: Mail,
@@ -23,10 +26,12 @@ const channelLabels = {
 
 const ContactSettingCard = ({ 
   setting, 
-  onUpdate 
+  onUpdate,
+  onDelete,
 }: { 
   setting: ContactSetting; 
   onUpdate: (id: string, updates: Partial<ContactSetting>) => Promise<boolean>;
+  onDelete?: (id: string) => void;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [contactValue, setContactValue] = useState(setting.contact_value);
@@ -105,14 +110,26 @@ const ContactSettingCard = ({
                   {setting.display_name && (
                     <p className="text-xs text-muted-foreground">{setting.display_name}</p>
                   )}
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    className="mt-2 h-7 px-2"
-                    onClick={() => setIsEditing(true)}
-                  >
-                    Edit
-                  </Button>
+                  <div className="flex gap-2 mt-2">
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-7 px-2"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      Edit
+                    </Button>
+                    {onDelete && (
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-7 px-2 text-destructive hover:text-destructive"
+                        onClick={() => onDelete(setting.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -127,11 +144,124 @@ const ContactSettingCard = ({
   );
 };
 
+const CopyButton = ({ value }: { value: string }) => {
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={handleCopy}>
+      {copied ? <CheckCircle className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+    </Button>
+  );
+};
+
+const AddContactForm = ({ region, onAdded }: { region: string; onAdded: () => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [contactType, setContactType] = useState('email');
+  const [contactValue, setContactValue] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleAdd = async () => {
+    if (!contactValue.trim()) return;
+    setIsSaving(true);
+    const { error } = await supabase.from('contact_settings').insert({
+      region,
+      contact_type: contactType,
+      contact_value: contactValue.trim(),
+      display_name: displayName.trim() || null,
+      is_active: true,
+    });
+    if (error) {
+      toast.error('Failed to add contact');
+    } else {
+      toast.success('Contact added');
+      setContactValue('');
+      setDisplayName('');
+      setIsOpen(false);
+      onAdded();
+    }
+    setIsSaving(false);
+  };
+
+  if (!isOpen) {
+    return (
+      <Button size="sm" variant="outline" className="gap-2" onClick={() => setIsOpen(true)}>
+        <Plus className="h-4 w-4" /> Add Contact
+      </Button>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs text-muted-foreground">Channel</Label>
+            <select 
+              value={contactType} 
+              onChange={(e) => setContactType(e.target.value)}
+              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="email">Email</option>
+              <option value="sms">SMS / Phone</option>
+              <option value="whatsapp">WhatsApp</option>
+            </select>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Display Name</Label>
+            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="e.g., Support Line" className="mt-1" />
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Contact Value</Label>
+          <Input value={contactValue} onChange={(e) => setContactValue(e.target.value)} placeholder={contactType === 'email' ? 'support@example.com' : '+1234567890'} className="mt-1" />
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={handleAdd} disabled={isSaving || !contactValue.trim()}>
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Add
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 export const AdminContactSettings = () => {
-  const { settings, isLoading, updateSetting } = useContactSettings();
+  const { settings, isLoading, updateSetting, fetchSettings: refetch } = useContactSettings();
 
   const usaSettings = settings.filter(s => s.region === 'USA');
   const nigeriaSettings = settings.filter(s => s.region === 'Nigeria');
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('contact_settings').delete().eq('id', id);
+    if (error) {
+      toast.error('Failed to delete contact');
+    } else {
+      toast.success('Contact deleted');
+      refetch();
+    }
+  };
+
+  // Build platform directory from email-config
+  const platformEmails = Object.entries(EMAIL_CONFIG).map(([key, email]) => ({
+    key,
+    email,
+    label: key.charAt(0).toUpperCase() + key.slice(1),
+    senderName: EMAIL_SENDER_NAMES[key as keyof typeof EMAIL_SENDER_NAMES] || null,
+  }));
+
+  const companyPhones = [
+    { region: 'USA', ...COMPANY_INFO.USA },
+    { region: 'Nigeria', ...COMPANY_INFO.NIGERIA },
+  ];
 
   if (isLoading) {
     return (
@@ -142,65 +272,168 @@ export const AdminContactSettings = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Globe className="h-5 w-5" />
-          Contact Settings
+          Contact Directory & Settings
         </h3>
         <p className="text-sm text-muted-foreground">
-          Manage contact points for each region. These are the official channels customers will use to reach support.
+          Complete directory of all Rentmaikar phone numbers, email addresses, and regional contact channels.
         </p>
       </div>
 
-      <Tabs defaultValue="usa" className="w-full">
-        <TabsList>
-          <TabsTrigger value="usa" className="flex items-center gap-2">
-            🇺🇸 United States
-          </TabsTrigger>
-          <TabsTrigger value="nigeria" className="flex items-center gap-2">
-            🇳🇬 Nigeria
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="usa" className="mt-4">
-          <div className="grid gap-4">
-            {usaSettings.map((setting) => (
-              <ContactSettingCard 
-                key={setting.id} 
-                setting={setting} 
-                onUpdate={updateSetting}
-              />
-            ))}
-            {usaSettings.length === 0 && (
-              <Card>
-                <CardContent className="p-6 text-center text-muted-foreground">
-                  No contact settings configured for USA
-                </CardContent>
-              </Card>
-            )}
+      {/* Platform Email Directory */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Mail className="h-4 w-4 text-primary" />
+            Platform Email Addresses
+          </CardTitle>
+          <CardDescription>
+            All official @rentmaikar.com email addresses used across the platform. These are configured in the central email configuration.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left p-2.5 font-semibold">Purpose</th>
+                  <th className="text-left p-2.5 font-semibold">Email Address</th>
+                  <th className="text-left p-2.5 font-semibold">Sender Name</th>
+                  <th className="text-right p-2.5 font-semibold w-12"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {platformEmails.map((item) => (
+                  <tr key={item.key} className="border-b border-border/50">
+                    <td className="p-2.5">
+                      <Badge variant="outline" className="font-normal">{item.label}</Badge>
+                    </td>
+                    <td className="p-2.5 font-mono text-xs">{item.email}</td>
+                    <td className="p-2.5 text-muted-foreground text-xs">{item.senderName || '—'}</td>
+                    <td className="p-2.5 text-right"><CopyButton value={item.email} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </TabsContent>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="nigeria" className="mt-4">
-          <div className="grid gap-4">
-            {nigeriaSettings.map((setting) => (
-              <ContactSettingCard 
-                key={setting.id} 
-                setting={setting} 
-                onUpdate={updateSetting}
-              />
+      {/* Company Phone Numbers & Addresses */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-primary" />
+            Company Information by Region
+          </CardTitle>
+          <CardDescription>
+            Official phone numbers, company names, and addresses for each operating region.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 gap-4">
+            {companyPhones.map((company) => (
+              <div key={company.region} className="p-4 rounded-lg bg-muted space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{company.region === 'USA' ? '🇺🇸' : '🇳🇬'}</span>
+                  <div>
+                    <p className="font-semibold">{company.companyName}</p>
+                    <p className="text-xs text-muted-foreground">{company.region}</p>
+                  </div>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-mono text-xs">{company.phone}</span>
+                    </div>
+                    <CopyButton value={company.phoneRaw} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-mono text-xs">{company.email}</span>
+                    </div>
+                    <CopyButton value={company.email} />
+                  </div>
+                  {company.fullAddress && (
+                    <div className="flex items-start gap-2 pt-1 border-t border-border/50">
+                      <Building2 className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                      <span className="text-xs text-muted-foreground">{company.fullAddress}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             ))}
-            {nigeriaSettings.length === 0 && (
-              <Card>
-                <CardContent className="p-6 text-center text-muted-foreground">
-                  No contact settings configured for Nigeria
-                </CardContent>
-              </Card>
-            )}
           </div>
-        </TabsContent>
-      </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Editable Regional Contact Channels */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-primary" />
+            Regional Contact Channels
+          </CardTitle>
+          <CardDescription>
+            Editable customer-facing contact points (SMS, WhatsApp, Email) by region. These populate dashboard contact options and drive Unified Inbox routing.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="usa" className="w-full">
+            <TabsList>
+              <TabsTrigger value="usa" className="flex items-center gap-2">
+                🇺🇸 United States
+              </TabsTrigger>
+              <TabsTrigger value="nigeria" className="flex items-center gap-2">
+                🇳🇬 Nigeria
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="usa" className="mt-4 space-y-4">
+              {usaSettings.map((setting) => (
+                <ContactSettingCard 
+                  key={setting.id} 
+                  setting={setting} 
+                  onUpdate={updateSetting}
+                  onDelete={handleDelete}
+                />
+              ))}
+              {usaSettings.length === 0 && (
+                <Card>
+                  <CardContent className="p-6 text-center text-muted-foreground">
+                    No contact channels configured for USA
+                  </CardContent>
+                </Card>
+              )}
+              <AddContactForm region="USA" onAdded={refetch} />
+            </TabsContent>
+
+            <TabsContent value="nigeria" className="mt-4 space-y-4">
+              {nigeriaSettings.map((setting) => (
+                <ContactSettingCard 
+                  key={setting.id} 
+                  setting={setting} 
+                  onUpdate={updateSetting}
+                  onDelete={handleDelete}
+                />
+              ))}
+              {nigeriaSettings.length === 0 && (
+                <Card>
+                  <CardContent className="p-6 text-center text-muted-foreground">
+                    No contact channels configured for Nigeria
+                  </CardContent>
+                </Card>
+              )}
+              <AddContactForm region="Nigeria" onAdded={refetch} />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 };
