@@ -28,12 +28,9 @@ const handler = async (req: Request): Promise<Response> => {
     const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER") || SUPPORT_NUMBER;
+    const termiiApiKey = Deno.env.get("TERMII_API_KEY");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    if (!twilioAccountSid || !twilioAuthToken) {
-      throw new Error("Twilio credentials not configured");
-    }
 
     // Find active rentals ending within the next 24 hours that haven't been reminded yet
     const now = new Date();
@@ -131,29 +128,60 @@ const handler = async (req: Request): Promise<Response> => {
 
         if (callError) throw new Error(`Call record failed: ${callError.message}`);
 
-        // Make Twilio call
-        const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`;
-        const callResponse = await fetch(twilioUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            To: driverProfile.phone,
-            From: twilioPhoneNumber,
-            Twiml: twiml,
-            StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
-            MachineDetection: 'DetectMessageEnd',
-            AsyncAmd: 'true',
-          }),
-        });
+        const isNigeria = driverProfile.phone.startsWith('+234');
+        let callSuccess = false;
+        let callSidValue = '';
 
-        const callData = await callResponse.json();
+        if (isNigeria && termiiApiKey) {
+          // ─── TERMII (Nigeria) ───
+          const voiceMsg = `Hello ${driverProfile.full_name || 'Driver'}. This is Rentmaikar reminding you that your rental of ${vehicleInfo} ends ${returnTime}. Please return the vehicle on time.`;
+          const termiiResp = await fetch('https://api.ng.termii.com/api/sms/otp/call', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              api_key: termiiApiKey,
+              phone_number: driverProfile.phone.replace('+', ''),
+              code: 1234,
+              pin_placeholder: '< code >',
+              message_text: voiceMsg,
+              message_type: 'ALPHANUMERIC',
+            }),
+          });
+          const termiiData = await termiiResp.json();
+          if (termiiResp.ok && termiiData.pinId) {
+            callSuccess = true;
+            callSidValue = termiiData.pinId;
+          }
+        } else if (twilioAccountSid && twilioAuthToken) {
+          // ─── TWILIO (USA) ───
+          const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`;
+          const callResponse = await fetch(twilioUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              To: driverProfile.phone,
+              From: twilioPhoneNumber,
+              Twiml: twiml,
+              StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
+              MachineDetection: 'DetectMessageEnd',
+              AsyncAmd: 'true',
+            }),
+          });
+          const callData = await callResponse.json();
+          if (callResponse.ok) {
+            callSuccess = true;
+            callSidValue = callData.sid;
+          } else {
+            results.errors.push(`Call failed for rental ${rental.id}: ${callData.message}`);
+          }
+        }
 
-        if (callResponse.ok) {
+        if (callSuccess) {
           await supabase.from('voip_calls')
-            .update({ call_sid: callData.sid, status: 'ringing' })
+            .update({ call_sid: callSidValue, status: 'ringing' })
             .eq('id', callRecord.id);
 
           // Mark reminder as sent
@@ -166,7 +194,6 @@ const handler = async (req: Request): Promise<Response> => {
           await supabase.from('voip_calls')
             .update({ status: 'failed' })
             .eq('id', callRecord.id);
-          results.errors.push(`Call failed for rental ${rental.id}: ${callData.message}`);
         }
 
         // Also send SMS reminder

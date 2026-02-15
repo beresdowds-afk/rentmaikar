@@ -46,28 +46,23 @@ const handler = async (req: Request): Promise<Response> => {
 
     switch (digits) {
       case "1": {
-        // Press 1: Send document upload link via SMS
+        // Press 1: Send document upload link via SMS (routed through centralized function)
         const uploadLink = `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/driver-dashboard?tab=documents`;
         
-        // Send SMS with upload link
-        const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID")!;
-        const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN")!;
-        const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER") || SUPPORT_NUMBER;
-
         const cleanPhone = callerPhone.replace('whatsapp:', '');
 
         try {
-          const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
-          await fetch(twilioUrl, {
+          await fetch(`${supabaseUrl}/functions/v1/send-sms-notification`, {
             method: 'POST',
             headers: {
-              'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
-              'Content-Type': 'application/x-www-form-urlencoded',
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
             },
-            body: new URLSearchParams({
-              To: cleanPhone,
-              From: twilioPhoneNumber,
-              Body: `RentMaiKar: Upload your ${docType.replace('_', ' ')} document here: ${uploadLink}\nThis link is valid for 24 hours. Reply HELP for assistance.`,
+            body: JSON.stringify({
+              phone: cleanPhone,
+              channel: 'sms',
+              notificationType: 'general',
+              customMessage: `RentMaiKar: Upload your ${docType.replace('_', ' ')} document here: ${uploadLink}\nThis link is valid for 24 hours. Reply HELP for assistance.`,
             }),
           });
         } catch (e) {

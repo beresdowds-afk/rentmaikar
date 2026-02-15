@@ -43,7 +43,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     switch (digits) {
       case "1": {
-        // Press 1: Confirm return — send SMS with inspection address
+        // Press 1: Confirm return — send SMS with inspection address (via centralized routing)
         const { data: rental } = await supabase
           .from('rentals')
           .select('return_location, end_date')
@@ -51,25 +51,20 @@ const handler = async (req: Request): Promise<Response> => {
           .maybeSingle();
 
         const returnAddress = rental?.return_location || 'the designated pickup location';
-
-        // Send confirmation SMS
-        const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID")!;
-        const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN")!;
-        const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER") || SUPPORT_NUMBER;
         const cleanPhone = callerPhone.replace('whatsapp:', '');
 
         try {
-          const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
-          await fetch(twilioUrl, {
+          await fetch(`${supabaseUrl}/functions/v1/send-sms-notification`, {
             method: 'POST',
             headers: {
-              'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
-              'Content-Type': 'application/x-www-form-urlencoded',
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
             },
-            body: new URLSearchParams({
-              To: cleanPhone,
-              From: twilioPhoneNumber,
-              Body: `RentMaiKar: Return confirmed. Inspection location: ${returnAddress}. Return inspection will be completed within 2 hours of drop-off. Contact us if you need directions: ${SUPPORT_NUMBER}`,
+            body: JSON.stringify({
+              phone: cleanPhone,
+              channel: 'sms',
+              notificationType: 'general',
+              customMessage: `RentMaiKar: Return confirmed. Inspection location: ${returnAddress}. Return inspection will be completed within 2 hours of drop-off. Contact us if you need directions: ${SUPPORT_NUMBER}`,
             }),
           });
         } catch (e) {

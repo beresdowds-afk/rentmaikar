@@ -163,29 +163,27 @@ const sendSmsOrWhatsApp = async (
   phone: string,
   message: string,
   channel: 'sms' | 'whatsapp',
-  twilioAccountSid: string,
-  twilioAuthToken: string,
-  twilioPhoneNumber: string
+  supabaseUrl: string,
+  supabaseServiceKey: string
 ): Promise<boolean> => {
   try {
-    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
-    const fromNumber = channel === 'whatsapp' ? `whatsapp:${twilioPhoneNumber}` : twilioPhoneNumber;
-    const toNumber = channel === 'whatsapp' ? `whatsapp:${phone}` : phone;
-
-    const response = await fetch(twilioUrl, {
+    // Route through centralized send-sms-notification which handles Twilio/Termii routing
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-sms-notification`, {
       method: 'POST',
       headers: {
-        'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseServiceKey}`,
       },
-      body: new URLSearchParams({
-        To: toNumber,
-        From: fromNumber,
-        Body: message,
+      body: JSON.stringify({
+        phone,
+        channel,
+        notificationType: 'general',
+        customMessage: message,
       }),
     });
 
-    return response.ok;
+    const result = await response.json();
+    return result.success === true;
   } catch (e) {
     console.error(`${channel} send failed:`, e);
     return false;
@@ -429,9 +427,9 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
-      // === SEND SMS ===
-      if (primaryPhone && primarySms && twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
-        const sent = await sendSmsOrWhatsApp(primaryPhone, smsMessage, 'sms', twilioAccountSid, twilioAuthToken, twilioPhoneNumber);
+      // === SEND SMS (via centralized routing: Twilio USA / Termii Nigeria) ===
+      if (primaryPhone && primarySms) {
+        const sent = await sendSmsOrWhatsApp(primaryPhone, smsMessage, 'sms', supabaseUrl, supabaseServiceKey);
         if (sent) {
           await supabase.from('expiry_notifications').insert({
             document_id: ['license', 'police_report'].includes(item.type) ? item.id : null,
@@ -446,9 +444,9 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
-      // === SEND WHATSAPP ===
-      if (primaryPhone && primaryWhatsapp && twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
-        const sent = await sendSmsOrWhatsApp(primaryPhone, smsMessage, 'whatsapp', twilioAccountSid, twilioAuthToken, twilioPhoneNumber);
+      // === SEND WHATSAPP (via centralized routing) ===
+      if (primaryPhone && primaryWhatsapp) {
+        const sent = await sendSmsOrWhatsApp(primaryPhone, smsMessage, 'whatsapp', supabaseUrl, supabaseServiceKey);
         if (sent) {
           await supabase.from('expiry_notifications').insert({
             document_id: ['license', 'police_report'].includes(item.type) ? item.id : null,
@@ -494,9 +492,9 @@ const handler = async (req: Request): Promise<Response> => {
           }
         }
 
-        if (admin.phone && admin.notification_sms && twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
+        if (admin.phone && admin.notification_sms) {
           const adminSmsMessage = `[Admin] ${smsMessage} User: ${primaryName || 'N/A'}`;
-          const sent = await sendSmsOrWhatsApp(admin.phone, adminSmsMessage, 'sms', twilioAccountSid, twilioAuthToken, twilioPhoneNumber);
+          const sent = await sendSmsOrWhatsApp(admin.phone, adminSmsMessage, 'sms', supabaseUrl, supabaseServiceKey);
           if (sent) {
             await supabase.from('expiry_notifications').insert({
               document_id: ['license', 'police_report'].includes(item.type) ? item.id : null,
@@ -512,25 +510,20 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
-      // === VoIP CALLS — all tiers now get calls ===
-      if (twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
+      // === VoIP CALLS — Twilio (USA) / Termii (Nigeria) ===
+      {
         const recipient = getPrimaryRecipient(item);
         
         if (recipient.phone) {
           try {
-            const twiml = generateExpiryTwiML(
-              item,
-              recipient.name || 'User',
-              supabaseUrl,
-              item.days_until_expiry as NotificationTier
-            );
+            const isNigeria = recipient.phone.startsWith('+234');
 
             const { data: callRecord, error: callError } = await supabase
               .from('voip_calls')
               .insert({
                 initiated_by: recipient.id,
                 call_type: 'individual',
-                region: recipient.phone.startsWith('+234') ? 'Nigeria' : 'USA',
+                region: isNigeria ? 'Nigeria' : 'USA',
                 status: 'pending',
                 direction: 'outbound',
                 started_at: new Date().toISOString(),
@@ -542,37 +535,72 @@ const handler = async (req: Request): Promise<Response> => {
 
             if (callError) throw new Error(`Call record creation failed: ${callError.message}`);
 
-            const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`;
-            
-            const callParams: Record<string, string> = {
-              To: recipient.phone,
-              From: twilioPhoneNumber,
-              Twiml: twiml,
-              StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
-              MachineDetection: 'DetectMessageEnd',
-              AsyncAmd: 'true',
-            };
+            let callSuccess = false;
+            let callSidValue = '';
 
-            // For 5-day critical calls, also set a machine detection URL for voicemail
-            if (item.days_until_expiry <= 5) {
-              callParams.AsyncAmdStatusCallback = `${supabaseUrl}/functions/v1/voip-status-callback`;
+            if (isNigeria) {
+              // ─── TERMII (Nigeria) ───
+              const termiiApiKey = Deno.env.get('TERMII_API_KEY');
+              if (termiiApiKey) {
+                const typeLabel = item.type.replace('_', ' ');
+                const voiceMsg = `Hello ${recipient.name || 'User'}. This is Rentmaikar. Your ${typeLabel} will expire in ${item.days_until_expiry} days on ${item.expiry_date}. Please renew it to avoid service interruption.`;
+
+                const termiiResp = await fetch('https://api.ng.termii.com/api/sms/otp/call', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    api_key: termiiApiKey,
+                    phone_number: recipient.phone.replace('+', ''),
+                    code: item.days_until_expiry * 100,
+                    pin_placeholder: '< code >',
+                    message_text: voiceMsg,
+                    message_type: 'ALPHANUMERIC',
+                  }),
+                });
+                const termiiData = await termiiResp.json();
+                if (termiiResp.ok && termiiData.pinId) {
+                  callSuccess = true;
+                  callSidValue = termiiData.pinId;
+                }
+              }
+            } else {
+              // ─── TWILIO (USA) ───
+              if (twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
+                const twiml = generateExpiryTwiML(item, recipient.name || 'User', supabaseUrl, item.days_until_expiry as NotificationTier);
+                const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`;
+                const callParams: Record<string, string> = {
+                  To: recipient.phone,
+                  From: twilioPhoneNumber,
+                  Twiml: twiml,
+                  StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
+                  MachineDetection: 'DetectMessageEnd',
+                  AsyncAmd: 'true',
+                };
+                if (item.days_until_expiry <= 5) {
+                  callParams.AsyncAmdStatusCallback = `${supabaseUrl}/functions/v1/voip-status-callback`;
+                }
+                const callResponse = await fetch(twilioUrl, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                  },
+                  body: new URLSearchParams(callParams),
+                });
+                const callData = await callResponse.json();
+                if (callResponse.ok) {
+                  callSuccess = true;
+                  callSidValue = callData.sid;
+                } else {
+                  results.errors.push(`VoIP call to ${recipient.phone} failed: ${callData.message}`);
+                }
+              }
             }
 
-            const callResponse = await fetch(twilioUrl, {
-              method: 'POST',
-              headers: {
-                'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
-                'Content-Type': 'application/x-www-form-urlencoded',
-              },
-              body: new URLSearchParams(callParams),
-            });
-
-            const callData = await callResponse.json();
-
-            if (callResponse.ok) {
+            if (callSuccess) {
               await supabase
                 .from('voip_calls')
-                .update({ call_sid: callData.sid, status: 'ringing' })
+                .update({ call_sid: callSidValue, status: 'ringing' })
                 .eq('id', callRecord.id);
 
               await supabase.from('expiry_notifications').insert({
@@ -591,7 +619,6 @@ const handler = async (req: Request): Promise<Response> => {
                 .from('voip_calls')
                 .update({ status: 'failed' })
                 .eq('id', callRecord.id);
-              results.errors.push(`VoIP call to ${recipient.phone} failed: ${callData.message}`);
             }
           } catch (e) {
             results.errors.push(`VoIP call failed: ${e}`);
@@ -627,25 +654,57 @@ const handler = async (req: Request): Promise<Response> => {
                 .single();
 
               if (adminCallRecord) {
-                const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`;
-                const callResponse = await fetch(twilioUrl, {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                  },
-                  body: new URLSearchParams({
-                    To: admin.phone,
-                    From: twilioPhoneNumber,
-                    Twiml: adminTwiml,
-                    StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
-                  }),
-                });
+                const adminIsNigeria = admin.phone.startsWith('+234');
+                let adminCallSuccess = false;
+                let adminCallSid = '';
 
-                const callData = await callResponse.json();
-                if (callResponse.ok) {
+                if (adminIsNigeria) {
+                  const termiiKey = Deno.env.get('TERMII_API_KEY');
+                  if (termiiKey) {
+                    const adminVoiceMsg = `Admin alert from Rentmaikar. A ${item.type.replace('_', ' ')} ${item.vehicle_info ? `for vehicle ${item.vehicle_info}` : ''} will expire in ${item.days_until_expiry} days. Please review and take action.`;
+                    const tResp = await fetch('https://api.ng.termii.com/api/sms/otp/call', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        api_key: termiiKey,
+                        phone_number: admin.phone.replace('+', ''),
+                        code: 5555,
+                        pin_placeholder: '< code >',
+                        message_text: adminVoiceMsg,
+                        message_type: 'ALPHANUMERIC',
+                      }),
+                    });
+                    const tData = await tResp.json();
+                    if (tResp.ok && tData.pinId) {
+                      adminCallSuccess = true;
+                      adminCallSid = tData.pinId;
+                    }
+                  }
+                } else if (twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
+                  const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`;
+                  const callResponse = await fetch(twilioUrl, {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
+                      'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                      To: admin.phone,
+                      From: twilioPhoneNumber,
+                      Twiml: adminTwiml,
+                      StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
+                    }),
+                  });
+                  const callData = await callResponse.json();
+                  if (callResponse.ok) {
+                    adminCallSuccess = true;
+                    adminCallSid = callData.sid;
+                  }
+                }
+
+                if (adminCallSuccess) {
                   await supabase.from('voip_calls')
-                    .update({ call_sid: callData.sid, status: 'ringing' })
+                    .update({ call_sid: adminCallSid, status: 'ringing' })
                     .eq('id', adminCallRecord.id);
                   results.voipCallsMade++;
                 }

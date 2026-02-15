@@ -43,12 +43,9 @@ const handler = async (req: Request): Promise<Response> => {
     const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER") || SUPPORT_NUMBER;
+    const termiiApiKey = Deno.env.get("TERMII_API_KEY");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    if (!twilioAccountSid || !twilioAuthToken) {
-      throw new Error("Twilio credentials not configured");
-    }
 
     // Parse request — can be triggered by process-payment-defaults or IoT system
     const body: ShutdownRequest = await req.json();
@@ -172,33 +169,68 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (callError) throw new Error(`Call record failed: ${callError.message}`);
 
-    // Make Twilio call — CRITICAL priority, no machine detection delay
-    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`;
-    const callResponse = await fetch(twilioUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        To: driverProfile.phone,
-        From: twilioPhoneNumber,
-        Twiml: twiml,
-        StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
-      }),
-    });
+    const isNigeria = driverProfile.phone.startsWith('+234');
+    let callSuccess = false;
+    let callSidValue = '';
 
-    const callData = await callResponse.json();
+    if (isNigeria && termiiApiKey) {
+      // ─── TERMII (Nigeria) — CRITICAL priority voice call ───
+      const voiceMsg = isMoving
+        ? `URGENT WARNING from Rentmaikar. Your vehicle ${vehicleInfo} has been flagged for shutdown due to ${sanitizedReason}. Please pull over to a safe location immediately.`
+        : `CRITICAL WARNING from Rentmaikar. Your vehicle ${vehicleInfo} will be disabled in 5 minutes due to ${sanitizedReason}. Contact support immediately.`;
 
-    if (callResponse.ok) {
+      const termiiResp = await fetch('https://api.ng.termii.com/api/sms/otp/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: termiiApiKey,
+          phone_number: driverProfile.phone.replace('+', ''),
+          code: 9999,
+          pin_placeholder: '< code >',
+          message_text: voiceMsg,
+          message_type: 'ALPHANUMERIC',
+        }),
+      });
+      const termiiData = await termiiResp.json();
+      if (termiiResp.ok && termiiData.pinId) {
+        callSuccess = true;
+        callSidValue = termiiData.pinId;
+      }
+    } else if (twilioAccountSid && twilioAuthToken) {
+      // ─── TWILIO (USA) — CRITICAL priority, no machine detection delay ───
+      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`;
+      const callResponse = await fetch(twilioUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          To: driverProfile.phone,
+          From: twilioPhoneNumber,
+          Twiml: twiml,
+          StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
+        }),
+      });
+      const callData = await callResponse.json();
+      if (callResponse.ok) {
+        callSuccess = true;
+        callSidValue = callData.sid;
+      } else {
+        throw new Error(`Voice call failed: ${callData.message}`);
+      }
+    } else {
+      throw new Error("No voice provider configured for this region");
+    }
+
+    if (callSuccess) {
       await supabase.from('voip_calls')
-        .update({ call_sid: callData.sid, status: 'ringing' })
+        .update({ call_sid: callSidValue, status: 'ringing' })
         .eq('id', callRecord.id);
 
-      // Also send SMS alert simultaneously
+      // Also send SMS alert simultaneously (routed via centralized function)
       try {
-        const smsUrl = `${supabaseUrl}/functions/v1/send-sms-notification`;
-        await fetch(smsUrl, {
+        await fetch(`${supabaseUrl}/functions/v1/send-sms-notification`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -218,14 +250,14 @@ const handler = async (req: Request): Promise<Response> => {
       // Notify admins
       await supabase.from('admin_daily_tasks').insert({
         title: `🚨 Shutdown warning issued: ${vehicleInfo}`,
-        description: `Vehicle ${vehicleId} (${vehicleInfo}) flagged for shutdown. Reason: ${sanitizedReason}. Driver: ${driverProfile.full_name} (${driverProfile.phone}). Status: ${isMoving ? 'MOVING' : 'PARKED'}. Call SID: ${callData.sid}.`,
+        description: `Vehicle ${vehicleId} (${vehicleInfo}) flagged for shutdown. Reason: ${sanitizedReason}. Driver: ${driverProfile.full_name} (${driverProfile.phone}). Status: ${isMoving ? 'MOVING' : 'PARKED'}. Call SID: ${callSidValue}.`,
         category: 'vehicle_emergency',
         priority: 'urgent',
       });
 
       return new Response(JSON.stringify({
         success: true,
-        callSid: callData.sid,
+        callSid: callSidValue,
         vehicleStatus: isMoving ? 'moving' : 'parked',
         callRecordId: callRecord.id,
       }), {
@@ -236,8 +268,7 @@ const handler = async (req: Request): Promise<Response> => {
       await supabase.from('voip_calls')
         .update({ status: 'failed' })
         .eq('id', callRecord.id);
-
-      throw new Error(`Twilio call failed: ${callData.message}`);
+      throw new Error("Voice call initiation failed");
     }
   } catch (error: any) {
     console.error("Error in vehicle-shutdown-warning:", error);
