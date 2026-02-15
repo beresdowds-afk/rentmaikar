@@ -659,6 +659,107 @@ export const structuredTemplates: Record<string, StructuredTemplate> = {
   },
 };
 
+// ==================== TEMPLATE MANAGER ====================
+// Handles parameterized template filling, language resolution,
+// and localized content for the WhatsApp Business API
+
+export type SupportedLanguage = 'en_US' | 'en_NG' | 'pcm' | 'yo' | 'ha' | 'ig' | 'es';
+
+export const SUPPORTED_LANGUAGES: Record<SupportedLanguage, string> = {
+  en_US: 'English (US)',
+  en_NG: 'English (Nigeria)',
+  pcm: 'Pidgin',
+  yo: 'Yoruba',
+  ha: 'Hausa',
+  ig: 'Igbo',
+  es: 'Spanish',
+};
+
+const COUNTRY_LANGUAGE_MAP: Record<string, SupportedLanguage> = {
+  US: 'en_US',
+  NG: 'en_NG',
+  ES: 'es',
+};
+
+/**
+ * Detect the best language for a user based on country code.
+ */
+export const detectTemplateLanguage = (countryCode: string): SupportedLanguage => {
+  return COUNTRY_LANGUAGE_MAP[countryCode] || 'en_US';
+};
+
+/**
+ * Replace {{n}} placeholders in a text string with actual parameter values.
+ */
+const replaceParameter = (text: string, value: string): string => {
+  return text.replace(/\{\{\d+\}\}/g, value);
+};
+
+/**
+ * Fill a structured template's components with actual parameter values.
+ * Returns a new template object with all placeholders replaced.
+ */
+export const fillTemplate = (
+  templateName: string,
+  language: SupportedLanguage,
+  parameters: string[]
+): StructuredTemplate | null => {
+  const template = structuredTemplates[templateName];
+  if (!template) {
+    console.error(`[TemplateManager] Template '${templateName}' not found`);
+    return null;
+  }
+
+  // Clone and override language
+  const filled: StructuredTemplate = {
+    ...template,
+    language,
+    components: template.components.map(component => {
+      if (!component.parameters) return { ...component };
+
+      let paramIndex = 0;
+      return {
+        ...component,
+        parameters: component.parameters.map(param => {
+          if (param.type === 'text' && param.text?.match(/\{\{\d+\}\}/)) {
+            const value = parameters[paramIndex] || '';
+            paramIndex++;
+            return { ...param, text: replaceParameter(param.text, value) };
+          }
+          return { ...param };
+        }),
+      };
+    }),
+  };
+
+  return filled;
+};
+
+/**
+ * Get localized content from a multi-language content object.
+ * Falls back to en_US if the requested language is not available.
+ */
+export const getLocalizedContent = <T>(
+  content: Partial<Record<SupportedLanguage, T>>,
+  language: SupportedLanguage
+): T | undefined => {
+  return content[language] || content.en_US || content.en_NG || Object.values(content)[0];
+};
+
+/**
+ * Get all available template names.
+ */
+export const getAvailableTemplates = (): string[] => {
+  return Object.keys(structuredTemplates);
+};
+
+/**
+ * Check if a template exists in the registry.
+ */
+export const hasTemplate = (name: string): boolean => {
+  return name in structuredTemplates;
+};
+
 export type WhatsAppMessageType = 
   | 'booking_confirmed'
   | 'owner_vehicle_booked'
