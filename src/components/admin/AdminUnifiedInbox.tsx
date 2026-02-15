@@ -19,7 +19,12 @@ import {
   CheckCircle,
   AlertCircle,
   XCircle,
-  Filter
+  Filter,
+  Facebook,
+  Instagram,
+  Linkedin,
+  MessageCircle,
+  Music
 } from 'lucide-react';
 import { useInboxConversations, useInboxMessages, InboxConversation } from '@/hooks/useUnifiedInbox';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -28,6 +33,11 @@ const channelIcons = {
   email: Mail,
   sms: Phone,
   whatsapp: MessageSquare,
+  facebook_messenger: Facebook,
+  instagram: Instagram,
+  linkedin: Linkedin,
+  google_chat: MessageCircle,
+  tiktok: Music,
 };
 
 const statusIcons = {
@@ -289,6 +299,11 @@ export const AdminUnifiedInbox = () => {
               <SelectItem value="email">Email</SelectItem>
               <SelectItem value="sms">SMS</SelectItem>
               <SelectItem value="whatsapp">WhatsApp</SelectItem>
+              <SelectItem value="facebook_messenger">Facebook</SelectItem>
+              <SelectItem value="instagram">Instagram</SelectItem>
+              <SelectItem value="linkedin">LinkedIn</SelectItem>
+              <SelectItem value="google_chat">Google Chat</SelectItem>
+              <SelectItem value="tiktok">TikTok</SelectItem>
             </SelectContent>
           </Select>
         </div>
