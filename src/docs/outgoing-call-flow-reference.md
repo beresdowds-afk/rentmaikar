@@ -167,9 +167,11 @@ sequenceDiagram
 | Payment Default Stage 1 | `process-payment-defaults` | ✅ Press 1/2 IVR | ✅ |
 | Payment Default Stage 2 | `process-payment-defaults` | ✅ Press 1/2 IVR | ✅ |
 | Payment Default Stage 3 | `process-payment-defaults` | ✅ Press 1/2 IVR | ✅ |
-| Document Expiry (30-day) | `process-expiry-notifications` | ❌ | ✅ Email/SMS/WhatsApp |
-| Document Expiry (7-day) | `process-expiry-notifications` | ✅ (no IVR) | ✅ Email/SMS/WhatsApp |
-| Insurance Renewal (30/7-day) | `process-expiry-notifications` | ✅ (7-day) | ✅ |
+| Document Expiry (30-day) | `process-expiry-notifications` | ✅ IVR (Press 1/2/3) | ✅ Email/SMS/WhatsApp |
+| Document Expiry (15-day) | `process-expiry-notifications` | ✅ IVR (Priority) | ✅ Email/SMS/WhatsApp |
+| Document Expiry (7-day) | `process-expiry-notifications` | ✅ IVR (Urgent) | ✅ Email/SMS/WhatsApp |
+| Document Expiry (5-day) | `process-expiry-notifications` | ✅ Critical Alert + Admin | ✅ + Account Restriction |
+| Insurance Renewal (30/15/7/5) | `process-expiry-notifications` | ✅ (all tiers) | ✅ |
 | Pre-Due Payment Reminders | `process-predue-reminders` | ❌ | ✅ WhatsApp/Email |
 | Emergency (IoT Accident) | `iot-accident-detection` | ❌ (SMS only) | ✅ |
 
@@ -179,8 +181,9 @@ sequenceDiagram
 |---|---|
 | `process-payment-defaults` | Hourly cron — escalation, SMS/WhatsApp + VoIP with IVR |
 | `payment-default-ivr` | Twilio `<Gather>` callback — handles Press 1 (payment SMS) / Press 2 (connect support) |
+| `expiry-notification-ivr` | Twilio `<Gather>` callback — handles Press 1 (upload link SMS) / Press 2 (extension request) / Press 3 (connect agent) |
 | `voip-status-callback` | Twilio status webhook — retry logic (3x @ 15min), post-call summary SMS |
-| `process-expiry-notifications` | Daily 8 AM UTC — document/insurance expiry alerts with VoIP at 7-day |
+| `process-expiry-notifications` | Daily 8 AM UTC — 30/15/7/5-day expiry alerts with VoIP+IVR, document-type routing, account restriction at 5-day |
 | `process-predue-reminders` | Hourly — friendly pre-due WhatsApp/email reminders (72h→12h before due) |
 
 ### Not Yet Implemented (Blueprint Only)
