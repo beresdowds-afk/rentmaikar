@@ -183,18 +183,18 @@ sequenceDiagram
 
 | Function | Role |
 |---|---|
-| `process-payment-defaults` | Hourly cron — escalation, SMS/WhatsApp + VoIP with IVR |
-| `payment-default-ivr` | Twilio `<Gather>` callback — handles Press 1 (payment SMS) / Press 2 (connect support) |
-| `expiry-notification-ivr` | Twilio `<Gather>` callback — handles Press 1 (upload link SMS) / Press 2 (extension request) / Press 3 (connect agent) |
-| `voip-status-callback` | Twilio status webhook — retry logic (3x @ 15min), post-call summary SMS |
-| `expiry-notification-ivr` | Twilio `<Gather>` callback — Press 1 (upload SMS) / Press 2 (extension) / Press 3 (agent) |
-| `process-expiry-notifications` | Daily 8 AM UTC — 30/15/7/5-day expiry alerts with VoIP+IVR, document-type routing, account restriction at 5-day |
+| `process-payment-defaults` | Hourly cron — escalation, SMS/WhatsApp + VoIP with IVR (Twilio for USA, Termii for Nigeria) |
+| `payment-default-ivr` | IVR callback — handles Press 1 (payment SMS) / Press 2 (connect support). USA: Twilio `<Gather>`, Nigeria: Termii voice flow |
+| `expiry-notification-ivr` | IVR callback — handles Press 1 (upload link SMS) / Press 2 (extension request) / Press 3 (connect agent). Provider selected by region |
+| `voip-status-callback` | Status webhook — retry logic (3x @ 15min), post-call summary SMS. Routes via Twilio (USA) or Termii (Nigeria) |
+| `expiry-notification-ivr` | IVR callback — Press 1 (upload SMS) / Press 2 (extension) / Press 3 (agent). Region-aware provider |
+| `process-expiry-notifications` | Daily 8 AM UTC — 30/15/7/5-day expiry alerts with VoIP+IVR via Twilio (USA) or Termii (Nigeria), document-type routing, account restriction at 5-day |
 | `process-predue-reminders` | Hourly — friendly pre-due WhatsApp/email reminders (72h→12h before due) |
-| `vehicle-return-reminder` | Daily — calls drivers 24h before rental end with IVR (confirm/extend/issue/agent) |
-| `vehicle-return-ivr` | Twilio `<Gather>` callback — Press 1 (confirm return + SMS) / Press 2 (extension check) / Press 3 (issue) / Press 4 (agent) |
-| `vehicle-shutdown-warning` | CRITICAL — immediate call with moving/parked-aware TwiML + SMS + admin alert |
-| `shutdown-warning-ivr` | Twilio `<Gather>` callback — Moving: Press 1 (pulled over) / Press 2 (emergency). Parked: Press 1 (dispute) / Press 2 (agent) |
-| `process-daily-debits` | Daily 12:01 AM — payment success/failure notifications to drivers via SMS/WhatsApp/email |
+| `vehicle-return-reminder` | Daily — calls drivers 24h before rental end with IVR. USA: Twilio Voice, Nigeria: Termii Voice |
+| `vehicle-return-ivr` | IVR callback — Press 1 (confirm return + SMS) / Press 2 (extension check) / Press 3 (issue) / Press 4 (agent). Region-aware |
+| `vehicle-shutdown-warning` | CRITICAL — immediate call with moving/parked-aware flow + SMS + admin alert. USA: Twilio, Nigeria: Termii |
+| `shutdown-warning-ivr` | IVR callback — Moving: Press 1 (pulled over) / Press 2 (emergency). Parked: Press 1 (dispute) / Press 2 (agent). Region-aware provider |
+| `process-daily-debits` | Daily 12:01 AM — payment success/failure notifications to drivers via SMS/WhatsApp/email (Twilio for USA, Termii for Nigeria) |
 | `process-owner-payouts` | Friday 5 PM — weekly payout confirmation/pending notifications to vehicle owners |
 | `process-inspection-reminders` | Quarterly 1st of quarter — vehicle inspection due reminders to owners |
 
@@ -221,7 +221,7 @@ All outbound calls use region-aware multilingual scripts. See **[call-scripts-re
 - Nigeria scripts (Pidgin, Yoruba, Hausa, English)
 - USA scripts (English, Spanish)
 - Emergency scripts (Accident, Breakdown, Security)
-- TwiML templates with Twilio Polly voice mapping
+- TwiML templates with Twilio Polly voice mapping (USA), Termii voice templates (Nigeria)
 - Language selection logic and fallback rules
 
 ### Not Yet Implemented (Blueprint Only)
@@ -243,10 +243,12 @@ The smart calling algorithm is implemented in `supabase/functions/_shared/call-s
 
 1. Edge function creates `voip_calls` record with `status: 'pending'`, `caller_role: 'system'`
 2. `isWithinCallingHours(region)` checked — if outside hours, fallback channel used + next-day retry scheduled
-3. Twilio REST API called with `<Gather>` TwiML pointing to IVR handler
-4. Answering Machine Detection enabled (`MachineDetection: DetectMessageEnd`)
-5. `StatusCallback` → `voip-status-callback` receives real-time updates
-6. On answered: IVR menu plays, user presses option key
-7. On busy/no-answer: `getRetryDecision()` calculates priority-based retry interval or channel escalation
-8. On completion: duration logged, summary SMS sent
-9. On max retries exhausted: channel escalation ladder applied, then marked as permanently failed
+3. Region detection: `+1` → Twilio, `+234` → Termii
+4. **USA (+1):** Twilio REST API called with `<Gather>` TwiML pointing to IVR handler
+5. **Nigeria (+234):** Termii Voice API called (`/sms/otp/call`) with message text and callback
+6. Answering Machine Detection enabled (Twilio: `MachineDetection: DetectMessageEnd`)
+7. `StatusCallback` → `voip-status-callback` receives real-time updates from both providers
+8. On answered: IVR menu plays, user presses option key
+9. On busy/no-answer: `getRetryDecision()` calculates priority-based retry interval or channel escalation
+10. On completion: duration logged, summary SMS sent (via Twilio or Termii based on region)
+11. On max retries exhausted: channel escalation ladder applied, then marked as permanently failed

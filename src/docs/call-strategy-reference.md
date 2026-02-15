@@ -68,19 +68,21 @@ When voice calls fail, the system escalates through channels:
 ```
 initiateCall(user, callType):
   1. Determine region from phone (+1 → US, +234 → NG)
-  2. Check calling hours for region
-     → If outside hours: send SMS/voicemail, schedule next-day retry
-  3. Check user preferences
-     → If sms_only: send SMS, return
-  4. Get priority from callType
-  5. Loop through retry schedule:
-     → Attempt call via Twilio
+  2. Select provider: US → Twilio, NG → Termii
+  3. Check calling hours for region
+     → If outside hours: send SMS/voicemail (via regional provider), schedule next-day retry
+  4. Check user preferences
+     → If sms_only: send SMS (Twilio for US, Termii for NG), return
+  5. Get priority from callType
+  6. Loop through retry schedule:
+     → US: Attempt call via Twilio Voice API
+     → NG: Attempt call via Termii Voice API (/sms/otp/call)
      → On success: log and return
      → On busy/no-answer: wait interval, retry
-  6. If all call attempts fail: escalate channel
-  7. If channel escalation exhausted + nextDay enabled:
+  7. If all call attempts fail: escalate channel (SMS/WhatsApp via regional provider)
+  8. If channel escalation exhausted + nextDay enabled:
      → Schedule retry at start of next calling window
-  8. If fully exhausted: mark as permanently failed
+  9. If fully exhausted: mark as permanently failed
 ```
 
 ---
@@ -91,13 +93,18 @@ initiateCall(user, callType):
 - **File**: `supabase/functions/_shared/call-strategy.ts`
 - **Exports**: `RETRY_SCHEDULES`, `TIME_RESTRICTIONS`, `CHANNEL_ESCALATION`, `getCallPriority()`, `isWithinCallingHours()`, `getRetryDecision()`, `getNextDayRetryTimestamp()`
 
+### Provider Selection
+- **USA (+1):** Twilio Voice API, Twilio SMS, Twilio WhatsApp
+- **Nigeria (+234):** Termii Voice API (`/sms/otp/call`), Termii SMS, Termii WhatsApp
+
 ### Integration Point
-- **voip-status-callback**: Uses `getRetryDecision()` on every `busy`/`no-answer` status to determine retry timing, channel escalation, or next-day scheduling
-- All outbound-calling edge functions can import `getCallPriority()` and `isWithinCallingHours()` to pre-check before initiating
+- **voip-status-callback**: Uses `getRetryDecision()` on every `busy`/`no-answer` status to determine retry timing, channel escalation, or next-day scheduling. Handles callbacks from both Twilio and Termii.
+- All outbound-calling edge functions detect region (`+1` or `+234`) and route to the appropriate provider before initiating calls.
 
 ### Retry Record Structure
 Retry calls are inserted into `voip_calls` with:
 - `status: 'pending'`
 - `started_at: <future timestamp>` (calculated from retry interval or next-day window)
 - `direction: 'outbound'`
-- Original `call_type`, `region`, `receiver_id` preserved for continuity
+- `region: 'usa' | 'nigeria'` (determines provider for retry)
+- Original `call_type`, `receiver_id` preserved for continuity
