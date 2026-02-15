@@ -22,6 +22,26 @@ serve(async (req) => {
       throw new Error("Missing required fields: conversationId, messageContent, channel, recipientPhone");
     }
 
+    // ─── Look up conversation region & forwarding number ───
+    const { data: conversation } = await supabase
+      .from("inbox_conversations")
+      .select("region")
+      .eq("id", conversationId)
+      .single();
+
+    let forwardingFrom: string | null = null;
+    if (conversation?.region) {
+      const { data: region } = await supabase
+        .from("platform_regions")
+        .select("forwarding_sms, forwarding_whatsapp")
+        .eq("code", conversation.region)
+        .single();
+
+      if (region) {
+        forwardingFrom = channel === "whatsapp" ? region.forwarding_whatsapp : region.forwarding_sms;
+      }
+    }
+
     // ─── Determine provider based on phone region ───
     const isNigeria = recipientPhone.startsWith("+234");
     let messageSid = "";
@@ -38,15 +58,17 @@ serve(async (req) => {
 
       const isWhatsApp = channel === "whatsapp";
       const termiiChannel = isWhatsApp ? "whatsapp" : "generic";
+      // Use forwarding sender ID if available
+      const senderId = forwardingFrom || termiiSenderId;
 
-      console.log(`Sending ${channel} via Termii to ${recipientPhone}`);
+      console.log(`Sending ${channel} via Termii to ${recipientPhone} from ${senderId}`);
 
       const termiiResponse = await fetch("https://api.ng.termii.com/api/sms/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: recipientPhone.replace("+", ""),
-          from: termiiSenderId,
+          from: senderId,
           sms: messageContent,
           type: "plain",
           channel: termiiChannel,
@@ -75,14 +97,15 @@ serve(async (req) => {
       }
 
       let toNumber = recipientPhone;
-      let fromNumber = TWILIO_PHONE_NUMBER;
+      // Use forwarding number as "from" if configured, otherwise default provider number
+      let fromNumber = forwardingFrom || TWILIO_PHONE_NUMBER;
 
       if (channel === "whatsapp") {
         toNumber = recipientPhone.startsWith("whatsapp:") ? recipientPhone : `whatsapp:${recipientPhone}`;
-        fromNumber = `whatsapp:${TWILIO_PHONE_NUMBER}`;
+        fromNumber = `whatsapp:${forwardingFrom || TWILIO_PHONE_NUMBER}`;
       }
 
-      console.log(`Sending ${channel} via Twilio to ${toNumber} from ${fromNumber}`);
+      console.log(`Sending ${channel} via Twilio to ${toNumber} from ${fromNumber}${forwardingFrom ? ' (forwarding)' : ''}`);
 
       const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
       const formData = new URLSearchParams();
@@ -121,6 +144,8 @@ serve(async (req) => {
           provider,
           status: messageStatus,
           sent_at: new Date().toISOString(),
+          sent_from: forwardingFrom || (isNigeria ? "default_termii" : "default_twilio"),
+          is_forwarding_number: !!forwardingFrom,
         },
       })
       .eq("conversation_id", conversationId)
@@ -140,6 +165,7 @@ serve(async (req) => {
         messageSid,
         status: messageStatus,
         provider,
+        sentFrom: forwardingFrom || "default",
       }),
       {
         status: 200,
