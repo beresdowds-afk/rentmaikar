@@ -182,6 +182,24 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ─── WhatsApp Webhook Verification (GET challenge) ───
+  if (req.method === "GET") {
+    const url = new URL(req.url);
+    const mode = url.searchParams.get("hub.mode");
+    const token = url.searchParams.get("hub.verify_token");
+    const challenge = url.searchParams.get("hub.challenge");
+
+    const verifyToken = Deno.env.get("WA_VERIFY_TOKEN");
+
+    if (mode === "subscribe" && token === verifyToken) {
+      console.log("WhatsApp webhook verified successfully");
+      return new Response(challenge || "", { status: 200, headers: corsHeaders });
+    }
+
+    console.warn("WhatsApp webhook verification failed", { mode, token: token?.substring(0, 4) + "..." });
+    return new Response("Forbidden", { status: 403, headers: corsHeaders });
+  }
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

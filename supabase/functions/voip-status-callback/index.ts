@@ -32,6 +32,83 @@ const statusMap: Record<string, string> = {
   'canceled': 'canceled',
 };
 
+// ─── WhatsApp / SMS Message Delivery Status Handler ───
+const handleMessageStatus = async (
+  supabase: ReturnType<typeof createClient>,
+  formData: FormData,
+): Promise<Response> => {
+  const messageSid = formData.get("MessageSid") as string;
+  const messageStatus = formData.get("MessageStatus") as string;
+  const to = formData.get("To") as string;
+  const errorCode = formData.get("ErrorCode") as string;
+  const errorMessage = formData.get("ErrorMessage") as string;
+  const channelPrefix = formData.get("ChannelPrefix") as string;
+
+  console.log("Message delivery status:", { messageSid, messageStatus, to, errorCode });
+
+  if (!messageSid) {
+    return new Response("Missing MessageSid", { status: 400 });
+  }
+
+  // Update inbox_messages delivery metadata
+  const { data: existingMsg } = await supabase
+    .from("inbox_messages")
+    .select("id, metadata")
+    .eq("external_id", messageSid)
+    .limit(1)
+    .single();
+
+  if (existingMsg) {
+    const currentMeta = (existingMsg.metadata || {}) as Record<string, unknown>;
+    await supabase
+      .from("inbox_messages")
+      .update({
+        metadata: {
+          ...currentMeta,
+          delivery_status: messageStatus,
+          delivery_updated_at: new Date().toISOString(),
+          ...(errorCode ? { error_code: errorCode, error_message: errorMessage } : {}),
+        },
+      })
+      .eq("id", existingMsg.id);
+  }
+
+  // Update unified_message_log if exists
+  await supabase
+    .from("unified_message_log")
+    .update({
+      delivery_status: messageStatus === "delivered" ? "delivered"
+        : messageStatus === "read" ? "delivered"
+        : messageStatus === "failed" || messageStatus === "undelivered" ? "failed"
+        : "pending",
+      error_message: errorMessage || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("provider_message_id", messageSid);
+
+  // Update whatsapp_message_delivery if exists
+  if (messageStatus === "delivered" || messageStatus === "read") {
+    await supabase
+      .from("whatsapp_message_delivery")
+      .update({
+        status: "delivered",
+        delivered_at: new Date().toISOString(),
+      })
+      .eq("external_id", messageSid);
+  } else if (messageStatus === "failed" || messageStatus === "undelivered") {
+    await supabase
+      .from("whatsapp_message_delivery")
+      .update({
+        status: "failed",
+        error_message: errorMessage || errorCode || "Delivery failed",
+      })
+      .eq("external_id", messageSid);
+  }
+
+  console.log(`Message ${messageSid} status updated to ${messageStatus}`);
+  return new Response("OK", { status: 200, headers: corsHeaders });
+};
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -44,6 +121,15 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Parse form data from Twilio
     const formData = await req.formData();
+
+    // ─── Route: Message delivery status (SMS/WhatsApp) ───
+    const messageSid = formData.get("MessageSid") as string;
+    const messageStatus = formData.get("MessageStatus") as string;
+    if (messageSid && messageStatus && !formData.get("CallSid")) {
+      return await handleMessageStatus(supabase, formData);
+    }
+
+    // ─── Route: VoIP call status ───
     const callSid = formData.get('CallSid') as string;
     const callStatus = formData.get('CallStatus') as string;
     const duration = formData.get('CallDuration') as string;
