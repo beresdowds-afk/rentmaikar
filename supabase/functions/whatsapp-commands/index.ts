@@ -178,6 +178,39 @@ const generatePaymentLink = (driverId: string, amount: number, currency: string)
 };
 
 // ═══════════════════════════════════════════════════════════
+// Document Helpers
+// ═══════════════════════════════════════════════════════════
+
+const DOCUMENT_LABELS: Record<string, string> = {
+  driver_license: "Driver's License",
+  nin: "National ID (NIN)",
+  bvn: "Bank Verification Number (BVN)",
+  police_clearance: "Police Clearance Certificate",
+  id_card: "Government-Issued ID",
+  insurance: "Vehicle Insurance",
+  registration: "Vehicle Registration",
+  road_worthiness: "Road Worthiness Certificate",
+  proof_of_ownership: "Proof of Ownership",
+  vin: "Vehicle Identification Number (VIN)",
+  inspection_certificate: "Vehicle Inspection Certificate",
+};
+
+const formatDocumentType = (type: string): string =>
+  DOCUMENT_LABELS[type] || type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+const getDocumentExpiryDays = (docType: string, country: string): number | null => {
+  const expiryMap: Record<string, Record<string, number>> = {
+    driver_license: { US: 365 * 4, NG: 365 * 3 },
+    insurance: { US: 365, NG: 365 },
+    road_worthiness: { NG: 365 },
+    police_clearance: { NG: 90 },
+    inspection_certificate: { US: 365 },
+  };
+  return expiryMap[docType]?.[country] || null;
+};
+
+
+// ═══════════════════════════════════════════════════════════
 // Main Handler
 // ═══════════════════════════════════════════════════════════
 
@@ -270,6 +303,105 @@ const handler = async (req: Request): Promise<Response> => {
               `Transaction: ${transactionId}`,
               ``,
               `Your payout will be processed according to your schedule.`,
+            ].join("\n"));
+          }
+        }
+
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      // ─── Internal document upload handler ───
+      if (jsonData.action === "document_uploaded") {
+        const { userId, documentType, fileUrl, metadata } = jsonData;
+        console.log(`[Document Upload] user=${userId} type=${documentType}`);
+
+        const { data: userProfile } = await supabase.from("profiles")
+          .select("phone, full_name").eq("user_id", userId).single();
+
+        // Determine region-specific document requirements
+        const isNigeria = userProfile?.phone?.startsWith("+234");
+        const expiryDays = getDocumentExpiryDays(documentType, isNigeria ? "NG" : "US");
+
+        // Check if document record exists, update or insert
+        const { data: existingDoc } = await supabase.from("user_documents")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("document_type", documentType)
+          .limit(1)
+          .single();
+
+        const docData = {
+          user_id: userId,
+          document_type: documentType,
+          file_url: fileUrl,
+          status: "pending" as const,
+          uploaded_at: new Date().toISOString(),
+          metadata: metadata || {},
+        };
+
+        if (existingDoc) {
+          await supabase.from("user_documents")
+            .update({ ...docData })
+            .eq("id", existingDoc.id);
+        } else {
+          await supabase.from("user_documents").insert(docData);
+        }
+
+        // Send confirmation to user
+        if (userProfile?.phone) {
+          const docLabel = formatDocumentType(documentType);
+          await sendWhatsAppMessage(userProfile.phone, [
+            `📄 *Document Received*`,
+            ``,
+            `Type: ${docLabel}`,
+            `Status: ⏳ Pending Review`,
+            ``,
+            `Our team will verify your document within 24-48 hours.`,
+            expiryDays ? `\n📅 This document expires in ${expiryDays} days after verification.` : "",
+            ``,
+            `_Reply *STATUS* to check document status._`,
+          ].filter(Boolean).join("\n"));
+        }
+
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      // ─── Internal document verification result ───
+      if (jsonData.action === "document_verified" || jsonData.action === "document_rejected") {
+        const { userId, documentType, reason, expiryDate } = jsonData;
+        const isVerified = jsonData.action === "document_verified";
+
+        const { data: userProfile } = await supabase.from("profiles")
+          .select("phone, full_name").eq("user_id", userId).single();
+
+        if (userProfile?.phone) {
+          const docLabel = formatDocumentType(documentType);
+
+          if (isVerified) {
+            await sendWhatsAppMessage(userProfile.phone, [
+              `✅ *Document Verified*`,
+              ``,
+              `Type: ${docLabel}`,
+              expiryDate ? `Expires: ${new Date(expiryDate).toLocaleDateString()}` : "",
+              ``,
+              `Your ${docLabel} has been approved! ✨`,
+            ].filter(Boolean).join("\n"));
+          } else {
+            await sendWhatsAppMessage(userProfile.phone, [
+              `❌ *Document Rejected*`,
+              ``,
+              `Type: ${docLabel}`,
+              `Reason: ${reason || "Does not meet requirements"}`,
+              ``,
+              `Please re-upload a valid document.`,
+              `Supported formats: PDF, JPG, PNG (Max 10MB)`,
+              ``,
+              `👉 Upload at: https://rentmaikar.lovable.app/driver/dashboard`,
+              `Or send the file directly in this chat.`,
             ].join("\n"));
           }
         }
@@ -544,7 +676,56 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       case "DOCS": {
-        responseMessage = `📄 Document Upload\n\nTo upload documents:\n1. Visit your dashboard: https://rentmaikar.lovable.app/driver/dashboard\n2. Go to the Documents section\n3. Upload your required files\n\nOr send the document as an attachment in this chat.`;
+        // Query user's pending/missing documents
+        const { data: userDocs } = await supabase
+          .from("user_documents")
+          .select("document_type, status")
+          .eq("user_id", profile.user_id);
+
+        const pendingDocs = userDocs?.filter(d => d.status === "pending") || [];
+        const rejectedDocs = userDocs?.filter(d => d.status === "rejected") || [];
+        const uploadedTypes = new Set(userDocs?.map(d => d.document_type) || []);
+
+        // Determine required docs by region
+        const requiredDocs = region === "NIGERIA"
+          ? ["driver_license", "nin", "bvn", "police_clearance"]
+          : ["driver_license", "id_card"];
+
+        const missingDocs = requiredDocs.filter(d => !uploadedTypes.has(d));
+
+        const lines = [`📄 *Document Upload Center*`, ``];
+
+        if (missingDocs.length > 0) {
+          lines.push(`⚠️ *Missing Documents:*`);
+          missingDocs.forEach(d => lines.push(`  • ${formatDocumentType(d)}`));
+          lines.push(``);
+        }
+
+        if (pendingDocs.length > 0) {
+          lines.push(`⏳ *Pending Review:*`);
+          pendingDocs.forEach(d => lines.push(`  • ${formatDocumentType(d.document_type)}`));
+          lines.push(``);
+        }
+
+        if (rejectedDocs.length > 0) {
+          lines.push(`❌ *Needs Re-upload:*`);
+          rejectedDocs.forEach(d => lines.push(`  • ${formatDocumentType(d.document_type)}`));
+          lines.push(``);
+        }
+
+        if (missingDocs.length === 0 && pendingDocs.length === 0 && rejectedDocs.length === 0) {
+          lines.push(`✅ All documents are verified!`);
+        } else {
+          lines.push(
+            `📎 *How to upload:*`,
+            `1. Send the file directly in this chat`,
+            `2. Or visit: https://rentmaikar.lovable.app/driver/dashboard`,
+            ``,
+            `Supported: PDF, JPG, PNG (Max 10MB)`,
+          );
+        }
+
+        responseMessage = lines.join("\n");
         break;
       }
 
