@@ -183,18 +183,21 @@ sequenceDiagram
 | `payment-default-ivr` | Twilio `<Gather>` callback — handles Press 1 (payment SMS) / Press 2 (connect support) |
 | `expiry-notification-ivr` | Twilio `<Gather>` callback — handles Press 1 (upload link SMS) / Press 2 (extension request) / Press 3 (connect agent) |
 | `voip-status-callback` | Twilio status webhook — retry logic (3x @ 15min), post-call summary SMS |
+| `expiry-notification-ivr` | Twilio `<Gather>` callback — Press 1 (upload SMS) / Press 2 (extension) / Press 3 (agent) |
 | `process-expiry-notifications` | Daily 8 AM UTC — 30/15/7/5-day expiry alerts with VoIP+IVR, document-type routing, account restriction at 5-day |
 | `process-predue-reminders` | Hourly — friendly pre-due WhatsApp/email reminders (72h→12h before due) |
+| `vehicle-return-reminder` | Daily — calls drivers 24h before rental end with IVR (confirm/extend/issue/agent) |
+| `vehicle-return-ivr` | Twilio `<Gather>` callback — Press 1 (confirm return + SMS) / Press 2 (extension check) / Press 3 (issue) / Press 4 (agent) |
+| `vehicle-shutdown-warning` | CRITICAL — immediate call with moving/parked-aware TwiML + SMS + admin alert |
+| `shutdown-warning-ivr` | Twilio `<Gather>` callback — Moving: Press 1 (pulled over) / Press 2 (emergency). Parked: Press 1 (dispute) / Press 2 (agent) |
 
 ### Not Yet Implemented (Blueprint Only)
 
 | Trigger | Notes |
 |---|---|
-| Vehicle Return Reminder | Requires rental end-date tracking |
-| Rental Extension Offer | Requires proactive rental management flow |
+| Rental Extension Offer | Partially handled via vehicle-return-ivr Press 2 |
 | Owner Payout Confirmation | Requires payout processing integration |
 | Driver Welcome Call | Requires onboarding automation trigger |
-| Vehicle Shutdown Warning | Partially handled via IoT lockdown safety logic |
 
 ### Call Execution Flow
 

@@ -1541,6 +1541,86 @@ export type Database = {
         }
         Relationships: []
       }
+      rentals: {
+        Row: {
+          created_at: string
+          currency: string
+          daily_rate: number
+          driver_id: string
+          end_date: string
+          extended_end_date: string | null
+          extension_approved: boolean | null
+          extension_requested: boolean
+          id: string
+          owner_id: string
+          payment_frequency: string
+          pickup_location: string | null
+          region: string
+          return_confirmed_at: string | null
+          return_inspection_notes: string | null
+          return_location: string | null
+          return_reminder_sent: boolean
+          start_date: string
+          status: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          daily_rate: number
+          driver_id: string
+          end_date: string
+          extended_end_date?: string | null
+          extension_approved?: boolean | null
+          extension_requested?: boolean
+          id?: string
+          owner_id: string
+          payment_frequency?: string
+          pickup_location?: string | null
+          region?: string
+          return_confirmed_at?: string | null
+          return_inspection_notes?: string | null
+          return_location?: string | null
+          return_reminder_sent?: boolean
+          start_date?: string
+          status?: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          daily_rate?: number
+          driver_id?: string
+          end_date?: string
+          extended_end_date?: string | null
+          extension_approved?: boolean | null
+          extension_requested?: boolean
+          id?: string
+          owner_id?: string
+          payment_frequency?: string
+          pickup_location?: string | null
+          region?: string
+          return_confirmed_at?: string | null
+          return_inspection_notes?: string | null
+          return_location?: string | null
+          return_reminder_sent?: boolean
+          start_date?: string
+          status?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rentals_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rideshare_profile_submissions: {
         Row: {
           admin_notes: string | null
