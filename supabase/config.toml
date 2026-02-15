@@ -39,5 +39,17 @@ verify_jwt = false
 [functions.expiry-notification-ivr]
 verify_jwt = false
 
+[functions.vehicle-return-reminder]
+verify_jwt = false
+
+[functions.vehicle-return-ivr]
+verify_jwt = false
+
+[functions.vehicle-shutdown-warning]
+verify_jwt = false
+
+[functions.shutdown-warning-ivr]
+verify_jwt = false
+
 [functions.payment-default-ivr]
 verify_jwt = false
