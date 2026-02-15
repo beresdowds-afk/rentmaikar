@@ -2503,13 +2503,17 @@ export type Database = {
           forwarded_message_id: string | null
           forwarded_to: string | null
           id: string
+          interactive_reply: boolean | null
+          language: string | null
           message_body: string
           message_type: string
           metadata: Json | null
           provider: string
           provider_message_id: string | null
           region: string
+          response_time_ms: number | null
           retry_count: number
+          template_name: string | null
           updated_at: string
           user_id: string | null
           user_name: string | null
@@ -2525,13 +2529,17 @@ export type Database = {
           forwarded_message_id?: string | null
           forwarded_to?: string | null
           id?: string
+          interactive_reply?: boolean | null
+          language?: string | null
           message_body: string
           message_type?: string
           metadata?: Json | null
           provider: string
           provider_message_id?: string | null
           region: string
+          response_time_ms?: number | null
           retry_count?: number
+          template_name?: string | null
           updated_at?: string
           user_id?: string | null
           user_name?: string | null
@@ -2547,13 +2555,17 @@ export type Database = {
           forwarded_message_id?: string | null
           forwarded_to?: string | null
           id?: string
+          interactive_reply?: boolean | null
+          language?: string | null
           message_body?: string
           message_type?: string
           metadata?: Json | null
           provider?: string
           provider_message_id?: string | null
           region?: string
+          response_time_ms?: number | null
           retry_count?: number
+          template_name?: string | null
           updated_at?: string
           user_id?: string | null
           user_name?: string | null
@@ -3704,6 +3716,176 @@ export type Database = {
           report_due_day?: string | null
           updated_at?: string | null
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_interactive_flows: {
+        Row: {
+          completed: boolean | null
+          created_at: string
+          current_step: number | null
+          data: Json | null
+          flow_id: string | null
+          flow_type: string
+          id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string
+          current_step?: number | null
+          data?: Json | null
+          flow_id?: string | null
+          flow_type: string
+          id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string
+          current_step?: number | null
+          data?: Json | null
+          flow_id?: string | null
+          flow_type?: string
+          id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_message_delivery: {
+        Row: {
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          id: string
+          message_id: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          status: string
+        }
+        Update: {
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_message_delivery_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_messages"
+            referencedColumns: ["message_id"]
+          },
+        ]
+      }
+      whatsapp_messages: {
+        Row: {
+          content: string | null
+          created_at: string
+          direction: string
+          id: string
+          language: string | null
+          media_url: string | null
+          message_id: string | null
+          message_type: string
+          metadata: Json | null
+          status: string | null
+          template_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          direction: string
+          id?: string
+          language?: string | null
+          media_url?: string | null
+          message_id?: string | null
+          message_type: string
+          metadata?: Json | null
+          status?: string | null
+          template_name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          language?: string | null
+          media_url?: string | null
+          message_id?: string | null
+          message_type?: string
+          metadata?: Json | null
+          status?: string | null
+          template_name?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          last_activity: string | null
+          session_data: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          last_activity?: string | null
+          session_data?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          last_activity?: string | null
+          session_data?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_template_usage: {
+        Row: {
+          created_at: string
+          id: string
+          language: string | null
+          status: string | null
+          template_name: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          language?: string | null
+          status?: string | null
+          template_name: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          language?: string | null
+          status?: string | null
+          template_name?: string
+          user_id?: string | null
         }
         Relationships: []
       }
