@@ -237,10 +237,27 @@ const buildChatbotResponse = (
 };
 
 // ═══════════════════════════════════════════════════════════
-// Region-aware WhatsApp message sender
+// Region-aware WhatsApp message sender with retry & delivery tracking
 // ═══════════════════════════════════════════════════════════
 
-const sendWhatsAppMessage = async (to: string, message: string) => {
+type MessagePriority = "critical" | "high" | "normal" | "low";
+
+const PRIORITY_DELAY_MS: Record<MessagePriority, number> = {
+  critical: 0,
+  high: 0,        // No artificial delay in edge function context
+  normal: 0,
+  low: 0,
+};
+
+const MAX_RETRY_ATTEMPTS = 3;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Core sender — dispatches to Twilio or Termii based on phone prefix.
+ * Returns the provider response or throws on failure.
+ */
+const sendWhatsAppRaw = async (to: string, message: string): Promise<{ provider: string; externalId?: string; response: unknown }> => {
   const isNigeria = to.startsWith("+234") || to.startsWith("234");
 
   if (isNigeria) {
@@ -257,8 +274,10 @@ const sendWhatsAppMessage = async (to: string, message: string) => {
         type: "plain", channel: "whatsapp", api_key: termiiApiKey,
       }),
     });
-    if (!response.ok) throw new Error(`Termii error: ${await response.text()}`);
-    return response.json();
+    const body = await response.text();
+    if (!response.ok) throw new Error(`Termii error: ${body}`);
+    const json = JSON.parse(body);
+    return { provider: "termii", externalId: json.message_id, response: json };
   }
 
   const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
@@ -280,8 +299,84 @@ const sendWhatsAppMessage = async (to: string, message: string) => {
     },
     body: formData.toString(),
   });
-  if (!response.ok) throw new Error(`Twilio error: ${await response.text()}`);
-  return response.json();
+  const body = await response.text();
+  if (!response.ok) throw new Error(`Twilio error: ${body}`);
+  const json = JSON.parse(body);
+  return { provider: "twilio", externalId: json.sid, response: json };
+};
+
+/**
+ * Send WhatsApp message with automatic retry (exponential backoff)
+ * and delivery status tracking in whatsapp_message_delivery.
+ */
+const sendWhatsAppMessage = async (
+  to: string,
+  message: string,
+  options?: {
+    priority?: MessagePriority;
+    supabase?: ReturnType<typeof createClient>;
+    messageId?: string;
+  }
+): Promise<{ provider: string; externalId?: string; response: unknown }> => {
+  const priority = options?.priority || "normal";
+  const msgId = options?.messageId || crypto.randomUUID();
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
+    try {
+      if (attempt > 0) {
+        const backoffMs = Math.pow(2, attempt) * 1000; // 2s, 4s
+        console.log(`[Queue] Retry ${attempt}/${MAX_RETRY_ATTEMPTS} for ${to} in ${backoffMs}ms`);
+        await sleep(backoffMs);
+      }
+
+      const result = await sendWhatsAppRaw(to, message);
+
+      // Log successful delivery
+      if (options?.supabase) {
+        await options.supabase.from("whatsapp_message_delivery").insert({
+          message_id: msgId,
+          status: "delivered",
+          error_code: null,
+          error_message: null,
+        }).catch(e => console.error("[Delivery Log] Insert error:", e));
+      }
+
+      console.log(`[Queue] Sent (${priority}) to ${to} via ${result.provider} [attempt ${attempt + 1}]`);
+      return result;
+
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.error(`[Queue] Attempt ${attempt + 1} failed for ${to}: ${lastError.message}`);
+
+      // Log retry/failure
+      if (options?.supabase) {
+        await options.supabase.from("whatsapp_message_delivery").insert({
+          message_id: msgId,
+          status: attempt < MAX_RETRY_ATTEMPTS - 1 ? "retry" : "failed",
+          error_code: `ATTEMPT_${attempt + 1}`,
+          error_message: lastError.message.substring(0, 500),
+        }).catch(e => console.error("[Delivery Log] Insert error:", e));
+      }
+    }
+  }
+
+  // All retries exhausted — escalate
+  console.error(`[Queue] FAILED after ${MAX_RETRY_ATTEMPTS} attempts for ${to}`);
+
+  if (options?.supabase) {
+    // Create inbox conversation for failed message escalation
+    await options.supabase.from("inbox_conversations").insert({
+      user_phone: to,
+      channel: "whatsapp",
+      subject: `⚠️ Failed message delivery (${MAX_RETRY_ATTEMPTS} attempts)`,
+      status: "open",
+      priority: "urgent",
+      region: to.startsWith("+234") ? "NIGERIA" : "USA",
+    }).catch(e => console.error("[Escalation] Insert error:", e));
+  }
+
+  throw lastError || new Error("Message delivery failed");
 };
 
 const generatePaymentLink = (driverId: string, amount: number, currency: string): string => {
