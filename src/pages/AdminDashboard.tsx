@@ -41,6 +41,9 @@ import { PortalAnalyticsCards } from "@/components/admin/PortalAnalyticsCards";
 import { GlobalSearch } from "@/components/admin/GlobalSearch";
 import AdminOnboardingTour from "@/components/onboarding/AdminOnboardingTour";
 import { useAdminOnboardingTour } from "@/hooks/useAdminOnboardingTour";
+import { MessagingDocs } from "@/components/admin/docs/MessagingDocs";
+import { EmailDocs } from "@/components/admin/docs/EmailDocs";
+import { VoIPDocs } from "@/components/admin/docs/VoIPDocs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -822,6 +825,15 @@ const AdminDashboard = () => {
               {activeTab === 'instagram' && <SocialMediaManagement />}
               {activeTab === 'linkedin' && <SocialMediaManagement />}
               {activeTab === 'google' && <SocialMediaManagement />}
+            </div>
+          )}
+
+          {/* Docs Portal */}
+          {portalView === 'docs' && (
+            <div className="space-y-6">
+              {activeTab === 'messaging-docs' && <MessagingDocs />}
+              {activeTab === 'email-docs' && <EmailDocs />}
+              {activeTab === 'voip-docs' && <VoIPDocs />}
             </div>
           )}
         </div>
