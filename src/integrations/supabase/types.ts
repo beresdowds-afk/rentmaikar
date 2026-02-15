@@ -1549,6 +1549,258 @@ export type Database = {
           },
         ]
       }
+      platform_cities: {
+        Row: {
+          center_lat: number | null
+          center_lng: number | null
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          region_id: string
+          search_radius_miles: number | null
+          updated_at: string
+        }
+        Insert: {
+          center_lat?: number | null
+          center_lng?: number | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          region_id: string
+          search_radius_miles?: number | null
+          updated_at?: string
+        }
+        Update: {
+          center_lat?: number | null
+          center_lng?: number | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          region_id?: string
+          search_radius_miles?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_cities_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "platform_regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_countries: {
+        Row: {
+          code: string
+          created_at: string
+          currency_code: string
+          currency_symbol: string
+          display_order: number
+          flag: string
+          id: string
+          is_active: boolean
+          name: string
+          payment_gateway: string
+          phone_prefix: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          currency_code: string
+          currency_symbol: string
+          display_order?: number
+          flag?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          payment_gateway?: string
+          phone_prefix: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          currency_code?: string
+          currency_symbol?: string
+          display_order?: number
+          flag?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          payment_gateway?: string
+          phone_prefix?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_feature_overrides: {
+        Row: {
+          city_id: string | null
+          country_id: string | null
+          created_at: string
+          feature_id: string
+          id: string
+          is_enabled: boolean
+          notes: string | null
+          overridden_at: string | null
+          overridden_by: string | null
+          region_id: string | null
+          scope: Database["public"]["Enums"]["feature_scope"]
+          updated_at: string
+        }
+        Insert: {
+          city_id?: string | null
+          country_id?: string | null
+          created_at?: string
+          feature_id: string
+          id?: string
+          is_enabled: boolean
+          notes?: string | null
+          overridden_at?: string | null
+          overridden_by?: string | null
+          region_id?: string | null
+          scope: Database["public"]["Enums"]["feature_scope"]
+          updated_at?: string
+        }
+        Update: {
+          city_id?: string | null
+          country_id?: string | null
+          created_at?: string
+          feature_id?: string
+          id?: string
+          is_enabled?: boolean
+          notes?: string | null
+          overridden_at?: string | null
+          overridden_by?: string | null
+          region_id?: string | null
+          scope?: Database["public"]["Enums"]["feature_scope"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_feature_overrides_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "platform_cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_feature_overrides_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "platform_countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_feature_overrides_feature_id_fkey"
+            columns: ["feature_id"]
+            isOneToOne: false
+            referencedRelation: "platform_features"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_feature_overrides_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "platform_regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_features: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          is_global_default: boolean
+          key: string
+          name: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_global_default?: boolean
+          key: string
+          name: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_global_default?: boolean
+          key?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      platform_regions: {
+        Row: {
+          center_lat: number | null
+          center_lng: number | null
+          code: string
+          country_id: string
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          map_zoom: number | null
+          name: string
+          requires_police_report: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          center_lat?: number | null
+          center_lng?: number | null
+          code: string
+          country_id: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          map_zoom?: number | null
+          name: string
+          requires_police_report?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          center_lat?: number | null
+          center_lng?: number | null
+          code?: string
+          country_id?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          map_zoom?: number | null
+          name?: string
+          requires_police_report?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_regions_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "platform_countries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       policy_acceptances: {
         Row: {
           accepted_at: string
@@ -4366,6 +4618,7 @@ export type Database = {
         | "needs_info"
       application_type: "driver" | "owner"
       device_status: "inactive" | "active" | "offline" | "maintenance"
+      feature_scope: "country" | "region" | "city"
       incident_severity: "low" | "medium" | "high" | "critical"
       incident_status:
         | "reported"
@@ -4562,6 +4815,7 @@ export const Constants = {
       ],
       application_type: ["driver", "owner"],
       device_status: ["inactive", "active", "offline", "maintenance"],
+      feature_scope: ["country", "region", "city"],
       incident_severity: ["low", "medium", "high", "critical"],
       incident_status: [
         "reported",
