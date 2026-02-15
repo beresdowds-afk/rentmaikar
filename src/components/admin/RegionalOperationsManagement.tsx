@@ -12,9 +12,77 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   Globe, MapPin, Building2, Plus, Trash2, Power, PowerOff,
-  ChevronRight, Loader2, ToggleLeft, Zap, MessageSquare, Settings2,
+  ChevronRight, Loader2, ToggleLeft, Zap, MessageSquare, Settings2, Phone,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { PlatformRegion } from "@/hooks/useRegionalOperations";
+
+const ForwardingNumbersEditor = ({ 
+  region, 
+  onUpdate 
+}: { 
+  region: PlatformRegion; 
+  onUpdate: (id: string, updates: { forwarding_sms?: string | null; forwarding_whatsapp?: string | null; forwarding_notes?: string | null }) => Promise<void>;
+}) => {
+  const [sms, setSms] = useState(region.forwarding_sms || "");
+  const [whatsapp, setWhatsapp] = useState(region.forwarding_whatsapp || "");
+  const [notes, setNotes] = useState(region.forwarding_notes || "");
+  const [dirty, setDirty] = useState(false);
+
+  const handleSave = async () => {
+    await onUpdate(region.id, {
+      forwarding_sms: sms.trim() || null,
+      forwarding_whatsapp: whatsapp.trim() || null,
+      forwarding_notes: notes.trim() || null,
+    });
+    setDirty(false);
+  };
+
+  return (
+    <div className="mb-3 p-3 rounded border bg-muted/10">
+      <h5 className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+        <Phone className="h-3.5 w-3.5" /> Message Forwarding Numbers
+      </h5>
+      <p className="text-[10px] text-muted-foreground mb-2">
+        Local numbers that receive copies of all SMS and WhatsApp messages for this region.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div>
+          <Label className="text-[10px]">SMS Forwarding</Label>
+          <Input 
+            placeholder="+1234567890" 
+            value={sms} 
+            onChange={e => { setSms(e.target.value); setDirty(true); }}
+            className="h-8 text-xs"
+          />
+        </div>
+        <div>
+          <Label className="text-[10px]">WhatsApp Forwarding</Label>
+          <Input 
+            placeholder="+1234567890" 
+            value={whatsapp} 
+            onChange={e => { setWhatsapp(e.target.value); setDirty(true); }}
+            className="h-8 text-xs"
+          />
+        </div>
+      </div>
+      <div className="mt-2">
+        <Label className="text-[10px]">Notes</Label>
+        <Input 
+          placeholder="e.g., Local SIM provider details" 
+          value={notes} 
+          onChange={e => { setNotes(e.target.value); setDirty(true); }}
+          className="h-8 text-xs"
+        />
+      </div>
+      {dirty && (
+        <Button size="sm" className="mt-2 h-7 text-xs gap-1" onClick={handleSave}>
+          Save Forwarding
+        </Button>
+      )}
+    </div>
+  );
+};
 
 const RegionalOperationsManagement = () => {
   const {
@@ -25,6 +93,7 @@ const RegionalOperationsManagement = () => {
     deleteCountry, deleteRegion, deleteCity,
     setFeatureOverride, removeFeatureOverride,
     getEffectiveFeatureState,
+    updateRegionForwarding,
   } = useRegionalOperations();
 
   const [addCountryOpen, setAddCountryOpen] = useState(false);
@@ -319,6 +388,9 @@ const RegionalOperationsManagement = () => {
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="px-3 pb-3">
+                              {/* Message Forwarding Numbers */}
+                              <ForwardingNumbersEditor region={region} onUpdate={updateRegionForwarding} />
+
                               {/* Region-level feature toggles */}
                               <div className="mb-3 p-2 rounded bg-muted/20 border">
                                 <h5 className="text-xs font-semibold mb-1">Region-Level Overrides</h5>

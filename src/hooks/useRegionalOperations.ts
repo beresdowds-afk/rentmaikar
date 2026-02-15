@@ -27,6 +27,9 @@ export interface PlatformRegion {
   requires_police_report: boolean;
   is_active: boolean;
   display_order: number;
+  forwarding_sms: string | null;
+  forwarding_whatsapp: string | null;
+  forwarding_notes: string | null;
 }
 
 export interface PlatformCity {
@@ -229,6 +232,13 @@ export const useRegionalOperations = () => {
     fetchAll();
   };
 
+  const updateRegionForwarding = async (id: string, updates: { forwarding_sms?: string | null; forwarding_whatsapp?: string | null; forwarding_notes?: string | null }) => {
+    const { error } = await supabase.from("platform_regions").update(updates).eq("id", id);
+    if (error) { toast.error("Failed to update forwarding"); return; }
+    setRegions(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+    toast.success("Forwarding numbers updated");
+  };
+
   return {
     countries, regions, cities, features, overrides,
     isLoading, refetch: fetchAll,
@@ -237,5 +247,6 @@ export const useRegionalOperations = () => {
     deleteCountry, deleteRegion, deleteCity,
     setFeatureOverride, removeFeatureOverride,
     getEffectiveFeatureState,
+    updateRegionForwarding,
   };
 };
