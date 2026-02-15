@@ -715,6 +715,72 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
+      // ─── Vehicle selection handler ───
+      if (jsonData.action === "vehicle_selected") {
+        const { userId, vehicleId } = jsonData;
+        console.log(`[Vehicle Selection] user=${userId} vehicle=${vehicleId}`);
+
+        const { data: vehicle } = await supabase
+          .from("vehicles")
+          .select("id, make, model, year, category, daily_rate, currency, region, description")
+          .eq("id", vehicleId)
+          .single();
+
+        const { data: userProfile } = await supabase.from("profiles")
+          .select("phone, full_name").eq("user_id", userId).single();
+
+        if (vehicle && userProfile?.phone) {
+          const curr = vehicle.currency === "NGN" ? "₦" : "$";
+          const weeklyRate = vehicle.daily_rate * 7;
+          const detailMsg = [
+            `🚗 *${vehicle.year} ${vehicle.make} ${vehicle.model}*`,
+            ``,
+            `📋 *Vehicle Details*`,
+            `• Category: ${vehicle.category || "Standard"}`,
+            `• Daily Rate: ${curr}${vehicle.daily_rate.toLocaleString()}/day`,
+            `• Weekly Rate: ${curr}${weeklyRate.toLocaleString()}/week`,
+            vehicle.description ? `• Info: ${vehicle.description}` : "",
+            ``,
+            `✅ Includes GPS tracking & insurance`,
+            ``,
+            `📱 *Book Now:*`,
+            `https://rentmaikar.lovable.app/catalogue?vehicle=${vehicle.id}`,
+            ``,
+            `_Reply *1* for booking support or *4* to talk to an agent._`,
+          ].filter(Boolean).join("\n");
+
+          await sendWhatsAppMessage(userProfile.phone, detailMsg);
+
+          // Track the interactive flow
+          await supabase.from("whatsapp_interactive_flows").insert({
+            user_id: userId,
+            flow_id: `vehicle_select_${vehicleId}_${Date.now()}`,
+            flow_type: "vehicle_selection",
+            current_step: 1,
+            data: {
+              vehicleId,
+              vehicleName: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+              dailyRate: vehicle.daily_rate,
+              currency: vehicle.currency,
+            },
+            completed: false,
+          });
+
+          await trackWhatsAppMessage(supabase, {
+            userId,
+            direction: "outbound",
+            messageType: "interactive",
+            content: detailMsg,
+            status: "sent",
+            metadata: { vehicleId, action: "vehicle_details" },
+          });
+        }
+
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
       from = jsonData.from || jsonData.mobile || jsonData.phone || "";
       rawBody = (jsonData.text || jsonData.body || jsonData.message || "").trim();
       if (from && !from.startsWith("+")) {
@@ -1044,10 +1110,10 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       case "CARS": {
-        // Show available vehicles by region
+        // Interactive vehicle list with selection flow
         const { data: vehicles } = await supabase
           .from("vehicles")
-          .select("id, make, model, year, category, daily_rate, currency")
+          .select("id, make, model, year, category, daily_rate, currency, city")
           .eq("status", "available")
           .eq("region", region === "NIGERIA" ? "nigeria" : "usa")
           .order("daily_rate", { ascending: true })
@@ -1056,25 +1122,123 @@ const handler = async (req: Request): Promise<Response> => {
         if (vehicles && vehicles.length > 0) {
           const vehicleLines = vehicles.map((v, i) => {
             const curr = v.currency === "NGN" ? "₦" : "$";
-            return `${i + 1}. ${v.year} ${v.make} ${v.model} (${v.category || "Standard"})\n   💰 ${curr}${v.daily_rate}/day`;
+            return [
+              `${i + 1}️⃣ *${v.year} ${v.make} ${v.model}*`,
+              `   ${v.category || "Standard"} • ${curr}${v.daily_rate}/day`,
+              v.city ? `   📍 ${v.city}` : "",
+            ].filter(Boolean).join("\n");
           });
 
           responseMessage = [
-            `🚗 *Available Vehicles*`,
+            `🚗 *Available Vehicles (${vehicles.length})*`,
+            ``,
+            `Here are vehicles available for you:`,
             ``,
             ...vehicleLines,
             ``,
-            `📱 Browse all: https://rentmaikar.lovable.app/catalogue`,
+            `─────────────────`,
+            `📱 Full catalogue: https://rentmaikar.lovable.app/catalogue`,
             ``,
-            `_Reply *1* for booking support or *4* to speak with an agent._`,
+            `_Reply with a vehicle number (e.g. *1*) for details,_`,
+            `_or *4* to speak with an agent._`,
           ].join("\n");
+
+          // Store vehicle list in session for number-based selection
+          await supabase.from("whatsapp_sessions").upsert({
+            user_id: profile.user_id,
+            session_data: {
+              activeFlow: "vehicle_list",
+              vehicles: vehicles.map(v => ({
+                id: v.id,
+                name: `${v.year} ${v.make} ${v.model}`,
+              })),
+              createdAt: new Date().toISOString(),
+            },
+            last_activity: new Date().toISOString(),
+            expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 min
+          }, { onConflict: "user_id" });
         } else {
-          responseMessage = `🚗 *Available Vehicles*\n\nNo vehicles currently available in your region.\n\nCheck back soon or visit: https://rentmaikar.lovable.app/catalogue`;
+          responseMessage = [
+            `🚗 *Available Vehicles*`,
+            ``,
+            `No vehicles currently available in your region.`,
+            ``,
+            `Check back soon or browse online:`,
+            `📱 https://rentmaikar.lovable.app/catalogue`,
+          ].join("\n");
         }
         break;
       }
 
       default: {
+        // Check if user has an active vehicle selection session
+        const numericInput = parseInt(rawBody);
+        if (!isNaN(numericInput) && numericInput >= 1 && numericInput <= 10) {
+          const { data: session } = await supabase
+            .from("whatsapp_sessions")
+            .select("session_data, expires_at")
+            .eq("user_id", profile.user_id)
+            .single();
+
+          if (
+            session?.session_data?.activeFlow === "vehicle_list" &&
+            session?.expires_at &&
+            new Date(session.expires_at) > new Date()
+          ) {
+            const vehicleList = session.session_data.vehicles || [];
+            const selectedVehicle = vehicleList[numericInput - 1];
+
+            if (selectedVehicle) {
+              // Fetch full vehicle details
+              const { data: vehicle } = await supabase
+                .from("vehicles")
+                .select("id, make, model, year, category, daily_rate, currency, city, description")
+                .eq("id", selectedVehicle.id)
+                .single();
+
+              if (vehicle) {
+                const curr = vehicle.currency === "NGN" ? "₦" : "$";
+                const weeklyRate = vehicle.daily_rate * 7;
+                responseMessage = [
+                  `🚗 *${vehicle.year} ${vehicle.make} ${vehicle.model}*`,
+                  ``,
+                  `📋 *Vehicle Details*`,
+                  `• Category: ${vehicle.category || "Standard"}`,
+                  `• Daily Rate: ${curr}${vehicle.daily_rate.toLocaleString()}/day`,
+                  `• Weekly Rate: ${curr}${weeklyRate.toLocaleString()}/week`,
+                  vehicle.city ? `• Location: 📍 ${vehicle.city}` : "",
+                  vehicle.description ? `• Info: ${vehicle.description}` : "",
+                  ``,
+                  `✅ Includes GPS tracking & insurance`,
+                  ``,
+                  `📱 *Book Now:*`,
+                  `https://rentmaikar.lovable.app/catalogue?vehicle=${vehicle.id}`,
+                  ``,
+                  `_Reply *CARS* to see other vehicles or *4* to speak with an agent._`,
+                ].filter(Boolean).join("\n");
+
+                // Track selection flow
+                await supabase.from("whatsapp_interactive_flows").insert({
+                  user_id: profile.user_id,
+                  flow_id: `vehicle_select_${vehicle.id}_${Date.now()}`,
+                  flow_type: "vehicle_selection",
+                  current_step: 1,
+                  data: {
+                    vehicleId: vehicle.id,
+                    vehicleName: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+                    dailyRate: vehicle.daily_rate,
+                    currency: vehicle.currency,
+                    selectedFrom: "whatsapp_list",
+                  },
+                  completed: false,
+                });
+
+                break;
+              }
+            }
+          }
+        }
+
         // If intent was classified but below threshold, or truly unknown
         if (intentResult && intentResult.confidence > 0 && intentResult.confidence < 0.3) {
           responseMessage = `🤔 I'm not sure I understood that.\n\nDid you mean one of these?\n\n• *PAY* - Make a payment\n• *STATUS* - Check rental status\n• *BALANCE* - View balance\n• *CARS* - Browse vehicles\n• *HELP* - Get support\n\nOr reply *4* to talk to a human.`;
