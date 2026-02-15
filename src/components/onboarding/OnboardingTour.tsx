@@ -21,7 +21,7 @@ const tourSteps: TourStep[] = [
   {
     id: "welcome",
     title: "Welcome to Rentmaikar! 🚗",
-    description: "Your trusted platform for connecting vehicle owners with rideshare drivers. Let's take a quick tour to help you get started.",
+    description: "Your trusted platform for connecting vehicle owners with rideshare drivers across the USA and Nigeria. Let's take a quick tour to help you get started.",
     icon: Car,
     position: "center"
   },
@@ -36,7 +36,7 @@ const tourSteps: TourStep[] = [
   {
     id: "categories",
     title: "Browse Vehicle Categories",
-    description: "Explore our three pricing tiers - Budget for economical options, Standard for balanced value, and Premium for luxury vehicles.",
+    description: "Explore our three pricing tiers — Budget (2015–2016), Standard (2017–2020), and Premium (2021–2025) — each with daily or weekly payment options.",
     target: "[data-tour='categories']",
     icon: Car,
     position: "top"
@@ -44,7 +44,7 @@ const tourSteps: TourStep[] = [
   {
     id: "regions",
     title: "Regional Operations",
-    description: "We operate in specific hubs in USA and Nigeria. Use the region switcher to see pricing and features for your location.",
+    description: "We operate in hubs across the USA (DC, Maryland, Virginia) and Nigeria (Lagos, Abuja, Port Harcourt). Switch regions to see local pricing and available features.",
     target: "[data-tour='region']",
     icon: MapPin,
     position: "bottom"
@@ -52,7 +52,7 @@ const tourSteps: TourStep[] = [
   {
     id: "security",
     title: "IoT-Powered Security",
-    description: "Every rental vehicle is equipped with our IoT device for real-time tracking, accident detection, and remote management capabilities.",
+    description: "Every rental vehicle is equipped with our IoT device for real-time GPS tracking, accident detection, and remote vehicle management capabilities.",
     target: "[data-tour='features']",
     icon: Shield,
     position: "top"
@@ -67,7 +67,7 @@ const tourSteps: TourStep[] = [
   {
     id: "payments",
     title: "Flexible Payment Options",
-    description: "Choose between daily or weekly payment plans. We support PayPal in the USA and Paystack (bank transfers) in Nigeria.",
+    description: "Choose between daily or weekly payment plans. We support PayPal in the USA and Paystack (bank transfers) in Nigeria. Payment reminders are sent automatically via SMS, WhatsApp, and email.",
     target: "[data-tour='payments']",
     icon: CreditCard,
     position: "top"
@@ -75,35 +75,35 @@ const tourSteps: TourStep[] = [
   {
     id: "rent-to-own",
     title: "Rent-to-Own Program 🏠",
-    description: "Owners can list vehicles for rent-to-own with country-specific pricing. Drivers can find listings in their region and work toward vehicle ownership.",
+    description: "Owners can list vehicles for rent-to-own with country-specific pricing. Drivers can search for listings in their region and work toward vehicle ownership.",
     icon: Home,
     position: "center"
   },
   {
     id: "notifications",
-    title: "Communication Preferences",
-    description: "Choose how you want to be contacted - WhatsApp, SMS, or both. Email notifications are always enabled to keep you informed of important updates.",
+    title: "Multi-Channel Communication 📱",
+    description: "Stay connected via WhatsApp, SMS, email, or voice calls. You can set your communication preferences and opt out anytime. All channels are supported in both USA and Nigeria.",
     icon: MessageSquare,
     position: "center"
   },
   {
     id: "unified-inbox",
     title: "Unified Support System 📬",
-    description: "Need help? Reach us via email, SMS, or WhatsApp. All your messages are handled through our centralized support system for quick responses.",
+    description: "Need help? Reach us via email, SMS, WhatsApp, or phone. All your messages are handled through our centralized support system with regional forwarding numbers for quick, local responses.",
     icon: Inbox,
     position: "center"
   },
   {
     id: "policies",
     title: "Terms & Policies",
-    description: "During registration, you'll review and accept our Terms of Service (including mandatory driver training and group insurance requirements), Privacy Policy, and platform-specific agreements.",
+    description: "During registration, you'll review and accept our Terms of Service (including mandatory training and group insurance), Privacy Policy, and platform-specific agreements. These are versioned and region-specific.",
     icon: FileText,
     position: "center"
   },
   {
     id: "complete",
     title: "You're All Set! 🎉",
-    description: "Start exploring Rentmaikar now. Register as a driver or owner to access your personalized dashboard with all the tools you need.",
+    description: "Start exploring Rentmaikar now. Register as a driver or owner to access your personalized dashboard with vehicle tracking, payment management, inspections, and more.",
     icon: Car,
     position: "center"
   }
