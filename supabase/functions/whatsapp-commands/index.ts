@@ -202,6 +202,83 @@ const handler = async (req: Request): Promise<Response> => {
       rawBody = formData.get("Body")?.toString().trim() || "";
     } else {
       const jsonData = await req.json();
+
+      // ─── Internal payment completion webhook ───
+      if (jsonData.action === "payment_completed") {
+        const { userId, rentalId, transactionId, status, amount, currency } = jsonData;
+        console.log(`[Payment Completion] user=${userId} rental=${rentalId} txn=${transactionId}`);
+
+        // Update payment default to resolved
+        if (rentalId) {
+          await supabase.from("payment_defaults")
+            .update({ status: "resolved", resolved_at: new Date().toISOString() })
+            .eq("rental_id", rentalId)
+            .eq("driver_id", userId)
+            .eq("status", "active");
+        }
+
+        // Record payment
+        const { data: rental } = await supabase.from("rentals")
+          .select("owner_id, vehicle_id")
+          .eq("id", rentalId)
+          .single();
+
+        if (rental) {
+          await supabase.from("payments").insert({
+            driver_id: userId,
+            owner_id: rental.owner_id,
+            vehicle_id: rental.vehicle_id,
+            rental_id: rentalId,
+            amount: amount || 0,
+            currency: currency || "USD",
+            status: status || "completed",
+            transaction_id: transactionId,
+            payment_method: "whatsapp_flow",
+            processed_at: new Date().toISOString(),
+          });
+        }
+
+        // Send confirmation to driver
+        const { data: driverProfile } = await supabase.from("profiles")
+          .select("phone, full_name").eq("user_id", userId).single();
+
+        if (driverProfile?.phone) {
+          const curr = (currency || "USD") === "NGN" ? "₦" : "$";
+          await sendWhatsAppMessage(driverProfile.phone, [
+            `✅ *Payment Received*`,
+            ``,
+            `Amount: ${curr}${Number(amount || 0).toLocaleString()}`,
+            `Transaction: ${transactionId}`,
+            `Date: ${new Date().toLocaleDateString()}`,
+            ``,
+            `Thank you for your payment! 🎉`,
+          ].join("\n"));
+        }
+
+        // Notify owner
+        if (rental) {
+          const { data: ownerProfile } = await supabase.from("profiles")
+            .select("phone, full_name").eq("user_id", rental.owner_id).single();
+
+          if (ownerProfile?.phone) {
+            const curr = (currency || "USD") === "NGN" ? "₦" : "$";
+            await sendWhatsAppMessage(ownerProfile.phone, [
+              `💰 *Payment Received for Your Vehicle*`,
+              ``,
+              `Driver: ${driverProfile?.full_name || "N/A"}`,
+              `Amount: ${curr}${Number(amount || 0).toLocaleString()}`,
+              `Transaction: ${transactionId}`,
+              ``,
+              `Your payout will be processed according to your schedule.`,
+            ].join("\n"));
+          }
+        }
+
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
       from = jsonData.from || jsonData.mobile || jsonData.phone || "";
       rawBody = (jsonData.text || jsonData.body || jsonData.message || "").trim();
       if (from && !from.startsWith("+")) {
@@ -279,24 +356,84 @@ const handler = async (req: Request): Promise<Response> => {
     switch (command) {
       case "PAY":
       case "PAYMENT": {
+        // Look for active payment defaults first
         const { data: defaultPayment } = await supabase
           .from("payment_defaults")
-          .select("*")
+          .select("*, rental_id")
           .eq("driver_id", profile.user_id)
           .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(1)
           .single();
 
         if (defaultPayment) {
+          // Get rental & vehicle details for the interactive payment message
+          const { data: rental } = await supabase
+            .from("rentals")
+            .select("id, vehicle_id, daily_rate, currency")
+            .eq("id", defaultPayment.rental_id)
+            .single();
+
+          const vehicleLabel = rental?.vehicle_id
+            ? (await supabase.from("vehicles").select("make, model, year").eq("id", rental.vehicle_id).single()).data
+            : null;
+
+          const vehicleName = vehicleLabel
+            ? `${vehicleLabel.year} ${vehicleLabel.make} ${vehicleLabel.model}`
+            : "your vehicle";
+
+          const curr = defaultPayment.currency === "NGN" ? "₦" : "$";
+          const amount = Number(defaultPayment.amount_due);
           const paymentUrl = generatePaymentLink(
-            profile.user_id, defaultPayment.amount_due, defaultPayment.currency
+            profile.user_id, amount, defaultPayment.currency
           );
-          responseMessage = paymentLinkMessage({
-            amount: defaultPayment.amount_due,
-            currency: defaultPayment.currency as "USD" | "NGN",
-            paymentUrl,
-          });
+
+          // Interactive-style payment message with structured sections
+          responseMessage = [
+            `💳 *Secure Payment*`,
+            ``,
+            `Complete payment of ${curr}${amount.toLocaleString()} for ${vehicleName}.`,
+            ``,
+            `📋 *Payment Details*`,
+            `• Amount: ${curr}${amount.toLocaleString()}`,
+            `• Vehicle: ${vehicleName}`,
+            `• Frequency: ${defaultPayment.payment_frequency || "Daily"}`,
+            `• Hours Overdue: ${defaultPayment.hours_overdue || 0}h`,
+            ``,
+            `🔒 Secured by ${defaultPayment.currency === "NGN" ? "Paystack" : "PayPal"}`,
+            ``,
+            `👉 Pay now: ${paymentUrl}`,
+            ``,
+            `_Reply *BALANCE* to see full breakdown or *4* for help._`,
+          ].join("\n");
         } else {
-          responseMessage = `✅ No Outstanding Payments\n\nYou're all caught up! No pending payments found.`;
+          // Check for upcoming payments even if not overdue
+          const { data: activeRentalForPay } = await supabase
+            .from("rentals")
+            .select("id, daily_rate, currency, vehicle_id, payment_frequency")
+            .eq("driver_id", profile.user_id)
+            .eq("status", "active")
+            .limit(1)
+            .single();
+
+          if (activeRentalForPay) {
+            const curr = activeRentalForPay.currency === "NGN" ? "₦" : "$";
+            const paymentUrl = generatePaymentLink(
+              profile.user_id, activeRentalForPay.daily_rate, activeRentalForPay.currency
+            );
+            responseMessage = [
+              `✅ *No Overdue Payments*`,
+              ``,
+              `You're all caught up! 🎉`,
+              ``,
+              `Want to make an early payment?`,
+              `• ${activeRentalForPay.payment_frequency === "weekly" ? "Weekly" : "Daily"} rate: ${curr}${activeRentalForPay.daily_rate.toLocaleString()}`,
+              ``,
+              `👉 Pay ahead: ${paymentUrl}`,
+            ].join("\n");
+          } else {
+            responseMessage = `✅ No Outstanding Payments\n\nYou're all caught up! No pending payments or active rentals found.`;
+          }
         }
         break;
       }
