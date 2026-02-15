@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface PaymentDefault {
@@ -236,6 +236,79 @@ const handler = async (req: Request): Promise<Response> => {
                 supabaseServiceKey
               );
               if (whatsappSent) results.notificationsSent++;
+            }
+
+            // Final notice (Day 3): Make automated VoIP call
+            if (newNotificationsSent === 3) {
+              const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
+              const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
+              const twilioPhone = Deno.env.get('TWILIO_PHONE_NUMBER') || '+16083843932';
+
+              if (twilioAccountSid && twilioAuthToken) {
+                try {
+                  const sym = getCurrencySymbol(paymentDefault.currency);
+                  const twiml = `
+                    <Response>
+                      <Say voice="alice">
+                        Hello ${profile.full_name || 'Driver'}. This is a critical notice from Rent My Car.
+                        Your payment of ${sym}${paymentDefault.amount_due} is now critically overdue.
+                        Your vehicle lockdown has been authorized.
+                        Please make payment immediately to avoid service interruption.
+                        Contact support if you need assistance.
+                      </Say>
+                    </Response>
+                  `.trim();
+
+                  const { data: callRecord, error: callErr } = await supabase
+                    .from('voip_calls')
+                    .insert({
+                      initiated_by: paymentDefault.driver_id,
+                      call_type: 'individual',
+                      region: profile.phone.startsWith('+234') ? 'Nigeria' : 'USA',
+                      status: 'pending',
+                      direction: 'outbound',
+                      started_at: new Date().toISOString(),
+                      caller_role: 'system',
+                    })
+                    .select()
+                    .single();
+
+                  if (!callErr && callRecord) {
+                    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`;
+                    const callResponse = await fetch(twilioUrl, {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                      },
+                      body: new URLSearchParams({
+                        To: profile.phone,
+                        From: twilioPhone,
+                        Twiml: twiml,
+                        StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
+                        StatusCallbackEvent: 'initiated ringing answered completed',
+                      }),
+                    });
+
+                    const callData = await callResponse.json();
+                    if (callResponse.ok) {
+                      await supabase
+                        .from('voip_calls')
+                        .update({ call_sid: callData.sid, status: 'ringing' })
+                        .eq('id', callRecord.id);
+                      console.log(`[PaymentDefaults] VoIP call initiated for ${paymentDefault.id}`);
+                    } else {
+                      await supabase
+                        .from('voip_calls')
+                        .update({ status: 'failed' })
+                        .eq('id', callRecord.id);
+                      console.error(`[PaymentDefaults] VoIP call failed:`, callData.message);
+                    }
+                  }
+                } catch (callErr) {
+                  console.error(`[PaymentDefaults] VoIP call error:`, callErr);
+                }
+              }
             }
           }
 
