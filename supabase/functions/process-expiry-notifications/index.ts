@@ -4,7 +4,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface ExpiringItem {
@@ -426,7 +426,9 @@ const handler = async (req: Request): Promise<Response> => {
                 region: recipient.phone.startsWith('+234') ? 'Nigeria' : 'USA',
                 status: 'pending',
                 direction: 'outbound',
+                started_at: new Date().toISOString(),
                 duration_seconds: 0,
+                caller_role: 'system',
               })
               .select()
               .single();

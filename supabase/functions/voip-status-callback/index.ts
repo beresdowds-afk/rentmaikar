@@ -105,6 +105,72 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // ─── RETRY LOGIC: Schedule retry for busy/no-answer ───
+    if (callStatus === 'busy' || callStatus === 'no-answer') {
+      const { data: callRecord } = await supabase
+        .from('voip_calls')
+        .select('id, initiated_by, region, caller_role, receiver_role, receiver_id')
+        .eq('call_sid', callSid)
+        .single();
+
+      if (callRecord) {
+        // Check existing retry count (max 2 retries)
+        const { count: retryCount } = await supabase
+          .from('voip_calls')
+          .select('id', { count: 'exact', head: true })
+          .eq('initiated_by', callRecord.initiated_by)
+          .eq('receiver_id', callRecord.receiver_id)
+          .gte('created_at', new Date(Date.now() - 3600000).toISOString()) // Last hour
+          .in('status', ['busy', 'no-answer', 'ringing', 'pending']);
+
+        if ((retryCount || 0) < 3) {
+          console.log(`[VoIP Callback] Scheduling retry for ${callSid} (attempt ${(retryCount || 0) + 1}/3)`);
+          // Create a retry call record (the cron/scheduler will pick it up)
+          await supabase
+            .from('voip_calls')
+            .insert({
+              initiated_by: callRecord.initiated_by,
+              call_type: 'individual',
+              region: callRecord.region,
+              status: 'pending',
+              direction: 'outbound',
+              caller_role: callRecord.caller_role,
+              receiver_id: callRecord.receiver_id,
+              receiver_role: callRecord.receiver_role,
+              started_at: new Date(Date.now() + 900000).toISOString(), // Retry in 15 min
+            });
+        } else {
+          console.log(`[VoIP Callback] Max retries reached for ${callSid}`);
+        }
+      }
+    }
+
+    // ─── POST-CALL SUMMARY SMS ───
+    if (callStatus === 'completed' && to && duration) {
+      try {
+        const durationSec = parseInt(duration, 10);
+        if (durationSec > 5) { // Only for meaningful calls (>5s)
+          const smsUrl = `${supabaseUrl}/functions/v1/send-sms-notification`;
+          await fetch(smsUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              phone: to,
+              channel: 'sms',
+              notificationType: 'general',
+              customMessage: `Thank you for your call with Rentmaikar (${Math.ceil(durationSec / 60)} min). If you need further assistance, reply HELP or call us back.`,
+            }),
+          });
+          console.log(`[VoIP Callback] Post-call SMS sent to ${to}`);
+        }
+      } catch (smsErr) {
+        console.error('[VoIP Callback] Post-call SMS failed:', smsErr);
+      }
+    }
+
     return new Response('OK', { status: 200, headers: corsHeaders });
 
   } catch (error) {
