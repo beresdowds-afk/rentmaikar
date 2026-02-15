@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.process-inspection-reminders]
 verify_jwt = false
+
+[functions.termii-webhook]
+verify_jwt = false
