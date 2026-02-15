@@ -203,6 +203,15 @@ sequenceDiagram
 | Document Expiry Batch (Daily 8 AM) | `process-expiry-notifications` | `0 8 * * *` | Multi-tier (30/15/7/5-day) document expiry alerts with VoIP+IVR |
 | Quarterly Inspections (1st of quarter) | `process-inspection-reminders` | `0 10 1 */3 *` | Vehicle inspection due reminders to owners |
 
+### Localized Call Scripts
+
+All outbound calls use region-aware multilingual scripts. See **[call-scripts-reference.md](./call-scripts-reference.md)** for:
+- Nigeria scripts (Pidgin, Yoruba, Hausa, English)
+- USA scripts (English, Spanish)
+- Emergency scripts (Accident, Breakdown, Security)
+- TwiML templates with Twilio Polly voice mapping
+- Language selection logic and fallback rules
+
 ### Not Yet Implemented (Blueprint Only)
 
 | Trigger | Notes |
