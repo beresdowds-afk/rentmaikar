@@ -121,6 +121,120 @@ const intentToCommand = (intent: string): string | null => {
 };
 
 // ═══════════════════════════════════════════════════════════
+// Multilingual Chatbot Responses
+// ═══════════════════════════════════════════════════════════
+
+type SupportedLang = "en" | "pcm" | "yo";
+
+interface ChatbotResponse {
+  text: Record<SupportedLang, string>;
+  quickReplies?: string[];
+  priority?: "normal" | "high" | "critical";
+}
+
+const CHATBOT_RESPONSES: Record<string, ChatbotResponse> = {
+  greeting: {
+    text: {
+      en: "Hello! Welcome to Rentmaikar. How can I help you today?",
+      pcm: "Hello! Welcome to Rentmaikar. How we go help you today?",
+      yo: "Kabọ! Kaabo si Rentmaikar. Bawo ni mo ṣe le ran ọ lọwọ?",
+    },
+    quickReplies: ["Pay Now", "Check Status", "Get Help"],
+  },
+  payment_info: {
+    text: {
+      en: "To make a payment, please click the 'Pay Now' button below or visit your driver dashboard.",
+      pcm: "To pay, press 'Pay Now' button below or go your driver dashboard.",
+      yo: "Lati ṣe ísanwó, tẹ 'Pay Now' tabi lọ sí dashboard rẹ.",
+    },
+    quickReplies: ["Pay Now", "Payment History", "Speak to Agent"],
+  },
+  document_status: {
+    text: {
+      en: "Your documents are being verified. This usually takes 24-48 hours.",
+      pcm: "Dem dey check your documents. E go take 24-48 hours.",
+      yo: "A ń ṣàyẹ̀wò àwọn ìwé rẹ. Ó máa gba wákàtí 24-48.",
+    },
+    quickReplies: ["Check Status", "Upload New", "Why so long?"],
+  },
+  vehicle_help: {
+    text: {
+      en: "Having vehicle issues? Please describe the problem and our support team will assist you.",
+      pcm: "Your motor get wahala? Tell us wetin happen and our team go help you.",
+      yo: "Ọkọ̀ rẹ ní ìṣòro? Ṣàlàyé kí ẹgbẹ́ àtìlẹ́yìn wa le ran ọ lọ́wọ́.",
+    },
+    quickReplies: ["Breakdown", "Accident", "Maintenance"],
+  },
+  emergency: {
+    text: {
+      en: "🚨 EMERGENCY DETECTED\n\nPlease confirm your emergency type:\n1️⃣ Accident\n2️⃣ Breakdown\n3️⃣ Security Issue\n4️⃣ Medical Emergency",
+      pcm: "🚨 EMERGENCY!\n\nAbeg confirm wetin happen:\n1️⃣ Accident\n2️⃣ Motor spoil\n3️⃣ Security wahala\n4️⃣ Hospital matter",
+      yo: "🚨 PÀJÁWÌRÌ!\n\nJọ̀wọ́ fi ìdí rẹ̀ hàn:\n1️⃣ Ìjàm̀bá\n2️⃣ Ọkọ̀ bàjẹ́\n3️⃣ Ọ̀ṣà àbò\n4️⃣ Pàjáwìrì ìlera",
+    },
+    priority: "critical",
+  },
+  no_rental: {
+    text: {
+      en: "You don't have an active rental at the moment. Visit our website to browse available vehicles.",
+      pcm: "You no get active rental now. Go our website check available motors.",
+      yo: "O kò ní ìyálọ tó ń ṣiṣẹ́ báyìí. Ṣàbẹ̀wò ojú-ìwé wa láti wo àwọn ọkọ̀.",
+    },
+    quickReplies: ["Browse Cars", "Get Help"],
+  },
+  payment_confirmed: {
+    text: {
+      en: "Your payment has been received successfully! Thank you for staying current.",
+      pcm: "We don receive your payment! Thank you for paying on time.",
+      yo: "A ti gba ìsanwó rẹ! O ṣeun fún sísanwó lórí àkókò.",
+    },
+  },
+};
+
+// Detect language from region/phone
+const detectLanguage = (phone: string, region: string): SupportedLang => {
+  // Default: Nigerian numbers get Pidgin context, others get English
+  // Could be expanded with user preference storage
+  if (region === "NIGERIA" || phone.startsWith("+234")) return "pcm";
+  return "en";
+};
+
+// Build personalized chatbot response
+const buildChatbotResponse = (
+  responseKey: string,
+  user: { firstName?: string; phone: string; region: string },
+  extraContext?: { pendingAmount?: number; currency?: string }
+): string => {
+  const response = CHATBOT_RESPONSES[responseKey];
+  if (!response) return CHATBOT_RESPONSES.greeting.text.en;
+
+  const lang = detectLanguage(user.phone, user.region);
+  let text = response.text[lang] || response.text.en;
+
+  // Personalize with name
+  if (user.firstName) {
+    const greetingPrefix = lang === "pcm"
+      ? `Hey ${user.firstName}! `
+      : lang === "yo"
+        ? `${user.firstName}, `
+        : `Hi ${user.firstName}! `;
+    text = greetingPrefix + text;
+  }
+
+  // Add pending payment context
+  if (extraContext?.pendingAmount && responseKey === "payment_info") {
+    const curr = extraContext.currency === "NGN" ? "₦" : "$";
+    text += `\n\nYou have a pending payment of ${curr}${extraContext.pendingAmount.toLocaleString()}.`;
+  }
+
+  // Append quick replies as numbered options
+  if (response.quickReplies && response.quickReplies.length > 0) {
+    text += "\n\n" + response.quickReplies.map((r, i) => `${i + 1}️⃣ ${r}`).join("\n");
+  }
+
+  return text;
+};
+
+// ═══════════════════════════════════════════════════════════
 // Region-aware WhatsApp message sender
 // ═══════════════════════════════════════════════════════════
 
@@ -431,9 +545,13 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (!profile) {
-      await sendWhatsAppMessage(from,
-        `👋 Welcome to Rentmaikar!\n\nWe don't recognize this number. Please register at https://rentmaikar.lovable.app to get started.`
-      );
+      const lang = detectLanguage(from, region);
+      const welcomeMsg = lang === "pcm"
+        ? "👋 Welcome to Rentmaikar!\n\nWe no know this number. Abeg register for https://rentmaikar.lovable.app make you start."
+        : lang === "yo"
+          ? "👋 Kaabo si Rentmaikar!\n\nA kò mọ nọ́mbà yìí. Jọ̀wọ́ forúkọsílẹ̀ ní https://rentmaikar.lovable.app."
+          : "👋 Welcome to Rentmaikar!\n\nWe don't recognize this number. Please register at https://rentmaikar.lovable.app to get started.";
+      await sendWhatsAppMessage(from, welcomeMsg);
       return new Response("OK", { status: 200, headers: corsHeaders });
     }
 
@@ -590,7 +708,8 @@ const handler = async (req: Request): Promise<Response> => {
             currency: negotiation.currency as "USD" | "NGN",
           });
         } else {
-          responseMessage = `📊 No Active Rental\n\nYou don't have an active rental at the moment.\n\nVisit https://rentmaikar.lovable.app to browse available vehicles.`;
+          const firstName = profile.full_name?.split(" ")[0];
+          responseMessage = buildChatbotResponse("no_rental", { firstName, phone: from, region });
         }
         break;
       }
@@ -615,7 +734,9 @@ const handler = async (req: Request): Promise<Response> => {
 
       case "HELP":
       case "SUPPORT": {
-        responseMessage = helpMessage();
+        const firstName = profile.full_name?.split(" ")[0];
+        responseMessage = buildChatbotResponse("greeting", { firstName, phone: from, region }) +
+          "\n\n" + helpMessage();
         break;
       }
 
@@ -637,13 +758,16 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       case "3": {
-        responseMessage = `🚗 Vehicle Support\n\nFor vehicle issues:\n• Mechanical problems - Call your designated support line\n• Accidents - Report immediately via the app\n• IoT device issues - Reply *IOT*`;
+        const firstName = profile.full_name?.split(" ")[0];
+        responseMessage = buildChatbotResponse("vehicle_help", { firstName, phone: from, region });
         break;
       }
 
       case "EMERGENCY": {
-        // High-priority emergency escalation
-        responseMessage = `🚨 EMERGENCY DETECTED\n\nWe are routing your message to an agent immediately.\n\nIf you are in danger, please call:\n🇺🇸 USA: 911\n🇳🇬 Nigeria: 112 or 199\n\nA support agent will contact you shortly.`;
+        // High-priority emergency escalation with multilingual response
+        const firstName = profile.full_name?.split(" ")[0];
+        const emergencyBase = buildChatbotResponse("emergency", { firstName, phone: from, region });
+        responseMessage = emergencyBase + `\n\nIf you are in danger, please call:\n🇺🇸 USA: 911\n🇳🇬 Nigeria: 112 or 199\n\nA support agent will contact you shortly.`;
 
         await supabase.from("inbox_conversations").insert({
           user_id: profile.user_id,
