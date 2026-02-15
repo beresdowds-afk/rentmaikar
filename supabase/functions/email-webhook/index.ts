@@ -41,7 +41,7 @@ const EMAIL_QUEUES: Record<string, { queue: string; priority: string; category: 
   "noreply@rentmaikar.com":   { queue: "automated", priority: "low",     category: "auto_reply" },
 };
 
-// ─── Content-Based Classification ───
+// ─── Weighted Classification Engine ───
 interface ClassificationResult {
   category: string;
   subCategory: string;
@@ -49,61 +49,252 @@ interface ClassificationResult {
   urgency: "low" | "normal" | "high" | "urgent";
   requiresTicket: boolean;
   documentType: string | null;
+  isNigeria: boolean;
+  language: string;
+}
+
+interface CategoryConfig {
+  keywords: [string, number][]; // [keyword, weight]
+  subCategories: Record<string, [string, number][]>;
+  priority: "low" | "normal" | "high" | "urgent";
+}
+
+const CATEGORIES: Record<string, CategoryConfig> = {
+  emergency: {
+    keywords: [
+      ["accident", 3], ["crash", 3], ["emergency", 3], ["towed", 2],
+      ["hit and run", 3], ["collision", 3], ["injury", 3], ["fire", 3],
+      ["911", 3], ["police report", 2],
+    ],
+    subCategories: {
+      accident: [["accident", 2], ["crash", 2], ["collision", 2], ["hit and run", 2]],
+      breakdown: [["breakdown", 2], ["towed", 2], ["stuck", 1], ["won't start", 2]],
+      safety: [["fire", 2], ["injury", 2], ["emergency", 2], ["danger", 2]],
+    },
+    priority: "urgent",
+  },
+  complaint: {
+    keywords: [
+      ["complaint", 3], ["unhappy", 2], ["dissatisfied", 2], ["terrible", 2],
+      ["awful", 2], ["angry", 2], ["worst", 2], ["disgusted", 2],
+      ["unacceptable", 2], ["horrible", 2], ["ridiculous", 2],
+    ],
+    subCategories: {
+      escalation: [["lawyer", 3], ["attorney", 3], ["sue", 3], ["bbb", 2], ["legal action", 3]],
+      service: [["rude", 2], ["unprofessional", 2], ["poor service", 2], ["ignored", 2]],
+      fraud: [["scam", 3], ["fraud", 3], ["stolen", 3], ["unauthorized", 2]],
+    },
+    priority: "urgent",
+  },
+  legal: {
+    keywords: [
+      ["legal", 2], ["subpoena", 3], ["court order", 3], ["gdpr", 3],
+      ["data request", 2], ["privacy request", 2], ["ndpr", 3], ["ccpa", 3],
+      ["delete my data", 3], ["lawsuit", 3], ["attorney", 2],
+    ],
+    subCategories: {
+      data_request: [["gdpr", 2], ["ccpa", 2], ["ndpr", 2], ["delete my data", 3], ["data request", 2], ["privacy", 2]],
+      court: [["subpoena", 3], ["court order", 3], ["lawsuit", 3], ["summons", 3]],
+      inquiry: [["legal question", 1], ["legal", 1]],
+    },
+    priority: "high",
+  },
+  payment_query: {
+    keywords: [
+      ["payment", 2], ["charge", 1], ["bill", 1], ["invoice", 2],
+      ["receipt", 1], ["refund", 2], ["billing", 2], ["balance", 1],
+      ["payout", 2], ["withdraw", 2], ["transaction", 1],
+    ],
+    subCategories: {
+      failed: [["failed", 2], ["declined", 2], ["didn't work", 2], ["error", 1], ["rejected", 2]],
+      dispute: [["dispute", 3], ["wrong charge", 3], ["unauthorized", 2], ["overcharg", 2], ["double charge", 3]],
+      refund: [["refund", 3], ["money back", 2], ["reimburse", 2], ["wrong amount", 2]],
+      receipt: [["receipt", 2], ["invoice", 2], ["statement", 1], ["history", 1]],
+    },
+    priority: "normal",
+  },
+  document_upload: {
+    keywords: [
+      ["document", 2], ["upload", 2], ["verify", 1], ["submit", 2],
+      ["license", 2], ["insurance", 2], ["registration", 2],
+      ["expired", 2], ["renewal", 2], ["certificate", 1],
+    ],
+    subCategories: {
+      submission: [["upload", 2], ["send", 1], ["attach", 2], ["submit", 2], ["here is", 1]],
+      status: [["status", 2], ["approved", 2], ["pending", 2], ["verified", 2], ["check", 1]],
+      expiry: [["expire", 2], ["expiry", 2], ["expiration", 2], ["renew", 2], ["renewal", 2]],
+    },
+    priority: "normal",
+  },
+  support_request: {
+    keywords: [
+      ["help", 1], ["issue", 1], ["problem", 1], ["not working", 2],
+      ["error", 1], ["can't", 1], ["vehicle", 1], ["car", 1],
+      ["rental", 1], ["booking", 1], ["pickup", 1], ["return", 1],
+    ],
+    subCategories: {
+      technical: [["login", 2], ["app", 2], ["website", 2], ["crash", 1], ["bug", 2], ["glitch", 2]],
+      account: [["account", 2], ["profile", 2], ["password", 2], ["locked", 2], ["reset", 1]],
+      vehicle: [["car issue", 2], ["breakdown", 2], ["damage", 2], ["vehicle", 1], ["key", 2], ["ignition", 2]],
+      iot: [["tracker", 2], ["gps", 2], ["iot", 2], ["device", 1], ["tracking", 2], ["telemetry", 2]],
+      booking: [["booking", 2], ["reservation", 2], ["pickup", 2], ["return", 1], ["extend", 2]],
+    },
+    priority: "normal",
+  },
+};
+
+// ─── Nigeria-Specific Keywords ───
+const NIGERIA_KEYWORDS: [string, string][] = [
+  ["police report", "policeReport"], ["police clearance", "policeReport"],
+  ["nigerian police", "policeReport"], ["clearance certificate", "policeReport"],
+  ["nin", "nin"], ["national id", "nin"], ["national identification", "nin"],
+  ["bvn", "bvn"], ["bank verification", "bvn"],
+  ["lagos", ""], ["abuja", ""], ["nigeria", ""],
+  ["road worthiness", "roadWorthiness"], ["roadworthy", "roadWorthiness"],
+  ["c-caution", "safetyEquipment"], ["fire extinguisher", "safetyEquipment"],
+  ["wahala", ""], ["wetin", ""], ["abeg", ""],
+];
+
+// ─── Language Detection ───
+function detectLanguage(text: string): string {
+  const lower = text.toLowerCase();
+  // Yoruba
+  if (/bawo ni|mo fe|e kaaro|e ku irole|o dabo/i.test(lower)) return "yo";
+  // Hausa
+  if (/ina kwana|yaya|sannu|na gode|barka/i.test(lower)) return "ha";
+  // Pidgin English
+  if (/how you dey|wetin|abeg|na wa|wahala|no vex|oya/i.test(lower)) return "pcm";
+  // Igbo
+  if (/kedu|ndewo|daalu|biko/i.test(lower)) return "ig";
+  // Spanish (possible US users)
+  if (/hola|como estas|gracias|por favor/i.test(lower)) return "es";
+  return "en";
+}
+
+// ─── Document Type Detection ───
+function detectDocumentType(text: string, isNigeria: boolean): string | null {
+  const lower = text.toLowerCase();
+
+  // Nigeria-specific documents first
+  if (isNigeria) {
+    if (/police|clearance/.test(lower)) return "policeReport";
+    if (/\bni[n]\b|national\s*id/.test(lower)) return "nin";
+    if (/\bbvn\b|bank\s*verification/.test(lower)) return "bvn";
+    if (/road\s*worthi?ness/.test(lower)) return "roadWorthiness";
+    if (/c-caution|fire\s*extinguisher|safety\s*equipment/.test(lower)) return "safetyEquipment";
+  }
+
+  // Universal document types
+  if (/driver.?s?\s*licen[sc]e|driving\s*licen[sc]e/.test(lower)) return "driverLicense";
+  if (/insurance|policy|coverage/.test(lower)) return "insurance";
+  if (/vehicle\s*reg|registration/.test(lower)) return "vehicleRegistration";
+  if (/inspection|roadworthy|mot/.test(lower)) return "inspection";
+  if (/vin\b|vehicle\s*identification/.test(lower)) return "vin";
+  if (/proof\s*of\s*ownership/.test(lower)) return "proofOfOwnership";
+
+  return null;
 }
 
 function classifyEmailContent(subject: string, body: string, hasAttachments: boolean): ClassificationResult {
-  const combined = `${subject} ${body}`.toUpperCase();
+  const text = `${subject} ${body}`.toLowerCase();
 
-  // Emergency / Accident — highest priority
-  if (/ACCIDENT|CRASH|EMERGENCY|TOWED|POLICE\s*REPORT|HIT\s*AND\s*RUN/i.test(combined)) {
-    return { category: "emergency", subCategory: "incident", confidence: 0.95, urgency: "urgent", requiresTicket: true, documentType: null };
+  // ─── Detect Nigeria context ───
+  const isNigeria = NIGERIA_KEYWORDS.some(([kw]) => text.includes(kw.toLowerCase()));
+
+  // ─── Detect language ───
+  const language = detectLanguage(text);
+
+  // ─── Score each category ───
+  const scores: Record<string, { total: number; bestSub: string; subScore: number }> = {};
+
+  for (const [catName, config] of Object.entries(CATEGORIES)) {
+    let total = 0;
+    let bestSub = "general";
+    let bestSubScore = 0;
+
+    // Score main keywords
+    for (const [keyword, weight] of config.keywords) {
+      if (text.includes(keyword.toLowerCase())) {
+        total += weight;
+      }
+    }
+
+    // Score sub-categories (weighted 2x)
+    for (const [subName, subKeywords] of Object.entries(config.subCategories)) {
+      let subScore = 0;
+      for (const [keyword, weight] of subKeywords) {
+        if (text.includes(keyword.toLowerCase())) {
+          subScore += weight * 2;
+        }
+      }
+      if (subScore > bestSubScore) {
+        bestSubScore = subScore;
+        bestSub = subName;
+      }
+      total += subScore;
+    }
+
+    scores[catName] = { total, bestSub, subScore: bestSubScore };
   }
 
-  // Complaint / Escalation
-  if (/COMPLAIN|TERRIBLE|UNACCEPTABLE|ANGRY|WORST|LAWYER|SUE|BBB|ATTORNEY|SCAM|FRAUD|STOLEN|DISSATISFIED|DISGUSTED/i.test(combined)) {
-    return { category: "complaint", subCategory: "escalation", confidence: 0.9, urgency: "urgent", requiresTicket: true, documentType: null };
+  // ─── Attachment bonus for document_upload ───
+  if (hasAttachments && scores.document_upload) {
+    scores.document_upload.total += 3;
+    if (scores.document_upload.subScore === 0) {
+      scores.document_upload.bestSub = "submission";
+    }
   }
 
-  // Legal
-  if (/LEGAL|SUBPOENA|COURT\s*ORDER|GDPR|DATA\s*REQUEST|PRIVACY\s*REQUEST|NDPR|CCPA|DELETE\s*MY\s*DATA/i.test(combined)) {
-    return { category: "legal", subCategory: "inquiry", confidence: 0.85, urgency: "high", requiresTicket: true, documentType: null };
+  // ─── Find best category ───
+  const sorted = Object.entries(scores).sort((a, b) => b[1].total - a[1].total);
+  const best = sorted[0];
+  const bestCatName = best[0];
+  const bestCatInfo = best[1];
+
+  // Normalize confidence (cap at 1.0)
+  const maxPossibleScore = 30; // reasonable max
+  const confidence = Math.min(bestCatInfo.total / maxPossibleScore, 1.0);
+
+  // If no meaningful match
+  if (bestCatInfo.total === 0) {
+    return {
+      category: "general_inquiry", subCategory: "general", confidence: 0.1,
+      urgency: "low", requiresTicket: false, documentType: null, isNigeria, language,
+    };
   }
 
-  // Refund-specific (payment sub-category)
-  if (/REFUND|OVERCHARG|DOUBLE\s*CHARGE|WRONG\s*AMOUNT|DISPUTE/i.test(combined)) {
-    return { category: "payment_query", subCategory: "refund", confidence: 0.9, urgency: "high", requiresTicket: true, documentType: null };
+  const catConfig = CATEGORIES[bestCatName];
+  const urgency = catConfig.priority;
+
+  // Determine if ticket required
+  const requiresTicket = confidence > 0.15 ||
+    bestCatName === "complaint" ||
+    bestCatName === "legal" ||
+    bestCatName === "emergency" ||
+    urgency === "high" || urgency === "urgent";
+
+  // Detect document type
+  let documentType: string | null = null;
+  if (bestCatName === "document_upload" || hasAttachments) {
+    documentType = detectDocumentType(text, isNigeria);
   }
 
-  // Payment general
-  if (/PAYMENT|INVOICE|RECEIPT|CHARGE|BILLING|BALANCE|PAYOUT|WITHDRAW/i.test(combined)) {
-    return { category: "payment_query", subCategory: "general", confidence: 0.85, urgency: "normal", requiresTicket: true, documentType: null };
+  // Upgrade priority for refund/dispute sub-categories
+  let finalUrgency = urgency;
+  if (bestCatName === "payment_query" && (bestCatInfo.bestSub === "dispute" || bestCatInfo.bestSub === "refund")) {
+    finalUrgency = "high";
   }
 
-  // Document upload (especially with attachments)
-  if (hasAttachments && /DOCUMENT|LICENSE|INSURANCE|REGISTRATION|UPLOAD|EXPIRED|RENEWAL|ATTACH/i.test(combined)) {
-    return { category: "document_upload", subCategory: "submission", confidence: 0.9, urgency: "normal", requiresTicket: true, documentType: "user_document" };
-  }
-  if (/DOCUMENT|LICENSE|INSURANCE|REGISTRATION|EXPIRED|RENEWAL/i.test(combined)) {
-    return { category: "document_upload", subCategory: "inquiry", confidence: 0.8, urgency: "normal", requiresTicket: true, documentType: null };
-  }
-
-  // Vehicle / Rental
-  if (/VEHICLE|CAR|RENTAL|BOOKING|PICKUP|RETURN|EXTEND|MILEAGE|KEY|IGNITION/i.test(combined)) {
-    return { category: "support_request", subCategory: "vehicle", confidence: 0.75, urgency: "normal", requiresTicket: true, documentType: null };
-  }
-
-  // IoT / Tracking
-  if (/TRACKER|GPS|IoT|DEVICE|TRACKING|LOCATION|TELEMETRY/i.test(combined)) {
-    return { category: "support_request", subCategory: "iot", confidence: 0.8, urgency: "normal", requiresTicket: true, documentType: null };
-  }
-
-  // Account issues
-  if (/ACCOUNT|LOGIN|PASSWORD|RESET|VERIFY|EMAIL\s*CHANGE|PROFILE/i.test(combined)) {
-    return { category: "support_request", subCategory: "account", confidence: 0.75, urgency: "normal", requiresTicket: true, documentType: null };
-  }
-
-  // General inquiry
-  return { category: "general_inquiry", subCategory: "general", confidence: 0.5, urgency: "low", requiresTicket: false, documentType: null };
+  return {
+    category: bestCatName,
+    subCategory: bestCatInfo.bestSub,
+    confidence,
+    urgency: finalUrgency,
+    requiresTicket,
+    documentType,
+    isNigeria,
+    language,
+  };
 }
 
 // ─── Auto-Reply Detection ───
@@ -288,12 +479,6 @@ serve(async (req) => {
       return (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
     })[0] || queueInfo;
 
-    // ─── Region detection ───
-    let region = "USA";
-    if (recipientEmail.includes("nigeria") || recipientEmail.includes(".ng")) {
-      region = "Nigeria";
-    }
-
     // ─── Content extraction ───
     let messageContent = text || "";
     if (!messageContent && htmlBody) {
@@ -320,14 +505,21 @@ serve(async (req) => {
       }
     }
 
-    // ─── Content classification ───
+    // ─── Content classification (weighted scoring) ───
     const hasAttachments = attachments && Array.isArray(attachments) && attachments.length > 0;
     const classification = classifyEmailContent(subject || "", messageContent, !!hasAttachments);
-    const finalCategory = classification.confidence > 0.7 ? classification.category : effectiveQueue.category;
+
+    // ─── Region detection (recipient + classifier Nigeria flag) ───
+    let region = "USA";
+    if (recipientEmail.includes("nigeria") || recipientEmail.includes(".ng") || classification.isNigeria) {
+      region = "Nigeria";
+    }
+
+    const finalCategory = classification.confidence > 0.15 ? classification.category : effectiveQueue.category;
     const finalPriority = classification.urgency === "urgent" ? "urgent" :
       classification.urgency === "high" ? "high" : effectiveQueue.priority;
 
-    console.log(`Email classified: queue=${effectiveQueue.queue}, category=${finalCategory}, sub=${classification.subCategory}, priority=${finalPriority}, user=${userId || "unknown"}`);
+    console.log(`Email classified: queue=${effectiveQueue.queue}, category=${finalCategory}, sub=${classification.subCategory}, priority=${finalPriority}, lang=${classification.language}, nigeria=${classification.isNigeria}, user=${userId || "unknown"}`);
 
     // ─── Find or create conversation ───
     const { data: existingConversation, error: findError } = await supabase
@@ -483,6 +675,8 @@ serve(async (req) => {
           priority: finalPriority,
           requires_ticket: classification.requiresTicket,
           document_type: classification.documentType,
+          is_nigeria: classification.isNigeria,
+          language: classification.language,
           has_attachments: attachmentUrls.length > 0,
           attachment_count: attachmentUrls.length,
           attachment_urls: attachmentUrls,
@@ -506,8 +700,8 @@ serve(async (req) => {
         provider_message_id: messageIdHeader,
         conversation_id: conversationId,
         template_name: null,
-        language: "en",
-        metadata: { queue: effectiveQueue.queue, sub_category: classification.subCategory, attachments: processedAttachments.length },
+        language: classification.language,
+        metadata: { queue: effectiveQueue.queue, sub_category: classification.subCategory, is_nigeria: classification.isNigeria, document_type: classification.documentType, attachments: processedAttachments.length },
       });
     } catch (logErr) {
       console.warn("Unified log insert error:", logErr);
