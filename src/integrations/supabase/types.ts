@@ -2758,6 +2758,51 @@ export type Database = {
           },
         ]
       }
+      social_messaging_configs: {
+        Row: {
+          api_status: string
+          app_id: string | null
+          created_at: string
+          display_name: string
+          id: string
+          is_enabled: boolean
+          last_connected_at: string | null
+          metadata: Json | null
+          page_id: string | null
+          platform: string
+          updated_at: string
+          webhook_url: string | null
+        }
+        Insert: {
+          api_status?: string
+          app_id?: string | null
+          created_at?: string
+          display_name: string
+          id?: string
+          is_enabled?: boolean
+          last_connected_at?: string | null
+          metadata?: Json | null
+          page_id?: string | null
+          platform: string
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Update: {
+          api_status?: string
+          app_id?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_enabled?: boolean
+          last_connected_at?: string | null
+          metadata?: Json | null
+          page_id?: string | null
+          platform?: string
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       subscription_plans: {
         Row: {
           billing_interval: string

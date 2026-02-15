@@ -1,4 +1,4 @@
-# Rentmaikar WhatsApp Messaging Flow — Reference
+# Rentmaikar Messaging Flow — Reference
 
 ## Architecture Overview
 
@@ -50,13 +50,25 @@ graph TB
 
 ## Provider Stack
 
-| Component | USA (+1) | Nigeria (+234) |
-|---|---|---|
-| **Inbound Webhook** | `twilio-webhook` (form-data) | `termii-webhook` (JSON) |
-| **Outbound SMS** | Twilio Messages API | Termii `/api/sms/send` |
-| **Outbound WhatsApp** | Twilio `whatsapp:` prefix | Termii `channel: "whatsapp"` |
-| **Self-Service Commands** | `whatsapp-commands` (via Twilio) | `whatsapp-commands` (via Termii) |
-| **Admin Replies** | `send-inbox-reply` → Twilio | `send-inbox-reply` → Termii |
+| Component | USA (+1) | Nigeria (+234) | Social Platforms |
+|---|---|---|---|
+| **Inbound Webhook** | `twilio-webhook` (form-data) | `termii-webhook` (JSON) | Platform-specific webhooks (planned) |
+| **Outbound SMS** | Twilio Messages API | Termii `/api/sms/send` | N/A |
+| **Outbound WhatsApp** | Twilio `whatsapp:` prefix | Termii `channel: "whatsapp"` | N/A |
+| **Self-Service Commands** | `whatsapp-commands` (via Twilio) | `whatsapp-commands` (via Termii) | N/A |
+| **Admin Replies** | `send-inbox-reply` → Twilio | `send-inbox-reply` → Termii | Planned per-platform API |
+
+## Social Messaging Channels (Prepared — API Not Yet Connected)
+
+| Platform | Channel Key | Status | API Required |
+|---|---|---|---|
+| Facebook Messenger | `facebook_messenger` | UI Ready | Meta Graph API (Pages) |
+| Instagram Messenger | `instagram` | UI Ready | Meta Graph API (Instagram Business) |
+| LinkedIn Messenger | `linkedin` | UI Ready | LinkedIn Marketing API |
+| Google Chat | `google_chat` | UI Ready | Google Chat API (Workspace) |
+| TikTok Messages | `tiktok` | UI Ready | TikTok for Business API |
+
+Configuration for each platform is stored in the `social_messaging_configs` table and manageable by admins.
 
 ## Inbound Flow
 
