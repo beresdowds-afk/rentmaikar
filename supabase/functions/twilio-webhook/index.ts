@@ -227,6 +227,27 @@ serve(async (req) => {
     // ─── Parse message type ───
     const parsed = parseMessageType(formData);
 
+    // ─── Route SMS keywords to sms-commands ───
+    if (channel === "sms" && parsed.type === "text") {
+      const SMS_KEYWORDS = [
+        "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "STOP", "START",
+        "DOC", "DOCS", "LOCATION", "DONE", "1", "2", "3", "4", "HUMAN",
+      ];
+      const upperBody = parsed.content.trim().toUpperCase();
+      if (SMS_KEYWORDS.includes(upperBody)) {
+        console.log(`[SMS Router] Forwarding keyword "${upperBody}" to sms-commands`);
+        await fetch(`${supabaseUrl}/functions/v1/sms-commands`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({ from: cleanFrom, text: parsed.content, channel: "sms" }),
+        });
+        // Still save message to inbox below, but skip auto-reply (sms-commands handles it)
+      }
+    }
+
     console.log("Received message:", {
       from: cleanFrom,
       channel,

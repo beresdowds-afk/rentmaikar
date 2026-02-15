@@ -187,12 +187,12 @@ serve(async (req) => {
       messageId,
     });
 
-    // ─── Route text commands to whatsapp-commands ───
-    if (parsed.type === "text" && inboundChannel === "whatsapp") {
+    // ─── Route text commands to appropriate handler ───
+    if (parsed.type === "text") {
       const upperBody = parsed.content.trim().toUpperCase();
-      if (COMMAND_KEYWORDS.includes(upperBody)) {
-        console.log(`Forwarding command "${upperBody}" to whatsapp-commands`);
 
+      if (inboundChannel === "whatsapp" && COMMAND_KEYWORDS.includes(upperBody)) {
+        console.log(`Forwarding WhatsApp command "${upperBody}" to whatsapp-commands`);
         await fetch(`${supabaseUrl}/functions/v1/whatsapp-commands`, {
           method: "POST",
           headers: {
@@ -201,11 +201,28 @@ serve(async (req) => {
           },
           body: JSON.stringify({ from: cleanFrom, text: parsed.content, channel: "whatsapp" }),
         });
-
         return new Response(
           JSON.stringify({ success: true, routed: "whatsapp-commands" }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+
+      // Route SMS keywords to sms-commands
+      const SMS_KEYWORDS = [
+        "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "STOP", "START",
+        "DOC", "DOCS", "LOCATION", "DONE", "1", "2", "3", "4", "HUMAN",
+      ];
+      if (inboundChannel === "sms" && SMS_KEYWORDS.includes(upperBody)) {
+        console.log(`Forwarding SMS command "${upperBody}" to sms-commands`);
+        await fetch(`${supabaseUrl}/functions/v1/sms-commands`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({ from: cleanFrom, text: parsed.content, channel: "sms" }),
+        });
+        // Continue to save message to inbox
       }
     }
 

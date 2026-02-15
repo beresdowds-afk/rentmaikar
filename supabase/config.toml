@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.termii-webhook]
 verify_jwt = false
+
+[functions.sms-commands]
+verify_jwt = false
