@@ -219,13 +219,22 @@ All outbound calls use region-aware multilingual scripts. See **[call-scripts-re
 | Rental Extension Offer | Partially handled via vehicle-return-ivr Press 2 |
 | Driver Welcome Call | Requires onboarding automation trigger |
 
+### Call Strategy & Retry Logic
+
+The smart calling algorithm is implemented in `supabase/functions/_shared/call-strategy.ts`. See **[call-strategy-reference.md](./call-strategy-reference.md)** for:
+- Priority-based retry schedules (Critical: 5 attempts/10 max, High: 3/6, Medium: 2/4, Low: 1/2)
+- Time-zone calling restrictions (USA: 9AM–9PM ET, Nigeria: 8AM–8PM WAT)
+- 5-step channel escalation ladder (Call → SMS → WhatsApp → Email)
+- Smart calling algorithm with off-hours fallback and next-day scheduling
+
 ### Call Execution Flow
 
 1. Edge function creates `voip_calls` record with `status: 'pending'`, `caller_role: 'system'`
-2. Twilio REST API called with `<Gather>` TwiML pointing to IVR handler
-3. Answering Machine Detection enabled (`MachineDetection: DetectMessageEnd`)
-4. `StatusCallback` → `voip-status-callback` receives real-time updates
-5. On answered: IVR menu plays, user presses option key
-6. On busy/no-answer: retry scheduled (up to 3x @ 15min intervals)
-7. On completion: duration logged, summary SMS sent
-8. On max retries exhausted: marked as permanently failed
+2. `isWithinCallingHours(region)` checked — if outside hours, fallback channel used + next-day retry scheduled
+3. Twilio REST API called with `<Gather>` TwiML pointing to IVR handler
+4. Answering Machine Detection enabled (`MachineDetection: DetectMessageEnd`)
+5. `StatusCallback` → `voip-status-callback` receives real-time updates
+6. On answered: IVR menu plays, user presses option key
+7. On busy/no-answer: `getRetryDecision()` calculates priority-based retry interval or channel escalation
+8. On completion: duration logged, summary SMS sent
+9. On max retries exhausted: channel escalation ladder applied, then marked as permanently failed
