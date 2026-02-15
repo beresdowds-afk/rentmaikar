@@ -21,23 +21,18 @@ interface PaymentDefault {
   status: string;
 }
 
-interface DriverProfile {
-  full_name: string | null;
-  phone: string | null;
-  email: string | null;
-  notification_sms: boolean;
-  notification_whatsapp: boolean;
-}
-
-// Configuration based on payment frequency
+// ─── BUSINESS RULES ───
+// Daily plans: 24h overdue window, notifications at 8h intervals, lockdown at 24h
+// Weekly plans: 36h overdue window, notifications at 12h intervals, lockdown at 36h
+// Weekly lockdown → driver downgraded to Daily plan permanently
 const CONFIG = {
   weekly: {
-    notificationHours: [24, 48, 72],
-    lockdownAfterHours: 72,
-  },
-  daily: {
     notificationHours: [12, 24, 36],
     lockdownAfterHours: 36,
+  },
+  daily: {
+    notificationHours: [8, 16, 24],
+    lockdownAfterHours: 24,
   },
 };
 
@@ -65,7 +60,8 @@ Your payment of ${amount} is overdue. Please make payment immediately.
 
 ⚠️ ${isDaily ? 'DAILY' : 'WEEKLY'} plan: Vehicle lockdown in ${hoursRemaining}h if not resolved.
 
-Pay now to avoid service interruption.`,
+Pay now to avoid service interruption.
+A 10% administrative fine applies to late payments.`,
 
     2: `⚠️ URGENT: Payment Overdue (2/3)
 
@@ -75,7 +71,7 @@ Your ${amount} payment remains outstanding.
 
 🚨 ${hoursRemaining}h until vehicle lockdown!
 
-${isDaily ? 'Daily plans require faster resolution.' : ''}
+${isDaily ? 'Daily plans require faster resolution.' : 'Your plan will be downgraded to Daily if not resolved.'}
 
 Contact support if you need assistance.`,
 
@@ -87,12 +83,60 @@ FINAL WARNING: ${amount} critically overdue.
 
 ❌ Vehicle lockdown authorized. Your vehicle will be disabled when parked.
 
-${isDaily ? 'Daily payment plans are now FORBIDDEN for your account.' : ''}
+${isDaily ? 'Daily payment plans are now FORBIDDEN for your account.' : 'Your payment plan will be downgraded to Daily effective immediately.'}
 
 Pay immediately to avoid lockdown.`,
   };
 
   return messages[notificationNumber] || messages[1];
+};
+
+// Generate TwiML with IVR menu for payment default calls
+const generateCallTwiml = (
+  paymentDefault: PaymentDefault,
+  notificationNumber: number,
+  driverName: string,
+  supabaseUrl: string
+): string => {
+  const config = CONFIG[paymentDefault.payment_frequency];
+  const hoursRemaining = config.lockdownAfterHours - paymentDefault.hours_overdue;
+  const sym = getCurrencySymbol(paymentDefault.currency);
+  const amount = `${sym}${paymentDefault.amount_due}`;
+  const isDaily = paymentDefault.payment_frequency === 'daily';
+
+  // IVR action URL for keypress handling
+  const actionUrl = `${supabaseUrl}/functions/v1/payment-default-ivr?defaultId=${paymentDefault.id}&stage=${notificationNumber}`;
+
+  const stageMessages: Record<number, string> = {
+    1: `Hello ${driverName}. This is Rentmaikar regarding your payment. Your payment of ${amount} is now overdue. You have ${hoursRemaining} hours before vehicle lockdown.`,
+    2: `Hello ${driverName}. This is an urgent notice from Rentmaikar. Your payment of ${amount} remains outstanding. Vehicle deactivation will occur in ${hoursRemaining} hours.`,
+    3: `Hello ${driverName}. This is a critical alert from Rentmaikar. Your payment of ${amount} is critically overdue. ${isDaily ? 'Your vehicle will be disabled within the hour.' : 'Immediate action is required to prevent vehicle shutdown.'}`,
+  };
+
+  const message = stageMessages[notificationNumber] || stageMessages[1];
+
+  return `<Response>
+  <Gather numDigits="1" action="${actionUrl}" method="POST" timeout="10">
+    <Say voice="alice">${message}</Say>
+    <Say voice="alice">Press 1 to make a payment now.</Say>
+    <Say voice="alice">Press 2 to speak with support.</Say>
+  </Gather>
+  <Say voice="alice">We did not receive your input. A support agent will follow up with you shortly. Goodbye.</Say>
+</Response>`;
+};
+
+// Generate voicemail TwiML for no-answer scenarios
+const generateVoicemailTwiml = (
+  paymentDefault: PaymentDefault,
+  notificationNumber: number,
+  driverName: string
+): string => {
+  const sym = getCurrencySymbol(paymentDefault.currency);
+  const amount = `${sym}${paymentDefault.amount_due}`;
+
+  return `<Response>
+  <Say voice="alice">Hello ${driverName}. This is Rentmaikar. Your payment of ${amount} is overdue. Please call us back or log into your dashboard to make payment immediately. Thank you.</Say>
+</Response>`;
 };
 
 const sendNotification = async (
@@ -125,6 +169,98 @@ const sendNotification = async (
   }
 };
 
+// Initiate VoIP call with IVR for payment default
+const initiateDefaultCall = async (
+  paymentDefault: PaymentDefault,
+  notificationNumber: number,
+  profile: { full_name: string | null; phone: string },
+  supabaseUrl: string,
+  supabase: any
+): Promise<{ success: boolean; callId?: string }> => {
+  const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
+  const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
+  const twilioPhone = Deno.env.get('TWILIO_PHONE_NUMBER') || '+16083843932';
+
+  if (!twilioAccountSid || !twilioAuthToken) {
+    console.log('[PaymentDefaults] Twilio credentials not configured, skipping VoIP');
+    return { success: false };
+  }
+
+  try {
+    const driverName = profile.full_name || 'Driver';
+    const twiml = generateCallTwiml(paymentDefault, notificationNumber, driverName, supabaseUrl);
+
+    // Create call record
+    const { data: callRecord, error: callErr } = await supabase
+      .from('voip_calls')
+      .insert({
+        initiated_by: paymentDefault.driver_id,
+        call_type: 'individual',
+        region: profile.phone.startsWith('+234') ? 'Nigeria' : 'USA',
+        status: 'pending',
+        direction: 'outbound',
+        started_at: new Date().toISOString(),
+        caller_role: 'system',
+        receiver_id: paymentDefault.driver_id,
+        receiver_role: 'driver',
+      })
+      .select()
+      .single();
+
+    if (callErr || !callRecord) {
+      console.error('[PaymentDefaults] Failed to create call record:', callErr);
+      return { success: false };
+    }
+
+    // Initiate call via Twilio with Answering Machine Detection
+    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`;
+    const formData = new URLSearchParams({
+      To: profile.phone,
+      From: twilioPhone,
+      Twiml: twiml,
+      StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
+      StatusCallbackEvent: 'initiated ringing answered completed',
+      MachineDetection: 'DetectMessageEnd',
+      MachineDetectionTimeout: '10',
+    });
+
+    // Set fallback voicemail TwiML URL for answering machines
+    const voicemailTwiml = generateVoicemailTwiml(paymentDefault, notificationNumber, driverName);
+    formData.append('AsyncAmd', 'true');
+    formData.append('AsyncAmdStatusCallback', `${supabaseUrl}/functions/v1/voip-status-callback`);
+
+    const callResponse = await fetch(twilioUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData,
+    });
+
+    const callData = await callResponse.json();
+
+    if (callResponse.ok) {
+      await supabase
+        .from('voip_calls')
+        .update({ call_sid: callData.sid, status: 'ringing' })
+        .eq('id', callRecord.id);
+      console.log(`[PaymentDefaults] VoIP call (stage ${notificationNumber}) initiated for ${paymentDefault.id}`);
+      return { success: true, callId: callRecord.id };
+    } else {
+      await supabase
+        .from('voip_calls')
+        .update({ status: 'failed' })
+        .eq('id', callRecord.id);
+      console.error(`[PaymentDefaults] VoIP call failed:`, callData.message);
+      return { success: false };
+    }
+  } catch (err) {
+    console.error(`[PaymentDefaults] VoIP call error:`, err);
+    return { success: false };
+  }
+};
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -153,6 +289,7 @@ const handler = async (req: Request): Promise<Response> => {
     const results = {
       processed: 0,
       notificationsSent: 0,
+      voipCallsMade: 0,
       lockdownsEligible: 0,
       errors: [] as string[],
     };
@@ -214,109 +351,45 @@ const handler = async (req: Request): Promise<Response> => {
               profile.full_name || 'Driver'
             );
 
-            // Send SMS if enabled
+            // ─── SMS/WhatsApp notifications ───
             if (profile.notification_sms) {
               const smsSent = await sendNotification(
-                profile.phone,
-                message,
-                'sms',
-                supabaseUrl,
-                supabaseServiceKey
+                profile.phone, message, 'sms', supabaseUrl, supabaseServiceKey
               );
               if (smsSent) results.notificationsSent++;
             }
 
-            // Send WhatsApp if enabled (especially for final notice)
             if (profile.notification_whatsapp || newNotificationsSent === 3) {
               const whatsappSent = await sendNotification(
-                profile.phone,
-                message,
-                'whatsapp',
-                supabaseUrl,
-                supabaseServiceKey
+                profile.phone, message, 'whatsapp', supabaseUrl, supabaseServiceKey
               );
               if (whatsappSent) results.notificationsSent++;
             }
 
-            // Final notice (Day 3): Make automated VoIP call
-            if (newNotificationsSent === 3) {
-              const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
-              const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
-              const twilioPhone = Deno.env.get('TWILIO_PHONE_NUMBER') || '+16083843932';
-
-              if (twilioAccountSid && twilioAuthToken) {
-                try {
-                  const sym = getCurrencySymbol(paymentDefault.currency);
-                  const twiml = `
-                    <Response>
-                      <Say voice="alice">
-                        Hello ${profile.full_name || 'Driver'}. This is a critical notice from Rent My Car.
-                        Your payment of ${sym}${paymentDefault.amount_due} is now critically overdue.
-                        Your vehicle lockdown has been authorized.
-                        Please make payment immediately to avoid service interruption.
-                        Contact support if you need assistance.
-                      </Say>
-                    </Response>
-                  `.trim();
-
-                  const { data: callRecord, error: callErr } = await supabase
-                    .from('voip_calls')
-                    .insert({
-                      initiated_by: paymentDefault.driver_id,
-                      call_type: 'individual',
-                      region: profile.phone.startsWith('+234') ? 'Nigeria' : 'USA',
-                      status: 'pending',
-                      direction: 'outbound',
-                      started_at: new Date().toISOString(),
-                      caller_role: 'system',
-                    })
-                    .select()
-                    .single();
-
-                  if (!callErr && callRecord) {
-                    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`;
-                    const callResponse = await fetch(twilioUrl, {
-                      method: 'POST',
-                      headers: {
-                        'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                      },
-                      body: new URLSearchParams({
-                        To: profile.phone,
-                        From: twilioPhone,
-                        Twiml: twiml,
-                        StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
-                        StatusCallbackEvent: 'initiated ringing answered completed',
-                      }),
-                    });
-
-                    const callData = await callResponse.json();
-                    if (callResponse.ok) {
-                      await supabase
-                        .from('voip_calls')
-                        .update({ call_sid: callData.sid, status: 'ringing' })
-                        .eq('id', callRecord.id);
-                      console.log(`[PaymentDefaults] VoIP call initiated for ${paymentDefault.id}`);
-                    } else {
-                      await supabase
-                        .from('voip_calls')
-                        .update({ status: 'failed' })
-                        .eq('id', callRecord.id);
-                      console.error(`[PaymentDefaults] VoIP call failed:`, callData.message);
-                    }
-                  }
-                } catch (callErr) {
-                  console.error(`[PaymentDefaults] VoIP call error:`, callErr);
-                }
-              }
-            }
+            // ─── VoIP call with IVR on ALL stages ───
+            const callResult = await initiateDefaultCall(
+              paymentDefault,
+              newNotificationsSent,
+              { full_name: profile.full_name, phone: profile.phone },
+              supabaseUrl,
+              supabase
+            );
+            if (callResult.success) results.voipCallsMade++;
           }
 
           console.log(`[PaymentDefaults] Notification ${newNotificationsSent}/3 sent for ${paymentDefault.id}`);
         }
 
+        // ─── LOCKDOWN + DOWNGRADE LOGIC ───
         if (deactivationEligible) {
           results.lockdownsEligible++;
+
+          // Weekly plan lockdown → downgrade to Daily
+          if (paymentDefault.payment_frequency === 'weekly') {
+            console.log(`[PaymentDefaults] Weekly driver ${paymentDefault.driver_id} downgraded to Daily plan`);
+            // The forbid_daily_plan_on_default trigger handles the profile flag
+          }
+
           console.log(`[PaymentDefaults] Lockdown eligible: ${paymentDefault.id} (${paymentDefault.payment_frequency})`);
         }
 

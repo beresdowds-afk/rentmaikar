@@ -5,9 +5,9 @@
 ```mermaid
 graph TB
     subgraph "Trigger Sources"
-        A1[Payment Default Day 1] --> T[Trigger Queue]
-        A2[Payment Default Day 2] --> T
-        A3[Payment Default Day 3] --> T
+        A1[Payment Default Stage 1] --> T[Trigger Queue]
+        A2[Payment Default Stage 2] --> T
+        A3[Payment Default Stage 3] --> T
         B1[Document Expiry Alert] --> T
         B2[Insurance Renewal] --> T
         C1[Vehicle Return Reminder] --> T
@@ -80,20 +80,108 @@ graph TB
     end
 ```
 
+## Payment Default Escalation — Detailed Sequence
+
+```mermaid
+sequenceDiagram
+    participant S as System
+    participant Q as Queue
+    participant C as Caller
+    participant A as Agent/IVR
+    participant DB as Database
+    
+    Note over S,DB: STAGE 1 - Initial Warning
+    
+    S->>Q: Hourly cron check
+    Q->>DB: Find defaulted drivers
+    DB->>Q: Return list of defaulters
+    Q->>C: Initiate VoIP call with IVR
+    
+    alt Call Answered
+        C->>A: Hello?
+        A->>C: "This is Rentmaikar regarding your payment"
+        A->>C: "Your payment of $X is now overdue"
+        A->>C: "Press 1 to make payment now"
+        A->>C: "Press 2 to speak with support"
+        
+        alt Payment Option (Press 1)
+            C->>A: Press 1
+            A->>C: "Payment link sent to your phone via SMS"
+            A->>DB: Log IVR interaction
+            S->>C: Send payment link SMS
+        else Support Option (Press 2)
+            C->>A: Press 2
+            A->>C: Connect to support number
+            A->>DB: Log support request
+        end
+    else No Answer
+        Q->>C: Leave voicemail TwiML
+        Q->>S: Schedule retry (15min, max 3x)
+        S->>C: Send SMS reminder
+    end
+    
+    Note over S,DB: STAGE 2 - Escalation
+    
+    S->>Q: Next notification interval
+    Q->>C: Second VoIP call with IVR
+    A->>C: "Urgent: payment still outstanding"
+    A->>C: "Vehicle deactivation in Xh"
+    
+    Note over S,DB: STAGE 3 - Critical / Lockdown
+    
+    S->>Q: Final notification interval
+    Q->>C: Critical VoIP call
+    A->>C: "Immediate action required"
+    A->>C: "Vehicle will be disabled when parked"
+    
+    alt Payment Received
+        S->>C: "Payment confirmed - vehicle active"
+        S->>DB: Resolve default, clear lockdown
+    else No Payment
+        S->>DB: Mark deactivation_eligible
+        S->>C: Send lockdown warning SMS
+    end
+```
+
+## Business Rules — Escalation Timing
+
+| Plan Type | Overdue Window | Stage 1 | Stage 2 | Stage 3 (Lockdown) | Consequence |
+|---|---|---|---|---|---|
+| **Daily** | 24 hours | 8h overdue | 16h overdue | 24h overdue | Daily plan eligibility **permanently revoked** |
+| **Weekly** | 36 hours | 12h overdue | 24h overdue | 36h overdue | Downgraded to **Daily plan** permanently |
+
+### Key Enforcement Rules
+
+- **10% administrative fine** on all late payments (driver must consent)
+- **Vehicle lockdown** only when telemetry confirms: speed = 0, ignition OFF
+- **Payment-to-unlock latency**: Under 30 seconds
+- If vehicle is moving at lockdown time: queued and re-checked every 10-15 minutes
+- Daily plan eligibility is **permanently revoked** after any default
+
 ## Implementation Mapping
 
 ### Currently Implemented Triggers
 
-| Trigger | Edge Function | VoIP Call? | SMS/WhatsApp? |
+| Trigger | Edge Function | VoIP + IVR? | SMS/WhatsApp? |
 |---|---|---|---|
-| Payment Default Day 1 | `process-payment-defaults` | ❌ | ✅ |
-| Payment Default Day 2 | `process-payment-defaults` | ❌ | ✅ |
-| Payment Default Day 3 (Final Notice) | `process-payment-defaults` | ✅ | ✅ |
+| Payment Default Stage 1 | `process-payment-defaults` | ✅ Press 1/2 IVR | ✅ |
+| Payment Default Stage 2 | `process-payment-defaults` | ✅ Press 1/2 IVR | ✅ |
+| Payment Default Stage 3 | `process-payment-defaults` | ✅ Press 1/2 IVR | ✅ |
 | Document Expiry (30-day) | `process-expiry-notifications` | ❌ | ✅ Email/SMS/WhatsApp |
-| Document Expiry (7-day) | `process-expiry-notifications` | ✅ | ✅ Email/SMS/WhatsApp |
+| Document Expiry (7-day) | `process-expiry-notifications` | ✅ (no IVR) | ✅ Email/SMS/WhatsApp |
 | Insurance Renewal (30/7-day) | `process-expiry-notifications` | ✅ (7-day) | ✅ |
 | Pre-Due Payment Reminders | `process-predue-reminders` | ❌ | ✅ WhatsApp/Email |
 | Emergency (IoT Accident) | `iot-accident-detection` | ❌ (SMS only) | ✅ |
+
+### Edge Functions Involved
+
+| Function | Role |
+|---|---|
+| `process-payment-defaults` | Hourly cron — escalation, SMS/WhatsApp + VoIP with IVR |
+| `payment-default-ivr` | Twilio `<Gather>` callback — handles Press 1 (payment SMS) / Press 2 (connect support) |
+| `voip-status-callback` | Twilio status webhook — retry logic (3x @ 15min), post-call summary SMS |
+| `process-expiry-notifications` | Daily 8 AM UTC — document/insurance expiry alerts with VoIP at 7-day |
+| `process-predue-reminders` | Hourly — friendly pre-due WhatsApp/email reminders (72h→12h before due) |
 
 ### Not Yet Implemented (Blueprint Only)
 
@@ -103,30 +191,15 @@ graph TB
 | Rental Extension Offer | Requires proactive rental management flow |
 | Owner Payout Confirmation | Requires payout processing integration |
 | Driver Welcome Call | Requires onboarding automation trigger |
-| Vehicle Shutdown Warning | Partially handled via payment default lockdown |
-
-### Call Scheduling
-
-- **Immediate (Critical)**: Payment Default Day 3, Emergency alerts
-- **Cron-based (Scheduled)**: Expiry notifications (daily 8 AM UTC), Payment defaults (hourly), Pre-due reminders (hourly)
-
-### Retry Logic (voip-status-callback)
-
-- `busy` / `no-answer` → Auto-retry up to **3 attempts** within 1 hour
-- Retry interval: **15 minutes** between attempts
-- After max retries: Call marked as failed, no further retries
-
-### Post-Call Processing (voip-status-callback)
-
-- **Call Outcome**: Logged via `voip_calls` table (status, duration, ended_at)
-- **Participant Updates**: Status tracked in `voip_call_participants`
-- **Summary SMS**: Sent automatically after completed calls >5 seconds
-- **Database Updates**: Call record updated with Twilio SID, duration, recording URL
+| Vehicle Shutdown Warning | Partially handled via IoT lockdown safety logic |
 
 ### Call Execution Flow
 
-1. Edge function creates `voip_calls` record with `status: 'pending'`
-2. Twilio REST API called with dynamic TwiML script
-3. `StatusCallback` → `voip-status-callback` receives real-time updates
-4. On completion: duration logged, summary SMS sent, analytics updated
-5. On failure: retry scheduled (up to 3x) or marked as permanently failed
+1. Edge function creates `voip_calls` record with `status: 'pending'`, `caller_role: 'system'`
+2. Twilio REST API called with `<Gather>` TwiML pointing to `payment-default-ivr`
+3. Answering Machine Detection enabled (`MachineDetection: DetectMessageEnd`)
+4. `StatusCallback` → `voip-status-callback` receives real-time updates
+5. On answered: IVR menu plays, driver presses 1 or 2
+6. On busy/no-answer: retry scheduled (up to 3x @ 15min intervals)
+7. On completion: duration logged, summary SMS sent
+8. On max retries exhausted: marked as permanently failed
