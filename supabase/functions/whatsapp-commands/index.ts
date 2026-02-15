@@ -12,13 +12,43 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface WhatsAppIncoming {
-  From: string;
-  Body: string;
-  MessageSid?: string;
-}
-
+// ─── Region-aware WhatsApp message sender ───
 const sendWhatsAppMessage = async (to: string, message: string) => {
+  const isNigeria = to.startsWith("+234") || to.startsWith("234");
+
+  if (isNigeria) {
+    // ─── TERMII (Nigeria +234) ───
+    const termiiApiKey = Deno.env.get("TERMII_API_KEY");
+    const termiiSenderId = Deno.env.get("TERMII_SENDER_ID") || "Rentmaikar";
+
+    if (!termiiApiKey) {
+      throw new Error("Termii credentials not configured for Nigeria");
+    }
+
+    const cleanPhone = to.startsWith("+") ? to.replace("+", "") : to;
+
+    const response = await fetch("https://api.ng.termii.com/api/sms/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: cleanPhone,
+        from: termiiSenderId,
+        sms: message,
+        type: "plain",
+        channel: "whatsapp",
+        api_key: termiiApiKey,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Termii error: ${error}`);
+    }
+
+    return response.json();
+  }
+
+  // ─── TWILIO (USA / Default) ───
   const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
   const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
   const fromNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
@@ -54,7 +84,6 @@ const sendWhatsAppMessage = async (to: string, message: string) => {
 const generatePaymentLink = (driverId: string, amount: number, currency: string): string => {
   const baseUrl = Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app') || 
                   "https://rentmaikar.lovable.app";
-  // Generate a secure payment link with encoded parameters
   const params = new URLSearchParams({
     driver: driverId,
     amount: amount.toString(),
@@ -74,10 +103,27 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Parse incoming Twilio webhook (form data)
-    const formData = await req.formData();
-    const from = formData.get("From")?.toString().replace("whatsapp:", "") || "";
-    const body = formData.get("Body")?.toString().trim().toUpperCase() || "";
+    // Parse incoming webhook (form data from Twilio or JSON from Termii)
+    let from = "";
+    let body = "";
+
+    const contentType = req.headers.get("content-type") || "";
+
+    if (contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data")) {
+      // Twilio webhook (form data)
+      const formData = await req.formData();
+      from = formData.get("From")?.toString().replace("whatsapp:", "") || "";
+      body = formData.get("Body")?.toString().trim().toUpperCase() || "";
+    } else {
+      // Termii webhook (JSON)
+      const jsonData = await req.json();
+      from = jsonData.from || jsonData.mobile || jsonData.phone || "";
+      body = (jsonData.text || jsonData.body || jsonData.message || "").trim().toUpperCase();
+      // Normalize Nigerian numbers to international format
+      if (from && !from.startsWith("+")) {
+        from = from.startsWith("234") ? `+${from}` : `+234${from}`;
+      }
+    }
 
     console.log(`[WhatsApp Command] From: ${from}, Body: ${body}`);
 
@@ -89,7 +135,6 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (!profile) {
-      // User not found - send registration prompt
       await sendWhatsAppMessage(from, 
         `👋 Welcome to Rentmaikar!\n\nWe don't recognize this number. Please register at https://rentmaikar.lovable.app to get started.`
       );
@@ -102,7 +147,6 @@ const handler = async (req: Request): Promise<Response> => {
     switch (body) {
       case "PAY":
       case "PAYMENT": {
-        // Get active rental with pending payment
         const { data: defaultPayment } = await supabase
           .from("payment_defaults")
           .select("*")
@@ -128,7 +172,6 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       case "STATUS": {
-        // Get active rental/negotiation status
         const { data: negotiation } = await supabase
           .from("price_negotiations")
           .select("*")
@@ -154,7 +197,6 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       case "BALANCE": {
-        // Get payment balance/history
         const { data: defaults } = await supabase
           .from("payment_defaults")
           .select("amount_due, currency")
@@ -204,7 +246,7 @@ const handler = async (req: Request): Promise<Response> => {
       case "HUMAN": {
         responseMessage = `👤 Connecting to Support\n\nA support agent will respond shortly.\n\nIn the meantime, please describe your issue in a message.\n\nSupport hours: 8AM - 10PM daily`;
         
-        // Log this for admin follow-up
+        const region = from.startsWith("+234") ? "NIGERIA" : "USA";
         await supabase.from("inbox_conversations").insert({
           user_id: profile.user_id,
           user_name: profile.full_name,
@@ -213,13 +255,12 @@ const handler = async (req: Request): Promise<Response> => {
           subject: "Support Request via WhatsApp",
           status: "open",
           priority: "normal",
-          region: from.startsWith("+234") ? "NIGERIA" : "USA",
+          region,
         });
         break;
       }
 
       default: {
-        // Unknown command - send menu
         responseMessage = selfServiceMenuMessage();
         break;
       }
