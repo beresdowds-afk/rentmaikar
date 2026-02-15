@@ -972,6 +972,68 @@ export type Database = {
         }
         Relationships: []
       }
+      owner_earnings: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          notification_sent: boolean
+          owner_id: string
+          payout_method: string | null
+          payout_reference: string | null
+          period_end: string
+          period_start: string
+          processed_at: string | null
+          rental_id: string | null
+          status: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          notification_sent?: boolean
+          owner_id: string
+          payout_method?: string | null
+          payout_reference?: string | null
+          period_end: string
+          period_start: string
+          processed_at?: string | null
+          rental_id?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          notification_sent?: boolean
+          owner_id?: string
+          payout_method?: string | null
+          payout_reference?: string | null
+          period_end?: string
+          period_start?: string
+          processed_at?: string | null
+          rental_id?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "owner_earnings_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_defaults: {
         Row: {
           amount_due: number
@@ -1025,6 +1087,71 @@ export type Database = {
           vehicle_id?: string
         }
         Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          driver_id: string
+          failure_reason: string | null
+          id: string
+          notification_sent: boolean
+          owner_id: string
+          payment_frequency: string
+          payment_method: string | null
+          processed_at: string | null
+          rental_id: string | null
+          status: string
+          transaction_id: string | null
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          driver_id: string
+          failure_reason?: string | null
+          id?: string
+          notification_sent?: boolean
+          owner_id: string
+          payment_frequency?: string
+          payment_method?: string | null
+          processed_at?: string | null
+          rental_id?: string | null
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          driver_id?: string
+          failure_reason?: string | null
+          id?: string
+          notification_sent?: boolean
+          owner_id?: string
+          payment_frequency?: string
+          payment_method?: string | null
+          processed_at?: string | null
+          rental_id?: string | null
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       policy_acceptances: {
         Row: {

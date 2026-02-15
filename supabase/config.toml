@@ -53,3 +53,12 @@ verify_jwt = false
 
 [functions.payment-default-ivr]
 verify_jwt = false
+
+[functions.process-daily-debits]
+verify_jwt = false
+
+[functions.process-owner-payouts]
+verify_jwt = false
+
+[functions.process-inspection-reminders]
+verify_jwt = false
