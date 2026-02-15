@@ -1,5 +1,15 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  smsConfig,
+  getRegionConfig,
+  getFromNumber,
+  segmentMessage,
+  truncateForSMS,
+  checkRateLimit,
+  checkGlobalRateLimit,
+  type SMSNumberType,
+} from "../_shared/sms-config.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,8 +54,8 @@ const SMS_TEMPLATES = {
   balanceClear: () =>
     `Rentmaikar: No outstanding balance. You're current! Reply STATUS for rental info.`,
 
-  help: () =>
-    `Rentmaikar: Commands - PAY: Pay now, STATUS: Rental info, BALANCE: Check due, DOC: Upload docs, STOP: Opt out. Call +1-608-384-3932`,
+  help: (supportPhone: string) =>
+    `Rentmaikar: Commands - PAY: Pay now, STATUS: Rental info, BALANCE: Check due, DOC: Upload docs, STOP: Opt out. Call ${supportPhone}`,
 
   docStatus: (pending: number, missing: number) =>
     `Rentmaikar: Docs - ${missing} missing, ${pending} pending review. Upload at rentmaikar.lovable.app/driver/dashboard`,
@@ -62,73 +72,106 @@ const SMS_TEMPLATES = {
   locationReceived: () =>
     `Rentmaikar: Location received and recorded. Thank you!`,
 
-  supportConnecting: () =>
-    `Rentmaikar: Connecting you to support. An agent will respond shortly. Hours: 8AM-10PM daily. Call +1-608-384-3932`,
+  supportConnecting: (supportPhone: string) =>
+    `Rentmaikar: Connecting you to support. An agent will respond shortly. Hours: 8AM-10PM daily. Call ${supportPhone}`,
 
   done: () =>
     `Rentmaikar: Noted! Thank you for confirming. Have a great day!`,
 
   fallback: () =>
     `Rentmaikar: Command not recognized. Reply HELP for available commands or STOP to opt out.`,
+
+  rateLimited: () =>
+    `Rentmaikar: Too many requests. Please wait a moment and try again.`,
 };
 
 // ═══════════════════════════════════════════════════════════
-// SMS Sender (region-aware with retry)
+// SMS Sender (region-aware with retry, rate limiting, segmentation)
 // ═══════════════════════════════════════════════════════════
 
 const MAX_RETRIES = 3;
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
+interface SendSMSOptions {
+  numberType?: SMSNumberType;
+  supabase?: ReturnType<typeof createClient>;
+}
+
 const sendSMS = async (
   to: string,
   message: string,
-  supabase?: ReturnType<typeof createClient>,
-): Promise<{ provider: string; externalId?: string }> => {
-  const isNigeria = to.startsWith("+234");
+  options: SendSMSOptions = {},
+): Promise<{ provider: string; externalId?: string; segments: number }> => {
+  const regionConfig = getRegionConfig(to);
+  const region = to.startsWith("+234") ? "NIGERIA" : "USA";
+
+  // ─── Rate limiting ───
+  if (!checkGlobalRateLimit() || !checkRateLimit(region)) {
+    console.warn(`[SMS] Rate limited for ${region}`);
+    throw new Error("Rate limited — try again shortly");
+  }
+
+  // ─── Message segmentation ───
+  const { segments, totalSegments, isConcatenated } = segmentMessage(message);
+  if (isConcatenated) {
+    console.log(`[SMS] Message segmented into ${totalSegments} parts for ${to}`);
+  }
+
+  const fromNumber = getFromNumber(to, options.numberType || "main");
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       if (attempt > 0) await sleep(Math.pow(2, attempt) * 1000);
 
-      if (isNigeria) {
-        // ─── Termii ───
+      if (regionConfig.provider === "termii") {
+        // ─── Termii (Nigeria) ───
         const termiiApiKey = Deno.env.get("TERMII_API_KEY");
-        const termiiSenderId = Deno.env.get("TERMII_SENDER_ID") || "Rentmaikar";
         if (!termiiApiKey) throw new Error("Termii SMS not configured");
 
-        const res = await fetch("https://api.ng.termii.com/api/sms/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: to.replace("+", ""),
-            from: termiiSenderId,
-            sms: message,
-            type: "plain",
-            channel: "generic",
-            api_key: termiiApiKey,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || data.code !== "ok") throw new Error(data.message || "Termii SMS failed");
+        const cleanPhone = to.startsWith("+") ? to.replace("+", "") : to;
 
-        console.log(`[SMS] Sent via Termii to ${to} [attempt ${attempt + 1}]`);
-        return { provider: "termii", externalId: data.message_id };
+        // Send each segment (Termii handles concatenation for long messages)
+        for (const segment of segments) {
+          const res = await fetch("https://api.ng.termii.com/api/sms/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: cleanPhone,
+              from: regionConfig.senderId,
+              sms: segment,
+              type: "plain",
+              channel: "generic",
+              api_key: termiiApiKey,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok || data.code !== "ok") throw new Error(data.message || "Termii SMS failed");
+        }
+
+        console.log(`[SMS] Sent ${totalSegments} segment(s) via Termii to ${to} [attempt ${attempt + 1}]`);
+        return { provider: "termii", segments: totalSegments };
       }
 
-      // ─── Twilio ───
+      // ─── Twilio (USA / Default) ───
       const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
       const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-      const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER") || "+16083843932";
       if (!accountSid || !authToken) throw new Error("Twilio SMS not configured");
 
       const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
       const formData = new URLSearchParams();
-      formData.append("From", twilioPhone);
-      formData.append("To", to);
-      formData.append("Body", message);
 
-      // Add status callback for delivery tracking
+      // Use Messaging Service SID if available (handles segmentation automatically)
+      if (regionConfig.messagingServiceSid) {
+        formData.append("MessagingServiceSid", regionConfig.messagingServiceSid);
+      } else {
+        formData.append("From", fromNumber);
+      }
+
+      formData.append("To", to);
+      formData.append("Body", message); // Twilio handles concatenation natively
+
+      // Status callback for delivery tracking
       const supabaseUrl = Deno.env.get("SUPABASE_URL");
       if (supabaseUrl) {
         formData.append("StatusCallback", `${supabaseUrl}/functions/v1/voip-status-callback`);
@@ -145,8 +188,8 @@ const sendSMS = async (
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Twilio SMS failed");
 
-      console.log(`[SMS] Sent via Twilio to ${to} [attempt ${attempt + 1}]`);
-      return { provider: "twilio", externalId: data.sid };
+      console.log(`[SMS] Sent via Twilio to ${to} (${data.num_segments || totalSegments} segments) [attempt ${attempt + 1}]`);
+      return { provider: "twilio", externalId: data.sid, segments: data.num_segments || totalSegments };
 
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
@@ -155,15 +198,19 @@ const sendSMS = async (
   }
 
   // Escalate failed delivery
-  if (supabase) {
-    await supabase.from("inbox_conversations").insert({
-      user_phone: to,
-      channel: "sms",
-      subject: `⚠️ Failed SMS delivery (${MAX_RETRIES} attempts)`,
-      status: "open",
-      priority: "urgent",
-      region: isNigeria ? "NIGERIA" : "USA",
-    }).catch(e => console.error("[SMS Escalation]", e));
+  if (options.supabase) {
+    try {
+      await options.supabase.from("inbox_conversations").insert({
+        user_phone: to,
+        channel: "sms",
+        subject: `⚠️ Failed SMS delivery (${MAX_RETRIES} attempts)`,
+        status: "open",
+        priority: "urgent",
+        region,
+      });
+    } catch (e) {
+      console.error("[SMS Escalation]", e);
+    }
   }
 
   throw lastError || new Error("SMS delivery failed");
@@ -239,7 +286,7 @@ const handler = async (req: Request): Promise<Response> => {
         .from("profiles").select("user_id").eq("phone", from).single();
       if (profile) {
         const msg = await handleOptIn(supabase, profile.user_id);
-        await sendSMS(from, msg, supabase);
+        await sendSMS(from, msg, { supabase });
       }
       return new Response("OK", { status: 200, headers: corsHeaders });
     }
@@ -252,7 +299,7 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (!profile) {
-      await sendSMS(from, SMS_TEMPLATES.unregistered(), supabase);
+      await sendSMS(from, SMS_TEMPLATES.unregistered(), { supabase });
       return new Response("OK", { status: 200, headers: corsHeaders });
     }
 
@@ -367,7 +414,8 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       case "HELP": {
-        responseMessage = SMS_TEMPLATES.help();
+        const supportPhone = getRegionConfig(from).support;
+        responseMessage = SMS_TEMPLATES.help(supportPhone);
         break;
       }
 
@@ -388,7 +436,8 @@ const handler = async (req: Request): Promise<Response> => {
 
       case "4":
       case "HUMAN": {
-        responseMessage = SMS_TEMPLATES.supportConnecting();
+        const supportNum = getRegionConfig(from).support;
+        responseMessage = SMS_TEMPLATES.supportConnecting(supportNum);
 
         // Escalate to inbox
         await supabase.from("inbox_conversations").insert({
@@ -407,10 +456,11 @@ const handler = async (req: Request): Promise<Response> => {
       default: {
         // Simple NLP fallback: check for payment/status/help keywords
         const lower = rawBody.toLowerCase();
+        const helpPhone = getRegionConfig(from).support;
         if (lower.includes("pay") || lower.includes("money") || lower.includes("owe")) {
-          responseMessage = SMS_TEMPLATES.help() + " Reply PAY to pay now.";
+          responseMessage = SMS_TEMPLATES.help(helpPhone) + " Reply PAY to pay now.";
         } else if (lower.includes("status") || lower.includes("car") || lower.includes("vehicle")) {
-          responseMessage = SMS_TEMPLATES.help() + " Reply STATUS for rental info.";
+          responseMessage = SMS_TEMPLATES.help(helpPhone) + " Reply STATUS for rental info.";
         } else {
           responseMessage = SMS_TEMPLATES.fallback();
         }
@@ -419,27 +469,31 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // ─── Send response ───
-    await sendSMS(from, responseMessage, supabase);
+    await sendSMS(from, responseMessage, { supabase });
 
     // ─── Log to unified_message_log ───
-    await supabase.from("unified_message_log").insert([
-      {
-        user_id: profile.user_id,
-        channel: "sms",
-        direction: "inbound",
-        content: rawBody,
-        status: "received",
-        metadata: { command, region, provider: region === "NIGERIA" ? "termii" : "twilio" },
-      },
-      {
-        user_id: profile.user_id,
-        channel: "sms",
-        direction: "outbound",
-        content: responseMessage,
-        status: "sent",
-        metadata: { command, region, type: "auto_response" },
-      },
-    ]).catch(e => console.error("[SMS Log]", e));
+    try {
+      await supabase.from("unified_message_log").insert([
+        {
+          user_id: profile.user_id,
+          channel: "sms",
+          direction: "inbound",
+          content: rawBody,
+          status: "received",
+          metadata: { command, region, provider: region === "NIGERIA" ? "termii" : "twilio" },
+        },
+        {
+          user_id: profile.user_id,
+          channel: "sms",
+          direction: "outbound",
+          content: responseMessage,
+          status: "sent",
+          metadata: { command, region, type: "auto_response" },
+        },
+      ]);
+    } catch (e) {
+      console.error("[SMS Log]", e);
+    }
 
     return new Response("OK", { status: 200, headers: corsHeaders });
 

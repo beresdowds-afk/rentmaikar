@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { getRegionConfig, getFromNumber, checkRateLimit, checkGlobalRateLimit } from "../_shared/sms-config.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,8 +29,7 @@ interface SMSNotificationRequest {
   customMessage?: string;
 }
 
-const RENTMAIKAR_PHONE = "+16083843932";
-const RENTMAIKAR_WHATSAPP = "whatsapp:+16083843932";
+// From numbers sourced from shared sms-config.ts via getFromNumber()
 
 const isValidPhone = (phone: string): boolean => {
   // Basic international phone format validation
@@ -124,14 +124,22 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Determine provider based on region
+    // ─── Rate limiting ───
+    const region = body.phone.startsWith('+234') ? 'NIGERIA' : 'USA';
+    if (!checkGlobalRateLimit() || !checkRateLimit(region)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Rate limited. Try again shortly." }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const regionConfig = getRegionConfig(body.phone);
     const isNigeria = body.phone.startsWith('+234');
     const message = getMessageContent(body);
 
     if (isNigeria) {
       // ─── TERMII (Nigeria) ───
       const termiiApiKey = Deno.env.get("TERMII_API_KEY");
-      const termiiSenderId = Deno.env.get("TERMII_SENDER_ID") || "Rentmaikar";
 
       if (!termiiApiKey) {
         console.error("Termii credentials not configured for Nigeria");
@@ -148,7 +156,7 @@ const handler = async (req: Request): Promise<Response> => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: body.phone.replace('+', ''),
-          from: termiiSenderId,
+          from: regionConfig.senderId,
           sms: message,
           type: 'plain',
           channel: termiiChannel,
@@ -171,6 +179,7 @@ const handler = async (req: Request): Promise<Response> => {
           messageId: termiiData.message_id,
           channel: body.channel,
           provider: 'termii',
+          region: 'NIGERIA',
         }), 
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
@@ -179,7 +188,6 @@ const handler = async (req: Request): Promise<Response> => {
     // ─── TWILIO (USA / Default) ───
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-    const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER") || RENTMAIKAR_PHONE;
     
     if (!accountSid || !authToken) {
       console.error("Twilio credentials not configured");
@@ -187,19 +195,24 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const isWhatsApp = body.channel === 'whatsapp';
-    
-    // Format phone numbers for Twilio
-    const fromNumber = isWhatsApp ? RENTMAIKAR_WHATSAPP : twilioPhone;
+    const mainNumber = getFromNumber(body.phone, 'main');
+    const fromNumber = isWhatsApp ? `whatsapp:${mainNumber}` : mainNumber;
     const toNumber = isWhatsApp ? `whatsapp:${body.phone}` : body.phone;
 
     console.log(`Sending ${body.channel.toUpperCase()} via Twilio to ${body.phone}: ${body.notificationType}`);
 
-    // Send via Twilio
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
     const twilioAuth = btoa(`${accountSid}:${authToken}`);
     
     const formData = new URLSearchParams();
-    formData.append('From', fromNumber);
+
+    // Use Messaging Service SID if available
+    if (regionConfig.messagingServiceSid && !isWhatsApp) {
+      formData.append('MessagingServiceSid', regionConfig.messagingServiceSid);
+    } else {
+      formData.append('From', fromNumber);
+    }
+
     formData.append('To', toNumber);
     formData.append('Body', message);
 
@@ -225,7 +238,10 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: true, 
         messageId: responseData.sid,
-        channel: body.channel 
+        channel: body.channel,
+        provider: 'twilio',
+        region: 'USA',
+        segments: responseData.num_segments || 1,
       }), 
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
