@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, Eye, CreditCard, Wallet, Mail, Loader2, RefreshCw, TrendingUp, HelpCircle } from "lucide-react";
+import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, Eye, CreditCard, Wallet, Mail, Loader2, RefreshCw, TrendingUp, HelpCircle, Inbox, Phone } from "lucide-react";
 import { CallCenterPage } from "@/components/admin/voip/CallCenterPage";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
@@ -445,12 +445,35 @@ const AdminDashboard = () => {
           </div>
 
           {/* Portal Navigation */}
-          <PortalNavigation
-            activePortal={portalView}
-            activeTab={activeTab}
-            onPortalChange={setPortalView}
-            onTabChange={setActiveTab}
-          />
+          <div className="flex flex-col gap-4 mb-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <PortalNavigation
+                activePortal={portalView}
+                activeTab={activeTab}
+                onPortalChange={setPortalView}
+                onTabChange={setActiveTab}
+              />
+            </div>
+            {/* Independent Quick Access Buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant={activeTab === 'inbox' ? 'default' : 'outline'}
+                className="gap-2"
+                onClick={() => { setPortalView('support'); setActiveTab('inbox'); }}
+              >
+                <Inbox className="h-4 w-4" />
+                Unified Inbox
+              </Button>
+              <Button
+                variant={activeTab === 'call-center' ? 'default' : 'outline'}
+                className="gap-2"
+                onClick={() => { setPortalView('support'); setActiveTab('call-center'); }}
+              >
+                <Phone className="h-4 w-4" />
+                Call Center
+              </Button>
+            </div>
+          </div>
 
           {/* Portal Analytics Cards */}
           <PortalAnalyticsCards 
