@@ -18,6 +18,19 @@ export const EMAIL_CONFIG = {
   
   // Data Protection Officer
   dpo: "dpo@rentmaikar.com",
+
+  // Payment inquiries
+  payments: "payments@rentmaikar.com",
+
+  // Document submissions
+  documents: "documents@rentmaikar.com",
+
+  // Legal inquiries
+  legal: "legal@rentmaikar.com",
+
+  // Regional inboxes
+  nigeria: "nigeria@rentmaikar.com",
+  usa: "usa@rentmaikar.com",
 } as const;
 
 /**
