@@ -242,7 +242,7 @@ serve(async (req) => {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${supabaseServiceKey}`,
           },
-          body: JSON.stringify({ from: cleanFrom, text: parsed.content, channel: "sms" }),
+          body: JSON.stringify({ from: cleanFrom, to: cleanTo, text: parsed.content, channel: "sms" }),
         });
         // Still save message to inbox below, but skip auto-reply (sms-commands handles it)
       }
