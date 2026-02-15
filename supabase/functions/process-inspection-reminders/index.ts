@@ -60,7 +60,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { data: vehicles, error } = await supabase
       .from('vehicles')
-      .select('id, make, model, year, plate_number, owner_id, inspection_expiry')
+      .select('id, make, model, year, license_plate, owner_id, inspection_expiry')
       .not('inspection_expiry', 'is', null)
       .lte('inspection_expiry', thirtyDaysOut.toISOString().split('T')[0])
       .gte('inspection_expiry', today.toISOString().split('T')[0]);
@@ -96,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       const firstName = profile.full_name?.split(' ')[0] || 'Owner';
       const vehicleName = `${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || ''}`.trim();
-      const plateNumber = vehicle.plate_number || '';
+      const plateNumber = vehicle.license_plate || '';
 
       const message = `🔧 Inspection Due – Rentmaikar\n\nHi ${firstName}, your vehicle ${vehicleName} (${plateNumber}) is due for inspection.\n\nInspection expiry: ${vehicle.inspection_expiry}\n\nSchedule your inspection now to avoid rental interruption.\n\nReply *HELP* for assistance.`;
 
