@@ -61,6 +61,13 @@ const AVAILABLE_EVENTS = [
   { id: 'agreement.signed', label: 'Agreement Signed', description: 'When an agreement is fully signed' },
   { id: 'iot.device_offline', label: 'IoT Device Offline', description: 'When an IoT device goes offline' },
   { id: 'iot.accident_detected', label: 'Accident Detected', description: 'When IoT detects an accident' },
+  { id: 'negotiation.created', label: 'Negotiation Created', description: 'When a new price negotiation request is submitted' },
+  { id: 'negotiation.approved', label: 'Negotiation Approved', description: 'When a price negotiation is approved' },
+  { id: 'negotiation.rejected', label: 'Negotiation Rejected', description: 'When a price negotiation is rejected' },
+  { id: 'negotiation.counter_offer', label: 'Counter Offer Sent', description: 'When admin sends a counter offer' },
+  { id: 'negotiation.locked', label: 'Price Locked', description: 'When a negotiated price is locked' },
+  { id: 'negotiation.modification_requested', label: 'Modification Requested', description: 'When a locked price modification is requested' },
+  { id: 'negotiation.modification_processed', label: 'Modification Processed', description: 'When a modification request is approved or rejected' },
 ];
 
 export const WebhookManagement = () => {
