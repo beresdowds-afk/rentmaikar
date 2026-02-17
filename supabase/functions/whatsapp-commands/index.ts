@@ -36,6 +36,14 @@ const INTENT_MAP: Record<string, { keywords: string[]; weight: number }> = {
   payment_status: { keywords: ["payment status", "paid", "money", "balance", "due", "owe", "owing"], weight: 0.9 },
   payment_history: { keywords: ["history", "transactions", "receipt", "records"], weight: 0.8 },
 
+  // Negotiation
+  negotiation_accept: { keywords: ["accept", "approve", "agreed", "accept offer", "approve price"], weight: 1.0 },
+  negotiation_reject: { keywords: ["reject", "decline", "refuse", "reject offer", "decline offer"], weight: 1.0 },
+  negotiation_counter: { keywords: ["counter", "counteroffer", "counter offer", "negotiate", "offer"], weight: 0.9 },
+  negotiation_status: { keywords: ["price", "price status", "negotiation", "rate", "pricing"], weight: 0.8 },
+  negotiation_modify: { keywords: ["modify", "modify price", "change price", "adjust rate"], weight: 0.9 },
+  negotiation_lock: { keywords: ["lock", "lock price", "finalize", "confirm rate"], weight: 0.9 },
+
   // Document
   document_upload: { keywords: ["upload", "send document", "submit", "docs"], weight: 0.9 },
   document_status: { keywords: ["document status", "verification", "approved", "pending document"], weight: 0.8 },
@@ -118,6 +126,12 @@ const intentToCommand = (intent: string): string | null => {
     rental_available: "CARS",
     support: "HUMAN",
     emergency: "EMERGENCY",
+    negotiation_accept: "ACCEPT",
+    negotiation_reject: "REJECT",
+    negotiation_counter: "COUNTER",
+    negotiation_status: "NEGOTIATE",
+    negotiation_modify: "MODIFY",
+    negotiation_lock: "LOCK",
   };
   return map[intent] || null;
 };
@@ -1147,6 +1161,56 @@ const handler = async (req: Request): Promise<Response> => {
           priority: "normal",
           region,
         });
+        break;
+      }
+
+      case "ACCEPT":
+      case "REJECT":
+      case "COUNTER":
+      case "NEGOTIATE":
+      case "PRICE":
+      case "OFFER":
+      case "APPROVE":
+      case "DECLINE":
+      case "MODIFY":
+      case "LOCK": {
+        // Look up active negotiations for this user
+        const { data: negotiations } = await supabase
+          .from("price_negotiations")
+          .select("id, vehicle_id, proposed_rate, status, negotiation_type")
+          .eq("user_id", profile.user_id)
+          .in("status", ["pending", "counter_offered"])
+          .order("created_at", { ascending: false })
+          .limit(3);
+
+        if (!negotiations || negotiations.length === 0) {
+          responseMessage = `🤝 *Price Negotiations*\n\nYou have no active negotiations at this time.\n\nTo start a new negotiation, visit your dashboard:\n🔗 rentmaikar.lovable.app`;
+        } else {
+          const negotiationLines = negotiations.map((n, i) =>
+            `${i + 1}. ${n.negotiation_type === 'daily' ? 'Daily' : 'Weekly'} rate: ${n.proposed_rate} (${n.status.replace('_', ' ')})`
+          );
+
+          const actionMap: Record<string, string> = {
+            ACCEPT: "accept", APPROVE: "accept",
+            REJECT: "reject", DECLINE: "reject",
+            COUNTER: "counter offer", MODIFY: "modify", LOCK: "lock",
+          };
+          const action = actionMap[command] || "view";
+
+          responseMessage = `🤝 *Price Negotiations*\n\nYou requested to *${action}*.\n\n📋 *Active Negotiations:*\n${negotiationLines.join('\n')}\n\n⚠️ Please log in to your dashboard to complete this action securely:\n🔗 rentmaikar.lovable.app\n\nOr reply *HUMAN* to speak with an agent.`;
+
+          // Create inbox conversation for admin visibility
+          await supabase.from("inbox_conversations").insert({
+            user_id: profile.user_id,
+            user_name: profile.full_name,
+            user_phone: from,
+            channel: "whatsapp",
+            subject: `🤝 Negotiation ${action} from ${profile.full_name?.split(" ")[0] || from}`,
+            status: "open",
+            priority: "high",
+            region,
+          });
+        }
         break;
       }
 

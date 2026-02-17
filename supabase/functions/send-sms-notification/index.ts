@@ -8,11 +8,45 @@ const corsHeaders = {
 
 type NotificationType = 
   | "verification_code" 
+  // Negotiation events
   | "price_approved" 
   | "price_rejected" 
   | "price_counter_offer" 
   | "price_locked"
+  | "negotiation_submitted"
+  | "negotiation_modification_requested"
+  | "negotiation_modification_processed"
+  // Payment events
   | "payment_reminder"
+  | "payment_received"
+  | "payment_failed"
+  | "payment_overdue"
+  | "owner_payout"
+  // Vehicle events
+  | "vehicle_assigned"
+  | "vehicle_listed"
+  | "vehicle_lockdown"
+  | "vehicle_unlocked"
+  | "vehicle_shutdown"
+  | "vehicle_return_reminder"
+  | "vehicle_maintenance"
+  // Document events
+  | "document_verified"
+  | "document_rejected"
+  | "document_expiry_warning"
+  // Booking events
+  | "booking_confirmation"
+  | "booking_cancellation"
+  // Auth events
+  | "login_alert"
+  | "password_reset"
+  | "account_deactivated"
+  // Support events
+  | "support_ticket_created"
+  | "support_ticket_response"
+  | "incident_alert"
+  | "accident_alert"
+  // General
   | "general";
 
 type Channel = "sms" | "whatsapp";
@@ -27,6 +61,10 @@ interface SMSNotificationRequest {
   amount?: number;
   currency?: string;
   customMessage?: string;
+  ticketId?: string;
+  dueDate?: string;
+  documentType?: string;
+  device?: string;
 }
 
 // From numbers sourced from shared sms-config.ts via getFromNumber()
@@ -46,30 +84,91 @@ const getCurrencySymbol = (currency: string): string => {
 };
 
 const getMessageContent = (data: SMSNotificationRequest): string => {
-  const { notificationType, name, verificationCode, vehicleInfo, amount, currency, customMessage } = data;
+  const { notificationType, name, verificationCode, vehicleInfo, amount, currency, customMessage, ticketId, dueDate, documentType, device } = data;
   const safeName = name ? sanitizeString(name) : 'User';
   const safeVehicle = vehicleInfo ? sanitizeString(vehicleInfo) : 'your vehicle';
   const sym = currency ? getCurrencySymbol(currency) : '$';
   
   switch (notificationType) {
+    // Auth
     case 'verification_code':
       return `Rentmaikar: Your verification code is ${verificationCode}. This code expires in 10 minutes. Do not share this code with anyone.`;
-      
+    case 'login_alert':
+      return `Rentmaikar: New login to your account${device ? ` from ${sanitizeString(device)}` : ''}. If this wasn't you, secure your account immediately.`;
+    case 'password_reset':
+      return `Rentmaikar: A password reset was requested for your account. If this wasn't you, please contact support.`;
+    case 'account_deactivated':
+      return `Rentmaikar: Your account has been deactivated. Contact support@rentmaikar.com for assistance.`;
+
+    // Negotiations
     case 'price_approved':
       return `Rentmaikar: Great news, ${safeName}! Your price request for ${safeVehicle} has been approved at ${sym}${amount}. Log in to view details.`;
-      
     case 'price_rejected':
       return `Rentmaikar: Hi ${safeName}, your price request for ${safeVehicle} was not approved. Please log in to submit a new request.`;
-      
     case 'price_counter_offer':
       return `Rentmaikar: Hi ${safeName}, you've received a counter offer of ${sym}${amount} for ${safeVehicle}. Log in to respond.`;
-      
     case 'price_locked':
       return `Rentmaikar: Your rate for ${safeVehicle} is now locked at ${sym}${amount}. Contact support if you need changes.`;
-      
+    case 'negotiation_submitted':
+      return `Rentmaikar: Hi ${safeName}, your price negotiation for ${safeVehicle} has been submitted. We'll review it shortly.`;
+    case 'negotiation_modification_requested':
+      return `Rentmaikar: Hi ${safeName}, a price modification request for ${safeVehicle} has been submitted. We'll process it soon.`;
+    case 'negotiation_modification_processed':
+      return `Rentmaikar: Hi ${safeName}, your price modification request for ${safeVehicle} has been processed. Log in to view the result.`;
+
+    // Payments
     case 'payment_reminder':
-      return `Rentmaikar: Reminder - Your payment of ${sym}${amount} is due. Please log in to complete your payment.`;
-      
+      return `Rentmaikar: Reminder - Your payment of ${sym}${amount} is due${dueDate ? ` on ${dueDate}` : ''}. Please log in to complete your payment.`;
+    case 'payment_received':
+      return `Rentmaikar: Payment of ${sym}${amount} received. Thank you, ${safeName}!`;
+    case 'payment_failed':
+      return `Rentmaikar: Your payment of ${sym}${amount} failed. Please update your payment method and try again.`;
+    case 'payment_overdue':
+      return `Rentmaikar: URGENT - Your payment of ${sym}${amount} is overdue. Please pay immediately to avoid service disruption.`;
+    case 'owner_payout':
+      return `Rentmaikar: Hi ${safeName}, your weekly payout of ${sym}${amount} has been processed. Check your account for details.`;
+
+    // Vehicles
+    case 'vehicle_assigned':
+      return `Rentmaikar: ${safeVehicle} has been assigned to a driver. Log in to view rental details.`;
+    case 'vehicle_listed':
+      return `Rentmaikar: ${safeVehicle} is now listed and available for rental on the platform.`;
+    case 'vehicle_lockdown':
+      return `Rentmaikar: NOTICE - ${safeVehicle} has been locked due to a payment issue. Please contact support.`;
+    case 'vehicle_unlocked':
+      return `Rentmaikar: ${safeVehicle} has been unlocked. Thank you for resolving the payment.`;
+    case 'vehicle_shutdown':
+      return `Rentmaikar: WARNING - ${safeVehicle} shutdown initiated. Contact support immediately.`;
+    case 'vehicle_return_reminder':
+      return `Rentmaikar: Reminder - ${safeVehicle} is due for return${dueDate ? ` on ${dueDate}` : ' soon'}. Please plan accordingly.`;
+    case 'vehicle_maintenance':
+      return `Rentmaikar: ${safeVehicle} is due for scheduled maintenance. Please log in for details.`;
+
+    // Documents
+    case 'document_verified':
+      return `Rentmaikar: Your ${documentType || 'document'} has been verified successfully. Thank you!`;
+    case 'document_rejected':
+      return `Rentmaikar: Your ${documentType || 'document'} could not be verified. Please log in and resubmit.`;
+    case 'document_expiry_warning':
+      return `Rentmaikar: Your ${documentType || 'document'} expires${dueDate ? ` on ${dueDate}` : ' soon'}. Please renew to avoid service interruption.`;
+
+    // Bookings
+    case 'booking_confirmation':
+      return `Rentmaikar: Booking confirmed for ${safeVehicle}. Log in to view pickup details.`;
+    case 'booking_cancellation':
+      return `Rentmaikar: Your booking for ${safeVehicle} has been cancelled. Contact support if you have questions.`;
+
+    // Support
+    case 'support_ticket_created':
+      return `Rentmaikar: Support ticket${ticketId ? ` #${ticketId}` : ''} created. We'll respond within 24 hours.`;
+    case 'support_ticket_response':
+      return `Rentmaikar: New response on your support ticket${ticketId ? ` #${ticketId}` : ''}. Log in to view.`;
+    case 'incident_alert':
+      return `Rentmaikar: An incident has been reported for ${safeVehicle}. Log in for details.`;
+    case 'accident_alert':
+      return `Rentmaikar: URGENT - An accident has been reported for ${safeVehicle}. Emergency services have been notified.`;
+
+    // General
     case 'general':
       return customMessage ? `Rentmaikar: ${sanitizeString(customMessage)}` : 'Rentmaikar: You have a new notification. Please log in to view details.';
       
