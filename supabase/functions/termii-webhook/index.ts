@@ -150,6 +150,15 @@ const processLocationMessage = async (
 const COMMAND_KEYWORDS = [
   "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "SUPPORT",
   "OK", "DONE", "1", "BOOKING", "2", "3", "4", "HUMAN", "DOCS", "RULES", "IOT",
+  // Negotiation keywords
+  "ACCEPT", "REJECT", "COUNTER", "NEGOTIATE", "PRICE", "OFFER",
+  "APPROVE", "DECLINE", "MODIFY", "LOCK",
+];
+
+// Negotiation-specific keywords for intent detection
+const NEGOTIATION_KEYWORDS = [
+  "ACCEPT", "REJECT", "COUNTER", "NEGOTIATE", "PRICE", "OFFER",
+  "APPROVE", "DECLINE", "MODIFY", "LOCK",
 ];
 
 serve(async (req) => {
@@ -207,10 +216,19 @@ serve(async (req) => {
         );
       }
 
+      // ─── Route negotiation keywords to inbox with high priority ───
+      if (NEGOTIATION_KEYWORDS.includes(upperBody)) {
+        console.log(`Negotiation keyword "${upperBody}" detected from ${cleanFrom}`);
+        // Tag as negotiation for inbox prioritization — continues to save below
+      }
+
       // Route SMS keywords to sms-commands
       const SMS_KEYWORDS = [
         "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "STOP", "START",
         "DOC", "DOCS", "LOCATION", "DONE", "1", "2", "3", "4", "HUMAN",
+        // Negotiation keywords
+        "ACCEPT", "REJECT", "COUNTER", "NEGOTIATE", "PRICE", "OFFER",
+        "APPROVE", "DECLINE", "MODIFY", "LOCK",
       ];
       if (inboundChannel === "sms" && SMS_KEYWORDS.includes(upperBody)) {
         console.log(`Forwarding SMS command "${upperBody}" to sms-commands`);
@@ -293,8 +311,10 @@ serve(async (req) => {
           region: "NIGERIA",
           user_phone: cleanFrom,
           status: "open",
-          priority: parsed.type === "location" ? "high" : "normal",
-          subject: `New ${inboundChannel.toUpperCase()} ${parsed.type} from ${cleanFrom}`,
+          priority: (parsed.type === "location" || (parsed.type === "text" && NEGOTIATION_KEYWORDS.includes(parsed.content.trim().toUpperCase()))) ? "high" : "normal",
+          subject: NEGOTIATION_KEYWORDS.includes((parsed.content || "").trim().toUpperCase())
+            ? `🤝 Negotiation reply from ${cleanFrom}`
+            : `New ${inboundChannel.toUpperCase()} ${parsed.type} from ${cleanFrom}`,
           last_message_at: new Date().toISOString(),
         })
         .select()
@@ -318,6 +338,10 @@ serve(async (req) => {
           provider: "termii",
           region: "NIGERIA",
           message_type: parsed.type,
+          is_negotiation: parsed.type === "text" && NEGOTIATION_KEYWORDS.includes(parsed.content.trim().toUpperCase()),
+          negotiation_intent: NEGOTIATION_KEYWORDS.includes((parsed.content || "").trim().toUpperCase())
+            ? parsed.content.trim().toUpperCase()
+            : null,
           ...mediaMetadata,
           raw_payload: payload,
         },
