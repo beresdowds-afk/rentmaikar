@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logMessagingEvent } from "../_shared/messaging-events.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -398,6 +399,23 @@ serve(async (req) => {
     if (messageError) throw messageError;
 
     console.log(`${parsed.type} message saved successfully`);
+
+    // Log inbound messaging event
+    await logMessagingEvent(supabase, {
+      channel,
+      provider: region === 'NIGERIA' ? 'termii' : 'twilio',
+      event_type: 'received',
+      direction: 'inbound',
+      recipient: cleanTo,
+      sender: cleanFrom,
+      region,
+      provider_message_id: messageSid,
+      conversation_id: conversationId,
+      metadata: {
+        message_type: parsed.type,
+        is_negotiation: parsed.type === "text" && NEGOTIATION_KEYWORDS.includes(parsed.content.trim().toUpperCase()),
+      },
+    });
 
     return new Response(
       `<?xml version="1.0" encoding="UTF-8"?>\n<Response></Response>`,

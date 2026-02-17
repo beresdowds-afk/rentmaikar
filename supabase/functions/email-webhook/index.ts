@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
+import { logMessagingEvent } from "../_shared/messaging-events.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -814,6 +815,20 @@ serve(async (req) => {
         console.warn("Auto-acknowledgment error:", ackErr);
       }
     }
+
+    // Log inbound email event
+    await logMessagingEvent(supabase, {
+      channel: 'email',
+      provider: 'resend',
+      event_type: 'received',
+      direction: 'inbound',
+      recipient: recipientAddress,
+      sender: senderAddress,
+      region,
+      conversation_id: conversationId,
+      user_id: userId,
+      metadata: { category: finalCategory, sub_category: classification.subCategory, priority: finalPriority },
+    });
 
     return new Response(
       JSON.stringify({

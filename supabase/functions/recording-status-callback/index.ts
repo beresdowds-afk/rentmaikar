@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logMessagingEvent } from "../_shared/messaging-events.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,6 +48,17 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Call not found:', callSid, callError);
       return new Response('Call not found', { status: 404 });
     }
+
+    // Log recording event
+    await logMessagingEvent(supabase, {
+      channel: 'voip',
+      provider: 'twilio',
+      event_type: recordingStatus === 'completed' ? 'recording_completed' : 'recording_failed',
+      direction: 'outbound',
+      provider_message_id: callSid,
+      provider_event_id: recordingSid,
+      metadata: { recording_duration: recordingDuration, recording_url: recordingUrl },
+    });
 
     if (recordingStatus === 'completed' && recordingUrl) {
       // Update call with recording info and set status to pending processing

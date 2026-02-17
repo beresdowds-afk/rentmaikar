@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getRegionConfig, getFromNumber, checkRateLimit, checkGlobalRateLimit } from "../_shared/sms-config.ts";
+import { logMessagingEvent } from "../_shared/messaging-events.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -272,6 +274,19 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log(`${body.channel.toUpperCase()} sent via Termii:`, termiiData.message_id);
 
+      const supabase = createClient(Deno.env.get("SUPABASE_URL")!, supabaseServiceKey);
+      await logMessagingEvent(supabase, {
+        channel: body.channel === 'whatsapp' ? 'whatsapp' : 'sms',
+        provider: 'termii',
+        event_type: 'sent',
+        direction: 'outbound',
+        recipient: body.phone,
+        region: 'NIGERIA',
+        provider_message_id: termiiData.message_id,
+        template_name: body.notificationType,
+        metadata: { notification_type: body.notificationType },
+      });
+
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -333,6 +348,19 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`${body.channel.toUpperCase()} sent via Twilio:`, responseData.sid);
 
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, supabaseServiceKey);
+    await logMessagingEvent(supabase, {
+      channel: body.channel === 'whatsapp' ? 'whatsapp' : 'sms',
+      provider: 'twilio',
+      event_type: 'sent',
+      direction: 'outbound',
+      recipient: body.phone,
+      region: 'USA',
+      provider_message_id: responseData.sid,
+      template_name: body.notificationType,
+      metadata: { notification_type: body.notificationType, segments: responseData.num_segments || 1 },
+    });
+
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -347,6 +375,19 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error("Error in send-sms-notification function:", errorMessage);
+
+    try {
+      const supabase = createClient(Deno.env.get("SUPABASE_URL")!, supabaseServiceKey);
+      await logMessagingEvent(supabase, {
+        channel: 'sms',
+        provider: 'twilio',
+        event_type: 'failed',
+        direction: 'outbound',
+        error_message: errorMessage,
+        metadata: { notification_type: body?.notificationType },
+      });
+    } catch (_) { /* ignore logging errors */ }
+
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }

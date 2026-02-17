@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logMessagingEvent } from "../_shared/messaging-events.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,6 +65,17 @@ serve(async (req) => {
           .update({ delivered_at: new Date().toISOString(), status: "delivered" })
           .eq("message_id", messageId)
           .is("delivered_at", null);
+
+        // Log open event
+        await logMessagingEvent(supabase, {
+          channel: 'email',
+          provider: 'resend',
+          event_type: 'opened',
+          direction: 'outbound',
+          recipient: decodeURIComponent(recipient),
+          provider_message_id: messageId,
+          metadata: { ip, user_agent: userAgent },
+        });
       } catch (e) {
         console.error("Open tracking error:", e);
       }
@@ -94,6 +106,16 @@ serve(async (req) => {
           recipient: decodeURIComponent(recipient),
           link: targetUrl,
           is_conversion: isConversionLink(targetUrl),
+        });
+
+        await logMessagingEvent(supabase, {
+          channel: 'email',
+          provider: 'resend',
+          event_type: 'clicked',
+          direction: 'outbound',
+          recipient: decodeURIComponent(recipient),
+          provider_message_id: messageId,
+          metadata: { link: targetUrl, is_conversion: isConversionLink(targetUrl) },
         });
       } catch (e) {
         console.error("Click tracking error:", e);
@@ -147,6 +169,17 @@ serve(async (req) => {
         // Update analytics
         await upsertAnalytics(supabase, "bounce", "bounced");
 
+        await logMessagingEvent(supabase, {
+          channel: 'email',
+          provider: 'resend',
+          event_type: 'bounced',
+          direction: 'outbound',
+          recipient,
+          provider_message_id: messageId,
+          error_message: `Bounce: ${bounceType}`,
+          metadata: { bounce_type: bounceType, details },
+        });
+
         return new Response(JSON.stringify({ success: true }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -180,6 +213,16 @@ serve(async (req) => {
           .eq("message_id", messageId);
 
         await upsertAnalytics(supabase, "complaint", "complained");
+
+        await logMessagingEvent(supabase, {
+          channel: 'email',
+          provider: 'resend',
+          event_type: 'complained',
+          direction: 'outbound',
+          recipient,
+          provider_message_id: messageId,
+          metadata: { complaint_type: complaintType || "spam" },
+        });
 
         return new Response(JSON.stringify({ success: true }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
