@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MessageSquare, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -8,8 +8,7 @@ const MESSAGE_CONSENT_KEY = "rentmaikar_message_consent";
 
 const MessageConsent = () => {
   const [isVisible, setIsVisible] = useState(false);
-  const [smsConsent, setSmsConsent] = useState(false);
-  const [whatsappConsent, setWhatsappConsent] = useState(false);
+  const [secondChannel, setSecondChannel] = useState<'none' | 'sms' | 'whatsapp'>('none');
 
   useEffect(() => {
     const consent = localStorage.getItem(MESSAGE_CONSENT_KEY);
@@ -22,7 +21,7 @@ const MessageConsent = () => {
   const handleAccept = () => {
     localStorage.setItem(
       MESSAGE_CONSENT_KEY,
-      JSON.stringify({ sms: smsConsent, whatsapp: whatsappConsent, accepted: true })
+      JSON.stringify({ sms: secondChannel === 'sms', whatsapp: secondChannel === 'whatsapp', accepted: true })
     );
     setIsVisible(false);
   };
@@ -65,22 +64,20 @@ const MessageConsent = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 pl-9">
-              <div className="flex items-center gap-4">
+              <RadioGroup
+                value={secondChannel}
+                onValueChange={(v) => setSecondChannel(v as 'none' | 'sms' | 'whatsapp')}
+                className="flex items-center gap-4"
+              >
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={smsConsent}
-                    onCheckedChange={(checked) => setSmsConsent(checked === true)}
-                  />
-                  <span className="text-sm font-medium text-foreground">SMS Notifications</span>
+                  <RadioGroupItem value="sms" />
+                  <span className="text-sm font-medium text-foreground">SMS</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={whatsappConsent}
-                    onCheckedChange={(checked) => setWhatsappConsent(checked === true)}
-                  />
-                  <span className="text-sm font-medium text-foreground">WhatsApp Notifications</span>
+                  <RadioGroupItem value="whatsapp" />
+                  <span className="text-sm font-medium text-foreground">WhatsApp</span>
                 </label>
-              </div>
+              </RadioGroup>
 
               <div className="flex items-center gap-2 sm:ml-auto">
                 <Button variant="outline" size="sm" onClick={handleDecline}>
@@ -89,7 +86,7 @@ const MessageConsent = () => {
                 <Button
                   size="sm"
                   onClick={handleAccept}
-                  disabled={!smsConsent && !whatsappConsent}
+                  disabled={secondChannel === 'none'}
                 >
                   Opt In
                 </Button>
