@@ -155,6 +155,107 @@ const transactionalEmails = [
       },
     },
   },
+  {
+    title: "Negotiation Submitted",
+    template: "negotiation_submitted",
+    category: "negotiation",
+    priority: "normal",
+    trigger: "usePriceNegotiations hook (auto-send)",
+    description: "Confirmation email sent to driver or owner when they submit a price negotiation request. Includes vehicle, requested rate, and expected response time.",
+    sample: {
+      to: "user@email.com",
+      data: {
+        firstName: "John",
+        vehicleName: "2023 Toyota Camry",
+        requestedRate: "$45.00/daily",
+        userType: "driver",
+      },
+    },
+  },
+  {
+    title: "Negotiation Approved",
+    template: "negotiation_approved",
+    category: "negotiation",
+    priority: "high",
+    trigger: "Admin approval via usePriceNegotiations",
+    description: "Notifies the user that their negotiated rate has been approved and is now active on the rental.",
+    sample: {
+      to: "user@email.com",
+      data: {
+        firstName: "John",
+        vehicleName: "2023 Toyota Camry",
+        approvedRate: "$42.00/daily",
+      },
+    },
+  },
+  {
+    title: "Negotiation Rejected",
+    template: "negotiation_rejected",
+    category: "negotiation",
+    priority: "high",
+    trigger: "Admin rejection via usePriceNegotiations",
+    description: "Informs the user their negotiation was declined, with optional reason and an invitation to resubmit.",
+    sample: {
+      to: "user@email.com",
+      data: {
+        firstName: "John",
+        vehicleName: "2023 Toyota Camry",
+        requestedRate: "$30.00/daily",
+        reason: "Rate below minimum threshold for this vehicle category.",
+      },
+    },
+  },
+  {
+    title: "Negotiation Counter Offer",
+    template: "negotiation_counter_offer",
+    category: "negotiation",
+    priority: "high",
+    trigger: "Admin counter-offer via usePriceNegotiations",
+    description: "Presents the user with the admin's counter offer, showing original vs proposed rates with a CTA to review.",
+    sample: {
+      to: "user@email.com",
+      data: {
+        firstName: "John",
+        vehicleName: "2023 Toyota Camry",
+        originalRate: "$35.00/daily",
+        counterRate: "$40.00/daily",
+      },
+    },
+  },
+  {
+    title: "Price Locked Confirmation",
+    template: "negotiation_locked",
+    category: "negotiation",
+    priority: "normal",
+    trigger: "Admin locks price via usePriceNegotiations",
+    description: "Confirms the finalized and locked rate. Includes a note that modifications require a formal request.",
+    sample: {
+      to: "user@email.com",
+      data: {
+        firstName: "John",
+        vehicleName: "2023 Toyota Camry",
+        lockedRate: "$42.00/daily",
+      },
+    },
+  },
+  {
+    title: "Modification Request Processed",
+    template: "negotiation_modification_processed",
+    category: "negotiation",
+    priority: "high",
+    trigger: "Admin processes modification via usePriceNegotiations",
+    description: "Notifies the user of the outcome when an admin approves or denies a price modification request.",
+    sample: {
+      to: "user@email.com",
+      data: {
+        firstName: "John",
+        vehicleName: "2023 Toyota Camry",
+        approved: true,
+        newRate: "$38.00/daily",
+        adminResponse: "Rate adjusted per market review.",
+      },
+    },
+  },
 ];
 
 const bulkEmails = [
