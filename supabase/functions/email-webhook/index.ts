@@ -29,16 +29,18 @@ const ATTACHMENT_CONFIG = {
 
 // ─── Email Queue Routing ───
 const EMAIL_QUEUES: Record<string, { queue: string; priority: string; category: string }> = {
-  "support@rentmaikar.com":   { queue: "support",   priority: "normal",  category: "support_request" },
-  "payments@rentmaikar.com":  { queue: "payments",  priority: "high",    category: "payment_query" },
-  "documents@rentmaikar.com": { queue: "documents", priority: "normal",  category: "document_upload" },
-  "admin@rentmaikar.com":     { queue: "admin",     priority: "high",    category: "admin_inquiry" },
-  "legal@rentmaikar.com":     { queue: "legal",     priority: "high",    category: "legal" },
-  "privacy@rentmaikar.com":   { queue: "legal",     priority: "high",    category: "legal" },
-  "dpo@rentmaikar.com":       { queue: "legal",     priority: "high",    category: "legal" },
-  "nigeria@rentmaikar.com":   { queue: "support",   priority: "normal",  category: "support_request" },
-  "usa@rentmaikar.com":       { queue: "support",   priority: "normal",  category: "support_request" },
-  "noreply@rentmaikar.com":   { queue: "automated", priority: "low",     category: "auto_reply" },
+  "support@rentmaikar.com":       { queue: "support",      priority: "normal",  category: "support_request" },
+  "payments@rentmaikar.com":      { queue: "payments",     priority: "high",    category: "payment_query" },
+  "documents@rentmaikar.com":     { queue: "documents",    priority: "normal",  category: "document_upload" },
+  "admin@rentmaikar.com":         { queue: "admin",        priority: "high",    category: "admin_inquiry" },
+  "legal@rentmaikar.com":         { queue: "legal",        priority: "high",    category: "legal" },
+  "privacy@rentmaikar.com":       { queue: "legal",        priority: "high",    category: "legal" },
+  "dpo@rentmaikar.com":           { queue: "legal",        priority: "high",    category: "legal" },
+  "nigeria@rentmaikar.com":       { queue: "support",      priority: "normal",  category: "support_request" },
+  "usa@rentmaikar.com":           { queue: "support",      priority: "normal",  category: "support_request" },
+  "negotiations@rentmaikar.com":  { queue: "negotiations", priority: "high",    category: "negotiation" },
+  "pricing@rentmaikar.com":       { queue: "negotiations", priority: "high",    category: "negotiation" },
+  "noreply@rentmaikar.com":       { queue: "automated",    priority: "low",     category: "auto_reply" },
 };
 
 // ─── Weighted Classification Engine ───
@@ -140,6 +142,26 @@ const CATEGORIES: Record<string, CategoryConfig> = {
       booking: [["booking", 2], ["reservation", 2], ["pickup", 2], ["return", 1], ["extend", 2]],
     },
     priority: "normal",
+  },
+  negotiation: {
+    keywords: [
+      ["negotiation", 3], ["negotiate", 3], ["price negotiation", 3],
+      ["counter offer", 3], ["counteroffer", 3], ["price offer", 2],
+      ["accept offer", 3], ["reject offer", 3], ["decline offer", 3],
+      ["approve price", 3], ["lock price", 3], ["price lock", 3],
+      ["modify price", 2], ["price modification", 3], ["rate change", 2],
+      ["daily rate", 2], ["weekly rate", 2], ["rental rate", 2],
+      ["price request", 2], ["pricing", 1], ["offer", 1],
+    ],
+    subCategories: {
+      submission: [["submit", 2], ["new negotiation", 3], ["propose", 2], ["request price", 2]],
+      approval: [["accept", 3], ["approve", 3], ["agreed", 2], ["confirm price", 3]],
+      rejection: [["reject", 3], ["decline", 3], ["refuse", 2], ["too high", 2], ["too expensive", 2]],
+      counter: [["counter", 3], ["counteroffer", 3], ["counter offer", 3], ["alternative price", 2]],
+      modification: [["modify", 2], ["change price", 2], ["update rate", 2], ["price modification", 3], ["adjust", 2]],
+      lock: [["lock", 3], ["finalize", 2], ["lock price", 3], ["confirm rate", 2], ["locked", 2]],
+    },
+    priority: "high",
   },
 };
 
@@ -389,6 +411,14 @@ function getAcknowledgmentHtml(
       subject: `We received your message [#${ref}]`,
       body: `<p>Hi ${name},</p>
         <p>Thank you for reaching out. A support agent will respond within <strong>${responseTime}</strong>.</p>
+        <p>Reference: <strong>#${ref}</strong></p>
+        ${attachmentHtml}`,
+    },
+    negotiation: {
+      subject: `Price negotiation received [#${ref}]`,
+      body: `<p>Hi ${name},</p>
+        <p>We've received your price negotiation request. Our team will review your proposal and respond within <strong>${responseTime}</strong>.</p>
+        <p>You can also manage your negotiations directly from your dashboard for faster processing.</p>
         <p>Reference: <strong>#${ref}</strong></p>
         ${attachmentHtml}`,
     },
