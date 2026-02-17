@@ -66,7 +66,7 @@ const detectCountry = (fromNumber: string, toNumber?: string): { region: string;
 // NLP Classifier (intent detection with multi-language support)
 // ═══════════════════════════════════════════════════════════
 
-type SMSIntent = "payment" | "status" | "document" | "support" | "greeting" | "complaint" | "unknown";
+type SMSIntent = "payment" | "status" | "document" | "support" | "greeting" | "complaint" | "negotiation" | "unknown";
 
 interface ClassifiedIntent {
   intent: SMSIntent;
@@ -76,9 +76,14 @@ interface ClassifiedIntent {
 
 const INTENT_PATTERNS: Record<SMSIntent, RegExp[]> = {
   payment: [
-    /\b(pay|money|owe|due|charge|debit|credit|transfer|send|amount|fee|cost|price)\b/i,
+    /\b(pay|money|owe|due|charge|debit|credit|transfer|send|amount|fee|cost)\b/i,
     /\b(owo|sisan|ego|ika)\b/i, // Yoruba/Igbo: money/payment
     /\b(how much|wetin i dey owe|how much i go pay)\b/i, // Pidgin
+  ],
+  negotiation: [
+    /\b(accept|reject|counter|negotiate|offer|approve|decline|modify|lock|price)\b/i,
+    /\b(counter\s*offer|price\s*lock|price\s*change|rate\s*change|adjust\s*rate)\b/i,
+    /\b(new\s*price|change\s*price|update\s*rate|finalize|accept\s*offer|reject\s*offer)\b/i,
   ],
   status: [
     /\b(status|car|vehicle|rental|booking|ride|driver|where|when|time)\b/i,
@@ -208,6 +213,12 @@ const SMS_TEMPLATES = {
 
   intentComplaint: (supportPhone: string) =>
     `Rentmaikar: We're sorry you're having trouble. An agent will review your message. Call ${supportPhone} for urgent issues.`,
+
+  intentNegotiation: () =>
+    `Rentmaikar: To manage price negotiations, reply ACCEPT, REJECT, or COUNTER. Or visit your dashboard at rentmaikar.lovable.app`,
+
+  intentNegotiationStatus: () =>
+    `Rentmaikar: Your negotiation is being reviewed. Log in to your dashboard for full details and to respond.`,
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -740,6 +751,20 @@ const handler = async (req: Request): Promise<Response> => {
               user_phone: from,
               channel: "sms",
               subject: `⚠️ SMS Complaint from ${firstName}`,
+              status: "open",
+              priority: "high",
+              region,
+            });
+            break;
+          case "negotiation":
+            responseMessage = SMS_TEMPLATES.intentNegotiation();
+            // Escalate negotiation replies to inbox
+            await supabase.from("inbox_conversations").insert({
+              user_id: profile.user_id,
+              user_name: profile.full_name,
+              user_phone: from,
+              channel: "sms",
+              subject: `🤝 Negotiation reply from ${firstName}`,
               status: "open",
               priority: "high",
               region,

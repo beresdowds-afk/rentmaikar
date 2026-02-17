@@ -227,11 +227,18 @@ serve(async (req) => {
     // ─── Parse message type ───
     const parsed = parseMessageType(formData);
 
+    // ─── Negotiation keywords ───
+    const NEGOTIATION_KEYWORDS = [
+      "ACCEPT", "REJECT", "COUNTER", "NEGOTIATE", "PRICE", "OFFER",
+      "APPROVE", "DECLINE", "MODIFY", "LOCK",
+    ];
+
     // ─── Route SMS keywords to sms-commands ───
     if (channel === "sms" && parsed.type === "text") {
       const SMS_KEYWORDS = [
         "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "STOP", "START",
         "DOC", "DOCS", "LOCATION", "DONE", "1", "2", "3", "4", "HUMAN",
+        ...NEGOTIATION_KEYWORDS,
       ];
       const upperBody = parsed.content.trim().toUpperCase();
       if (SMS_KEYWORDS.includes(upperBody)) {
@@ -244,7 +251,32 @@ serve(async (req) => {
           },
           body: JSON.stringify({ from: cleanFrom, to: cleanTo, text: parsed.content, channel: "sms" }),
         });
-        // Still save message to inbox below, but skip auto-reply (sms-commands handles it)
+      }
+    }
+
+    // ─── Route WhatsApp keywords to whatsapp-commands ───
+    if (channel === "whatsapp" && parsed.type === "text") {
+      const WA_KEYWORDS = [
+        "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "SUPPORT",
+        "OK", "DONE", "1", "BOOKING", "2", "3", "4", "HUMAN", "DOCS", "RULES", "IOT",
+        ...NEGOTIATION_KEYWORDS,
+      ];
+      const upperBody = parsed.content.trim().toUpperCase();
+      if (WA_KEYWORDS.includes(upperBody)) {
+        console.log(`[WhatsApp Router] Forwarding keyword "${upperBody}" to whatsapp-commands`);
+        await fetch(`${supabaseUrl}/functions/v1/whatsapp-commands`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({ from: cleanFrom, to: cleanTo, text: parsed.content, channel: "whatsapp" }),
+        });
+        // Return early for WhatsApp commands (handler sends its own reply)
+        return new Response(
+          `<?xml version="1.0" encoding="UTF-8"?>\n<Response></Response>`,
+          { headers: { ...corsHeaders, "Content-Type": "application/xml" } }
+        );
       }
     }
 
@@ -326,8 +358,10 @@ serve(async (req) => {
           region,
           user_phone: cleanFrom,
           status: "open",
-          priority: parsed.type === "location" ? "high" : "normal",
-          subject: `New ${channel.toUpperCase()} ${parsed.type} from ${cleanFrom}`,
+          priority: (parsed.type === "location" || (parsed.type === "text" && NEGOTIATION_KEYWORDS.includes(parsed.content.trim().toUpperCase()))) ? "high" : "normal",
+          subject: NEGOTIATION_KEYWORDS.includes((parsed.content || "").trim().toUpperCase())
+            ? `🤝 Negotiation reply from ${cleanFrom}`
+            : `New ${channel.toUpperCase()} ${parsed.type} from ${cleanFrom}`,
           last_message_at: new Date().toISOString(),
         })
         .select()
@@ -353,6 +387,10 @@ serve(async (req) => {
           rawFrom: from,
           rawTo: to,
           message_type: parsed.type,
+          is_negotiation: parsed.type === "text" && NEGOTIATION_KEYWORDS.includes(parsed.content.trim().toUpperCase()),
+          negotiation_intent: NEGOTIATION_KEYWORDS.includes((parsed.content || "").trim().toUpperCase())
+            ? parsed.content.trim().toUpperCase()
+            : null,
           ...mediaMetadata,
         },
       });
