@@ -31,6 +31,15 @@ export const EMAIL_CONFIG = {
   // Regional inboxes
   nigeria: "nigeria@rentmaikar.com",
   usa: "usa@rentmaikar.com",
+
+  // Notifications
+  notifications: "notifications@rentmaikar.com",
+
+  // Verification & Auth
+  verify: "verify@rentmaikar.com",
+
+  // Negotiations
+  negotiations: "negotiations@rentmaikar.com",
 } as const;
 
 /**
@@ -41,6 +50,8 @@ export const EMAIL_SENDER_NAMES = {
   noreply: "Rentmaikar",
   admin: "Rentmaikar Admin",
   notifications: "Rentmaikar Notifications",
+  verify: "Rentmaikar Verification",
+  negotiations: "Rentmaikar Pricing",
 } as const;
 
 /**

@@ -1388,6 +1388,107 @@ export const negotiationModificationProcessedEmail = (data: {
   };
 };
 
+// ==================== AUTH & VERIFICATION TEMPLATES ====================
+
+/**
+ * Email Verification Template
+ */
+export const emailVerificationEmail = (data: {
+  firstName: string;
+  verificationUrl: string;
+  expiresIn?: string;
+}) => {
+  const content = `
+    <h1>Verify Your Email Address</h1>
+    <p>Hi ${escapeHtml(data.firstName)},</p>
+    <p>Welcome to Rentmaikar! Please verify your email address to complete your account setup and access all features.</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${data.verificationUrl}" class="cta-button">Verify Email Address →</a>
+    </div>
+    <p style="color: #64748b; font-size: 13px;">This link expires in ${data.expiresIn || '24 hours'}. If you didn't create an account, you can safely ignore this email.</p>
+  `;
+  return {
+    subject: "Verify your Rentmaikar email address",
+    html: emailWrapper(content, "Email Verification"),
+    from: formatSenderEmail("verify"),
+  };
+};
+
+/**
+ * Password Reset Template
+ */
+export const passwordResetEmail = (data: {
+  firstName: string;
+  resetUrl: string;
+  expiresIn?: string;
+}) => {
+  const content = `
+    <h1>Reset Your Password</h1>
+    <p>Hi ${escapeHtml(data.firstName)},</p>
+    <p>We received a request to reset your password. Click the button below to set a new password:</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${data.resetUrl}" class="cta-button">Reset Password →</a>
+    </div>
+    <p style="color: #64748b; font-size: 13px;">This link expires in ${data.expiresIn || '1 hour'}. If you didn't request this, please ignore this email — your account is safe.</p>
+  `;
+  return {
+    subject: "Reset your Rentmaikar password",
+    html: emailWrapper(content, "Password Reset"),
+    from: formatSenderEmail("verify"),
+  };
+};
+
+/**
+ * Login Alert / New Device Notification
+ */
+export const loginAlertEmail = (data: {
+  firstName: string;
+  device: string;
+  location?: string;
+  time: string;
+  dashboardUrl: string;
+}) => {
+  const content = `
+    <h1>New Login Detected</h1>
+    <p>Hi ${escapeHtml(data.firstName)},</p>
+    <p>A new login to your Rentmaikar account was detected:</p>
+    <div class="info-box">
+      <p><strong>Device:</strong> ${escapeHtml(data.device)}</p>
+      ${data.location ? `<p><strong>Location:</strong> ${escapeHtml(data.location)}</p>` : ''}
+      <p><strong>Time:</strong> ${escapeHtml(data.time)}</p>
+    </div>
+    <p>If this was you, no action is needed. If you don't recognize this activity, please secure your account immediately:</p>
+    <a href="${data.dashboardUrl}" class="cta-button">Review Account Security →</a>
+  `;
+  return {
+    subject: "New login to your Rentmaikar account",
+    html: emailWrapper(content, "Login Alert"),
+    from: formatSenderEmail("verify"),
+  };
+};
+
+/**
+ * Account Deactivation Notice
+ */
+export const accountDeactivatedEmail = (data: {
+  firstName: string;
+  reason: string;
+  supportEmail?: string;
+}) => {
+  const content = `
+    <h1>Account Deactivated</h1>
+    <p>Hi ${escapeHtml(data.firstName)},</p>
+    <p>Your Rentmaikar account has been deactivated for the following reason:</p>
+    <div class="info-box"><p>${escapeHtml(data.reason)}</p></div>
+    <p>If you believe this was an error, please contact our support team at <strong>${data.supportEmail || 'support@rentmaikar.com'}</strong>.</p>
+  `;
+  return {
+    subject: "Your Rentmaikar account has been deactivated",
+    html: emailWrapper(content, "Account Deactivated"),
+    from: formatSenderEmail("admin"),
+  };
+};
+
 // ==================== TEMPLATE REGISTRY ====================
 
 export type EmailTemplate =
@@ -1425,4 +1526,8 @@ export type EmailTemplate =
   | 'negotiation_counter_offer'
   | 'negotiation_locked'
   | 'negotiation_modification_request'
-  | 'negotiation_modification_processed';
+  | 'negotiation_modification_processed'
+  | 'email_verification'
+  | 'password_reset'
+  | 'login_alert'
+  | 'account_deactivated';

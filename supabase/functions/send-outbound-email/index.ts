@@ -29,6 +29,17 @@ import {
   accidentAlertEmail,
   seasonalPromotionEmail,
   adminDailyReportEmail,
+  negotiationSubmittedEmail,
+  negotiationApprovedEmail,
+  negotiationRejectedEmail,
+  negotiationCounterOfferEmail,
+  negotiationLockedEmail,
+  negotiationModificationRequestEmail,
+  negotiationModificationProcessedEmail,
+  emailVerificationEmail,
+  passwordResetEmail,
+  loginAlertEmail,
+  accountDeactivatedEmail,
 } from "../_shared/email-templates.ts";
 
 const corsHeaders = {
@@ -60,6 +71,15 @@ function getSourceAddress(category: string, country?: string): string {
   }
   if (category === "support") {
     return formatSenderEmail("support");
+  }
+  if (category === "negotiation") {
+    return formatSenderEmail("negotiations");
+  }
+  if (category === "verification" || category === "auth") {
+    return formatSenderEmail("verify");
+  }
+  if (category === "notification") {
+    return formatSenderEmail("notifications");
   }
   return formatSenderEmail("noreply");
 }
@@ -97,6 +117,19 @@ function renderTemplate(
     accident_alert: accidentAlertEmail,
     seasonal_promotion: seasonalPromotionEmail,
     admin_daily_report: adminDailyReportEmail,
+    // Negotiation templates
+    negotiation_submitted: negotiationSubmittedEmail,
+    negotiation_approved: negotiationApprovedEmail,
+    negotiation_rejected: negotiationRejectedEmail,
+    negotiation_counter_offer: negotiationCounterOfferEmail,
+    negotiation_locked: negotiationLockedEmail,
+    negotiation_modification_request: negotiationModificationRequestEmail,
+    negotiation_modification_processed: negotiationModificationProcessedEmail,
+    // Auth & Verification templates
+    email_verification: emailVerificationEmail,
+    password_reset: passwordResetEmail,
+    login_alert: loginAlertEmail,
+    account_deactivated: accountDeactivatedEmail,
   };
 
   const fn = templateMap[templateName];
@@ -381,6 +414,10 @@ serve(async (req) => {
         "support_ticket_created", "support_ticket_response",
         "vehicle_shutdown", "accident_alert",
         "seasonal_promotion", "admin_daily_report",
+        "negotiation_submitted", "negotiation_approved", "negotiation_rejected",
+        "negotiation_counter_offer", "negotiation_locked",
+        "negotiation_modification_request", "negotiation_modification_processed",
+        "email_verification", "password_reset", "login_alert", "account_deactivated",
       ];
       return new Response(
         JSON.stringify({ templates }),
