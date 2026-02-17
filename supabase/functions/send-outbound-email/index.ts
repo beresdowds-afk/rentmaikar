@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
+import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import {
   welcomeDriverEmail,
   welcomeOwnerEmail,
@@ -306,6 +307,20 @@ serve(async (req) => {
 
       // Analytics
       await updateAnalytics(supabase, category, result.success ? "sent" : "failed");
+
+      // Log messaging event
+      await logMessagingEvent(supabase, {
+        channel: 'email',
+        provider: 'resend',
+        event_type: result.success ? 'sent' : 'failed',
+        direction: 'outbound',
+        recipient: to,
+        sender: fromAddress,
+        template_name: templateName,
+        provider_message_id: result.messageId,
+        error_message: result.error,
+        metadata: { category, priority },
+      });
 
       if (!result.success) {
         console.error(`Email to ${to} failed:`, result.error);

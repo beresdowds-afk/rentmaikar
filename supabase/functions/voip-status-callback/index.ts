@@ -14,6 +14,7 @@ import {
   getCallbackNumber,
   generateFollowUpSMS,
 } from "../_shared/voicemail-system.ts";
+import { logMessagingEvent } from "../_shared/messaging-events.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -49,6 +50,26 @@ const handleMessageStatus = async (
   if (!messageSid) {
     return new Response("Missing MessageSid", { status: 400 });
   }
+
+  // Log messaging event for delivery status
+  const channel = to?.startsWith("whatsapp:") ? "whatsapp" : "sms" as const;
+  const region = to?.replace("whatsapp:", "").startsWith("+234") ? "NIGERIA" : "USA";
+  await logMessagingEvent(supabase, {
+    channel,
+    provider: "twilio",
+    event_type: messageStatus === "delivered" ? "delivered"
+      : messageStatus === "read" ? "read"
+      : messageStatus === "failed" || messageStatus === "undelivered" ? "failed"
+      : messageStatus === "sent" ? "sent"
+      : "queued",
+    direction: "outbound",
+    recipient: to,
+    region,
+    provider_message_id: messageSid,
+    error_code: errorCode,
+    error_message: errorMessage,
+    raw_payload: { messageStatus, channelPrefix },
+  });
 
   // Update inbox_messages delivery metadata
   const { data: existingMsg } = await supabase
@@ -137,6 +158,27 @@ const handler = async (req: Request): Promise<Response> => {
     const answeredBy = formData.get('AnsweredBy') as string; // AMD result
 
     console.log('VoIP Status Callback:', { callSid, callStatus, duration, to, answeredBy });
+
+    // Log VoIP event
+    const voipEventType = callStatus === 'completed' ? 'completed'
+      : callStatus === 'failed' ? 'failed'
+      : callStatus === 'busy' ? 'busy'
+      : callStatus === 'no-answer' ? 'no_answer'
+      : callStatus === 'canceled' ? 'canceled'
+      : callStatus === 'in-progress' ? 'in_progress'
+      : callStatus === 'ringing' ? 'ringing'
+      : 'queued';
+    
+    await logMessagingEvent(supabase, {
+      channel: 'voip',
+      provider: 'twilio',
+      event_type: voipEventType as any,
+      direction: 'outbound',
+      recipient: to,
+      region: getRegionFromPhone(to || ''),
+      provider_message_id: callSid,
+      metadata: { call_status: callStatus, duration, answered_by: answeredBy },
+    });
 
     if (!callSid) {
       return new Response('Missing CallSid', { status: 400 });

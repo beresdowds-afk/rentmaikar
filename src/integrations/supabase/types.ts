@@ -1368,6 +1368,80 @@ export type Database = {
         }
         Relationships: []
       }
+      messaging_events: {
+        Row: {
+          channel: string
+          conversation_id: string | null
+          created_at: string
+          direction: string
+          error_code: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          message_id: string | null
+          metadata: Json | null
+          provider: string
+          provider_event_id: string | null
+          provider_message_id: string | null
+          raw_payload: Json | null
+          recipient: string | null
+          region: string | null
+          sender: string | null
+          template_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          channel: string
+          conversation_id?: string | null
+          created_at?: string
+          direction?: string
+          error_code?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          provider: string
+          provider_event_id?: string | null
+          provider_message_id?: string | null
+          raw_payload?: Json | null
+          recipient?: string | null
+          region?: string | null
+          sender?: string | null
+          template_name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          channel?: string
+          conversation_id?: string | null
+          created_at?: string
+          direction?: string
+          error_code?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          provider?: string
+          provider_event_id?: string | null
+          provider_message_id?: string | null
+          raw_payload?: Json | null
+          recipient?: string | null
+          region?: string | null
+          sender?: string | null
+          template_name?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messaging_events_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "inbox_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       owner_earnings: {
         Row: {
           amount: number
@@ -3261,15 +3335,20 @@ export type Database = {
           delivery_status: string
           direction: string
           error_message: string | null
+          event_count: number | null
           forwarded_at: string | null
           forwarded_message_id: string | null
           forwarded_to: string | null
           id: string
           interactive_reply: boolean | null
+          is_negotiation: boolean | null
           language: string | null
+          last_event_at: string | null
+          last_event_type: string | null
           message_body: string
           message_type: string
           metadata: Json | null
+          priority: string | null
           provider: string
           provider_message_id: string | null
           region: string
@@ -3287,15 +3366,20 @@ export type Database = {
           delivery_status?: string
           direction: string
           error_message?: string | null
+          event_count?: number | null
           forwarded_at?: string | null
           forwarded_message_id?: string | null
           forwarded_to?: string | null
           id?: string
           interactive_reply?: boolean | null
+          is_negotiation?: boolean | null
           language?: string | null
+          last_event_at?: string | null
+          last_event_type?: string | null
           message_body: string
           message_type?: string
           metadata?: Json | null
+          priority?: string | null
           provider: string
           provider_message_id?: string | null
           region: string
@@ -3313,15 +3397,20 @@ export type Database = {
           delivery_status?: string
           direction?: string
           error_message?: string | null
+          event_count?: number | null
           forwarded_at?: string | null
           forwarded_message_id?: string | null
           forwarded_to?: string | null
           id?: string
           interactive_reply?: boolean | null
+          is_negotiation?: boolean | null
           language?: string | null
+          last_event_at?: string | null
+          last_event_type?: string | null
           message_body?: string
           message_type?: string
           metadata?: Json | null
+          priority?: string | null
           provider?: string
           provider_message_id?: string | null
           region?: string
