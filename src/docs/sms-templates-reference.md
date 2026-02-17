@@ -52,6 +52,25 @@ const smsTemplates = {
 
   emergencyFollowUp: (eta) =>
     `Rentmaikar: EMERGENCY RESPONSE - Help dispatched to your location. ETA: ${eta}. Stay safe.`,
+
+  // ─── Price Negotiation SMS Templates ───
+  negotiationSubmitted: (vehicle, rate, frequency) =>
+    `Rentmaikar: Your ${frequency} rate negotiation for ${vehicle} (${rate}) has been submitted. We'll respond within 24h.`,
+
+  negotiationApproved: (vehicle, rate, frequency) =>
+    `Rentmaikar: Your negotiated ${frequency} rate for ${vehicle} has been approved: ${rate}. Rate is now active.`,
+
+  negotiationRejected: (vehicle) =>
+    `Rentmaikar: Your negotiation for ${vehicle} was declined. Submit a new request from your dashboard. Reply HELP for assistance.`,
+
+  negotiationCounterOffer: (vehicle, counter, frequency) =>
+    `Rentmaikar: Counter offer for ${vehicle}: ${counter}/${frequency}. Review and respond in your dashboard.`,
+
+  negotiationLocked: (vehicle, rate, frequency) =>
+    `Rentmaikar: Rate locked for ${vehicle}: ${rate}/${frequency}. Modifications require a formal request.`,
+
+  negotiationModProcessed: (vehicle, status, rate) =>
+    `Rentmaikar: Price modification for ${vehicle} ${status}. ${status === 'approved' ? `New rate: ${rate}` : 'Current rate unchanged.'}`,
 };
 ```
 

@@ -1166,6 +1166,228 @@ export const adminDailyReportEmail = (data: {
   };
 };
 
+// ==================== PRICE NEGOTIATION TEMPLATES ====================
+
+/**
+ * Negotiation Submitted Notification (Driver / Owner)
+ */
+export const negotiationSubmittedEmail = (data: {
+  firstName: string;
+  vehicleName: string;
+  requestedRate: number;
+  currency: 'USD' | 'NGN';
+  frequency: 'daily' | 'weekly';
+  userType: 'driver' | 'owner';
+  dashboardUrl: string;
+}) => {
+  const content = `
+    <div class="info-box">📋 Negotiation Submitted</div>
+    <h1>Your Price Negotiation Has Been Submitted</h1>
+    <p>Hi ${escapeHtml(data.firstName)}, we've received your ${data.frequency} rate negotiation request.</p>
+    <div class="info-box">
+      <div class="detail-row"><span class="detail-label">Vehicle</span><span class="detail-value">${escapeHtml(data.vehicleName)}</span></div>
+      <div class="detail-row"><span class="detail-label">Requested ${data.frequency} rate</span><span class="detail-value amount">${formatCurrency(data.requestedRate, data.currency)}</span></div>
+      <div class="detail-row" style="border-bottom:none;"><span class="detail-label">Role</span><span class="detail-value" style="text-transform:capitalize;">${data.userType}</span></div>
+    </div>
+    <p>Our admin team will review your request and respond within <strong>24 hours</strong>. You'll be notified of any updates via email and your preferred messaging channel.</p>
+    <a href="${data.dashboardUrl}" class="cta-button">View in Dashboard →</a>
+  `;
+  return {
+    subject: `Price Negotiation Submitted – ${data.vehicleName}`,
+    html: emailWrapper(content, "Negotiation Submitted"),
+    from: formatSenderEmail("noreply"),
+  };
+};
+
+/**
+ * Negotiation Approved Email
+ */
+export const negotiationApprovedEmail = (data: {
+  firstName: string;
+  vehicleName: string;
+  approvedRate: number;
+  currency: 'USD' | 'NGN';
+  frequency: 'daily' | 'weekly';
+  dashboardUrl: string;
+}) => {
+  const content = `
+    <div class="success-box">✅ Price Approved</div>
+    <h1>Your Negotiated Rate Has Been Approved!</h1>
+    <p>Great news, ${escapeHtml(data.firstName)}! Your price negotiation has been approved.</p>
+    <div class="info-box">
+      <div class="detail-row"><span class="detail-label">Vehicle</span><span class="detail-value">${escapeHtml(data.vehicleName)}</span></div>
+      <div class="detail-row" style="border-bottom:none;"><span class="detail-label">Approved ${data.frequency} rate</span><span class="detail-value amount">${formatCurrency(data.approvedRate, data.currency)}</span></div>
+    </div>
+    <p>This rate is now active on your rental. No further action is required.</p>
+    <a href="${data.dashboardUrl}" class="cta-button">View in Dashboard →</a>
+  `;
+  return {
+    subject: `✅ Price Approved – ${formatCurrency(data.approvedRate, data.currency)}/${data.frequency}`,
+    html: emailWrapper(content, "Negotiation Approved"),
+    from: formatSenderEmail("noreply"),
+  };
+};
+
+/**
+ * Negotiation Rejected Email
+ */
+export const negotiationRejectedEmail = (data: {
+  firstName: string;
+  vehicleName: string;
+  requestedRate: number;
+  currency: 'USD' | 'NGN';
+  frequency: 'daily' | 'weekly';
+  reason?: string;
+  dashboardUrl: string;
+}) => {
+  const content = `
+    <div class="error-box">❌ Negotiation Declined</div>
+    <h1>Your Price Negotiation Was Declined</h1>
+    <p>Hi ${escapeHtml(data.firstName)}, unfortunately your price negotiation for <strong>${escapeHtml(data.vehicleName)}</strong> was not approved.</p>
+    <div class="info-box">
+      <div class="detail-row"><span class="detail-label">Vehicle</span><span class="detail-value">${escapeHtml(data.vehicleName)}</span></div>
+      <div class="detail-row" style="border-bottom:none;"><span class="detail-label">Requested rate</span><span class="detail-value">${formatCurrency(data.requestedRate, data.currency)}/${data.frequency}</span></div>
+    </div>
+    ${data.reason ? `<div class="warning-box"><strong>Reason:</strong> ${escapeHtml(data.reason)}</div>` : ''}
+    <p>You're welcome to submit a new negotiation request with an updated rate from your dashboard.</p>
+    <a href="${data.dashboardUrl}" class="cta-button">Submit New Request →</a>
+  `;
+  return {
+    subject: `Negotiation Declined – ${data.vehicleName}`,
+    html: emailWrapper(content, "Negotiation Declined"),
+    from: formatSenderEmail("noreply"),
+  };
+};
+
+/**
+ * Negotiation Counter Offer Email
+ */
+export const negotiationCounterOfferEmail = (data: {
+  firstName: string;
+  vehicleName: string;
+  originalRate: number;
+  counterRate: number;
+  currency: 'USD' | 'NGN';
+  frequency: 'daily' | 'weekly';
+  dashboardUrl: string;
+}) => {
+  const content = `
+    <div class="warning-box">🔄 Counter Offer Received</div>
+    <h1>You Have a Counter Offer</h1>
+    <p>Hi ${escapeHtml(data.firstName)}, the admin has reviewed your negotiation for <strong>${escapeHtml(data.vehicleName)}</strong> and proposed a counter offer.</p>
+    <div class="info-box">
+      <div class="detail-row"><span class="detail-label">Your request</span><span class="detail-value">${formatCurrency(data.originalRate, data.currency)}/${data.frequency}</span></div>
+      <div class="detail-row" style="border-bottom:none;"><span class="detail-label">Counter offer</span><span class="detail-value amount">${formatCurrency(data.counterRate, data.currency)}/${data.frequency}</span></div>
+    </div>
+    <p>Please review the counter offer and respond in your dashboard.</p>
+    <a href="${data.dashboardUrl}" class="cta-button">Review Counter Offer →</a>
+  `;
+  return {
+    subject: `🔄 Counter Offer – ${data.vehicleName}`,
+    html: emailWrapper(content, "Counter Offer"),
+    from: formatSenderEmail("noreply"),
+  };
+};
+
+/**
+ * Negotiation Locked Email
+ */
+export const negotiationLockedEmail = (data: {
+  firstName: string;
+  vehicleName: string;
+  lockedRate: number;
+  currency: 'USD' | 'NGN';
+  frequency: 'daily' | 'weekly';
+  dashboardUrl: string;
+}) => {
+  const content = `
+    <div class="success-box">🔒 Price Locked</div>
+    <h1>Your Rental Rate Has Been Finalized</h1>
+    <p>Hi ${escapeHtml(data.firstName)}, the ${data.frequency} rate for <strong>${escapeHtml(data.vehicleName)}</strong> has been finalized and locked.</p>
+    <div class="info-box">
+      <div style="text-align:center;margin-bottom:20px;">
+        <p style="color:#64748b;font-size:14px;margin:0;">Locked ${data.frequency} rate</p>
+        <span class="amount">${formatCurrency(data.lockedRate, data.currency)}</span>
+      </div>
+    </div>
+    <div class="warning-box"><strong>Note:</strong> This rate cannot be modified without submitting a formal modification request for admin approval.</div>
+    <a href="${data.dashboardUrl}" style="color:#2563eb;">View in Dashboard →</a>
+  `;
+  return {
+    subject: `🔒 Rate Locked – ${formatCurrency(data.lockedRate, data.currency)}/${data.frequency}`,
+    html: emailWrapper(content, "Price Locked"),
+    from: formatSenderEmail("noreply"),
+  };
+};
+
+/**
+ * Modification Request Email
+ */
+export const negotiationModificationRequestEmail = (data: {
+  firstName: string;
+  vehicleName: string;
+  currentRate: number;
+  requestedRate: number;
+  currency: 'USD' | 'NGN';
+  reason: string;
+  dashboardUrl: string;
+}) => {
+  const content = `
+    <div class="info-box">📝 Modification Request</div>
+    <h1>Price Modification Request Submitted</h1>
+    <p>Hi ${escapeHtml(data.firstName)}, your request to modify the locked rate for <strong>${escapeHtml(data.vehicleName)}</strong> has been submitted.</p>
+    <div class="info-box">
+      <div class="detail-row"><span class="detail-label">Current rate</span><span class="detail-value">${formatCurrency(data.currentRate, data.currency)}</span></div>
+      <div class="detail-row"><span class="detail-label">Requested rate</span><span class="detail-value amount">${formatCurrency(data.requestedRate, data.currency)}</span></div>
+      <div class="detail-row" style="border-bottom:none;"><span class="detail-label">Reason</span><span class="detail-value">${escapeHtml(data.reason)}</span></div>
+    </div>
+    <p>An admin will review this request and you'll be notified of the outcome.</p>
+    <a href="${data.dashboardUrl}" style="color:#2563eb;">View in Dashboard →</a>
+  `;
+  return {
+    subject: `Price Modification Request – ${data.vehicleName}`,
+    html: emailWrapper(content, "Modification Request"),
+    from: formatSenderEmail("noreply"),
+  };
+};
+
+/**
+ * Modification Processed Email
+ */
+export const negotiationModificationProcessedEmail = (data: {
+  firstName: string;
+  vehicleName: string;
+  newRate: number;
+  currency: 'USD' | 'NGN';
+  frequency: 'daily' | 'weekly';
+  approved: boolean;
+  adminResponse?: string;
+  dashboardUrl: string;
+}) => {
+  const approved = data.approved;
+  const content = `
+    <div class="${approved ? 'success-box' : 'error-box'}">${approved ? '✅' : '❌'} Modification ${approved ? 'Approved' : 'Denied'}</div>
+    <h1>Price Modification ${approved ? 'Approved' : 'Denied'}</h1>
+    <p>Hi ${escapeHtml(data.firstName)}, your price modification request for <strong>${escapeHtml(data.vehicleName)}</strong> has been ${approved ? 'approved' : 'denied'}.</p>
+    ${approved ? `
+    <div class="info-box">
+      <div style="text-align:center;">
+        <p style="color:#64748b;font-size:14px;margin:0;">New ${data.frequency} rate</p>
+        <span class="amount">${formatCurrency(data.newRate, data.currency)}</span>
+      </div>
+    </div>
+    <p>The updated rate is now active on your rental.</p>` : `
+    <p>The current rate remains unchanged.</p>`}
+    ${data.adminResponse ? `<div class="info-box"><p><strong>Admin response:</strong> ${escapeHtml(data.adminResponse)}</p></div>` : ''}
+    <a href="${data.dashboardUrl}" class="cta-button">View in Dashboard →</a>
+  `;
+  return {
+    subject: `${approved ? '✅' : '❌'} Modification ${approved ? 'Approved' : 'Denied'} – ${data.vehicleName}`,
+    html: emailWrapper(content, approved ? "Modification Approved" : "Modification Denied"),
+    from: formatSenderEmail("noreply"),
+  };
+};
+
 // ==================== TEMPLATE REGISTRY ====================
 
 export type EmailTemplate =
@@ -1196,4 +1418,11 @@ export type EmailTemplate =
   | 'vehicle_shutdown'
   | 'accident_alert'
   | 'seasonal_promotion'
-  | 'admin_daily_report';
+  | 'admin_daily_report'
+  | 'negotiation_submitted'
+  | 'negotiation_approved'
+  | 'negotiation_rejected'
+  | 'negotiation_counter_offer'
+  | 'negotiation_locked'
+  | 'negotiation_modification_request'
+  | 'negotiation_modification_processed';

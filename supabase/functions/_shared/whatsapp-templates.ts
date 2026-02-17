@@ -434,6 +434,121 @@ Vehicle: ${data.vehicleName}
 
 🔧 Action required: ${data.actionRequired}`;
 
+// ==================== PRICE NEGOTIATION FLOWS ====================
+
+export const negotiationSubmittedDriverMessage = (data: {
+  firstName: string;
+  vehicleName: string;
+  requestedRate: number;
+  currency: 'USD' | 'NGN';
+}) => `📋 Negotiation Submitted – Rentmaikar
+
+Hi ${data.firstName}, your price negotiation request has been submitted.
+
+🚗 Vehicle: ${data.vehicleName}
+💰 Requested daily rate: ${formatCurrency(data.requestedRate, data.currency)}
+
+Our team will review your request and respond within 24 hours. You'll be notified of any updates.
+
+Reply *STATUS* to check your rental details.`;
+
+export const negotiationSubmittedOwnerMessage = (data: {
+  firstName: string;
+  vehicleName: string;
+  requestedRate: number;
+  currency: 'USD' | 'NGN';
+}) => `📋 Negotiation Submitted – Rentmaikar
+
+Hi ${data.firstName}, your weekly rate negotiation for ${data.vehicleName} has been submitted.
+
+💰 Requested weekly rate: ${formatCurrency(data.requestedRate, data.currency)}
+
+Our admin team will review and respond within 24 hours.`;
+
+export const negotiationApprovedMessage = (data: {
+  firstName: string;
+  vehicleName: string;
+  approvedRate: number;
+  currency: 'USD' | 'NGN';
+  frequency: 'daily' | 'weekly';
+}) => `✅ Price Approved – Rentmaikar
+
+Great news, ${data.firstName}! Your negotiated rate has been approved.
+
+🚗 Vehicle: ${data.vehicleName}
+💰 Approved ${data.frequency} rate: ${formatCurrency(data.approvedRate, data.currency)}
+
+This rate is now locked and active on your rental.`;
+
+export const negotiationRejectedMessage = (data: {
+  firstName: string;
+  vehicleName: string;
+  reason?: string;
+}) => `❌ Negotiation Declined – Rentmaikar
+
+Hi ${data.firstName}, your price negotiation for ${data.vehicleName} has been declined.
+
+${data.reason ? `📝 Reason: ${data.reason}\n` : ''}You may submit a new negotiation request from your dashboard.
+
+Reply *HELP* for assistance.`;
+
+export const negotiationCounterOfferMessage = (data: {
+  firstName: string;
+  vehicleName: string;
+  originalRate: number;
+  counterRate: number;
+  currency: 'USD' | 'NGN';
+  frequency: 'daily' | 'weekly';
+}) => `🔄 Counter Offer – Rentmaikar
+
+Hi ${data.firstName}, the admin has proposed a counter offer for ${data.vehicleName}.
+
+Your request: ${formatCurrency(data.originalRate, data.currency)}/${data.frequency}
+Counter offer: ${formatCurrency(data.counterRate, data.currency)}/${data.frequency}
+
+Please review and respond in your dashboard.`;
+
+export const negotiationLockedMessage = (data: {
+  firstName: string;
+  vehicleName: string;
+  lockedRate: number;
+  currency: 'USD' | 'NGN';
+  frequency: 'daily' | 'weekly';
+}) => `🔒 Price Locked – Rentmaikar
+
+Hi ${data.firstName}, the ${data.frequency} rate for ${data.vehicleName} has been finalized and locked.
+
+💰 Locked rate: ${formatCurrency(data.lockedRate, data.currency)}/${data.frequency}
+
+This rate cannot be modified without submitting a new modification request.`;
+
+export const negotiationModificationRequestedMessage = (data: {
+  firstName: string;
+  vehicleName: string;
+  currentRate: number;
+  requestedRate: number;
+  currency: 'USD' | 'NGN';
+}) => `📝 Modification Request – Rentmaikar
+
+Hi ${data.firstName}, a price modification has been requested for ${data.vehicleName}.
+
+Current rate: ${formatCurrency(data.currentRate, data.currency)}
+Requested rate: ${formatCurrency(data.requestedRate, data.currency)}
+
+Admin will review this request shortly.`;
+
+export const negotiationModificationProcessedMessage = (data: {
+  firstName: string;
+  vehicleName: string;
+  newRate: number;
+  currency: 'USD' | 'NGN';
+  approved: boolean;
+}) => `${data.approved ? '✅' : '❌'} Modification ${data.approved ? 'Approved' : 'Denied'} – Rentmaikar
+
+Hi ${data.firstName}, your price modification request for ${data.vehicleName} has been ${data.approved ? 'approved' : 'denied'}.
+
+${data.approved ? `💰 New rate: ${formatCurrency(data.newRate, data.currency)}\n\nThe updated rate is now active.` : 'The current rate remains unchanged. Contact support if you have questions.'}`;
+
 // ==================== NIGERIA-SPECIFIC TEMPLATES ====================
 
 export const policeReportRequestPidgin = (data: {
@@ -636,6 +751,80 @@ export const structuredTemplates: Record<string, StructuredTemplate> = {
     ],
   },
 
+  // ─── Price Negotiation Templates ───
+  negotiation_submitted: {
+    name: 'negotiation_submitted',
+    language: 'en_US',
+    components: [
+      { type: 'header', parameters: [{ type: 'text', text: '📋 Negotiation Submitted' }] },
+      { type: 'body', parameters: [
+        { type: 'text', text: '{{1}}' }, // Vehicle name
+        { type: 'text', text: '{{2}}' }, // Requested rate
+        { type: 'text', text: '{{3}}' }, // Frequency
+      ]},
+    ],
+  },
+  negotiation_approved: {
+    name: 'negotiation_approved',
+    language: 'en_US',
+    components: [
+      { type: 'header', parameters: [{ type: 'text', text: '✅ Price Approved' }] },
+      { type: 'body', parameters: [
+        { type: 'text', text: '{{1}}' }, // Vehicle name
+        { type: 'text', text: '{{2}}' }, // Approved rate
+        { type: 'text', text: '{{3}}' }, // Frequency
+      ]},
+    ],
+  },
+  negotiation_rejected: {
+    name: 'negotiation_rejected',
+    language: 'en_US',
+    components: [
+      { type: 'header', parameters: [{ type: 'text', text: '❌ Negotiation Declined' }] },
+      { type: 'body', parameters: [
+        { type: 'text', text: '{{1}}' }, // Vehicle name
+        { type: 'text', text: '{{2}}' }, // Reason
+      ]},
+    ],
+  },
+  negotiation_counter_offer: {
+    name: 'negotiation_counter_offer',
+    language: 'en_US',
+    components: [
+      { type: 'header', parameters: [{ type: 'text', text: '🔄 Counter Offer' }] },
+      { type: 'body', parameters: [
+        { type: 'text', text: '{{1}}' }, // Vehicle name
+        { type: 'text', text: '{{2}}' }, // Original rate
+        { type: 'text', text: '{{3}}' }, // Counter rate
+      ]},
+      { type: 'button', sub_type: 'quick_reply', index: 0, parameters: [{ type: 'payload', payload: 'REVIEW_OFFER' }] },
+    ],
+  },
+  negotiation_locked: {
+    name: 'negotiation_locked',
+    language: 'en_US',
+    components: [
+      { type: 'header', parameters: [{ type: 'text', text: '🔒 Price Locked' }] },
+      { type: 'body', parameters: [
+        { type: 'text', text: '{{1}}' }, // Vehicle name
+        { type: 'text', text: '{{2}}' }, // Locked rate
+        { type: 'text', text: '{{3}}' }, // Frequency
+      ]},
+    ],
+  },
+  negotiation_modification: {
+    name: 'negotiation_modification',
+    language: 'en_US',
+    components: [
+      { type: 'header', parameters: [{ type: 'text', text: '📝 Modification Update' }] },
+      { type: 'body', parameters: [
+        { type: 'text', text: '{{1}}' }, // Vehicle name
+        { type: 'text', text: '{{2}}' }, // Status (approved/denied)
+        { type: 'text', text: '{{3}}' }, // New rate or reason
+      ]},
+    ],
+  },
+
   // ─── Nigeria-Specific (Pidgin / Yoruba) ───
   police_report_request_pidgin: {
     name: 'police_report_request_pidgin',
@@ -795,4 +984,12 @@ export type WhatsAppMessageType =
   | 'vehicle_assigned'
   | 'vehicle_shutdown_warning'
   | 'police_report_pidgin'
-  | 'police_report_yoruba';
+  | 'police_report_yoruba'
+  | 'negotiation_submitted_driver'
+  | 'negotiation_submitted_owner'
+  | 'negotiation_approved'
+  | 'negotiation_rejected'
+  | 'negotiation_counter_offer'
+  | 'negotiation_locked'
+  | 'negotiation_modification_requested'
+  | 'negotiation_modification_processed';

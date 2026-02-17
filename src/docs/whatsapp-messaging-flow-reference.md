@@ -134,6 +134,7 @@ All templates are defined in `supabase/functions/_shared/whatsapp-templates.ts` 
 - **Overdue (Weekly)**: 12h, 24h, 36h final warning
 - **Lockdown**: Vehicle locked, Vehicle unlocked, Plan downgraded
 - **Self-Service**: Menu, Payment link, Rental status, Help, Driver welcome
+- **Price Negotiation**: Submitted (driver/owner), Approved, Rejected, Counter Offer, Locked, Modification Requested, Modification Processed
 
 ## Edge Function Config (config.toml)
 
