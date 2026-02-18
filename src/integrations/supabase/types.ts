@@ -128,6 +128,41 @@ export type Database = {
         }
         Relationships: []
       }
+      agreement_renewal_alerts: {
+        Row: {
+          agreement_id: string
+          alert_type: string
+          created_at: string
+          id: string
+          sent_at: string
+          sent_to: Json | null
+        }
+        Insert: {
+          agreement_id: string
+          alert_type: string
+          created_at?: string
+          id?: string
+          sent_at?: string
+          sent_to?: Json | null
+        }
+        Update: {
+          agreement_id?: string
+          alert_type?: string
+          created_at?: string
+          id?: string
+          sent_at?: string
+          sent_to?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreement_renewal_alerts_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "legal_agreements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_key_usage_log: {
         Row: {
           api_key_id: string
@@ -1376,11 +1411,16 @@ export type Database = {
           driver_signed_at: string | null
           email_sent_at: string | null
           email_sent_to: Json | null
+          expires_at: string | null
           id: string
+          is_compulsory: boolean
           owner_id: string
           owner_signature: string | null
           owner_signed_at: string | null
+          parent_agreement_id: string | null
           pdf_url: string | null
+          renewal_count: number
+          renewal_notified_at: string | null
           status: string
           updated_at: string
           vehicle_id: string | null
@@ -1398,11 +1438,16 @@ export type Database = {
           driver_signed_at?: string | null
           email_sent_at?: string | null
           email_sent_to?: Json | null
+          expires_at?: string | null
           id?: string
+          is_compulsory?: boolean
           owner_id: string
           owner_signature?: string | null
           owner_signed_at?: string | null
+          parent_agreement_id?: string | null
           pdf_url?: string | null
+          renewal_count?: number
+          renewal_notified_at?: string | null
           status?: string
           updated_at?: string
           vehicle_id?: string | null
@@ -1420,16 +1465,29 @@ export type Database = {
           driver_signed_at?: string | null
           email_sent_at?: string | null
           email_sent_to?: Json | null
+          expires_at?: string | null
           id?: string
+          is_compulsory?: boolean
           owner_id?: string
           owner_signature?: string | null
           owner_signed_at?: string | null
+          parent_agreement_id?: string | null
           pdf_url?: string | null
+          renewal_count?: number
+          renewal_notified_at?: string | null
           status?: string
           updated_at?: string
           vehicle_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "legal_agreements_parent_agreement_id_fkey"
+            columns: ["parent_agreement_id"]
+            isOneToOne: false
+            referencedRelation: "legal_agreements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messaging_events: {
         Row: {

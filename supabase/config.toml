@@ -91,6 +91,9 @@ verify_jwt = false
 [functions.vehicle-return-reminder]
 verify_jwt = false
 
+[functions.process-agreement-renewals]
+verify_jwt = false
+
 [functions.vehicle-shutdown-warning]
 verify_jwt = false
 
