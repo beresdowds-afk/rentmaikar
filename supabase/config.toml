@@ -1,57 +1,70 @@
 project_id = "bwvocmhcledbwqlpcswp"
 
-[functions.recording-status-callback]
-verify_jwt = false
-
-[functions.generate-api-key]
-verify_jwt = false
-
-[functions.process-expiry-notifications]
-verify_jwt = false
-
-[functions.whatsapp-commands]
-verify_jwt = false
-
-[functions.process-predue-reminders]
-verify_jwt = false
-
-[functions.process-payment-unlock]
-verify_jwt = false
+# ─────────────────────────────────────────────
+# Inbound webhooks from external providers
+# (must be unauthenticated — providers can't send JWT)
+# ─────────────────────────────────────────────
 
 [functions.twilio-webhook]
 verify_jwt = false
 
-[functions.voip-status-callback]
+[functions.termii-webhook]
 verify_jwt = false
 
 [functions.email-webhook]
 verify_jwt = false
 
-[functions.send-2fa-code]
+[functions.recording-status-callback]
 verify_jwt = false
 
-[functions.generate-daily-tasks]
+[functions.voip-status-callback]
 verify_jwt = false
 
-[functions.voice-call-request]
-verify_jwt = false
+# ─────────────────────────────────────────────
+# IVR / Voice flows (called by Twilio TwiML — no JWT)
+# ─────────────────────────────────────────────
 
 [functions.expiry-notification-ivr]
 verify_jwt = false
 
-[functions.vehicle-return-reminder]
-verify_jwt = false
-
 [functions.vehicle-return-ivr]
-verify_jwt = false
-
-[functions.vehicle-shutdown-warning]
 verify_jwt = false
 
 [functions.shutdown-warning-ivr]
 verify_jwt = false
 
 [functions.payment-default-ivr]
+verify_jwt = false
+
+[functions.voice-call-request]
+verify_jwt = false
+
+# ─────────────────────────────────────────────
+# Self-service command processors (webhook-triggered)
+# ─────────────────────────────────────────────
+
+[functions.whatsapp-commands]
+verify_jwt = false
+
+[functions.sms-commands]
+verify_jwt = false
+
+# ─────────────────────────────────────────────
+# IoT / Device triggers (called by embedded hardware)
+# ─────────────────────────────────────────────
+
+[functions.iot-accident-detection]
+verify_jwt = false
+
+[functions.generate-vehicle-mqtt-token]
+verify_jwt = false
+
+# ─────────────────────────────────────────────
+# Scheduled / cron-triggered background jobs
+# (called by pg_cron or external schedulers — no JWT)
+# ─────────────────────────────────────────────
+
+[functions.generate-daily-tasks]
 verify_jwt = false
 
 [functions.process-daily-debits]
@@ -63,14 +76,69 @@ verify_jwt = false
 [functions.process-inspection-reminders]
 verify_jwt = false
 
-[functions.termii-webhook]
+[functions.process-expiry-notifications]
 verify_jwt = false
 
-[functions.sms-commands]
+[functions.process-predue-reminders]
 verify_jwt = false
+
+[functions.process-payment-unlock]
+verify_jwt = false
+
+[functions.process-payment-defaults]
+verify_jwt = false
+
+[functions.vehicle-return-reminder]
+verify_jwt = false
+
+[functions.vehicle-shutdown-warning]
+verify_jwt = false
+
+# ─────────────────────────────────────────────
+# Email tracking pixel (called by email clients — no JWT)
+# ─────────────────────────────────────────────
 
 [functions.email-tracking]
 verify_jwt = false
 
+# ─────────────────────────────────────────────
+# Public-facing / pre-auth functions
+# (user may not be authenticated yet)
+# ─────────────────────────────────────────────
+
+[functions.send-2fa-code]
+verify_jwt = false
+
+[functions.verify-phone]
+verify_jwt = false
+
+[functions.generate-api-key]
+verify_jwt = false
+
 [functions.send-outbound-email]
 verify_jwt = false
+
+[functions.process-call-recording]
+verify_jwt = false
+
+[functions.get-recording-url]
+verify_jwt = false
+
+# ─────────────────────────────────────────────
+# Authenticated functions (verify_jwt = true — default, no entry needed)
+# Listed here for documentation only:
+#
+#   end-voip-call              — requires logged-in admin/support
+#   initiate-voip-call         — requires logged-in admin/support
+#   generate-inspection-pdf    — requires logged-in user
+#   send-agreement-email       — requires logged-in admin
+#   send-approval-notification — requires logged-in admin
+#   send-email-reply           — requires logged-in admin
+#   send-inbox-reply           — requires logged-in admin
+#   send-incident-notification — requires logged-in admin
+#   send-order-notification    — requires logged-in admin
+#   send-price-notification    — requires logged-in admin
+#   send-shipping-notification — requires logged-in admin
+#   send-sms-notification      — requires logged-in admin
+#   send-task-notification     — requires logged-in admin
+# ─────────────────────────────────────────────
