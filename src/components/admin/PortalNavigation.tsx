@@ -1,4 +1,4 @@
-import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail, Wifi, Activity } from "lucide-react";
+import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail, Wifi, Activity, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -54,6 +54,7 @@ export const erpTabs: PortalTab[] = [
   { value: "webhooks", label: "Webhooks", icon: <Webhook className="h-4 w-4" /> },
   { value: "api-endpoints", label: "API Endpoints", icon: <Code className="h-4 w-4" /> },
   { value: "security", label: "Security", icon: <Shield className="h-4 w-4" /> },
+  { value: "cron-jobs", label: "Cron Jobs", icon: <Clock className="h-4 w-4" /> },
   { value: "settings", label: "Regional Operations", icon: <Settings className="h-4 w-4" /> },
 ];
 
