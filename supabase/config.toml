@@ -98,6 +98,19 @@ verify_jwt = false
 verify_jwt = false
 
 # ─────────────────────────────────────────────
+# ElevenLabs TTS (public audio generation — no JWT needed)
+# ─────────────────────────────────────────────
+
+[functions.elevenlabs-tts]
+verify_jwt = false
+
+[functions.elevenlabs-tts-stream]
+verify_jwt = false
+
+[functions.elevenlabs-voices]
+verify_jwt = false
+
+# ─────────────────────────────────────────────
 # Email tracking pixel (called by email clients — no JWT)
 # ─────────────────────────────────────────────
 
