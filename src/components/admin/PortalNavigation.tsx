@@ -1,4 +1,4 @@
-import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail } from "lucide-react";
+import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail, Wifi, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -39,6 +39,8 @@ export const erpTabs: PortalTab[] = [
   { value: "assets", label: "Assets Registry", icon: <ClipboardList className="h-4 w-4" />, dataTour: "admin-assets" },
   { value: "pickup-locations", label: "Pickup Locations", icon: <MapPin className="h-4 w-4" /> },
   { value: "hardware", label: "Hardware", icon: <Cpu className="h-4 w-4" /> },
+  { value: "mqtt-credentials", label: "MQTT Credentials", icon: <Wifi className="h-4 w-4" /> },
+  { value: "driver-behavior", label: "Driver Behavior", icon: <Activity className="h-4 w-4" /> },
   { value: "device-orders", label: "Device Orders", icon: <Package className="h-4 w-4" />, dataTour: "admin-device-orders" },
   { value: "device-revenue", label: "Device Revenue", icon: <BarChart3 className="h-4 w-4" /> },
   { value: "pricing", label: "Category Pricing", icon: <Tag className="h-4 w-4" /> },
