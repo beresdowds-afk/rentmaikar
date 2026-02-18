@@ -31,8 +31,10 @@ import { VerificationGate } from '@/components/onboarding/VerificationGate';
 import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { DriverBehaviorLogs } from '@/components/admin/DriverBehaviorLogs';
 import {
   Car,
+  Activity,
   CreditCard,
   Calendar,
   MapPin,
@@ -245,6 +247,10 @@ export default function DriverDashboard() {
                 Agreements
               </TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="telemetry" className="flex items-center gap-1">
+                <Activity className="h-3 w-3" />
+                Driving Score
+              </TabsTrigger>
               <TabsTrigger value="call-history" className="flex items-center gap-1">
                 <Phone className="h-3 w-3" />
                 Call History
@@ -506,6 +512,11 @@ export default function DriverDashboard() {
 
               {/* Notification Preferences */}
               <NotificationPreferences phoneVerified={phoneVerified} />
+            </TabsContent>
+
+            {/* Driving Score / Telemetry Tab */}
+            <TabsContent value="telemetry" className="space-y-6">
+              <DriverBehaviorLogs driverIdFilter={user?.id} />
             </TabsContent>
           </Tabs>
         </div>

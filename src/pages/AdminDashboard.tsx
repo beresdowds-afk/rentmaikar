@@ -61,6 +61,8 @@ import { useCurrencyConversion } from "@/hooks/useCurrencyConversion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminDailyTodoList } from "@/components/admin/AdminDailyTodoList";
+import { VehicleMqttCredentials } from "@/components/admin/VehicleMqttCredentials";
+import { DriverBehaviorLogs } from "@/components/admin/DriverBehaviorLogs";
 
 // Mock financial data - in production, this would come from the database
 const mockFinancialData = {
@@ -660,6 +662,8 @@ const AdminDashboard = () => {
               {activeTab === 'assets' && <AssetsRegistry />}
               {activeTab === 'pickup-locations' && <VehiclePickupManagement />}
               {activeTab === 'hardware' && <HardwareManagement />}
+              {activeTab === 'mqtt-credentials' && <VehicleMqttCredentials readOnly={false} />}
+              {activeTab === 'driver-behavior' && <DriverBehaviorLogs />}
               {activeTab === 'device-orders' && <IoTDeviceOrders />}
               {activeTab === 'device-revenue' && <DeviceOrderRevenue />}
               {activeTab === 'pricing' && <CategoryPricing />}

@@ -546,6 +546,69 @@ export type Database = {
           },
         ]
       }
+      driver_behavior_logs: {
+        Row: {
+          accel_x: number | null
+          accel_y: number | null
+          accel_z: number | null
+          created_at: string
+          driver_id: string | null
+          event_type: string
+          heading: number | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          mqtt_topic: string | null
+          raw_payload: Json | null
+          rental_id: string | null
+          severity: string
+          speed_at_event: number | null
+          threshold_g: number | null
+          total_g: number | null
+          vehicle_id: string
+        }
+        Insert: {
+          accel_x?: number | null
+          accel_y?: number | null
+          accel_z?: number | null
+          created_at?: string
+          driver_id?: string | null
+          event_type: string
+          heading?: number | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          mqtt_topic?: string | null
+          raw_payload?: Json | null
+          rental_id?: string | null
+          severity?: string
+          speed_at_event?: number | null
+          threshold_g?: number | null
+          total_g?: number | null
+          vehicle_id: string
+        }
+        Update: {
+          accel_x?: number | null
+          accel_y?: number | null
+          accel_z?: number | null
+          created_at?: string
+          driver_id?: string | null
+          event_type?: string
+          heading?: number | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          mqtt_topic?: string | null
+          raw_payload?: Json | null
+          rental_id?: string | null
+          severity?: string
+          speed_at_event?: number | null
+          threshold_g?: number | null
+          total_g?: number | null
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
       email_analytics: {
         Row: {
           category: string
@@ -1441,6 +1504,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mqtt_telemetry_logs: {
+        Row: {
+          data_type: string
+          id: string
+          mqtt_topic: string | null
+          payload: Json
+          received_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          data_type: string
+          id?: string
+          mqtt_topic?: string | null
+          payload: Json
+          received_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          data_type?: string
+          id?: string
+          mqtt_topic?: string | null
+          payload?: Json
+          received_at?: string
+          vehicle_id?: string
+        }
+        Relationships: []
       }
       owner_earnings: {
         Row: {
@@ -3705,6 +3795,92 @@ export type Database = {
           vehicle_id?: string
         }
         Relationships: []
+      }
+      vehicle_mqtt_credentials: {
+        Row: {
+          broker_port: number
+          broker_url: string
+          client_id: string
+          created_at: string
+          id: string
+          installed_at: string | null
+          installed_by: string | null
+          iot_device_id: string | null
+          is_active: boolean
+          jwt_expires_at: string | null
+          jwt_issued_at: string | null
+          jwt_token: string | null
+          last_connected_at: string | null
+          mqtt_username: string
+          notes: string | null
+          password_hash: string
+          password_hint: string | null
+          publish_topics: string[]
+          subscribe_topics: string[]
+          tls_enabled: boolean
+          topic_prefix: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          broker_port?: number
+          broker_url?: string
+          client_id: string
+          created_at?: string
+          id?: string
+          installed_at?: string | null
+          installed_by?: string | null
+          iot_device_id?: string | null
+          is_active?: boolean
+          jwt_expires_at?: string | null
+          jwt_issued_at?: string | null
+          jwt_token?: string | null
+          last_connected_at?: string | null
+          mqtt_username: string
+          notes?: string | null
+          password_hash: string
+          password_hint?: string | null
+          publish_topics?: string[]
+          subscribe_topics?: string[]
+          tls_enabled?: boolean
+          topic_prefix: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          broker_port?: number
+          broker_url?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          installed_at?: string | null
+          installed_by?: string | null
+          iot_device_id?: string | null
+          is_active?: boolean
+          jwt_expires_at?: string | null
+          jwt_issued_at?: string | null
+          jwt_token?: string | null
+          last_connected_at?: string | null
+          mqtt_username?: string
+          notes?: string | null
+          password_hash?: string
+          password_hint?: string | null
+          publish_topics?: string[]
+          subscribe_topics?: string[]
+          tls_enabled?: boolean
+          topic_prefix?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_mqtt_credentials_iot_device_id_fkey"
+            columns: ["iot_device_id"]
+            isOneToOne: false
+            referencedRelation: "iot_devices"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vehicle_recalls: {
         Row: {
