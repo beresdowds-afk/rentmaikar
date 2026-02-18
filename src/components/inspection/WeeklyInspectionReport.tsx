@@ -7,10 +7,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PhotoUploadSlot } from './PhotoUploadSlot';
 import { PhotoZoomModal } from './PhotoZoomModal';
-import { useWeeklyInspection, PHOTO_TYPES, getWeekStartDate, getMonthStartDate, type PhotoType } from '@/hooks/useWeeklyInspection';
-import { useRegion } from '@/contexts/RegionContext';
-import { Camera, Calendar, Clock, CheckCircle, AlertTriangle, History, Loader2 } from 'lucide-react';
-import { format, parseISO, addDays, endOfMonth, isAfter } from 'date-fns';
+import { useWeeklyInspection, PHOTO_TYPES, get30DayPeriodStart, type PhotoType } from '@/hooks/useWeeklyInspection';
+import { Camera, Calendar, Clock, CheckCircle, AlertTriangle, History, Loader2, FileText, ShieldAlert } from 'lucide-react';
+import { format, parseISO, addDays, isAfter, isBefore } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface WeeklyInspectionReportProps {
@@ -24,19 +23,12 @@ export function WeeklyInspectionReport({
   vehicleId,
   vehicleName,
   ownerId = null,
-  region: propRegion,
 }: WeeklyInspectionReportProps) {
-  const { country } = useRegion();
-  const region = propRegion || country;
-  
-  // USA = monthly, Nigeria = weekly
-  const isMonthly = region === 'USA';
-  const periodLabel = isMonthly ? 'Monthly' : 'Weekly';
-
   const {
     reports,
     currentReport,
     settings,
+    activeAgreement,
     isLoading,
     uploadPhoto,
     createOrUpdateReport,
@@ -47,20 +39,28 @@ export function WeeklyInspectionReport({
   const [zoomModalOpen, setZoomModalOpen] = useState(false);
   const [zoomPhotoIndex, setZoomPhotoIndex] = useState(0);
 
-  // Calculate progress
-  const uploadedCount = PHOTO_TYPES.filter(pt => 
+  // ── 30-day period logic ──
+  const periodStart = get30DayPeriodStart(activeAgreement?.expires_at);
+  const dueDate = activeAgreement?.expires_at
+    ? parseISO(activeAgreement.expires_at)
+    : addDays(parseISO(periodStart), 30);
+
+  const sevenDaysBeforeDue = addDays(dueDate, -7);
+  const now = new Date();
+
+  const isInReminderWindow = isAfter(now, sevenDaysBeforeDue) && isBefore(now, dueDate);
+  const isOverdue = isAfter(now, dueDate) && !currentReport?.submitted_at;
+  const isSubmitted = !!currentReport?.submitted_at;
+  const hasActiveAgreement = !!activeAgreement;
+
+  // Photo progress
+  const uploadedCount = PHOTO_TYPES.filter(pt =>
     currentReport?.[pt.key as keyof typeof currentReport]
   ).length;
   const progress = (uploadedCount / PHOTO_TYPES.length) * 100;
   const isComplete = uploadedCount === PHOTO_TYPES.length;
-  const isSubmitted = !!currentReport?.submitted_at;
 
-  // Check if overdue - different logic for monthly vs weekly
-  const periodStart = isMonthly ? getMonthStartDate() : getWeekStartDate();
-  const dueDate = isMonthly 
-    ? endOfMonth(parseISO(periodStart)) 
-    : addDays(parseISO(periodStart), 6);
-  const isOverdue = isAfter(new Date(), dueDate) && !isSubmitted;
+  const renewalNum = activeAgreement ? (activeAgreement.renewal_count ?? 0) + 1 : null;
 
   const handlePhotoUpload = async (photoType: PhotoType, file: File) => {
     setUploadingType(photoType);
@@ -95,14 +95,15 @@ export function WeeklyInspectionReport({
     }));
   };
 
+  // ── Disabled state ──
   if (!settings?.feature_enabled) {
     return (
       <Card>
         <CardContent className="py-12 text-center">
           <Camera className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-lg font-medium">Weekly Reports Disabled</p>
+          <p className="text-lg font-medium">Inspection Reports Disabled</p>
           <p className="text-muted-foreground">
-            The weekly inspection report feature is currently disabled.
+            The vehicle inspection report feature is currently disabled.
           </p>
         </CardContent>
       </Card>
@@ -120,6 +121,22 @@ export function WeeklyInspectionReport({
     );
   }
 
+  // ── No active agreement — block inspection ──
+  if (!hasActiveAgreement) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center space-y-3">
+          <ShieldAlert className="h-12 w-12 mx-auto text-amber-500" />
+          <p className="text-lg font-medium">No Active Rental Agreement</p>
+          <p className="text-muted-foreground text-sm max-w-md mx-auto">
+            A compulsory 30-day rental agreement must be active before you can submit a vehicle inspection report.
+            Please contact your administrator to initiate or sign your agreement.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header Card */}
@@ -129,18 +146,30 @@ export function WeeklyInspectionReport({
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Camera className="h-5 w-5" />
-                {periodLabel} Vehicle Inspection
+                30-Day Vehicle Inspection
               </CardTitle>
-              <CardDescription>{vehicleName}</CardDescription>
+              <CardDescription className="flex items-center gap-2 mt-1">
+                {vehicleName}
+                {renewalNum && (
+                  <Badge variant="outline" className="text-xs">
+                    <FileText className="h-3 w-3 mr-1" />
+                    Agreement Renewal #{renewalNum}
+                  </Badge>
+                )}
+              </CardDescription>
             </div>
-            <div className="flex items-center gap-3">
-              <Badge variant={isOverdue ? 'destructive' : isSubmitted ? 'default' : 'secondary'}>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Badge variant={isOverdue ? 'destructive' : isSubmitted ? 'default' : isInReminderWindow ? 'outline' : 'secondary'}
+                className={cn(isInReminderWindow && !isSubmitted && 'border-amber-500 text-amber-600')}
+              >
                 {isSubmitted ? (
                   <><CheckCircle className="h-3 w-3 mr-1" /> Submitted</>
                 ) : isOverdue ? (
                   <><AlertTriangle className="h-3 w-3 mr-1" /> Overdue</>
+                ) : isInReminderWindow ? (
+                  <><Clock className="h-3 w-3 mr-1" /> Due in {Math.ceil((dueDate.getTime() - now.getTime()) / 86400000)} days</>
                 ) : (
-                  <><Clock className="h-3 w-3 mr-1" /> Due {format(dueDate, isMonthly ? 'MMM d' : 'EEEE')}</>
+                  <><Clock className="h-3 w-3 mr-1" /> Due {format(dueDate, 'MMM d')}</>
                 )}
               </Badge>
               <Badge variant="outline">
@@ -149,13 +178,17 @@ export function WeeklyInspectionReport({
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Calendar className="h-3.5 w-3.5" />
+              Period: {format(parseISO(periodStart), 'MMM d')} – {format(dueDate, 'MMM d, yyyy')}
+            </span>
+          </div>
+          <div className="space-y-1">
             <div className="flex justify-between text-sm">
               <span>Upload Progress</span>
-              <span className={cn(
-                isComplete ? 'text-green-600 font-medium' : 'text-muted-foreground'
-              )}>
+              <span className={cn(isComplete ? 'text-green-600 font-medium' : 'text-muted-foreground')}>
                 {Math.round(progress)}%
               </span>
             </div>
@@ -164,12 +197,24 @@ export function WeeklyInspectionReport({
         </CardContent>
       </Card>
 
+      {/* 7-day reminder alert */}
+      {isInReminderWindow && !isSubmitted && (
+        <Alert className="border-yellow-500/40 bg-yellow-500/10">
+          <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+          <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+            <strong>Reminder:</strong> Your 30-day inspection report is due in{' '}
+            {Math.ceil((dueDate.getTime() - now.getTime()) / 86400000)} days on{' '}
+            {format(dueDate, 'MMMM d')}. Upload all 10 photos and submit before your agreement renews.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Overdue Alert */}
       {isOverdue && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Your {periodLabel.toLowerCase()} inspection report is overdue. Please upload all required photos and submit immediately.
+            Your 30-day inspection report is overdue. Please upload all required photos and submit immediately to avoid service interruption.
           </AlertDescription>
         </Alert>
       )}
@@ -184,7 +229,6 @@ export function WeeklyInspectionReport({
         </TabsList>
 
         <TabsContent value="upload" className="space-y-6">
-          {/* Photo Grid */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Required Photos</CardTitle>
@@ -212,7 +256,6 @@ export function WeeklyInspectionReport({
             </CardContent>
           </Card>
 
-          {/* Submit Button */}
           {!isSubmitted && (
             <Card>
               <CardContent className="pt-6">
@@ -220,19 +263,19 @@ export function WeeklyInspectionReport({
                   <div>
                     <p className="font-medium">Ready to Submit?</p>
                     <p className="text-sm text-muted-foreground">
-                      {isComplete 
-                        ? `All photos uploaded. Submit your ${periodLabel.toLowerCase()} report.`
+                      {isComplete
+                        ? 'All photos uploaded. Submit your 30-day inspection report.'
                         : `Upload ${PHOTO_TYPES.length - uploadedCount} more photo(s) to complete.`
                       }
                     </p>
                   </div>
-                  <Button 
+                  <Button
                     onClick={handleSubmit}
                     disabled={!isComplete}
                     className="w-full sm:w-auto"
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
-                    Submit {periodLabel} Report
+                    Submit 30-Day Report
                   </Button>
                 </div>
               </CardContent>
@@ -243,7 +286,7 @@ export function WeeklyInspectionReport({
             <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
-                Your {periodLabel.toLowerCase()} inspection report was submitted on{' '}
+                Your 30-day inspection report was submitted on{' '}
                 {format(new Date(currentReport!.submitted_at!), 'MMM d, yyyy h:mm a')}.
                 {currentReport?.status === 'pending' && ' Awaiting owner review.'}
               </AlertDescription>
@@ -264,10 +307,10 @@ export function WeeklyInspectionReport({
               ) : (
                 <div className="space-y-3">
                   {reports.map((report) => {
-                    const photoCount = PHOTO_TYPES.filter(pt => 
+                    const photoCount = PHOTO_TYPES.filter(pt =>
                       report[pt.key as keyof typeof report]
                     ).length;
-                    
+
                     return (
                       <div
                         key={report.id}
@@ -279,10 +322,10 @@ export function WeeklyInspectionReport({
                           </div>
                           <div>
                             <p className="font-medium">
-                              Week of {format(parseISO(report.week_start_date), 'MMM d, yyyy')}
+                              Period from {format(parseISO(report.week_start_date), 'MMM d, yyyy')}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {report.submitted_at 
+                              {report.submitted_at
                                 ? `Submitted ${format(new Date(report.submitted_at), 'MMM d, h:mm a')}`
                                 : 'Not submitted'
                               }
@@ -291,11 +334,11 @@ export function WeeklyInspectionReport({
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{photoCount}/10 Photos</Badge>
-                          <Badge 
+                          <Badge
                             variant={
-                              report.status === 'approved' || report.status === 'completed' 
-                                ? 'default' 
-                                : report.status === 'pending' 
+                              report.status === 'approved' || report.status === 'completed'
+                                ? 'default'
+                                : report.status === 'pending'
                                   ? 'secondary'
                                   : 'destructive'
                             }
@@ -313,7 +356,6 @@ export function WeeklyInspectionReport({
         </TabsContent>
       </Tabs>
 
-      {/* Zoom Modal */}
       <PhotoZoomModal
         isOpen={zoomModalOpen}
         onClose={() => setZoomModalOpen(false)}
