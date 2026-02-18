@@ -44,6 +44,13 @@ export interface ReportSettings {
   updated_at: string;
 }
 
+export interface ActiveAgreement {
+  id: string;
+  expires_at: string;
+  renewal_count: number;
+  status: string;
+}
+
 export const PHOTO_TYPES = [
   { key: 'photo_front_view', label: 'Front View', description: 'Front of vehicle' },
   { key: 'photo_back_view', label: 'Back View', description: 'Rear of vehicle' },
@@ -59,15 +66,36 @@ export const PHOTO_TYPES = [
 
 export type PhotoType = typeof PHOTO_TYPES[number]['key'];
 
+/**
+ * Returns the start of the current 30-day inspection period based on the agreement's expiry.
+ * If no agreement, falls back to the 1st of the current month.
+ */
+export function get30DayPeriodStart(agreementExpiresAt?: string | null): string {
+  if (agreementExpiresAt) {
+    const expiry = new Date(agreementExpiresAt);
+    const start = new Date(expiry);
+    start.setDate(expiry.getDate() - 30);
+    start.setHours(0, 0, 0, 0);
+    return start.toISOString().split('T')[0];
+  }
+  // Fallback: 1st of current month
+  const d = new Date();
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().split('T')[0];
+}
+
+/** @deprecated Use get30DayPeriodStart instead */
 export function getWeekStartDate(date: Date = new Date()): string {
   const d = new Date(date);
   const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday as start
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   d.setDate(diff);
   d.setHours(0, 0, 0, 0);
   return d.toISOString().split('T')[0];
 }
 
+/** @deprecated Use get30DayPeriodStart instead */
 export function getMonthStartDate(date: Date = new Date()): string {
   const d = new Date(date);
   d.setDate(1);
@@ -75,15 +103,19 @@ export function getMonthStartDate(date: Date = new Date()): string {
   return d.toISOString().split('T')[0];
 }
 
+/** @deprecated */
 export function getPeriodStartDate(frequency: 'weekly' | 'monthly', date: Date = new Date()): string {
   return frequency === 'monthly' ? getMonthStartDate(date) : getWeekStartDate(date);
 }
 
-export function useWeeklyInspection(vehicleId?: string) {
+export function useWeeklyInspection(vehicleId?: string, driverId?: string) {
   const { user } = useAuth();
+  const effectiveDriverId = driverId || user?.id;
+
   const [reports, setReports] = useState<InspectionReport[]>([]);
   const [currentReport, setCurrentReport] = useState<InspectionReport | null>(null);
   const [settings, setSettings] = useState<ReportSettings | null>(null);
+  const [activeAgreement, setActiveAgreement] = useState<ActiveAgreement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchSettings = async () => {
@@ -91,36 +123,48 @@ export function useWeeklyInspection(vehicleId?: string) {
       .from('weekly_report_settings')
       .select('*')
       .single();
-    
     if (data && !error) {
       setSettings(data as ReportSettings);
     }
   };
 
+  const fetchActiveAgreement = async () => {
+    if (!effectiveDriverId) return;
+    const { data } = await supabase
+      .from('legal_agreements')
+      .select('id, expires_at, renewal_count, status')
+      .eq('driver_id', effectiveDriverId)
+      .eq('is_compulsory', true)
+      .in('status', ['active', 'pending_signatures'])
+      .order('expires_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setActiveAgreement(data || null);
+  };
+
   const fetchReports = async () => {
-    if (!user) return;
-    
+    if (!effectiveDriverId) return;
     setIsLoading(true);
     try {
       let query = supabase
         .from('weekly_inspection_reports')
         .select('*')
+        .eq('driver_id', effectiveDriverId)
         .order('week_start_date', { ascending: false });
-      
+
       if (vehicleId) {
         query = query.eq('vehicle_id', vehicleId);
       }
-      
+
       const { data, error } = await query;
-      
       if (error) throw error;
-      
+
       const typedData = (data || []) as InspectionReport[];
       setReports(typedData);
-      
-      // Find current week's report
-      const currentWeek = getWeekStartDate();
-      const current = typedData.find(r => r.week_start_date === currentWeek);
+
+      // Find current 30-day period report
+      const periodStart = get30DayPeriodStart(activeAgreement?.expires_at);
+      const current = typedData.find(r => r.week_start_date >= periodStart);
       setCurrentReport(current || null);
     } catch (error) {
       console.error('Error fetching inspection reports:', error);
@@ -134,26 +178,26 @@ export function useWeeklyInspection(vehicleId?: string) {
     photoType: PhotoType,
     file: File
   ): Promise<string | null> => {
-    if (!user) return null;
-    
-    const weekStart = getWeekStartDate();
+    if (!effectiveDriverId) return null;
+
+    const periodStart = get30DayPeriodStart(activeAgreement?.expires_at);
     const fileExt = file.name.split('.').pop();
-    const filePath = `${user.id}/${vehicleId}/${weekStart}/${photoType}.${fileExt}`;
-    
+    const filePath = `${effectiveDriverId}/${vehicleId}/${periodStart}/${photoType}.${fileExt}`;
+
     const { error: uploadError } = await supabase.storage
       .from('weekly-inspection-photos')
       .upload(filePath, file, { upsert: true });
-    
+
     if (uploadError) {
       console.error('Upload error:', uploadError);
       toast.error('Failed to upload photo');
       return null;
     }
-    
+
     const { data: { publicUrl } } = supabase.storage
       .from('weekly-inspection-photos')
       .getPublicUrl(filePath);
-    
+
     return publicUrl;
   };
 
@@ -163,22 +207,20 @@ export function useWeeklyInspection(vehicleId?: string) {
     photoType: PhotoType,
     photoUrl: string
   ) => {
-    if (!user) return null;
-    
-    const weekStart = getWeekStartDate();
+    if (!effectiveDriverId) return null;
+
+    const periodStart = get30DayPeriodStart(activeAgreement?.expires_at);
     const timestamp = new Date().toISOString();
-    
-    // Check if report exists
+
     const { data: existing } = await supabase
       .from('weekly_inspection_reports')
       .select('*')
       .eq('vehicle_id', vehicleId)
-      .eq('driver_id', user.id)
-      .eq('week_start_date', weekStart)
+      .eq('driver_id', effectiveDriverId)
+      .eq('week_start_date', periodStart)
       .single();
-    
+
     if (existing) {
-      // Update existing report
       const currentTimestamps = (existing.photo_timestamps as Record<string, string>) || {};
       const { data, error } = await supabase
         .from('weekly_inspection_reports')
@@ -189,37 +231,36 @@ export function useWeeklyInspection(vehicleId?: string) {
         .eq('id', existing.id)
         .select()
         .single();
-      
+
       if (error) {
         console.error('Update error:', error);
         toast.error('Failed to save photo');
         return null;
       }
-      
+
       setCurrentReport(data as InspectionReport);
       return data;
     } else {
-      // Create new report
       const { data, error } = await supabase
         .from('weekly_inspection_reports')
         .insert({
           vehicle_id: vehicleId,
-          driver_id: user.id,
+          driver_id: effectiveDriverId,
           owner_id: ownerId,
-          week_start_date: weekStart,
+          week_start_date: periodStart,
           [photoType]: photoUrl,
           photo_timestamps: { [photoType]: timestamp },
           status: 'pending',
         })
         .select()
         .single();
-      
+
       if (error) {
         console.error('Insert error:', error);
         toast.error('Failed to create report');
         return null;
       }
-      
+
       setCurrentReport(data as InspectionReport);
       return data;
     }
@@ -230,13 +271,13 @@ export function useWeeklyInspection(vehicleId?: string) {
       .from('weekly_inspection_reports')
       .update({ submitted_at: new Date().toISOString() })
       .eq('id', reportId);
-    
+
     if (error) {
       toast.error('Failed to submit report');
       return false;
     }
-    
-    toast.success('Weekly inspection report submitted!');
+
+    toast.success('30-day inspection report submitted!');
     fetchReports();
     return true;
   };
@@ -251,7 +292,7 @@ export function useWeeklyInspection(vehicleId?: string) {
       recall: 'recall_requested',
       reassignment: 'reassignment_requested',
     };
-    
+
     const { error } = await supabase
       .from('weekly_inspection_reports')
       .update({
@@ -261,12 +302,12 @@ export function useWeeklyInspection(vehicleId?: string) {
         status: statusMap[action],
       })
       .eq('id', reportId);
-    
+
     if (error) {
       toast.error('Failed to submit review');
       return false;
     }
-    
+
     toast.success(action === 'approved' ? 'Report approved!' : `Vehicle ${action} requested`);
     fetchReports();
     return true;
@@ -277,60 +318,65 @@ export function useWeeklyInspection(vehicleId?: string) {
     decision: string,
     notes: string
   ) => {
-    if (!user) return false;
-    
+    if (!effectiveDriverId) return false;
+
     const { error } = await supabase
       .from('weekly_inspection_reports')
       .update({
         admin_reviewed_at: new Date().toISOString(),
         admin_decision: decision,
         admin_notes: notes,
-        admin_id: user.id,
+        admin_id: effectiveDriverId,
         status: decision === 'approved' ? 'completed' : decision,
       })
       .eq('id', reportId);
-    
+
     if (error) {
       toast.error('Failed to submit decision');
       return false;
     }
-    
+
     toast.success('Decision recorded');
     fetchReports();
     return true;
   };
 
   const updateSettings = async (enabled: boolean) => {
-    if (!user) return false;
-    
+    if (!effectiveDriverId) return false;
+
     const { error } = await supabase
       .from('weekly_report_settings')
       .update({
         feature_enabled: enabled,
-        updated_by: user.id,
+        updated_by: effectiveDriverId,
         updated_at: new Date().toISOString(),
       })
       .eq('id', settings?.id);
-    
+
     if (error) {
       toast.error('Failed to update settings');
       return false;
     }
-    
+
     setSettings(prev => prev ? { ...prev, feature_enabled: enabled } : null);
-    toast.success(`Weekly reports ${enabled ? 'enabled' : 'disabled'}`);
+    toast.success(`Inspection reports ${enabled ? 'enabled' : 'disabled'}`);
     return true;
   };
 
   useEffect(() => {
     fetchSettings();
+    fetchActiveAgreement();
+  }, [effectiveDriverId]);
+
+  useEffect(() => {
     fetchReports();
-  }, [user, vehicleId]);
+  }, [effectiveDriverId, vehicleId, activeAgreement]);
 
   return {
     reports,
     currentReport,
     settings,
+    activeAgreement,
     isLoading,
     uploadPhoto,
     createOrUpdateReport,
@@ -355,7 +401,7 @@ export function useAllInspectionReports() {
         .from('weekly_inspection_reports')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
       setReports((data || []) as InspectionReport[]);
     } catch (error) {
