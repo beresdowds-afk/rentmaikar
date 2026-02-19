@@ -15,7 +15,7 @@ const HeroSection = () => {
     if (commaIdx === -1) return text;
     const boldPart = text.slice(0, commaIdx);
     const rest = text.slice(commaIdx);
-    return <><span className="font-black">{boldPart}</span>{rest}</>;
+    return <><span className="font-black text-xl uppercase tracking-wide">{boldPart}</span>{rest}</>;
   };
 
   return (
