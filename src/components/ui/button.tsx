@@ -26,6 +26,8 @@ const buttonVariants = cva(
           "bg-accent text-accent-foreground shadow-glow hover:shadow-lg hover:bg-accent/90 active:scale-[0.98] font-bold",
         heroOutline:
           "border-2 border-white/80 bg-white/10 backdrop-blur-sm text-white hover:bg-white hover:text-primary font-bold",
+        heroCTAGreen:
+          "bg-[hsl(142_72%_38%)] text-white shadow-lg hover:bg-[hsl(142_72%_32%)] active:scale-[0.98] font-bold border-0",
         whatsapp:
           "bg-[hsl(142_70%_45%)] text-white shadow-md hover:bg-[hsl(142_70%_40%)] hover:shadow-lg",
         sms:

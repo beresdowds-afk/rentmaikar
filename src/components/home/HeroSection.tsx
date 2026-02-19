@@ -9,13 +9,23 @@ const HeroSection = () => {
   const { country, whatsappNumber, smsNumber } = useRegion();
   const content = getHeroContent(country);
 
-  // Bold the role word ("Drivers" / "Owners") in button text
+  // Bold the role word ("Drivers" / "Owners") in button text, add "here" as second line
   const renderCTALabel = (text: string) => {
     const commaIdx = text.indexOf(",");
-    if (commaIdx === -1) return text;
+    if (commaIdx === -1) return (
+      <span className="flex flex-col items-start leading-tight">
+        <span>{text}</span>
+        <span className="text-xs font-normal opacity-80 tracking-normal normal-case">here</span>
+      </span>
+    );
     const boldPart = text.slice(0, commaIdx);
-    const rest = text.slice(commaIdx);
-    return <><span className="font-black text-xl uppercase tracking-wide">{boldPart}</span>{rest}</>;
+    const rest = text.slice(commaIdx + 1).trim();
+    return (
+      <span className="flex flex-col items-start leading-tight">
+        <span className="font-black text-3xl uppercase tracking-wide">{boldPart}</span>
+        <span className="text-sm font-normal opacity-80">{rest} — <em>here</em></span>
+      </span>
+    );
   };
 
   return (
@@ -33,36 +43,9 @@ const HeroSection = () => {
       {/* Content */}
       <div className="relative z-10 container mx-auto px-4 py-20 pt-32">
         <div className="max-w-2xl animate-slide-up">
-          <span className="inline-block px-4 py-2 rounded-full bg-accent/20 text-accent text-sm font-medium mb-6 backdrop-blur-sm">
-            {content.badge}
-          </span>
-          
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white mb-6 leading-tight">
-            {content.headline}{" "}
-            <span className="text-accent">{content.highlightedWord}</span>
-          </h1>
-          
-          <p className="text-lg md:text-xl text-white/80 mb-8 leading-relaxed">
-            {content.description}
-          </p>
 
-          {/* CTA Buttons - always show both */}
-          <div className="flex flex-wrap gap-4 mb-8">
-            <Link to="/driver/register">
-              <Button variant="hero" size="xl" className="gap-2">
-                {renderCTALabel(content.primaryCta)}
-                <ArrowRight className="w-5 h-5" />
-              </Button>
-            </Link>
-            <Link to="/owner/register">
-              <Button variant="heroOutline" size="xl" className="gap-2">
-                {renderCTALabel(content.secondaryCta)}
-              </Button>
-            </Link>
-          </div>
-
-          {/* Contact Buttons */}
-          <div className="flex flex-wrap gap-3">
+          {/* Contact Buttons - top of hero content */}
+          <div className="flex flex-wrap gap-3 mb-6">
             <a
               href={`https://wa.me/${whatsappNumber}`}
               target="_blank"
@@ -79,6 +62,35 @@ const HeroSection = () => {
                 {content.smsCta}
               </Button>
             </a>
+          </div>
+
+          <span className="inline-block px-4 py-2 rounded-full bg-accent/20 text-accent text-sm font-medium mb-6 backdrop-blur-sm">
+            {content.badge}
+          </span>
+          
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white mb-6 leading-tight">
+            {content.headline}{" "}
+            <span className="text-accent">{content.highlightedWord}</span>
+          </h1>
+          
+          <p className="text-lg md:text-xl text-white/80 mb-8 leading-relaxed">
+            {content.description}
+          </p>
+
+          {/* CTA Buttons - always show both */}
+          <div className="flex flex-wrap gap-4">
+            <Link to="/driver/register">
+              <Button variant="heroCTAGreen" size="xl" className="gap-3 py-5">
+                {renderCTALabel(content.primaryCta)}
+                <ArrowRight className="w-5 h-5 flex-shrink-0" />
+              </Button>
+            </Link>
+            <Link to="/owner/register">
+              <Button variant="heroCTAGreen" size="xl" className="gap-3 py-5">
+                {renderCTALabel(content.secondaryCta)}
+                <ArrowRight className="w-5 h-5 flex-shrink-0" />
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
