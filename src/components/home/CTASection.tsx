@@ -14,7 +14,7 @@ const CTASection = () => {
     if (spaceIdx === -1) return text;
     const boldPart = text.slice(0, spaceIdx);
     const rest = text.slice(spaceIdx);
-    return <><span className="font-black">{boldPart}</span>{rest}</>;
+    return <><span className="font-black text-xl uppercase tracking-wide">{boldPart}</span>{rest}</>;
   };
 
   return (
