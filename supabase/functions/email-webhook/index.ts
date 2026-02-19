@@ -455,9 +455,55 @@ function getAcknowledgmentHtml(
   return { subject: t.subject, html };
 }
 
+// ─── Resend Webhook Signature Verification ───
+const verifyResendSignature = async (req: Request): Promise<boolean> => {
+  try {
+    const signature = req.headers.get('svix-signature') || req.headers.get('webhook-signature');
+    const webhookSecret = Deno.env.get('RESEND_WEBHOOK_SECRET');
+    
+    // If no secret is configured, skip verification (log warning)
+    if (!webhookSecret) {
+      console.warn('RESEND_WEBHOOK_SECRET not configured - skipping email webhook signature verification');
+      return true; // Allow through but log warning
+    }
+    
+    if (!signature) {
+      console.warn('Missing webhook signature header on email-webhook request');
+      return false;
+    }
+
+    const body = await req.clone().text();
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(webhookSecret);
+    const msgData = encoder.encode(body);
+
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    );
+    const sigBuffer = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+    const computed = btoa(String.fromCharCode(...new Uint8Array(sigBuffer)));
+
+    // Signature may be prefixed like "v1,<base64>" - check any part
+    return signature.includes(computed);
+  } catch {
+    return false;
+  }
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // ─── Email Webhook Signature Verification ───
+  if (req.method === "POST") {
+    const isValid = await verifyResendSignature(req);
+    if (!isValid) {
+      console.warn('Invalid email webhook signature - rejecting request');
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
   }
 
   try {
