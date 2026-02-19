@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { usePolicyVersions, usePolicyAcceptance } from '@/hooks/useFAQ';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
@@ -194,7 +195,7 @@ export function PolicyAcceptanceCheckbox({
                 <div 
                   className="whitespace-pre-wrap"
                   dangerouslySetInnerHTML={{ 
-                    __html: activeTerms.content.replace(/## /g, '<h2>').replace(/\n/g, '<br/>') 
+                    __html: DOMPurify.sanitize(activeTerms.content.replace(/## /g, '<h2>').replace(/\n/g, '<br/>')) 
                   }}
                 />
               )}
@@ -202,7 +203,7 @@ export function PolicyAcceptanceCheckbox({
                 <div 
                   className="whitespace-pre-wrap"
                   dangerouslySetInnerHTML={{ 
-                    __html: activePrivacy.content.replace(/## /g, '<h2>').replace(/\n/g, '<br/>') 
+                    __html: DOMPurify.sanitize(activePrivacy.content.replace(/## /g, '<h2>').replace(/\n/g, '<br/>')) 
                   }}
                 />
               )}
