@@ -31,7 +31,7 @@ const UserTypeSelector = () => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border shadow-lg py-4 px-4 animate-slide-up">
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border shadow-lg py-3 px-4 animate-slide-up">
       <div className="container mx-auto">
         <p className="text-center text-sm text-muted-foreground mb-3">{c.title}</p>
         <div className="flex justify-center gap-3">
