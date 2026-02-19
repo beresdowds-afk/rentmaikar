@@ -8,13 +8,23 @@ const CTASection = () => {
   const { country } = useRegion();
   const content = getCTAContent(country);
 
-  // Bold the first word ("Drivers" / "Owners") in button text
+  // Bold the first word ("Drivers" / "Owners") in button text, add "here" as second line
   const renderCTALabel = (text: string) => {
-    const spaceIdx = text.indexOf(",");
-    if (spaceIdx === -1) return text;
-    const boldPart = text.slice(0, spaceIdx);
-    const rest = text.slice(spaceIdx);
-    return <><span className="font-black text-xl uppercase tracking-wide">{boldPart}</span>{rest}</>;
+    const commaIdx = text.indexOf(",");
+    if (commaIdx === -1) return (
+      <span className="flex flex-col items-start leading-tight">
+        <span>{text}</span>
+        <span className="text-xs font-normal opacity-80">here</span>
+      </span>
+    );
+    const boldPart = text.slice(0, commaIdx);
+    const rest = text.slice(commaIdx + 1).trim();
+    return (
+      <span className="flex flex-col items-start leading-tight">
+        <span className="font-black text-3xl uppercase tracking-wide">{boldPart}</span>
+        <span className="text-sm font-normal opacity-80">{rest} — <em>here</em></span>
+      </span>
+    );
   };
 
   return (
@@ -38,9 +48,9 @@ const CTASection = () => {
               </p>
               
               <Link to="/driver/register">
-                <Button variant="heroOutline" size="lg" className="gap-2 group-hover:bg-white group-hover:text-primary transition-colors">
+                <Button variant="heroCTAGreen" size="lg" className="gap-3 py-5">
                   {renderCTALabel(content.driver.cta)}
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowRight className="w-5 h-5 flex-shrink-0" />
                 </Button>
               </Link>
             </div>
@@ -63,9 +73,9 @@ const CTASection = () => {
               </p>
               
               <Link to="/owner/register">
-                <Button variant="hero" size="lg" className="gap-2">
+                <Button variant="heroCTAGreen" size="lg" className="gap-3 py-5">
                   {renderCTALabel(content.owner.cta)}
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowRight className="w-5 h-5 flex-shrink-0" />
                 </Button>
               </Link>
             </div>
