@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MessageCircle, Phone, ArrowRight, X, LayoutDashboard, LogIn, LogOut, User, Building, Shield } from "lucide-react";
+import {
+  MessageCircle, Phone, ArrowRight, X,
+  LayoutDashboard, LogIn, LogOut, User, Building, Shield, Menu,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -29,7 +32,7 @@ const HeroSection = () => {
 
   return (
     <section className="relative w-full">
-      {/* Canva embed wrapper — overflow visible so dropdown isn't clipped */}
+      {/* Outer wrapper — overflow visible so dropdown escapes the clip */}
       <div
         style={{
           position: "relative",
@@ -45,7 +48,7 @@ const HeroSection = () => {
           marginBottom: "0.9em",
         }}
       >
-        {/* iframe — clipped independently */}
+        {/* iframe clipped to its own box */}
         <div
           style={{
             position: "absolute",
@@ -73,10 +76,9 @@ const HeroSection = () => {
           />
         </div>
 
-        {/* ════════════════════════════════
-            TRANSPARENT HOTSPOT OVERLAY
-            Children opt in with pointerEvents auto
-            ════════════════════════════════ */}
+        {/* ═══════════════════════════════════════════
+            OVERLAY LAYER — actual visible elements
+            ═══════════════════════════════════════════ */}
         <div
           style={{
             position: "absolute",
@@ -85,7 +87,7 @@ const HeroSection = () => {
             zIndex: 10,
           }}
         >
-          {/* Logo — top-left */}
+          {/* ── Logo hotspot (transparent — logo is part of the Canva design) ── */}
           <Link
             to="/"
             aria-label="Rentmaikar Home"
@@ -97,11 +99,10 @@ const HeroSection = () => {
               height: "8%",
               pointerEvents: "auto",
               borderRadius: 6,
-              /* debug: outline: "2px solid red", */
             }}
           />
 
-          {/* Hamburger / menu — top-right */}
+          {/* ── Menu button — overlaid visible card ── */}
           <button
             onClick={() => setMenuOpen((v) => !v)}
             aria-label="Toggle menu"
@@ -109,47 +110,17 @@ const HeroSection = () => {
               position: "absolute",
               top: "2%",
               right: "2%",
-              width: "10%",
-              height: "7%",
               pointerEvents: "auto",
-              background: "transparent",
-              border: "none",
               cursor: "pointer",
-              borderRadius: 6,
-            }}
-          />
-
-          {/* DRIVERS CTA — lower-left */}
-          <Link
-            to="/driver/register"
-            aria-label="Drivers register here"
-            style={{
-              position: "absolute",
-              bottom: "12%",
-              left: "5%",
-              width: "38%",
-              height: "10%",
-              pointerEvents: "auto",
               borderRadius: 8,
             }}
-          />
+            className="flex items-center gap-1.5 bg-background/90 backdrop-blur-sm border border-border px-3 py-2 shadow-md hover:bg-muted transition-colors"
+          >
+            {menuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            <span className="text-xs font-semibold">Menu</span>
+          </button>
 
-          {/* OWNERS CTA — lower-right */}
-          <Link
-            to="/owner/register"
-            aria-label="Owners list your car here"
-            style={{
-              position: "absolute",
-              bottom: "12%",
-              right: "5%",
-              width: "38%",
-              height: "10%",
-              pointerEvents: "auto",
-              borderRadius: 8,
-            }}
-          />
-
-          {/* WhatsApp — mid-left */}
+          {/* ── WhatsApp button — overlaid visible card ── */}
           <a
             href={`https://wa.me/${WHATSAPP_NUMBER}`}
             target="_blank"
@@ -157,37 +128,83 @@ const HeroSection = () => {
             aria-label="WhatsApp Us"
             style={{
               position: "absolute",
-              bottom: "24%",
+              bottom: "26%",
               left: "5%",
-              width: "40%",
-              height: "8%",
               pointerEvents: "auto",
-              borderRadius: 8,
             }}
-          />
+          >
+            <Button variant="whatsapp" size="sm" className="gap-1.5 shadow-lg">
+              <MessageCircle className="w-4 h-4" />
+              WhatsApp Us
+            </Button>
+          </a>
 
-          {/* SMS / Text — mid-right */}
+          {/* ── SMS button — overlaid visible card ── */}
           <a
             href={`sms:${SMS_NUMBER}`}
             aria-label="Text Us"
             style={{
               position: "absolute",
-              bottom: "24%",
+              bottom: "26%",
               right: "5%",
-              width: "40%",
-              height: "8%",
               pointerEvents: "auto",
-              borderRadius: 8,
             }}
-          />
+          >
+            <Button variant="sms" size="sm" className="gap-1.5 shadow-lg">
+              <Phone className="w-4 h-4" />
+              Text Us
+            </Button>
+          </a>
+
+          {/* ── DRIVERS CTA — overlaid visible card ── */}
+          <Link
+            to="/driver/register"
+            aria-label="Drivers register here"
+            style={{
+              position: "absolute",
+              bottom: "6%",
+              left: "5%",
+              width: "42%",
+              pointerEvents: "auto",
+            }}
+          >
+            <Button variant="heroCTAGreen" className="w-full gap-2 py-4 shadow-lg">
+              <span className="flex flex-col items-start leading-tight">
+                <span className="font-black text-xl uppercase tracking-wide">Drivers</span>
+                <span className="text-xs font-normal opacity-80">register — <em>here</em></span>
+              </span>
+              <ArrowRight className="w-4 h-4 flex-shrink-0 ml-auto" />
+            </Button>
+          </Link>
+
+          {/* ── OWNERS CTA — overlaid visible card ── */}
+          <Link
+            to="/owner/register"
+            aria-label="Owners list your car here"
+            style={{
+              position: "absolute",
+              bottom: "6%",
+              right: "5%",
+              width: "42%",
+              pointerEvents: "auto",
+            }}
+          >
+            <Button variant="heroCTAGreen" className="w-full gap-2 py-4 shadow-lg">
+              <span className="flex flex-col items-start leading-tight">
+                <span className="font-black text-xl uppercase tracking-wide">Owners</span>
+                <span className="text-xs font-normal opacity-80">list your car — <em>here</em></span>
+              </span>
+              <ArrowRight className="w-4 h-4 flex-shrink-0 ml-auto" />
+            </Button>
+          </Link>
         </div>
 
-        {/* Dropdown menu — rendered at z-50 so it appears above everything */}
+        {/* ── Dropdown menu (no animation, instant) ── */}
         {menuOpen && (
           <div
             style={{
               position: "absolute",
-              top: "10%",
+              top: "9%",
               right: "2%",
               zIndex: 200,
               pointerEvents: "auto",
@@ -204,18 +221,10 @@ const HeroSection = () => {
               </button>
             </div>
 
-            <Link to="/" onClick={() => setMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-muted text-sm font-medium">
-              Home
-            </Link>
-            <Link to="/catalogue/budget" onClick={() => setMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-muted text-sm font-medium">
-              Budget Cars
-            </Link>
-            <Link to="/catalogue/standard" onClick={() => setMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-muted text-sm font-medium">
-              Standard Cars
-            </Link>
-            <Link to="/catalogue/premium" onClick={() => setMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-muted text-sm font-medium">
-              Premium Cars
-            </Link>
+            <Link to="/" onClick={() => setMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-muted text-sm font-medium">Home</Link>
+            <Link to="/catalogue/budget" onClick={() => setMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-muted text-sm font-medium">Budget Cars</Link>
+            <Link to="/catalogue/standard" onClick={() => setMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-muted text-sm font-medium">Standard Cars</Link>
+            <Link to="/catalogue/premium" onClick={() => setMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-muted text-sm font-medium">Premium Cars</Link>
 
             <div className="border-t border-border pt-2 mt-1 flex flex-col gap-2">
               {!isLoading && user ? (
@@ -232,12 +241,7 @@ const HeroSection = () => {
                       </Button>
                     </Link>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full gap-2"
-                    onClick={handleSignOut}
-                  >
+                  <Button variant="ghost" size="sm" className="w-full gap-2" onClick={handleSignOut}>
                     <LogOut className="w-4 h-4" /> Sign Out
                   </Button>
                 </>
@@ -263,55 +267,6 @@ const HeroSection = () => {
             </div>
           </div>
         )}
-      </div>
-
-      {/* ── Below-embed interactive CTA row ── */}
-      <div className="bg-background py-6 px-4">
-        <div className="container mx-auto flex flex-col items-center gap-4">
-          {/* Contact buttons */}
-          <div className="flex flex-wrap justify-center gap-3">
-            <a
-              href={`https://wa.me/${WHATSAPP_NUMBER}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="whatsapp" size="lg" className="gap-2">
-                <MessageCircle className="w-5 h-5" /> WhatsApp Us
-              </Button>
-            </a>
-            <a href={`sms:${SMS_NUMBER}`}>
-              <Button variant="sms" size="lg" className="gap-2">
-                <Phone className="w-5 h-5" /> Text Us
-              </Button>
-            </a>
-          </div>
-
-          {/* Main CTAs */}
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link to="/driver/register">
-              <Button variant="heroCTAGreen" size="xl" className="gap-3 py-5">
-                <span className="flex flex-col items-start leading-tight">
-                  <span className="font-black text-3xl uppercase tracking-wide">Drivers</span>
-                  <span className="text-sm font-normal opacity-80">
-                    register — <em>here</em>
-                  </span>
-                </span>
-                <ArrowRight className="w-5 h-5 flex-shrink-0" />
-              </Button>
-            </Link>
-            <Link to="/owner/register">
-              <Button variant="heroCTAGreen" size="xl" className="gap-3 py-5">
-                <span className="flex flex-col items-start leading-tight">
-                  <span className="font-black text-3xl uppercase tracking-wide">Owners</span>
-                  <span className="text-sm font-normal opacity-80">
-                    list your car — <em>here</em>
-                  </span>
-                </span>
-                <ArrowRight className="w-5 h-5 flex-shrink-0" />
-              </Button>
-            </Link>
-          </div>
-        </div>
       </div>
     </section>
   );
