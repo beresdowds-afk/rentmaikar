@@ -177,7 +177,7 @@ const HeroSection = () => {
         <div className="text-center px-4">
           <p className="text-xl md:text-2xl font-bold text-gray-900 leading-snug drop-shadow-sm">
             "Your Journey, Our Wheels –{" "}
-            <span className="text-[hsl(142_72%_38%)]">Rent or List</span> with Confidence on Rentmaikar."
+            <span className="text-black">Rent or List</span> with Confidence on Rentmaikar."
           </p>
         </div>
 
