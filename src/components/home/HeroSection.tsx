@@ -1,104 +1,91 @@
 import { Link } from "react-router-dom";
 import { MessageCircle, Phone, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRegion } from "@/contexts/RegionContext";
-import { getHeroContent } from "@/lib/localized-content";
-import heroCar from "@/assets/hero-car.jpg";
+
+const WHATSAPP_NUMBER = "124078589931";
+const SMS_NUMBER = "124078589931";
 
 const HeroSection = () => {
-  const { country, whatsappNumber, smsNumber } = useRegion();
-  const content = getHeroContent(country);
-
-  // Bold the role word ("Drivers" / "Owners") in button text, add "here" as second line
-  const renderCTALabel = (text: string) => {
-    const commaIdx = text.indexOf(",");
-    if (commaIdx === -1) return (
-      <span className="flex flex-col items-start leading-tight">
-        <span>{text}</span>
-        <span className="text-xs font-normal opacity-80 tracking-normal normal-case">here</span>
-      </span>
-    );
-    const boldPart = text.slice(0, commaIdx);
-    const rest = text.slice(commaIdx + 1).trim();
-    return (
-      <span className="flex flex-col items-start leading-tight">
-        <span className="font-black text-3xl uppercase tracking-wide">{boldPart}</span>
-        <span className="text-sm font-normal opacity-80">{rest} — <em>here</em></span>
-      </span>
-    );
-  };
-
   return (
-    <section className="relative min-h-[90vh] flex items-center">
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0">
-        <img
-          src={heroCar}
-          alt="Premium rental car"
-          className="w-full h-full object-cover"
+    <section className="relative w-full" style={{ paddingTop: "64px" }}>
+      {/* Canva Embed */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: 0,
+          paddingTop: "96.817%",
+          paddingBottom: 0,
+          boxShadow: "0 2px 8px 0 rgba(63,69,81,0.16)",
+          overflow: "hidden",
+          borderRadius: 0,
+          willChange: "transform",
+        }}
+      >
+        <iframe
+          loading="lazy"
+          style={{
+            position: "absolute",
+            width: "100%",
+            height: "100%",
+            top: 0,
+            left: 0,
+            border: "none",
+            padding: 0,
+            margin: 0,
+          }}
+          src="https://www.canva.com/design/DAHB0MhNQG8/tgr0P0y88bZBexcV50g1GA/watch?embed"
+          allowFullScreen
+          allow="fullscreen"
+          title="Rentmaikar Hero"
         />
-        <div className="absolute inset-0 bg-gradient-overlay" />
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 py-20 pt-32">
-        <div className="max-w-2xl animate-slide-up">
+      {/* CTA Overlay — sits below the embed on mobile, overlaps on larger screens */}
+      <div className="bg-background py-8 px-4">
+        <div className="container mx-auto flex flex-col items-center gap-6">
 
-          {/* Contact Buttons - top of hero content */}
-          <div className="flex flex-wrap gap-3 mb-6">
+          {/* Contact Buttons */}
+          <div className="flex flex-wrap justify-center gap-3">
             <a
-              href={`https://wa.me/${whatsappNumber}`}
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
               target="_blank"
               rel="noopener noreferrer"
             >
               <Button variant="whatsapp" size="lg" className="gap-2">
                 <MessageCircle className="w-5 h-5" />
-                {content.whatsappCta}
+                WhatsApp Us
               </Button>
             </a>
-            <a href={`sms:${smsNumber}`}>
+            <a href={`sms:${SMS_NUMBER}`}>
               <Button variant="sms" size="lg" className="gap-2">
                 <Phone className="w-5 h-5" />
-                {content.smsCta}
+                Text Us
               </Button>
             </a>
           </div>
 
-          <span className="inline-block px-4 py-2 rounded-full bg-accent/20 text-accent text-sm font-medium mb-6 backdrop-blur-sm">
-            {content.badge}
-          </span>
-          
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white mb-6 leading-tight">
-            {content.headline}{" "}
-            <span className="text-accent">{content.highlightedWord}</span>
-          </h1>
-          
-          <p className="text-lg md:text-xl text-white/80 mb-8 leading-relaxed">
-            {content.description}
-          </p>
-
-          {/* CTA Buttons - always show both */}
-          <div className="flex flex-wrap gap-4">
+          {/* CTA Buttons */}
+          <div className="flex flex-wrap justify-center gap-4">
             <Link to="/driver/register">
               <Button variant="heroCTAGreen" size="xl" className="gap-3 py-5">
-                {renderCTALabel(content.primaryCta)}
+                <span className="flex flex-col items-start leading-tight">
+                  <span className="font-black text-3xl uppercase tracking-wide">Drivers</span>
+                  <span className="text-sm font-normal opacity-80">register — <em>here</em></span>
+                </span>
                 <ArrowRight className="w-5 h-5 flex-shrink-0" />
               </Button>
             </Link>
             <Link to="/owner/register">
               <Button variant="heroCTAGreen" size="xl" className="gap-3 py-5">
-                {renderCTALabel(content.secondaryCta)}
+                <span className="flex flex-col items-start leading-tight">
+                  <span className="font-black text-3xl uppercase tracking-wide">Owners</span>
+                  <span className="text-sm font-normal opacity-80">list your car — <em>here</em></span>
+                </span>
                 <ArrowRight className="w-5 h-5 flex-shrink-0" />
               </Button>
             </Link>
           </div>
-        </div>
-      </div>
-
-      {/* Scroll Indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 animate-bounce">
-        <div className="w-8 h-12 rounded-full border-2 border-white/40 flex items-start justify-center pt-2">
-          <div className="w-1.5 h-3 bg-white/60 rounded-full" />
         </div>
       </div>
     </section>
