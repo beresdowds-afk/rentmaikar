@@ -87,29 +87,29 @@ const HeroSection = () => {
             zIndex: 10,
           }}
         >
-          {/* ── Logo hotspot (transparent — logo is part of the Canva design) ── */}
+          {/* ── Logo hotspot — top-left, transparent over Canva logo ── */}
           <Link
             to="/"
             aria-label="Rentmaikar Home"
             style={{
               position: "absolute",
-              top: "2%",
-              left: "2%",
-              width: "22%",
-              height: "8%",
+              top: "22%",
+              left: "13%",
+              width: "60%",
+              height: "9%",
               pointerEvents: "auto",
               borderRadius: 6,
             }}
           />
 
-          {/* ── Menu button — overlaid visible card ── */}
+          {/* ── Menu button — top-right ── */}
           <button
             onClick={() => setMenuOpen((v) => !v)}
             aria-label="Toggle menu"
             style={{
               position: "absolute",
-              top: "2%",
-              right: "2%",
+              top: "23%",
+              right: "4%",
               pointerEvents: "auto",
               cursor: "pointer",
               borderRadius: 8,
@@ -120,7 +120,49 @@ const HeroSection = () => {
             <span className="text-xs font-semibold">Menu</span>
           </button>
 
-          {/* ── WhatsApp button — overlaid visible card ── */}
+          {/* ── DRIVERS CTA — left card, upper-middle ── */}
+          <Link
+            to="/driver/register"
+            aria-label="Drivers register here"
+            style={{
+              position: "absolute",
+              top: "36%",
+              left: "13%",
+              width: "38%",
+              pointerEvents: "auto",
+            }}
+          >
+            <Button variant="heroCTAGreen" className="w-full gap-2 py-4 shadow-lg">
+              <span className="flex flex-col items-start leading-tight">
+                <span className="font-black text-xl uppercase tracking-wide">Drivers</span>
+                <span className="text-xs font-normal opacity-80">Register here</span>
+              </span>
+              <ArrowRight className="w-4 h-4 flex-shrink-0 ml-auto" />
+            </Button>
+          </Link>
+
+          {/* ── OWNERS CTA — right card, upper-middle ── */}
+          <Link
+            to="/owner/register"
+            aria-label="Owners list your cars here"
+            style={{
+              position: "absolute",
+              top: "36%",
+              right: "13%",
+              width: "38%",
+              pointerEvents: "auto",
+            }}
+          >
+            <Button variant="heroCTAGreen" className="w-full gap-2 py-4 shadow-lg">
+              <span className="flex flex-col items-start leading-tight">
+                <span className="font-black text-xl uppercase tracking-wide">Owners</span>
+                <span className="text-xs font-normal opacity-80">List your cars here</span>
+              </span>
+              <ArrowRight className="w-4 h-4 flex-shrink-0 ml-auto" />
+            </Button>
+          </Link>
+
+          {/* ── WhatsApp button — left, below CTAs ── */}
           <a
             href={`https://wa.me/${WHATSAPP_NUMBER}`}
             target="_blank"
@@ -128,75 +170,33 @@ const HeroSection = () => {
             aria-label="WhatsApp Us"
             style={{
               position: "absolute",
-              bottom: "26%",
-              left: "5%",
+              top: "60%",
+              left: "13%",
               pointerEvents: "auto",
             }}
           >
             <Button variant="whatsapp" size="sm" className="gap-1.5 shadow-lg">
               <MessageCircle className="w-4 h-4" />
-              WhatsApp Us
+              WhatsApp
             </Button>
           </a>
 
-          {/* ── SMS button — overlaid visible card ── */}
+          {/* ── SMS / Text Us button — right, below CTAs ── */}
           <a
             href={`sms:${SMS_NUMBER}`}
             aria-label="Text Us"
             style={{
               position: "absolute",
-              bottom: "26%",
-              right: "5%",
+              top: "60%",
+              right: "13%",
               pointerEvents: "auto",
             }}
           >
             <Button variant="sms" size="sm" className="gap-1.5 shadow-lg">
               <Phone className="w-4 h-4" />
-              Text Us
+              Text us
             </Button>
           </a>
-
-          {/* ── DRIVERS CTA — overlaid visible card ── */}
-          <Link
-            to="/driver/register"
-            aria-label="Drivers register here"
-            style={{
-              position: "absolute",
-              bottom: "6%",
-              left: "5%",
-              width: "42%",
-              pointerEvents: "auto",
-            }}
-          >
-            <Button variant="heroCTAGreen" className="w-full gap-2 py-4 shadow-lg">
-              <span className="flex flex-col items-start leading-tight">
-                <span className="font-black text-xl uppercase tracking-wide">Drivers</span>
-                <span className="text-xs font-normal opacity-80">register — <em>here</em></span>
-              </span>
-              <ArrowRight className="w-4 h-4 flex-shrink-0 ml-auto" />
-            </Button>
-          </Link>
-
-          {/* ── OWNERS CTA — overlaid visible card ── */}
-          <Link
-            to="/owner/register"
-            aria-label="Owners list your car here"
-            style={{
-              position: "absolute",
-              bottom: "6%",
-              right: "5%",
-              width: "42%",
-              pointerEvents: "auto",
-            }}
-          >
-            <Button variant="heroCTAGreen" className="w-full gap-2 py-4 shadow-lg">
-              <span className="flex flex-col items-start leading-tight">
-                <span className="font-black text-xl uppercase tracking-wide">Owners</span>
-                <span className="text-xs font-normal opacity-80">list your car — <em>here</em></span>
-              </span>
-              <ArrowRight className="w-4 h-4 flex-shrink-0 ml-auto" />
-            </Button>
-          </Link>
         </div>
 
         {/* ── Dropdown menu (no animation, instant) ── */}
