@@ -18,7 +18,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onRestartTour={resetTour} />
+      {/* Header hidden on home — hero has its own embedded nav */}
       <main className={!hasSelectedType ? "pb-24" : ""}>
         <HeroSection />
         <div data-tour="categories">
