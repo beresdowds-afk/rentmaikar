@@ -114,7 +114,7 @@ const HeroSection = () => {
               cursor: "pointer",
               borderRadius: 8,
             }}
-            className="flex items-center gap-1.5 bg-background/90 backdrop-blur-sm border border-border px-3 py-2 shadow-md hover:bg-muted transition-colors"
+            className="flex items-center gap-1.5 bg-background/90 backdrop-blur-sm border border-border px-3 py-2 shadow-md hover:bg-muted"
           >
             {menuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             <span className="text-xs font-semibold">Menu</span>
