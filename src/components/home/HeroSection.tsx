@@ -8,6 +8,7 @@ import { useUserType } from "@/contexts/UserTypeContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
+import rentmaikarHeroBanner from "@/assets/rentmaikar-hero-banner.jpg";
 import heroCar from "@/assets/hero-car.jpg";
 
 const HeroSection = () => {
@@ -59,6 +60,15 @@ const HeroSection = () => {
             className="h-14 md:h-16 w-auto object-contain drop-shadow-lg"
           />
         </Link>
+
+        {/* Banner between logo and menu */}
+        <div className="flex-1 flex justify-center px-3 min-w-0">
+          <img
+            src={rentmaikarHeroBanner}
+            alt="Rent Mai Kar"
+            className="h-12 md:h-16 w-auto max-w-[220px] md:max-w-[300px] object-contain drop-shadow-lg"
+          />
+        </div>
 
         <button
           className="p-2 rounded-lg bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
