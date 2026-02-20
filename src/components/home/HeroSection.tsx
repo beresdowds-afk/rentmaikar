@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { useRegion } from "@/contexts/RegionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserType } from "@/contexts/UserTypeContext";
-import { cn } from "@/lib/utils";
+
 import { toast } from "sonner";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 import rentmaikarHeroBanner from "@/assets/rentmaikar-hero-banner.jpg";
-import heroCar from "@/assets/hero-car.jpg";
+import heroCarsBg from "@/assets/hero-cars-bg.png";
 
 const HeroSection = () => {
   const { whatsappNumber, smsNumber } = useRegion();
@@ -40,15 +40,14 @@ const HeroSection = () => {
   };
 
   return (
-    <section className="relative min-h-screen flex flex-col">
+    <section className="relative min-h-screen flex flex-col bg-white">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
-          src={heroCar}
-          alt="Premium rental car"
-          className="w-full h-full object-cover"
+          src={heroCarsBg}
+          alt="Rentmaikar cars"
+          className="w-full h-full object-cover object-top"
         />
-        <div className="absolute inset-0 bg-black/55" />
       </div>
 
       {/* ── Top Bar: Logo + Hamburger ── */}
@@ -71,14 +70,14 @@ const HeroSection = () => {
         </div>
 
         <button
-          className="p-2 rounded-lg bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
+          className="p-2 rounded-lg bg-black/10 hover:bg-black/20 transition-colors"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           aria-label="Toggle menu"
         >
           {isMenuOpen ? (
-            <X className="w-7 h-7 text-white" />
+            <X className="w-7 h-7 text-gray-800" />
           ) : (
-            <Menu className="w-7 h-7 text-white" />
+            <Menu className="w-7 h-7 text-gray-800" />
           )}
         </button>
       </div>
@@ -165,7 +164,7 @@ const HeroSection = () => {
 
           {/* OWNERS */}
           <Link to="/owner/register" className="flex-1 max-w-[220px]">
-            <div className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-white/20 hover:bg-white/30 backdrop-blur-sm transition-colors shadow-xl cursor-pointer py-5 px-4 text-white border border-white/30">
+            <div className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-[hsl(217_71%_18%)] hover:bg-[hsl(217_71%_14%)] transition-colors shadow-xl cursor-pointer py-5 px-4 text-white border border-white/10">
               <span className="font-black text-4xl md:text-5xl uppercase tracking-wide leading-none">
                 OWNERS
               </span>
@@ -176,9 +175,9 @@ const HeroSection = () => {
 
         {/* Tagline */}
         <div className="text-center px-4">
-          <p className="text-xl md:text-2xl font-bold text-white leading-snug drop-shadow-lg">
+          <p className="text-xl md:text-2xl font-bold text-gray-900 leading-snug drop-shadow-sm">
             "Your Journey, Our Wheels –{" "}
-            <span className="text-accent">Rent or List</span> with Confidence on Rentmaikar."
+            <span className="text-[hsl(142_72%_38%)]">Rent or List</span> with Confidence on Rentmaikar."
           </p>
         </div>
 
@@ -206,8 +205,8 @@ const HeroSection = () => {
 
       {/* Scroll Indicator */}
       <div className="relative z-10 flex justify-center pb-6 animate-bounce">
-        <div className="w-8 h-12 rounded-full border-2 border-white/40 flex items-start justify-center pt-2">
-          <div className="w-1.5 h-3 bg-white/60 rounded-full" />
+        <div className="w-8 h-12 rounded-full border-2 border-gray-400/60 flex items-start justify-center pt-2">
+          <div className="w-1.5 h-3 bg-gray-500/60 rounded-full" />
         </div>
       </div>
     </section>
