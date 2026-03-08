@@ -26,13 +26,31 @@ export interface AccidentEvent {
   vehicleId: string;
   driverId?: string;
   ownerId?: string;
-  triggerType: 'sudden_deceleration' | 'impact' | 'rollover' | 'airbag';
+  triggerType: 'sudden_deceleration' | 'impact' | 'rollover' | 'airbag' | 'fire';
   decelerationG: number;
   speedAtImpact: number;
   latitude: number;
   longitude: number;
   timestamp: Date;
+  severity?: 'minor' | 'severe' | 'critical';
+  isVerified?: boolean;
 }
+
+// Post-accident telemetry data
+export interface PostAccidentTelemetry {
+  vehicleId: string;
+  location?: { latitude: number; longitude: number; accuracy?: number };
+  imageUrls?: string[];
+  occupantVitals?: {
+    heartRate?: number;
+    seatbeltEngaged?: boolean;
+    consciousnessScore?: number; // 0-15 GCS scale
+  };
+  timestamp: Date;
+}
+
+// Accident alert routing targets
+export type AccidentAlertTarget = 'emergency' | 'fleet' | 'insurance' | 'emergency_contact';
 
 // IoT Telemetry Snapshot for incident logging
 export interface IoTTelemetrySnapshot {
@@ -95,6 +113,7 @@ export interface SafetyCheckResult {
 type LocationCallback = (location: VehicleLocation) => void;
 type StatusCallback = (vehicleId: string, status: 'online' | 'offline') => void;
 type AccidentCallback = (event: AccidentEvent) => void;
+type PostAccidentTelemetryCallback = (data: PostAccidentTelemetry) => void;
 type TelemetryFailureCallback = (failure: TelemetryFailureEvent) => void;
 
 // Telemetry failure event for recall triggering
@@ -129,6 +148,7 @@ class MQTTVehicleTracker {
   private locationCallbacks: Map<string, Set<LocationCallback>> = new Map();
   private statusCallbacks: Set<StatusCallback> = new Set();
   private accidentCallbacks: Set<AccidentCallback> = new Set();
+  private postAccidentCallbacks: Set<PostAccidentTelemetryCallback> = new Set();
   private telemetryFailureCallbacks: Set<TelemetryFailureCallback> = new Set();
   private isConnected: boolean = false;
   private reconnectAttempts: number = 0;
@@ -210,6 +230,46 @@ class MQTTVehicleTracker {
             if (err) console.error('[MQTT] Subscription error:', err);
             else console.log('[MQTT] Subscribed to vehicle commands');
           });
+
+          // ── Accident topics ───────────────────────────────────
+          const accidentTopics = [
+            // Raw sensor data (immediate, unprocessed)
+            'rentmaikar/vehicles/+/accident/raw',
+            'rentmaikar/vehicles/+/accident/raw/impact',
+            'rentmaikar/vehicles/+/accident/raw/airbag',
+            'rentmaikar/vehicles/+/accident/raw/rollover',
+            // Verified/processed accidents
+            'rentmaikar/vehicles/+/accident/verified',
+            'rentmaikar/vehicles/+/accident/verified/severe',
+            'rentmaikar/vehicles/+/accident/verified/minor',
+            'rentmaikar/vehicles/+/accident/verified/fire',
+            // Post-accident telemetry
+            'rentmaikar/vehicles/+/accident/telemetry/location',
+            'rentmaikar/vehicles/+/accident/telemetry/images',
+            'rentmaikar/vehicles/+/accident/telemetry/vitals',
+          ];
+
+          accidentTopics.forEach(topic => {
+            this.client?.subscribe(topic, { qos: 1 }, (err) => {
+              if (err) console.error(`[MQTT] Accident subscription error for ${topic}:`, err);
+            });
+          });
+          console.log('[MQTT] Subscribed to all accident topics');
+
+          // Alert topics (fleet manager subscribes to all alerts)
+          const alertTopics = [
+            'rentmaikar/accident/alerts/emergency/+',
+            'rentmaikar/accident/alerts/fleet/+',
+            'rentmaikar/accident/alerts/insurance/+',
+            'rentmaikar/accident/alerts/emergency_contact/+',
+          ];
+
+          alertTopics.forEach(topic => {
+            this.client?.subscribe(topic, { qos: 1 }, (err) => {
+              if (err) console.error(`[MQTT] Alert subscription error for ${topic}:`, err);
+            });
+          });
+          console.log('[MQTT] Subscribed to accident alert topics');
 
           resolve();
         });
@@ -359,11 +419,199 @@ class MQTTVehicleTracker {
       if (messageType === 'commands') {
         const data = JSON.parse(message);
         console.log(`[MQTT] Command response from ${vehicleId}:`, data);
-        // Command acknowledgements are logged; could be extended with callbacks
+      }
+
+      // ── Accident topics ───────────────────────────────────
+      if (messageType === 'accident') {
+        const data = JSON.parse(message);
+        this.handleAccidentMessage(vehicleId, subType, parts[5] || null, data);
+      }
+
+      // ── Alert topics (rentmaikar/accident/alerts/{target}/{vehicle_id}) ──
+      if (parts[0] === 'rentmaikar' && parts[1] === 'accident' && parts[2] === 'alerts') {
+        const alertTarget = parts[3] as AccidentAlertTarget;
+        const alertVehicleId = parts[4];
+        const data = JSON.parse(message);
+        console.log(`[MQTT] Accident alert received — target: ${alertTarget}, vehicle: ${alertVehicleId}`, data);
+        // Alert routing is handled by the backend; log for dashboards
       }
     } catch (error) {
       console.error('[MQTT] Error parsing message:', error);
     }
+  }
+
+  /**
+   * Handle all accident subtopics
+   */
+  private handleAccidentMessage(vehicleId: string, category: string | null, subCategory: string | null, data: any): void {
+    switch (category) {
+      // ── Raw sensor data (immediate, unprocessed) ──────────
+      case 'raw': {
+        const triggerMap: Record<string, AccidentEvent['triggerType']> = {
+          impact: 'impact',
+          airbag: 'airbag',
+          rollover: 'rollover',
+        };
+        const triggerType = (subCategory && triggerMap[subCategory]) || 'sudden_deceleration';
+        const totalG = data.totalG || data.deceleration_g || data.force || 0;
+
+        console.log(`[MQTT] Raw accident data (${triggerType}) for ${vehicleId}: ${totalG.toFixed(2)}G`);
+
+        // Store accelerometer reading
+        if (data.x !== undefined) {
+          this.lastAccelerometer.set(vehicleId, {
+            x: data.x, y: data.y || 0, z: data.z || 0, totalG,
+          });
+        }
+
+        // Trigger accident event if above threshold
+        if (totalG >= ACCIDENT_THRESHOLDS.SUDDEN_DECELERATION_G || triggerType === 'airbag') {
+          this.triggerAccidentEvent(vehicleId, totalG, triggerType);
+        }
+        break;
+      }
+
+      // ── Verified/processed accidents ──────────────────────
+      case 'verified': {
+        const severityMap: Record<string, AccidentEvent['severity']> = {
+          severe: 'severe',
+          minor: 'minor',
+          fire: 'critical',
+        };
+        const severity = (subCategory && severityMap[subCategory]) || 'severe';
+        const location = this.vehicleLocations.get(vehicleId);
+        const driverInfo = this.vehicleDriverMap.get(vehicleId);
+
+        const event: AccidentEvent = {
+          vehicleId,
+          driverId: driverInfo?.driverId,
+          ownerId: driverInfo?.ownerId,
+          triggerType: data.triggerType || (subCategory === 'fire' ? 'fire' : 'impact'),
+          decelerationG: data.deceleration_g || data.totalG || 0,
+          speedAtImpact: data.speed_at_impact || data.speedAtImpact || 0,
+          latitude: data.latitude || location?.latitude || 0,
+          longitude: data.longitude || location?.longitude || 0,
+          timestamp: new Date(data.timestamp || Date.now()),
+          severity,
+          isVerified: true,
+        };
+
+        console.log(`[MQTT] Verified accident (${severity}) for ${vehicleId}`);
+        this.accidentCallbacks.forEach(cb => cb(event));
+
+        // Publish to alert channels
+        this.publishAccidentAlerts(vehicleId, event);
+
+        // Send to backend
+        this.sendAccidentToBackend(event);
+        break;
+      }
+
+      // ── Post-accident telemetry ───────────────────────────
+      case 'telemetry': {
+        const postTelemetry: PostAccidentTelemetry = {
+          vehicleId,
+          timestamp: new Date(data.timestamp || Date.now()),
+        };
+
+        if (subCategory === 'location') {
+          postTelemetry.location = {
+            latitude: data.lat || data.latitude,
+            longitude: data.lng || data.longitude,
+            accuracy: data.accuracy,
+          };
+          // Update tracked location
+          if (postTelemetry.location.latitude) {
+            const existing = this.vehicleLocations.get(vehicleId);
+            if (existing) {
+              existing.latitude = postTelemetry.location.latitude;
+              existing.longitude = postTelemetry.location.longitude;
+              this.vehicleLocations.set(vehicleId, existing);
+            }
+          }
+        }
+
+        if (subCategory === 'images') {
+          postTelemetry.imageUrls = data.urls || data.imageUrls || [];
+          console.log(`[MQTT] Post-accident images for ${vehicleId}: ${postTelemetry.imageUrls?.length} photos`);
+        }
+
+        if (subCategory === 'vitals') {
+          postTelemetry.occupantVitals = {
+            heartRate: data.heart_rate || data.heartRate,
+            seatbeltEngaged: data.seatbelt_engaged ?? data.seatbeltEngaged,
+            consciousnessScore: data.gcs_score || data.consciousnessScore,
+          };
+          console.log(`[MQTT] Post-accident vitals for ${vehicleId}:`, postTelemetry.occupantVitals);
+        }
+
+        this.postAccidentCallbacks.forEach(cb => cb(postTelemetry));
+        break;
+      }
+    }
+  }
+
+  /**
+   * Publish accident alerts to routed alert topics
+   */
+  private publishAccidentAlerts(vehicleId: string, event: AccidentEvent): void {
+    if (!this.client || !this.isConnected) return;
+
+    const alertPayload = JSON.stringify({
+      vehicleId: event.vehicleId,
+      severity: event.severity || 'severe',
+      triggerType: event.triggerType,
+      decelerationG: event.decelerationG,
+      speedAtImpact: event.speedAtImpact,
+      latitude: event.latitude,
+      longitude: event.longitude,
+      timestamp: event.timestamp.toISOString(),
+      driverId: event.driverId,
+      ownerId: event.ownerId,
+    });
+
+    // Determine which alert channels to publish to based on severity
+    const targets: AccidentAlertTarget[] = ['fleet']; // Always notify fleet manager
+
+    if (event.severity === 'severe' || event.severity === 'critical' || event.triggerType === 'airbag' || event.triggerType === 'fire') {
+      targets.push('emergency', 'insurance', 'emergency_contact');
+    } else if (event.severity === 'minor') {
+      targets.push('insurance');
+    }
+
+    targets.forEach(target => {
+      const topic = `rentmaikar/accident/alerts/${target}/${vehicleId}`;
+      this.client!.publish(topic, alertPayload, { qos: 1, retain: true }, (err) => {
+        if (err) console.error(`[MQTT] Failed to publish alert to ${topic}:`, err);
+        else console.log(`[MQTT] Accident alert published to ${target} for ${vehicleId}`);
+      });
+    });
+  }
+
+  /**
+   * Send accident event to backend edge function
+   */
+  private async sendAccidentToBackend(event: AccidentEvent): Promise<void> {
+    try {
+      await supabase.functions.invoke('iot-accident-detection', {
+        body: {
+          ...event,
+          deviceId: `device-${event.vehicleId}`,
+          timestamp: event.timestamp.toISOString(),
+        },
+      });
+      console.log('[MQTT] Accident event sent to backend');
+    } catch (error) {
+      console.error('[MQTT] Failed to send accident event:', error);
+    }
+  }
+
+  // Subscribe to post-accident telemetry
+  onPostAccidentTelemetry(callback: PostAccidentTelemetryCallback): () => void {
+    this.postAccidentCallbacks.add(callback);
+    return () => {
+      this.postAccidentCallbacks.delete(callback);
+    };
   }
 
   /**
@@ -472,6 +720,8 @@ class MQTTVehicleTracker {
 
       if (totalG >= ACCIDENT_THRESHOLDS.SUDDEN_DECELERATION_G) {
         console.log(`[MQTT] Accident detected for ${vehicleId}: ${totalG.toFixed(2)}G`);
+        // Publish raw accident data to the new accident/raw topic
+        this.publishRawAccidentData(vehicleId, totalG, data.type === 'impact' ? 'impact' : 'sudden_deceleration', data);
         this.triggerAccidentEvent(vehicleId, totalG, data.type === 'impact' ? 'impact' : 'sudden_deceleration');
       }
     }
@@ -497,8 +747,56 @@ class MQTTVehicleTracker {
     // Handle airbag deployment signal
     if (data.type === 'airbag' && data.deployed) {
       console.log(`[MQTT] Airbag deployment detected for ${vehicleId}`);
-      this.triggerAccidentEvent(vehicleId, 10, 'airbag'); // Airbag = critical
+      this.publishRawAccidentData(vehicleId, 10, 'airbag', data);
+      this.triggerAccidentEvent(vehicleId, 10, 'airbag');
     }
+  }
+
+  /**
+   * Publish raw accident sensor data to dedicated accident/raw subtopics
+   */
+  private publishRawAccidentData(
+    vehicleId: string,
+    totalG: number,
+    triggerType: AccidentEvent['triggerType'],
+    rawData: any
+  ): void {
+    if (!this.client || !this.isConnected) return;
+
+    const location = this.vehicleLocations.get(vehicleId);
+    const payload = JSON.stringify({
+      totalG,
+      triggerType,
+      latitude: location?.latitude || 0,
+      longitude: location?.longitude || 0,
+      speed: location?.speed || 0,
+      timestamp: new Date().toISOString(),
+      raw: rawData,
+    });
+
+    // Publish to root raw topic
+    this.client.publish(
+      `rentmaikar/vehicles/${vehicleId}/accident/raw`,
+      payload,
+      { qos: 1 },
+      (err) => { if (err) console.error('[MQTT] Failed to publish raw accident:', err); }
+    );
+
+    // Publish to specific subtype
+    const subtypeMap: Record<string, string> = {
+      impact: 'impact',
+      sudden_deceleration: 'impact',
+      airbag: 'airbag',
+      rollover: 'rollover',
+      fire: 'impact',
+    };
+    const subTopic = subtypeMap[triggerType] || 'impact';
+    this.client.publish(
+      `rentmaikar/vehicles/${vehicleId}/accident/raw/${subTopic}`,
+      payload,
+      { qos: 1 },
+      (err) => { if (err) console.error(`[MQTT] Failed to publish raw/${subTopic}:`, err); }
+    );
   }
 
   private async triggerAccidentEvent(
@@ -513,6 +811,14 @@ class MQTTVehicleTracker {
       : 0;
 
     const driverInfo = this.vehicleDriverMap.get(vehicleId);
+    
+    // Determine severity
+    const severity: AccidentEvent['severity'] = 
+      decelerationG >= ACCIDENT_THRESHOLDS.CRITICAL_G || triggerType === 'airbag' || triggerType === 'fire'
+        ? 'critical'
+        : decelerationG >= ACCIDENT_THRESHOLDS.SUDDEN_DECELERATION_G
+          ? 'severe'
+          : 'minor';
 
     const event: AccidentEvent = {
       vehicleId,
@@ -524,24 +830,18 @@ class MQTTVehicleTracker {
       latitude: location?.latitude || 0,
       longitude: location?.longitude || 0,
       timestamp: new Date(),
+      severity,
+      isVerified: false, // Raw detection — not yet verified
     };
 
     // Notify local callbacks
     this.accidentCallbacks.forEach(cb => cb(event));
 
+    // Publish accident alerts to routed channels
+    this.publishAccidentAlerts(vehicleId, event);
+
     // Send to backend for incident creation
-    try {
-      await supabase.functions.invoke('iot-accident-detection', {
-        body: {
-          ...event,
-          deviceId: `device-${vehicleId}`,
-          timestamp: event.timestamp.toISOString(),
-        },
-      });
-      console.log('[MQTT] Accident event sent to backend');
-    } catch (error) {
-      console.error('[MQTT] Failed to send accident event:', error);
-    }
+    this.sendAccidentToBackend(event);
   }
 
   // Register vehicle-driver mapping for accident reports

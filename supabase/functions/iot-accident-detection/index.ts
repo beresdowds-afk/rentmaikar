@@ -12,7 +12,8 @@ const iotAccidentSchema = z.object({
   vehicleId: z.string().uuid("Invalid vehicle ID"),
   driverId: z.string().uuid("Invalid driver ID"),
   ownerId: z.string().uuid("Invalid owner ID").optional(),
-  triggerType: z.enum(['sudden_deceleration', 'impact', 'rollover', 'airbag']),
+  triggerType: z.enum(['sudden_deceleration', 'impact', 'rollover', 'airbag', 'fire']),
+  severity: z.enum(['minor', 'severe', 'critical']).optional(),
   decelerationG: z.number().min(0, "Deceleration cannot be negative").max(100, "Unrealistic deceleration value"),
   speedAtImpact: z.number().min(0, "Speed cannot be negative").max(300, "Unrealistic speed value"),
   latitude: z.number().min(-90).max(90, "Invalid latitude"),
@@ -52,6 +53,7 @@ const getTriggerDescription = (type: string): string => {
     impact: 'Impact detected by collision sensors',
     rollover: 'Rollover event detected by gyroscope',
     airbag: 'Airbag deployment signal received',
+    fire: 'Post-crash fire detected by thermal sensors',
   };
   return descriptions[type] || 'Unknown trigger event';
 };
@@ -137,7 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const severity = getImpactSeverity(body.decelerationG);
+    const severity = body.severity || getImpactSeverity(body.decelerationG);
     const title = `IoT Detected: ${body.triggerType.replace('_', ' ').toUpperCase()}`;
     const description = `${getTriggerDescription(body.triggerType)}
 
