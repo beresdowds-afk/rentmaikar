@@ -501,6 +501,86 @@ export const EMQX_MONITORED_TOPICS = [
   'rentmaikar/vehicles/+/status',
 ];
 
+// ── Recommended MQTT Ports ─────────────────────────────────
+
+export const EMQX_RECOMMENDED_PORTS = [
+  { port: 1883, protocol: 'MQTT', tls: false, description: 'Standard MQTT TCP (devices on private network)' },
+  { port: 8883, protocol: 'MQTTS', tls: true, description: 'MQTT over TLS/SSL (devices over public internet)' },
+  { port: 8083, protocol: 'WS', tls: false, description: 'MQTT over WebSocket (browser dev/testing)' },
+  { port: 8084, protocol: 'WSS', tls: true, description: 'MQTT over Secure WebSocket (browser production)' },
+  { port: 18083, protocol: 'HTTP', tls: true, description: 'EMQX Management REST API & Dashboard' },
+] as const;
+
+// ── Tiered Data Retention Strategy ────────────────────────
+
+export interface DataRetentionTier {
+  name: string;
+  label: string;
+  retentionDays: number | null; // null = indefinite
+  description: string;
+  tables: string[];
+  resolution: string;
+  storageEstimate: string;
+  autoCleanup: boolean;
+}
+
+export const DATA_RETENTION_TIERS: DataRetentionTier[] = [
+  {
+    name: 'realtime',
+    label: 'Real-Time',
+    retentionDays: null,
+    description: 'Live telemetry streamed to dashboard via MQTT subscriptions. Not persisted beyond active session.',
+    tables: [],
+    resolution: 'Full (30s GPS moving, 15m engine)',
+    storageEstimate: 'In-memory only',
+    autoCleanup: false,
+  },
+  {
+    name: 'recent',
+    label: 'Recent (7 days)',
+    retentionDays: 7,
+    description: 'High-resolution telemetry kept for debugging, replay, and operational review.',
+    tables: ['mqtt_telemetry_logs'],
+    resolution: 'Full resolution — every data point retained',
+    storageEstimate: '~50 MB per 100 vehicles/day',
+    autoCleanup: true,
+  },
+  {
+    name: 'historical',
+    label: 'Historical (30+ days)',
+    retentionDays: 30,
+    description: 'Down-sampled summaries and critical events archived for compliance and analytics.',
+    tables: ['driver_behavior_logs', 'iot_devices'],
+    resolution: 'Hourly averages for GPS/engine; all accident & alert events preserved',
+    storageEstimate: '~5 MB per 100 vehicles/day',
+    autoCleanup: true,
+  },
+  {
+    name: 'permanent',
+    label: 'Permanent Archive',
+    retentionDays: null,
+    description: 'Accident records, critical incidents, and audit trails stored indefinitely for legal/insurance.',
+    tables: ['driver_behavior_logs (severity=critical)', 'device_activity_log'],
+    resolution: 'Full detail for critical events only',
+    storageEstimate: 'Minimal (~1 MB/month fleet-wide)',
+    autoCleanup: false,
+  },
+];
+
+export const RETENTION_CLEANUP_RULES = {
+  /** Delete mqtt_telemetry_logs older than 7 days */
+  telemetryPurgeDays: 7,
+  /** Down-sample GPS to hourly averages after 7 days */
+  gpsSampleAfterDays: 7,
+  /** Keep driver_behavior_logs >= warning for 30 days, info for 7 days */
+  behaviorInfoPurgeDays: 7,
+  behaviorWarningPurgeDays: 30,
+  /** Never delete critical/accident events */
+  criticalEventPurge: false,
+  /** Run cleanup daily at 3:00 AM */
+  cleanupCronSchedule: '0 3 * * *',
+};
+
 // ── Helper: Build EMQX MQTT.js options ────────────────────
 
 export function buildEMQXConnectOptions(

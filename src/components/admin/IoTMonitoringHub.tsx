@@ -14,7 +14,7 @@ import {
   Flame, Gauge, MapPin, Radio, RefreshCw, Satellite, Shield,
   Signal, Thermometer, Wifi, WifiOff, Zap, Siren, Eye,
   TrendingUp, BarChart3, CircleAlert, BellRing, Timer, Cpu,
-  Server
+  Server, Database, HardDrive
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -30,6 +30,9 @@ import {
   EMQX_AUTH_CONFIG,
   EMQX_POSTGRES_BRIDGE,
   EMQX_MONITORED_TOPICS,
+  EMQX_RECOMMENDED_PORTS,
+  DATA_RETENTION_TIERS,
+  RETENTION_CLEANUP_RULES,
 } from '@/lib/emqx-config';
 
 // ── Types ──────────────────────────────────────────────────
@@ -270,6 +273,10 @@ export const IoTMonitoringHub = () => {
           <TabsTrigger value="emqx" className="gap-1.5">
             <Server className="h-3.5 w-3.5" />
             EMQX Broker
+          </TabsTrigger>
+          <TabsTrigger value="retention" className="gap-1.5">
+            <Database className="h-3.5 w-3.5" />
+            Data Retention
           </TabsTrigger>
         </TabsList>
 
@@ -1014,6 +1021,176 @@ export const IoTMonitoringHub = () => {
                 </CardContent>
               </Card>
             </div>
+          </div>
+        </TabsContent>
+
+        {/* ── DATA RETENTION & PORTS ─────────────────────── */}
+        <TabsContent value="retention">
+          <div className="space-y-4">
+            {/* Tiered Retention Strategy */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="h-5 w-5" />
+                  Tiered Data Retention Strategy
+                </CardTitle>
+                <CardDescription>
+                  Real-time → 7-day recent → 30-day historical → permanent archive
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {DATA_RETENTION_TIERS.map((tier, idx) => {
+                    const tierColors = [
+                      'border-l-green-500 bg-green-500/5',
+                      'border-l-blue-500 bg-blue-500/5',
+                      'border-l-orange-500 bg-orange-500/5',
+                      'border-l-red-500 bg-red-500/5',
+                    ];
+                    const tierIcons = [
+                      <Activity key="rt" className="h-5 w-5 text-green-500" />,
+                      <HardDrive key="rc" className="h-5 w-5 text-blue-500" />,
+                      <BarChart3 key="hs" className="h-5 w-5 text-orange-500" />,
+                      <Shield key="pm" className="h-5 w-5 text-red-500" />,
+                    ];
+                    return (
+                      <div key={tier.name} className={`p-4 rounded-lg border-l-4 border ${tierColors[idx]}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          {tierIcons[idx]}
+                          <span className="font-semibold text-sm">{tier.label}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-3">{tier.description}</p>
+                        <Separator className="my-2" />
+                        <div className="space-y-1.5 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Resolution</span>
+                          </div>
+                          <p className="text-foreground/80 font-medium">{tier.resolution}</p>
+                          <div className="flex justify-between mt-2">
+                            <span className="text-muted-foreground">Storage Est.</span>
+                            <span className="font-medium">{tier.storageEstimate}</span>
+                          </div>
+                          {tier.tables.length > 0 && (
+                            <div className="mt-2">
+                              <span className="text-muted-foreground">Tables:</span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {tier.tables.map(t => (
+                                  <Badge key={t} variant="outline" className="text-[10px] font-mono">{t}</Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex justify-between mt-2">
+                            <span className="text-muted-foreground">Auto-cleanup</span>
+                            <Badge variant={tier.autoCleanup ? 'default' : 'secondary'} className="text-[10px]">
+                              {tier.autoCleanup ? 'Enabled' : 'Manual'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Cleanup Rules */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Timer className="h-5 w-5" />
+                  Retention Cleanup Rules
+                </CardTitle>
+                <CardDescription>Automated data lifecycle management</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="text-sm font-medium">Telemetry Purge</p>
+                      <p className="text-xs text-muted-foreground">mqtt_telemetry_logs older than threshold</p>
+                    </div>
+                    <Badge>{RETENTION_CLEANUP_RULES.telemetryPurgeDays} days</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="text-sm font-medium">GPS Down-sampling</p>
+                      <p className="text-xs text-muted-foreground">Aggregate to hourly averages after</p>
+                    </div>
+                    <Badge>{RETENTION_CLEANUP_RULES.gpsSampleAfterDays} days</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="text-sm font-medium">Behavior (info) Purge</p>
+                      <p className="text-xs text-muted-foreground">Low-severity behavior events</p>
+                    </div>
+                    <Badge>{RETENTION_CLEANUP_RULES.behaviorInfoPurgeDays} days</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="text-sm font-medium">Behavior (warning) Purge</p>
+                      <p className="text-xs text-muted-foreground">Warning-level behavior events</p>
+                    </div>
+                    <Badge>{RETENTION_CLEANUP_RULES.behaviorWarningPurgeDays} days</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="text-sm font-medium">Critical Events</p>
+                      <p className="text-xs text-muted-foreground">Accidents & critical incidents</p>
+                    </div>
+                    <Badge variant="destructive">Never deleted</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="text-sm font-medium">Cleanup Schedule</p>
+                      <p className="text-xs text-muted-foreground">Cron expression</p>
+                    </div>
+                    <Badge variant="outline" className="font-mono text-xs">{RETENTION_CLEANUP_RULES.cleanupCronSchedule}</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Recommended MQTT Ports */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Wifi className="h-5 w-5" />
+                  Recommended MQTT Ports
+                </CardTitle>
+                <CardDescription>Standard port assignments for EMQX broker</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Port</TableHead>
+                        <TableHead>Protocol</TableHead>
+                        <TableHead>TLS</TableHead>
+                        <TableHead>Description</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {EMQX_RECOMMENDED_PORTS.map(p => (
+                        <TableRow key={p.port}>
+                          <TableCell className="font-mono font-bold">{p.port}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">{p.protocol}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={p.tls ? 'default' : 'secondary'} className="text-xs">
+                              {p.tls ? 'Yes' : 'No'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{p.description}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>
