@@ -267,6 +267,10 @@ export const IoTMonitoringHub = () => {
             <Timer className="h-3.5 w-3.5" />
             Schedules & QoS
           </TabsTrigger>
+          <TabsTrigger value="emqx" className="gap-1.5">
+            <Server className="h-3.5 w-3.5" />
+            EMQX Broker
+          </TabsTrigger>
         </TabsList>
 
         {/* ── FLEET OVERVIEW ────────────────────────────── */}
