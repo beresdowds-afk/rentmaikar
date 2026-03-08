@@ -36,6 +36,7 @@ import { VerificationGate } from '@/components/onboarding/VerificationGate';
 import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useOwnerDashboard } from '@/hooks/useOwnerDashboard';
 import {
   Car,
   Plus,
