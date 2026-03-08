@@ -32,6 +32,7 @@ import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { DriverBehaviorLogs } from '@/components/admin/DriverBehaviorLogs';
+import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 import {
   Car,
   Activity,
