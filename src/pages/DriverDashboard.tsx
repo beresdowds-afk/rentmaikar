@@ -33,6 +33,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { DriverBehaviorLogs } from '@/components/admin/DriverBehaviorLogs';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
+import { useDriverDashboard } from '@/hooks/useDriverDashboard';
 import {
   Car,
   Activity,
@@ -56,54 +57,52 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Mock data for the driver dashboard
-const mockRentalData = {
-  vehicle: {
-    id: 'v-001',
-    make: 'Toyota',
-    model: 'Camry',
-    year: 2021,
-    plateNumber: 'ABC-123',
-    category: 'Top Earner',
-    image: '/placeholder.svg',
-  },
-  rental: {
-    id: 'r-001',
-    startDate: '2025-01-10',
-    dailyRate: 50, // Base daily rate
-    weeklyRate: 300, // Base weekly rate
-    paymentFrequency: 'weekly' as const,
-    status: 'active' as const,
-    nextPaymentDate: '2025-01-17',
-    totalPaid: 720,
-    daysActive: 14,
-  },
-  payments: [
-    { id: 'p-001', date: '2025-01-10', amount: 360, status: 'completed', method: 'paypal' },
-    { id: 'p-002', date: '2025-01-17', amount: 360, status: 'completed', method: 'paypal' },
-  ],
-  priceNegotiation: {
-    id: 'pn-001',
-    requestedRate: 280,
-    currentRate: 300,
-    status: 'pending' as const,
-    submittedAt: '2025-01-15',
-    reason: 'Market rates have dropped in my area',
-  },
-};
-
 export default function DriverDashboard() {
-  const { country, currency, currencySymbol } = useRegion();
+  const { country, currency } = useRegion();
   const { user, userRole } = useAuth();
   const isAdminView = userRole === 'admin';
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const { callHistory, isLoading: callsLoading, refreshHistory } = useVoiceCall('driver');
+  const {
+    activeRental,
+    vehicle: dbVehicle,
+    payments: dbPayments,
+    totalPaid: dbTotalPaid,
+    daysActive: dbDaysActive,
+    isLoading: dashboardLoading,
+    hasActiveRental,
+  } = useDriverDashboard();
 
   const isUSA = country === 'USA';
-  const rental = mockRentalData.rental;
-  const vehicle = mockRentalData.vehicle;
+
+  // Use real data when available, otherwise show empty state
+  const vehicle = dbVehicle
+    ? {
+        id: dbVehicle.id,
+        make: dbVehicle.make,
+        model: dbVehicle.model,
+        year: dbVehicle.year,
+        plateNumber: dbVehicle.license_plate,
+        category: 'Active',
+        image: '/placeholder.svg',
+      }
+    : null;
+
+  const rental = activeRental
+    ? {
+        id: activeRental.id,
+        startDate: new Date(activeRental.start_date).toISOString().split('T')[0],
+        dailyRate: Number(activeRental.daily_rate),
+        weeklyRate: Number(activeRental.daily_rate) * 7,
+        paymentFrequency: activeRental.payment_frequency as 'weekly' | 'daily',
+        status: activeRental.status as 'active',
+        nextPaymentDate: 'See payments tab',
+        totalPaid: dbTotalPaid,
+        daysActive: dbDaysActive,
+      }
+    : null;
 
   // Fetch phone verification status
   useEffect(() => {
