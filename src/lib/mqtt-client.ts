@@ -1,5 +1,16 @@
 import mqtt, { MqttClient, IClientOptions } from 'mqtt';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  TELEMETRY_SCHEDULES,
+  ALERT_RULES,
+  MONITORING_THRESHOLDS,
+  getLastWillConfig,
+  getPersistentSessionConfig,
+  checkTelemetryRateLimit,
+  telemetryScheduler,
+  type AlertRule,
+  type AlertSeverity,
+} from '@/lib/telemetry-scheduler';
 
 export interface VehicleLocation {
   vehicleId: string;
@@ -138,7 +149,7 @@ const PARKED_SPEED_THRESHOLD = 2; // mph - vehicle considered parked if speed < 
 
 // Accident detection thresholds
 const ACCIDENT_THRESHOLDS = {
-  SUDDEN_DECELERATION_G: 4.0, // 4G deceleration triggers detection
+  SUDDEN_DECELERATION_G: 5.0, // 5G deceleration triggers detection (P0)
   CRITICAL_G: 8.0, // 8G+ is severe
   SPEED_BUFFER_MS: 5000, // Store last 5 seconds of speed data
 };
@@ -171,14 +182,21 @@ class MQTTVehicleTracker {
   private vehicleSensors: Map<string, any> = new Map();
   private lastAccelerometer: Map<string, { x: number; y: number; z: number; totalG: number }> = new Map();
 
-  // Default broker configuration (would be replaced with actual broker in production)
+  // Alert callbacks
+  private alertCallbacks: Set<(vehicleId: string, rule: AlertRule, result: { severity: AlertSeverity; message: string }) => void> = new Set();
+
+  // Default broker configuration with persistent sessions & last will
   private defaultConfig: MQTTConfig = {
     brokerUrl: 'wss://broker.hivemq.com:8884/mqtt',
     options: {
       clientId: `rentmaikar_${Math.random().toString(16).slice(2, 10)}`,
-      clean: true,
+      clean: getPersistentSessionConfig().cleanSession, // false — persistent session for spotty connections
       connectTimeout: 30000,
       reconnectPeriod: 5000,
+      properties: {
+        sessionExpiryInterval: getPersistentSessionConfig().sessionExpiryIntervalSec,
+        receiveMaximum: getPersistentSessionConfig().receiveMaximum,
+      },
     }
   };
 
@@ -191,6 +209,15 @@ class MQTTVehicleTracker {
       };
 
       try {
+        // Add Last Will and Testament for vehicle offline detection
+        const lwt = getLastWillConfig('fleet-monitor');
+        finalConfig.options.will = {
+          topic: lwt.topic,
+          payload: Buffer.from(lwt.payload),
+          qos: lwt.qos,
+          retain: lwt.retain,
+        };
+
         this.client = mqtt.connect(finalConfig.brokerUrl, finalConfig.options);
 
         this.client.on('connect', () => {
@@ -306,6 +333,7 @@ class MQTTVehicleTracker {
 
   disconnect(): void {
     if (this.client) {
+      telemetryScheduler.stopAll();
       this.client.end();
       this.client = null;
       this.isConnected = false;
@@ -323,6 +351,9 @@ class MQTTVehicleTracker {
 
       // ── Telemetry topics ──────────────────────────────────
       if (messageType === 'telemetry') {
+        // Rate limit check
+        if (this.isRateLimited(vehicleId, message.length)) return;
+
         const data = JSON.parse(message);
 
         // Reset telemetry failure count on any successful telemetry data
@@ -361,16 +392,28 @@ class MQTTVehicleTracker {
             if (callbacks) callbacks.forEach(cb => cb(location));
             const allCallbacks = this.locationCallbacks.get('*');
             if (allCallbacks) allCallbacks.forEach(cb => cb(location));
+
+            // Evaluate GPS alert rules (speeding, geofence)
+            this.evaluateAlertRules(vehicleId, 'gps', data);
+
+            // Update GPS schedule based on motion state
+            const isMoving = location.speed >= TELEMETRY_SCHEDULES.GPS.movingThresholdMph;
+            telemetryScheduler.updateGpsMotionState(vehicleId, isMoving, () => this.requestLocationReport(vehicleId));
             break;
           }
 
           case 'engine': {
             this.handleEngineData(vehicleId, data);
+            // Evaluate engine alert rules (overheating, high RPM, low fuel, oil pressure)
+            this.evaluateAlertRules(vehicleId, 'engine', data);
             break;
           }
 
           case 'diagnostics': {
             this.handleSensorData(vehicleId, { type: 'diagnostics', ...data });
+            // Evaluate diagnostic alert rules immediately (on occurrence)
+            this.evaluateAlertRules(vehicleId, 'diagnostics', data);
+            telemetryScheduler.recordDiagnosticEvent(vehicleId);
             break;
           }
 
@@ -842,6 +885,11 @@ class MQTTVehicleTracker {
 
     // Send to backend for incident creation
     this.sendAccidentToBackend(event);
+
+    // P0: Dispatch emergency services for severe/critical accidents
+    if (severity === 'severe' || severity === 'critical' || triggerType === 'airbag' || triggerType === 'fire') {
+      this.dispatchEmergencyServices(event);
+    }
   }
 
   // Register vehicle-driver mapping for accident reports
@@ -1152,6 +1200,142 @@ class MQTTVehicleTracker {
         resolve();
       });
     });
+  }
+
+  // ── Alert Rules Engine ───────────────────────────────────
+
+  /**
+   * Evaluate telemetry data against all enabled alert rules.
+   * Called automatically on every GPS, engine, and diagnostics message.
+   */
+  private evaluateAlertRules(vehicleId: string, source: AlertRule['source'], data: Record<string, any>): void {
+    const rules = ALERT_RULES.filter(r => r.enabled && r.source === source);
+    for (const rule of rules) {
+      const result = rule.evaluate(data);
+      if (result) {
+        console.log(`[MQTT] Alert triggered: ${rule.name} for ${vehicleId} — ${result.severity}: ${result.message}`);
+        this.alertCallbacks.forEach(cb => cb(vehicleId, rule, result));
+
+        // Log alert to telemetry
+        this.logTelemetryAlert(vehicleId, rule, result);
+      }
+    }
+  }
+
+  private async logTelemetryAlert(vehicleId: string, rule: AlertRule, result: { severity: AlertSeverity; message: string }): Promise<void> {
+    try {
+      await supabase.from('mqtt_telemetry_logs').insert({
+        vehicle_id: vehicleId,
+        data_type: `alert:${rule.id}`,
+        payload: { ruleId: rule.id, ruleName: rule.name, severity: result.severity, message: result.message },
+        mqtt_topic: `rentmaikar/vehicles/${vehicleId}/alerts/${rule.id}`,
+      });
+    } catch (e) {
+      console.error('[MQTT] Failed to log alert:', e);
+    }
+  }
+
+  /**
+   * Subscribe to alert rule triggers
+   */
+  onAlert(callback: (vehicleId: string, rule: AlertRule, result: { severity: AlertSeverity; message: string }) => void): () => void {
+    this.alertCallbacks.add(callback);
+    return () => { this.alertCallbacks.delete(callback); };
+  }
+
+  // ── Telemetry Scheduling ─────────────────────────────────
+
+  /**
+   * Start telemetry schedules for a vehicle.
+   * GPS: 1hr parked / 30s moving. Engine: 15min. Diagnostics: on occurrence.
+   */
+  startTelemetrySchedules(vehicleId: string): void {
+    // GPS schedule
+    telemetryScheduler.startGpsSchedule(vehicleId, () => {
+      this.requestLocationReport(vehicleId);
+    }, false);
+
+    // Engine schedule (every 15 min)
+    telemetryScheduler.startEngineSchedule(vehicleId, () => {
+      this.requestEngineReport(vehicleId);
+    });
+
+    console.log(`[MQTT] Telemetry schedules started for ${vehicleId}`);
+  }
+
+  stopTelemetrySchedules(vehicleId: string): void {
+    telemetryScheduler.stopAllForVehicle(vehicleId);
+  }
+
+  private requestLocationReport(vehicleId: string): void {
+    if (!this.client || !this.isConnected) return;
+    const topic = `rentmaikar/vehicles/${vehicleId}/commands`;
+    this.client.publish(topic, JSON.stringify({
+      command: 'report_gps',
+      timestamp: new Date().toISOString(),
+      requestId: Math.random().toString(36).slice(2, 11),
+    }), { qos: TELEMETRY_SCHEDULES.GPS.qos });
+  }
+
+  private requestEngineReport(vehicleId: string): void {
+    if (!this.client || !this.isConnected) return;
+    const topic = `rentmaikar/vehicles/${vehicleId}/commands`;
+    this.client.publish(topic, JSON.stringify({
+      command: 'report_engine',
+      timestamp: new Date().toISOString(),
+      requestId: Math.random().toString(36).slice(2, 11),
+    }), { qos: TELEMETRY_SCHEDULES.ENGINE.qos });
+  }
+
+  /**
+   * Check rate limit before processing a message (prevents overload)
+   */
+  private isRateLimited(vehicleId: string, messageBytes: number): boolean {
+    const result = checkTelemetryRateLimit(vehicleId, messageBytes);
+    if (!result.allowed) {
+      console.warn(`[MQTT] Rate limited for ${vehicleId}: ${result.reason}`);
+    }
+    return !result.allowed;
+  }
+
+  // ── Emergency Dispatch Integration ───────────────────────
+
+  /**
+   * Dispatch emergency services for severe/critical accidents.
+   * Sends to accident-emergency-dispatch edge function.
+   */
+  private async dispatchEmergencyServices(event: AccidentEvent): Promise<void> {
+    try {
+      const speedHistory = this.speedHistory.get(event.vehicleId) || [];
+      const accelerometerData = this.lastAccelerometer.get(event.vehicleId);
+
+      await supabase.functions.invoke('accident-emergency-dispatch', {
+        body: {
+          incidentId: `incident-${Date.now()}`,
+          vehicleId: event.vehicleId,
+          driverId: event.driverId || 'unknown',
+          ownerId: event.ownerId,
+          severity: event.severity || 'severe',
+          triggerType: event.triggerType,
+          decelerationG: event.decelerationG,
+          speedAtImpact: event.speedAtImpact,
+          latitude: event.latitude,
+          longitude: event.longitude,
+          timestamp: event.timestamp.toISOString(),
+          blackBoxData: {
+            speedHistory: speedHistory.slice(-30),
+            accelerometerHistory: accelerometerData ? [{ ...accelerometerData, t: Date.now() }] : [],
+          },
+        },
+      });
+      console.log('[MQTT] Emergency dispatch invoked');
+    } catch (error) {
+      console.error('[MQTT] Emergency dispatch failed:', error);
+    }
+  }
+
+  getScheduleStatus(vehicleId: string) {
+    return telemetryScheduler.getScheduleStatus(vehicleId);
   }
 }
 

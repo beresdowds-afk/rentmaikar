@@ -29,7 +29,7 @@ const iotAccidentSchema = z.object({
 
 // Thresholds for accident detection
 const ACCIDENT_THRESHOLDS = {
-  SUDDEN_DECELERATION_G: 4.0, // 4G deceleration is significant
+  SUDDEN_DECELERATION_G: 5.0, // 5G deceleration threshold (P0)
   CRITICAL_DECELERATION_G: 8.0, // 8G+ is severe impact
   HIGH_SPEED_THRESHOLD: 30, // mph - impacts above this are more serious
   IMPACT_SEVERITY: {
@@ -213,6 +213,35 @@ This incident was automatically detected by the vehicle's IoT system. Emergency 
       console.log("[IoTAccident] Notification sent");
     } catch (notifError) {
       console.error("[IoTAccident] Notification failed:", notifError);
+    }
+
+    // P0: Dispatch emergency services for severe/critical
+    if (severity === 'high' || severity === 'critical' || body.triggerType === 'airbag' || body.triggerType === 'fire') {
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/accident-emergency-dispatch`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({
+            incidentId: incident.id,
+            vehicleId: body.vehicleId,
+            driverId: body.driverId,
+            ownerId: body.ownerId,
+            severity: severity === 'high' ? 'severe' : severity === 'critical' ? 'critical' : 'severe',
+            triggerType: body.triggerType,
+            decelerationG: body.decelerationG,
+            speedAtImpact: body.speedAtImpact,
+            latitude: body.latitude,
+            longitude: body.longitude,
+            timestamp: body.timestamp,
+          }),
+        });
+        console.log("[IoTAccident] Emergency dispatch triggered");
+      } catch (dispatchError) {
+        console.error("[IoTAccident] Emergency dispatch failed:", dispatchError);
+      }
     }
 
     return new Response(
