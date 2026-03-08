@@ -275,31 +275,37 @@ export default function DriverDashboard() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                      <img 
-                        src={vehicle.image} 
-                        alt={`${vehicle.make} ${vehicle.model}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Make & Model</p>
-                        <p className="font-medium">{vehicle.make} {vehicle.model}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Year</p>
-                        <p className="font-medium">{vehicle.year}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Plate Number</p>
-                        <p className="font-medium">{vehicle.plateNumber}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Category</p>
-                        <Badge>{vehicle.category}</Badge>
-                      </div>
-                    </div>
+                    {vehicle ? (
+                      <>
+                        <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                          <img 
+                            src={vehicle.image} 
+                            alt={`${vehicle.make} ${vehicle.model}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Make & Model</p>
+                            <p className="font-medium">{vehicle.make} {vehicle.model}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Year</p>
+                            <p className="font-medium">{vehicle.year}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Plate Number</p>
+                            <p className="font-medium">{vehicle.plateNumber}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Category</p>
+                            <Badge>{vehicle.category}</Badge>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No active vehicle rental</p>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -314,7 +320,7 @@ export default function DriverDashboard() {
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
                       <span>Status</span>
-                      <Badge className="bg-green-500">Active</Badge>
+                      <Badge className="bg-green-500">{rental ? 'Active' : 'No Rental'}</Badge>
                     </div>
                     <Separator />
                     <div className="space-y-3">
@@ -335,6 +341,7 @@ export default function DriverDashboard() {
                     <Button 
                       className="w-full mt-4" 
                       onClick={() => setShowPaymentModal(true)}
+                      disabled={!rental}
                     >
                       <CreditCard className="h-4 w-4 mr-2" />
                       Make Payment
@@ -344,13 +351,15 @@ export default function DriverDashboard() {
               </div>
 
               {/* Payment Reminder */}
-              <Alert>
-                <Bell className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Payment Reminder:</strong> Your next payment of {formatCurrency(totalDue, currency)} is due on {rental.nextPaymentDate}.
-                  {!isUSA && ' Payment via Paystack or bank transfer.'}
-                </AlertDescription>
-              </Alert>
+              {rental && (
+                <Alert>
+                  <Bell className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Payment Reminder:</strong> Your next payment of {formatCurrency(totalDue, currency)} is due soon.
+                    {!isUSA && ' Payment via Paystack or bank transfer.'}
+                  </AlertDescription>
+                </Alert>
+              )}
             </TabsContent>
 
             {/* Payments Tab */}
