@@ -11,6 +11,13 @@ import {
   type AlertRule,
   type AlertSeverity,
 } from '@/lib/telemetry-scheduler';
+import {
+  buildEMQXConnectOptions,
+  EMQX_SHARED_SUBSCRIPTIONS,
+  EMQX_SYS_TOPICS,
+  EMQX_PROFILES,
+  type EMQXBrokerProfile,
+} from '@/lib/emqx-config';
 
 export interface VehicleLocation {
   vehicleId: string;
