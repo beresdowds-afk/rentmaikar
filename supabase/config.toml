@@ -56,6 +56,12 @@ verify_jwt = false
 [functions.iot-accident-detection]
 verify_jwt = false
 
+[functions.accident-emergency-dispatch]
+verify_jwt = false
+
+[functions.telemetry-health-monitor]
+verify_jwt = false
+
 [functions.generate-vehicle-mqtt-token]
 verify_jwt = false
 
