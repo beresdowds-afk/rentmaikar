@@ -537,10 +537,8 @@ export default function OwnerDashboard() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="font-bold">{formatCurrency(vehicle.earnings.total * multiplier, currency)}</p>
-                              <p className="text-sm text-green-600">
-                                Available: {formatCurrency(vehicle.earnings.available * multiplier, currency)}
-                              </p>
+                              <p className="font-bold">{vehicle.make} {vehicle.model}</p>
+                              <p className="text-sm text-muted-foreground capitalize">{vehicle.status}</p>
                             </div>
                           </div>
                         ))}
@@ -613,7 +611,7 @@ export default function OwnerDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockWithdrawals.map(withdrawal => (
+                    {([] as any[]).map(withdrawal => (
                       <div 
                         key={withdrawal.id}
                         className="flex items-center justify-between p-4 border rounded-lg"
