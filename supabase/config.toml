@@ -65,6 +65,9 @@ verify_jwt = false
 [functions.generate-vehicle-mqtt-token]
 verify_jwt = false
 
+[functions.emqx-monitoring]
+verify_jwt = false
+
 # ─────────────────────────────────────────────
 # Scheduled / cron-triggered background jobs
 # (called by pg_cron or external schedulers — no JWT)

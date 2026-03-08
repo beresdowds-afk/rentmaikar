@@ -13,7 +13,8 @@ import {
   Activity, AlertTriangle, Battery,
   Flame, Gauge, MapPin, Radio, RefreshCw, Satellite, Shield,
   Signal, Thermometer, Wifi, WifiOff, Zap, Siren, Eye,
-  TrendingUp, BarChart3, CircleAlert, BellRing, Timer, Cpu
+  TrendingUp, BarChart3, CircleAlert, BellRing, Timer, Cpu,
+  Server
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -21,6 +22,15 @@ import {
   ALERT_RULES,
   MONITORING_THRESHOLDS,
 } from '@/lib/telemetry-scheduler';
+import {
+  EMQX_PROFILES,
+  EMQX_SHARED_SUBSCRIPTIONS,
+  EMQX_ACL_RULES,
+  EMQX_RULES,
+  EMQX_AUTH_CONFIG,
+  EMQX_POSTGRES_BRIDGE,
+  EMQX_MONITORED_TOPICS,
+} from '@/lib/emqx-config';
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -256,6 +266,10 @@ export const IoTMonitoringHub = () => {
           <TabsTrigger value="schedules" className="gap-1.5">
             <Timer className="h-3.5 w-3.5" />
             Schedules & QoS
+          </TabsTrigger>
+          <TabsTrigger value="emqx" className="gap-1.5">
+            <Server className="h-3.5 w-3.5" />
+            EMQX Broker
           </TabsTrigger>
         </TabsList>
 
@@ -761,6 +775,241 @@ export const IoTMonitoringHub = () => {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Last Will Retain</span>
                     <Badge variant="outline">true</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ── EMQX BROKER ──────────────────────────────── */}
+        <TabsContent value="emqx">
+          <div className="space-y-4">
+            {/* Broker Profiles */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Server className="h-5 w-5" />
+                  EMQX Broker Configuration
+                </CardTitle>
+                <CardDescription>Connection profiles, authentication, and cluster settings</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Connection Profiles */}
+                <div>
+                  <h4 className="text-sm font-medium mb-3">Connection Profiles</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {Object.entries(EMQX_PROFILES).map(([key, profile]) => (
+                      <div key={key} className={`p-4 rounded-lg border ${key === 'production' ? 'border-primary/50 bg-primary/5' : 'bg-muted/30'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-sm">{profile.name}</span>
+                          {key === 'production' && <Badge>Active</Badge>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-3">{profile.description}</p>
+                        <div className="space-y-1.5 text-[11px] font-mono">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">WSS:</span>
+                            <span className="truncate ml-2">{profile.wssUrl}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">TCP:</span>
+                            <span className="truncate ml-2">{profile.tcpUrl}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">API:</span>
+                            <span className="truncate ml-2">{profile.apiUrl}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Authentication */}
+                <div>
+                  <h4 className="text-sm font-medium mb-3">Authentication</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-lg border bg-muted/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Shield className="h-4 w-4 text-primary" />
+                        <span className="font-medium text-sm">JWT Authentication (Devices)</span>
+                      </div>
+                      <div className="space-y-1.5 text-xs text-muted-foreground">
+                        <p>From: <code className="bg-muted px-1 rounded">{EMQX_AUTH_CONFIG.jwt.from}</code></p>
+                        <p>Algorithm: <code className="bg-muted px-1 rounded">{EMQX_AUTH_CONFIG.jwt.algorithm}</code></p>
+                        <p>Verify claims: <code className="bg-muted px-1 rounded">username = %u</code></p>
+                        <p>Disconnect after expire: <Badge variant="outline" className="text-[10px]">{EMQX_AUTH_CONFIG.jwt.disconnect_after_expire ? 'Yes' : 'No'}</Badge></p>
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-muted/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Shield className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium text-sm">Password Auth (Dashboard)</span>
+                      </div>
+                      <div className="space-y-1.5 text-xs text-muted-foreground">
+                        <p>Backend: <code className="bg-muted px-1 rounded">{EMQX_AUTH_CONFIG.password.backend}</code></p>
+                        <p>Hash: <code className="bg-muted px-1 rounded">{EMQX_AUTH_CONFIG.password.password_hash_algorithm.name}</code></p>
+                        <p>Salt rounds: <Badge variant="outline" className="text-[10px]">{EMQX_AUTH_CONFIG.password.password_hash_algorithm.salt_rounds}</Badge></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Shared Subscriptions */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Radio className="h-5 w-5" />
+                  EMQX Shared Subscriptions
+                </CardTitle>
+                <CardDescription>Load-balanced topic groups using $share/&#123;group&#125;/&#123;topic&#125;</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {Object.entries(EMQX_SHARED_SUBSCRIPTIONS).map(([key, group]) => (
+                  <div key={key} className="p-4 rounded-lg border">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs font-mono">{group.group}</Badge>
+                        <span className="font-medium text-sm capitalize">{key.replace(/_/g, ' ').toLowerCase()}</span>
+                      </div>
+                      <Badge className="text-[10px]">{group.topics.length} topics</Badge>
+                    </div>
+                    <div className="space-y-1 mt-2">
+                      {group.topics.map((topic, i) => (
+                        <p key={i} className="text-[11px] font-mono text-muted-foreground">{topic}</p>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* ACL Rules */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Shield className="h-5 w-5" />
+                  ACL Rules
+                </CardTitle>
+                <CardDescription>EMQX authorization rules with %u (username) and %c (clientid) placeholders</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Action</TableHead>
+                        <TableHead>Permission</TableHead>
+                        <TableHead>Topic Pattern</TableHead>
+                        <TableHead>Description</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {EMQX_ACL_RULES.map((rule, i) => (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs capitalize">{rule.action}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={rule.permission === 'allow' ? 'default' : 'destructive'} className="text-xs">
+                              {rule.permission}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{rule.topic}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{rule.description}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Rule Engine & Data Bridges */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Zap className="h-5 w-5" />
+                    Rule Engine Rules
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {EMQX_RULES.map(rule => (
+                    <div key={rule.id} className="p-3 rounded-lg border space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">{rule.name}</span>
+                        <Badge variant={rule.enabled ? 'default' : 'secondary'} className="text-[10px]">
+                          {rule.enabled ? 'Active' : 'Disabled'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{rule.description}</p>
+                      <div className="flex gap-1 flex-wrap">
+                        {rule.actions.map((action, i) => (
+                          <Badge key={i} variant="outline" className="text-[10px] capitalize">{action.type}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Activity className="h-5 w-5" />
+                    Data Bridge (PostgreSQL)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Bridge Name</span>
+                    <span className="font-medium">{EMQX_POSTGRES_BRIDGE.name}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Pool Size</span>
+                    <Badge variant="outline">{EMQX_POSTGRES_BRIDGE.pool_size}</Badge>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Batch Size</span>
+                    <Badge variant="outline">{EMQX_POSTGRES_BRIDGE.resource_opts.batch_size}</Badge>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Batch Time</span>
+                    <span className="font-medium">{EMQX_POSTGRES_BRIDGE.resource_opts.batch_time}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Buffer Mode</span>
+                    <Badge variant="outline">{EMQX_POSTGRES_BRIDGE.resource_opts.buffer_mode}</Badge>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Health Check</span>
+                    <span className="font-medium">{EMQX_POSTGRES_BRIDGE.resource_opts.health_check_interval}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">TLS</span>
+                    <Badge variant={EMQX_POSTGRES_BRIDGE.ssl.enable ? 'default' : 'secondary'} className="text-[10px]">
+                      {EMQX_POSTGRES_BRIDGE.ssl.enable ? 'Enabled' : 'Disabled'}
+                    </Badge>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  <h4 className="font-medium text-sm">Monitored Topics</h4>
+                  <div className="space-y-1">
+                    {EMQX_MONITORED_TOPICS.map((topic, i) => (
+                      <p key={i} className="text-[11px] font-mono text-muted-foreground">{topic}</p>
+                    ))}
                   </div>
                 </CardContent>
               </Card>

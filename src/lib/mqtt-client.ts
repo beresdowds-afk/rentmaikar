@@ -3,14 +3,19 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   TELEMETRY_SCHEDULES,
   ALERT_RULES,
-  MONITORING_THRESHOLDS,
   getLastWillConfig,
-  getPersistentSessionConfig,
   checkTelemetryRateLimit,
   telemetryScheduler,
   type AlertRule,
   type AlertSeverity,
 } from '@/lib/telemetry-scheduler';
+import {
+  buildEMQXConnectOptions,
+  EMQX_SHARED_SUBSCRIPTIONS,
+  EMQX_SYS_TOPICS,
+  EMQX_PROFILES,
+  type EMQXBrokerProfile,
+} from '@/lib/emqx-config';
 
 export interface VehicleLocation {
   vehicleId: string;
@@ -185,20 +190,21 @@ class MQTTVehicleTracker {
   // Alert callbacks
   private alertCallbacks: Set<(vehicleId: string, rule: AlertRule, result: { severity: AlertSeverity; message: string }) => void> = new Set();
 
-  // Default broker configuration with persistent sessions & last will
-  private defaultConfig: MQTTConfig = {
-    brokerUrl: 'wss://broker.hivemq.com:8884/mqtt',
-    options: {
-      clientId: `rentmaikar_${Math.random().toString(16).slice(2, 10)}`,
-      clean: getPersistentSessionConfig().cleanSession, // false — persistent session for spotty connections
-      connectTimeout: 30000,
-      reconnectPeriod: 5000,
-      properties: {
-        sessionExpiryInterval: getPersistentSessionConfig().sessionExpiryIntervalSec,
-        receiveMaximum: getPersistentSessionConfig().receiveMaximum,
+  // EMQX broker monitoring data
+  private sysMetrics: Map<string, any> = new Map();
+  private brokerProfile: keyof typeof EMQX_PROFILES = 'production';
+  private useSharedSubscriptions: boolean = true;
+
+  // Default broker configuration — EMQX with persistent sessions & last will
+  private defaultConfig: MQTTConfig = (() => {
+    const emqx = buildEMQXConnectOptions('production');
+    return {
+      brokerUrl: emqx.brokerUrl,
+      options: {
+        ...emqx.options,
       },
-    }
-  };
+    };
+  })();
 
   connect(config?: Partial<MQTTConfig>): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -218,59 +224,79 @@ class MQTTVehicleTracker {
           retain: lwt.retain,
         };
 
+        console.log(`[MQTT/EMQX] Connecting to ${finalConfig.brokerUrl} (profile: ${this.brokerProfile})`);
         this.client = mqtt.connect(finalConfig.brokerUrl, finalConfig.options);
 
         this.client.on('connect', () => {
-          console.log('[MQTT] Connected to broker');
+          console.log('[MQTT/EMQX] Connected to EMQX broker');
           this.isConnected = true;
           this.reconnectAttempts = 0;
           
-          // Subscribe to expanded telemetry subtopics
-          const telemetryTopics = [
-            'rentmaikar/vehicles/+/telemetry/gps',         // Location data
-            'rentmaikar/vehicles/+/telemetry/engine',      // RPM, temp, fuel
-            'rentmaikar/vehicles/+/telemetry/diagnostics', // Error codes, battery
-            'rentmaikar/vehicles/+/telemetry/batch',       // Bulk historical data
-          ];
-          
-          telemetryTopics.forEach(topic => {
-            this.client?.subscribe(topic, (err) => {
-              if (err) console.error(`[MQTT] Subscription error for ${topic}:`, err);
-              else console.log(`[MQTT] Subscribed to ${topic}`);
+          // ── Subscribe using EMQX shared subscriptions for load balancing ──
+          if (this.useSharedSubscriptions) {
+            // Fleet monitor shared group — distributes telemetry across dashboard clients
+            EMQX_SHARED_SUBSCRIPTIONS.FLEET_MONITOR.topics.forEach(topic => {
+              this.client?.subscribe(topic, { qos: 1 }, (err) => {
+                if (err) console.error(`[MQTT/EMQX] Shared sub error for ${topic}:`, err);
+                else console.log(`[MQTT/EMQX] Shared subscription: ${topic}`);
+              });
             });
-          });
+
+            // Accident responder shared group
+            EMQX_SHARED_SUBSCRIPTIONS.ACCIDENT_RESPONDER.topics.forEach(topic => {
+              this.client?.subscribe(topic, { qos: 1 }, (err) => {
+                if (err) console.error(`[MQTT/EMQX] Shared sub error for ${topic}:`, err);
+              });
+            });
+
+            // Command processor shared group
+            EMQX_SHARED_SUBSCRIPTIONS.COMMAND_PROCESSOR.topics.forEach(topic => {
+              this.client?.subscribe(topic, { qos: 1 }, (err) => {
+                if (err) console.error(`[MQTT/EMQX] Shared sub error for ${topic}:`, err);
+              });
+            });
+
+            console.log('[MQTT/EMQX] Shared subscriptions active (fleet-monitor, accident-responder, cmd-processor)');
+          } else {
+            // Fallback: standard subscriptions (no load balancing)
+            const telemetryTopics = [
+              'rentmaikar/vehicles/+/telemetry/gps',
+              'rentmaikar/vehicles/+/telemetry/engine',
+              'rentmaikar/vehicles/+/telemetry/diagnostics',
+              'rentmaikar/vehicles/+/telemetry/batch',
+            ];
+            telemetryTopics.forEach(topic => {
+              this.client?.subscribe(topic, (err) => {
+                if (err) console.error(`[MQTT/EMQX] Subscription error for ${topic}:`, err);
+              });
+            });
+          }
 
           // Subscribe to legacy telemetry root (backward compat)
           this.client?.subscribe('rentmaikar/vehicles/+/telemetry', (err) => {
-            if (err) console.error('[MQTT] Subscription error:', err);
-            else console.log('[MQTT] Subscribed to vehicle telemetry (root)');
+            if (err) console.error('[MQTT/EMQX] Subscription error:', err);
           });
 
-          // Subscribe to status confirmations from immobilizer
-          this.client?.subscribe('rentmaikar/vehicles/+/status', (err) => {
-            if (err) console.error('[MQTT] Subscription error:', err);
-            else console.log('[MQTT] Subscribed to vehicle status');
-          });
+          // Subscribe to status and commands (if not in shared mode already)
+          if (!this.useSharedSubscriptions) {
+            this.client?.subscribe('rentmaikar/vehicles/+/status', (err) => {
+              if (err) console.error('[MQTT/EMQX] Subscription error:', err);
+            });
+            this.client?.subscribe('rentmaikar/vehicles/+/commands', (err) => {
+              if (err) console.error('[MQTT/EMQX] Subscription error:', err);
+            });
+          }
 
-          // Subscribe to commands topic for command acknowledgements
-          this.client?.subscribe('rentmaikar/vehicles/+/commands', (err) => {
-            if (err) console.error('[MQTT] Subscription error:', err);
-            else console.log('[MQTT] Subscribed to vehicle commands');
-          });
-
-          // ── Accident topics ───────────────────────────────────
+          // ── Accident topics (direct — critical, not shared) ───
           const accidentTopics = [
-            // Raw sensor data (immediate, unprocessed)
             'rentmaikar/vehicles/+/accident/raw',
             'rentmaikar/vehicles/+/accident/raw/impact',
             'rentmaikar/vehicles/+/accident/raw/airbag',
             'rentmaikar/vehicles/+/accident/raw/rollover',
-            // Verified/processed accidents
             'rentmaikar/vehicles/+/accident/verified',
             'rentmaikar/vehicles/+/accident/verified/severe',
             'rentmaikar/vehicles/+/accident/verified/minor',
             'rentmaikar/vehicles/+/accident/verified/fire',
-            // Post-accident telemetry
             'rentmaikar/vehicles/+/accident/telemetry/location',
             'rentmaikar/vehicles/+/accident/telemetry/images',
             'rentmaikar/vehicles/+/accident/telemetry/vitals',
@@ -278,12 +304,11 @@ class MQTTVehicleTracker {
 
           accidentTopics.forEach(topic => {
             this.client?.subscribe(topic, { qos: 1 }, (err) => {
-              if (err) console.error(`[MQTT] Accident subscription error for ${topic}:`, err);
+              if (err) console.error(`[MQTT/EMQX] Accident sub error for ${topic}:`, err);
             });
           });
-          console.log('[MQTT] Subscribed to all accident topics');
 
-          // Alert topics (fleet manager subscribes to all alerts)
+          // Alert routing topics
           const alertTopics = [
             'rentmaikar/accident/alerts/emergency/+',
             'rentmaikar/accident/alerts/fleet/+',
@@ -293,34 +318,50 @@ class MQTTVehicleTracker {
 
           alertTopics.forEach(topic => {
             this.client?.subscribe(topic, { qos: 1 }, (err) => {
-              if (err) console.error(`[MQTT] Alert subscription error for ${topic}:`, err);
+              if (err) console.error(`[MQTT/EMQX] Alert sub error for ${topic}:`, err);
             });
           });
-          console.log('[MQTT] Subscribed to accident alert topics');
+
+          // ── EMQX $SYS topics for broker monitoring ──────────
+          Object.values(EMQX_SYS_TOPICS).forEach(sysTopic => {
+            this.client?.subscribe(sysTopic, { qos: 0 }, (err) => {
+              if (err) console.error(`[MQTT/EMQX] $SYS sub error for ${sysTopic}:`, err);
+            });
+          });
+          console.log('[MQTT/EMQX] Subscribed to $SYS broker monitoring topics');
+
+          // Subscribe to EMQX client events for connection tracking
+          this.client?.subscribe('$SYS/brokers/+/clients/+/connected', { qos: 0 });
+          this.client?.subscribe('$SYS/brokers/+/clients/+/disconnected', { qos: 0 });
 
           resolve();
         });
 
         this.client.on('message', (topic, message) => {
+          // Handle $SYS metrics separately
+          if (topic.startsWith('$SYS/')) {
+            this.handleSysMessage(topic, message.toString());
+            return;
+          }
           this.handleMessage(topic, message.toString());
         });
 
         this.client.on('error', (error) => {
-          console.error('[MQTT] Connection error:', error);
+          console.error('[MQTT/EMQX] Connection error:', error);
           reject(error);
         });
 
         this.client.on('close', () => {
-          console.log('[MQTT] Connection closed');
+          console.log('[MQTT/EMQX] Connection closed');
           this.isConnected = false;
         });
 
         this.client.on('reconnect', () => {
           this.reconnectAttempts++;
-          console.log(`[MQTT] Reconnecting... Attempt ${this.reconnectAttempts}`);
+          console.log(`[MQTT/EMQX] Reconnecting... Attempt ${this.reconnectAttempts}`);
           
           if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.error('[MQTT] Max reconnect attempts reached');
+            console.error('[MQTT/EMQX] Max reconnect attempts reached');
             this.client?.end();
           }
         });
@@ -329,6 +370,73 @@ class MQTTVehicleTracker {
         reject(error);
       }
     });
+  }
+
+  /**
+   * Handle EMQX $SYS monitoring messages
+   */
+  private handleSysMessage(topic: string, message: string): void {
+    this.sysMetrics.set(topic, message);
+  }
+
+  /**
+   * Get current EMQX $SYS metrics snapshot
+   */
+  getSysMetrics(): Record<string, any> {
+    const metrics: Record<string, any> = {};
+    this.sysMetrics.forEach((value, key) => {
+      // Simplify key names
+      const shortKey = key.replace(/\$SYS\/brokers\/[^/]+\//, '');
+      metrics[shortKey] = value;
+    });
+    return metrics;
+  }
+
+  /**
+   * Set the EMQX broker profile (production/staging/local)
+   */
+  setBrokerProfile(profile: keyof typeof EMQX_PROFILES): void {
+    this.brokerProfile = profile;
+    const emqx = buildEMQXConnectOptions(profile);
+    this.defaultConfig = {
+      brokerUrl: emqx.brokerUrl,
+      options: emqx.options as any,
+    };
+    console.log(`[MQTT/EMQX] Broker profile set to: ${profile}`);
+  }
+
+  /**
+   * Get current broker profile info
+   */
+  getBrokerProfile(): EMQXBrokerProfile & { profileKey: string } {
+    return {
+      ...EMQX_PROFILES[this.brokerProfile],
+      profileKey: this.brokerProfile,
+    };
+  }
+
+  /**
+   * Toggle shared subscriptions on/off
+   */
+  setSharedSubscriptions(enabled: boolean): void {
+    this.useSharedSubscriptions = enabled;
+    console.log(`[MQTT/EMQX] Shared subscriptions: ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  /**
+   * Query EMQX HTTP API via edge function proxy
+   */
+  async queryEMQXApi(action: string, params?: Record<string, any>): Promise<any> {
+    try {
+      const { data, error } = await supabase.functions.invoke('emqx-monitoring', {
+        body: { action, params },
+      });
+      if (error) throw error;
+      return data?.data;
+    } catch (err) {
+      console.error(`[MQTT/EMQX] API query failed (${action}):`, err);
+      throw err;
+    }
   }
 
   disconnect(): void {
