@@ -226,27 +226,53 @@ class MQTTVehicleTracker {
           retain: lwt.retain,
         };
 
+        console.log(`[MQTT/EMQX] Connecting to ${finalConfig.brokerUrl} (profile: ${this.brokerProfile})`);
         this.client = mqtt.connect(finalConfig.brokerUrl, finalConfig.options);
 
         this.client.on('connect', () => {
-          console.log('[MQTT] Connected to broker');
+          console.log('[MQTT/EMQX] Connected to EMQX broker');
           this.isConnected = true;
           this.reconnectAttempts = 0;
           
-          // Subscribe to expanded telemetry subtopics
-          const telemetryTopics = [
-            'rentmaikar/vehicles/+/telemetry/gps',         // Location data
-            'rentmaikar/vehicles/+/telemetry/engine',      // RPM, temp, fuel
-            'rentmaikar/vehicles/+/telemetry/diagnostics', // Error codes, battery
-            'rentmaikar/vehicles/+/telemetry/batch',       // Bulk historical data
-          ];
-          
-          telemetryTopics.forEach(topic => {
-            this.client?.subscribe(topic, (err) => {
-              if (err) console.error(`[MQTT] Subscription error for ${topic}:`, err);
-              else console.log(`[MQTT] Subscribed to ${topic}`);
+          // ── Subscribe using EMQX shared subscriptions for load balancing ──
+          if (this.useSharedSubscriptions) {
+            // Fleet monitor shared group — distributes telemetry across dashboard clients
+            EMQX_SHARED_SUBSCRIPTIONS.FLEET_MONITOR.topics.forEach(topic => {
+              this.client?.subscribe(topic, { qos: 1 }, (err) => {
+                if (err) console.error(`[MQTT/EMQX] Shared sub error for ${topic}:`, err);
+                else console.log(`[MQTT/EMQX] Shared subscription: ${topic}`);
+              });
             });
-          });
+
+            // Accident responder shared group
+            EMQX_SHARED_SUBSCRIPTIONS.ACCIDENT_RESPONDER.topics.forEach(topic => {
+              this.client?.subscribe(topic, { qos: 1 }, (err) => {
+                if (err) console.error(`[MQTT/EMQX] Shared sub error for ${topic}:`, err);
+              });
+            });
+
+            // Command processor shared group
+            EMQX_SHARED_SUBSCRIPTIONS.COMMAND_PROCESSOR.topics.forEach(topic => {
+              this.client?.subscribe(topic, { qos: 1 }, (err) => {
+                if (err) console.error(`[MQTT/EMQX] Shared sub error for ${topic}:`, err);
+              });
+            });
+
+            console.log('[MQTT/EMQX] Shared subscriptions active (fleet-monitor, accident-responder, cmd-processor)');
+          } else {
+            // Fallback: standard subscriptions (no load balancing)
+            const telemetryTopics = [
+              'rentmaikar/vehicles/+/telemetry/gps',
+              'rentmaikar/vehicles/+/telemetry/engine',
+              'rentmaikar/vehicles/+/telemetry/diagnostics',
+              'rentmaikar/vehicles/+/telemetry/batch',
+            ];
+            telemetryTopics.forEach(topic => {
+              this.client?.subscribe(topic, (err) => {
+                if (err) console.error(`[MQTT/EMQX] Subscription error for ${topic}:`, err);
+              });
+            });
+          }
 
           // Subscribe to legacy telemetry root (backward compat)
           this.client?.subscribe('rentmaikar/vehicles/+/telemetry', (err) => {
