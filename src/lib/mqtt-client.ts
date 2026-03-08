@@ -276,35 +276,29 @@ class MQTTVehicleTracker {
 
           // Subscribe to legacy telemetry root (backward compat)
           this.client?.subscribe('rentmaikar/vehicles/+/telemetry', (err) => {
-            if (err) console.error('[MQTT] Subscription error:', err);
-            else console.log('[MQTT] Subscribed to vehicle telemetry (root)');
+            if (err) console.error('[MQTT/EMQX] Subscription error:', err);
           });
 
-          // Subscribe to status confirmations from immobilizer
-          this.client?.subscribe('rentmaikar/vehicles/+/status', (err) => {
-            if (err) console.error('[MQTT] Subscription error:', err);
-            else console.log('[MQTT] Subscribed to vehicle status');
-          });
+          // Subscribe to status and commands (if not in shared mode already)
+          if (!this.useSharedSubscriptions) {
+            this.client?.subscribe('rentmaikar/vehicles/+/status', (err) => {
+              if (err) console.error('[MQTT/EMQX] Subscription error:', err);
+            });
+            this.client?.subscribe('rentmaikar/vehicles/+/commands', (err) => {
+              if (err) console.error('[MQTT/EMQX] Subscription error:', err);
+            });
+          }
 
-          // Subscribe to commands topic for command acknowledgements
-          this.client?.subscribe('rentmaikar/vehicles/+/commands', (err) => {
-            if (err) console.error('[MQTT] Subscription error:', err);
-            else console.log('[MQTT] Subscribed to vehicle commands');
-          });
-
-          // ── Accident topics ───────────────────────────────────
+          // ── Accident topics (direct — critical, not shared) ───
           const accidentTopics = [
-            // Raw sensor data (immediate, unprocessed)
             'rentmaikar/vehicles/+/accident/raw',
             'rentmaikar/vehicles/+/accident/raw/impact',
             'rentmaikar/vehicles/+/accident/raw/airbag',
             'rentmaikar/vehicles/+/accident/raw/rollover',
-            // Verified/processed accidents
             'rentmaikar/vehicles/+/accident/verified',
             'rentmaikar/vehicles/+/accident/verified/severe',
             'rentmaikar/vehicles/+/accident/verified/minor',
             'rentmaikar/vehicles/+/accident/verified/fire',
-            // Post-accident telemetry
             'rentmaikar/vehicles/+/accident/telemetry/location',
             'rentmaikar/vehicles/+/accident/telemetry/images',
             'rentmaikar/vehicles/+/accident/telemetry/vitals',
@@ -312,12 +306,11 @@ class MQTTVehicleTracker {
 
           accidentTopics.forEach(topic => {
             this.client?.subscribe(topic, { qos: 1 }, (err) => {
-              if (err) console.error(`[MQTT] Accident subscription error for ${topic}:`, err);
+              if (err) console.error(`[MQTT/EMQX] Accident sub error for ${topic}:`, err);
             });
           });
-          console.log('[MQTT] Subscribed to all accident topics');
 
-          // Alert topics (fleet manager subscribes to all alerts)
+          // Alert routing topics
           const alertTopics = [
             'rentmaikar/accident/alerts/emergency/+',
             'rentmaikar/accident/alerts/fleet/+',
