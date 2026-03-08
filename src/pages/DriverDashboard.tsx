@@ -371,30 +371,34 @@ export default function DriverDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {mockRentalData.payments.map((payment) => (
-                        <div 
-                          key={payment.id} 
-                          className="flex items-center justify-between p-4 border rounded-lg"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                              <CheckCircle className="h-5 w-5 text-green-600" />
+                      {dbPayments.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">No payments yet</p>
+                      ) : (
+                        dbPayments.map((payment) => (
+                          <div 
+                            key={payment.id} 
+                            className="flex items-center justify-between p-4 border rounded-lg"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium capitalize">{payment.payment_frequency} Payment</p>
+                                <p className="text-sm text-muted-foreground">{new Date(payment.created_at).toLocaleDateString()}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium">Weekly Payment</p>
-                              <p className="text-sm text-muted-foreground">{payment.date}</p>
+                            <div className="text-right">
+                              <p className="font-bold">
+                                {formatCurrency(Number(payment.amount), payment.currency)}
+                              </p>
+                              <Badge variant="outline" className="text-xs capitalize">
+                                {payment.payment_method || payment.status}
+                              </Badge>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-bold">
-                              {formatCurrency(isUSA ? payment.amount : payment.amount * 500, currency)}
-                            </p>
-                            <Badge variant="outline" className="text-xs">
-                              {payment.method === 'paypal' ? 'PayPal' : 'Paystack'}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                     <Button 
                       className="w-full mt-6" 
