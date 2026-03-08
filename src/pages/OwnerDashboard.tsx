@@ -61,54 +61,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Mock data for owner dashboard
-const mockVehicles = [
-  {
-    id: 'v-001',
-    make: 'Toyota',
-    model: 'Camry',
-    year: 2021,
-    plateNumber: 'ABC-123',
-    category: 'Top Earner',
-    status: 'rented' as const,
-    driver: { name: 'John Doe', id: 'd-001' },
-    weeklyRate: 300,
-    earnings: { total: 2400, available: 1920 },
-    image: '/placeholder.svg',
-  },
-  {
-    id: 'v-002',
-    make: 'Honda',
-    model: 'Accord',
-    year: 2019,
-    plateNumber: 'DEF-456',
-    category: 'Earnings Optimizer',
-    status: 'rented' as const,
-    driver: { name: 'Jane Smith', id: 'd-002' },
-    weeklyRate: 280,
-    earnings: { total: 2240, available: 1792 },
-    image: '/placeholder.svg',
-  },
-  {
-    id: 'v-003',
-    make: 'Hyundai',
-    model: 'Elantra',
-    year: 2016,
-    plateNumber: 'GHI-789',
-    category: 'Smart Start',
-    status: 'available' as const,
-    driver: null,
-    weeklyRate: 220,
-    earnings: { total: 0, available: 0 },
-    image: '/placeholder.svg',
-  },
-];
-
-const mockWithdrawals = [
-  { id: 'w-001', amount: 1500, status: 'completed', date: '2025-01-10', method: 'bank_transfer' },
-  { id: 'w-002', amount: 1200, status: 'pending', date: '2025-01-15', method: 'bank_transfer' },
-];
-
 const vehicleCategories = [
   { value: 'smart-start', label: 'Smart Start (2015-2016)', maxWeekly: 250 },
   { value: 'earnings-optimizer', label: 'Earnings Optimizer (2017-2020)', maxWeekly: 300 },
@@ -116,7 +68,7 @@ const vehicleCategories = [
 ];
 
 export default function OwnerDashboard() {
-  const { country, currency, currencySymbol } = useRegion();
+  const { country, currency } = useRegion();
   const { user, userRole } = useAuth();
   const isAdminView = userRole === 'admin';
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
@@ -125,8 +77,16 @@ export default function OwnerDashboard() {
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const { callHistory, isLoading: callsLoading, refreshHistory } = useVoiceCall('owner');
+  const {
+    vehicles: dbVehicles,
+    rentals: dbRentals,
+    totalEarnings: dbTotalEarnings,
+    availableBalance: dbAvailableBalance,
+    activeRentals: dbActiveRentals,
+  } = useOwnerDashboard();
 
   const isUSA = country === 'USA';
+  const multiplier = isUSA ? 1 : 500;
 
   // Fetch phone verification status
   useEffect(() => {
@@ -143,12 +103,11 @@ export default function OwnerDashboard() {
     };
     fetchPhoneStatus();
   }, [user]);
-  const multiplier = isUSA ? 1 : 500; // Exchange rate approximation
 
-  // Calculate totals
-  const totalEarnings = mockVehicles.reduce((sum, v) => sum + v.earnings.total, 0) * multiplier;
-  const availableBalance = mockVehicles.reduce((sum, v) => sum + v.earnings.available, 0) * multiplier;
-  const activeVehicles = mockVehicles.filter(v => v.status === 'rented').length;
+  // Use real data 
+  const totalEarnings = dbTotalEarnings || 0;
+  const availableBalance = dbAvailableBalance || 0;
+  const activeVehicles = dbActiveRentals || 0;
 
   const handleAddVehicle = () => {
     toast.success('Vehicle added successfully! Pending admin verification.');
