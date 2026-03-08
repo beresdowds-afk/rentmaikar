@@ -1022,6 +1022,8 @@ export const IoTMonitoringHub = () => {
               </Card>
             </div>
           </div>
+        </TabsContent>
+
         {/* ── DATA RETENTION & PORTS ─────────────────────── */}
         <TabsContent value="retention">
           <div className="space-y-4">
