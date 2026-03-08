@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
   Flame, Gauge, MapPin, Radio, RefreshCw, Satellite, Shield,
   Signal, Thermometer, Wifi, WifiOff, Zap, Siren, Eye,
   TrendingUp, BarChart3, CircleAlert, BellRing, Timer, Cpu,
-  Server, Database, Network, Globe, Users, Layers, ArrowUpDown
+  Server
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -31,7 +31,6 @@ import {
   EMQX_POSTGRES_BRIDGE,
   EMQX_MONITORED_TOPICS,
 } from '@/lib/emqx-config';
-import { mqttTracker } from '@/lib/mqtt-client';
 
 // ── Types ──────────────────────────────────────────────────
 
