@@ -14,7 +14,7 @@ import {
   Flame, Gauge, MapPin, Radio, RefreshCw, Satellite, Shield,
   Signal, Thermometer, Wifi, WifiOff, Zap, Siren, Eye,
   TrendingUp, BarChart3, CircleAlert, BellRing, Timer, Cpu,
-  Server
+  Server, Database, Archive, Clock, Trash2, HardDrive, Lock
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -30,6 +30,9 @@ import {
   EMQX_AUTH_CONFIG,
   EMQX_POSTGRES_BRIDGE,
   EMQX_MONITORED_TOPICS,
+  EMQX_RECOMMENDED_PORTS,
+  DATA_RETENTION_TIERS,
+  RETENTION_CLEANUP_RULES,
 } from '@/lib/emqx-config';
 
 // ── Types ──────────────────────────────────────────────────
