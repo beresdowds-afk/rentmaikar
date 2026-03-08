@@ -333,6 +333,7 @@ class MQTTVehicleTracker {
 
   disconnect(): void {
     if (this.client) {
+      telemetryScheduler.stopAll();
       this.client.end();
       this.client = null;
       this.isConnected = false;
@@ -884,6 +885,11 @@ class MQTTVehicleTracker {
 
     // Send to backend for incident creation
     this.sendAccidentToBackend(event);
+
+    // P0: Dispatch emergency services for severe/critical accidents
+    if (severity === 'severe' || severity === 'critical' || triggerType === 'airbag' || triggerType === 'fire') {
+      this.dispatchEmergencyServices(event);
+    }
   }
 
   // Register vehicle-driver mapping for accident reports
