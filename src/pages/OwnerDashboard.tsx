@@ -125,9 +125,9 @@ export default function OwnerDashboard() {
       return;
     }
     
-    const vehicle = mockVehicles.find(v => v.id === selectedVehicle);
-    if (vehicle && amount > vehicle.earnings.available * multiplier) {
-      toast.error('Insufficient available balance for this vehicle');
+    const vehicle = dbVehicles.find(v => v.id === selectedVehicle);
+    if (vehicle && amount > availableBalance) {
+      toast.error('Insufficient available balance');
       return;
     }
 
@@ -185,9 +185,9 @@ export default function OwnerDashboard() {
                           <SelectValue placeholder="Choose a vehicle" />
                         </SelectTrigger>
                         <SelectContent>
-                          {mockVehicles.filter(v => v.earnings.available > 0).map(vehicle => (
+                          {dbVehicles.map(vehicle => (
                             <SelectItem key={vehicle.id} value={vehicle.id}>
-                              {vehicle.make} {vehicle.model} - Available: {formatCurrency(vehicle.earnings.available * multiplier, currency)}
+                              {vehicle.make} {vehicle.model}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -304,7 +304,7 @@ export default function OwnerDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Total Vehicles</p>
-                    <p className="text-2xl font-bold">{mockVehicles.length}</p>
+                    <p className="text-2xl font-bold">{dbVehicles.length}</p>
                   </div>
                   <Car className="h-8 w-8 text-primary" />
                 </div>
@@ -421,51 +421,45 @@ export default function OwnerDashboard() {
             {/* Vehicles Tab */}
             <TabsContent value="vehicles" className="space-y-6">
               <div className="grid gap-6">
-                {mockVehicles.map(vehicle => (
+                {dbVehicles.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No vehicles listed yet. Click "Add Vehicle" to get started.</p>
+                ) : dbVehicles.map(vehicle => (
                   <Card key={vehicle.id}>
                     <CardContent className="p-6">
                       <div className="flex flex-col lg:flex-row gap-6">
-                        {/* Vehicle Image */}
                         <div className="w-full lg:w-48 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                           <img 
-                            src={vehicle.image} 
+                            src="/placeholder.svg" 
                             alt={`${vehicle.make} ${vehicle.model}`}
                             className="w-full h-full object-cover"
                           />
                         </div>
                         
-                        {/* Vehicle Info */}
                         <div className="flex-1 space-y-4">
                           <div className="flex items-start justify-between">
                             <div>
                               <h3 className="text-xl font-bold">
                                 {vehicle.make} {vehicle.model} ({vehicle.year})
                               </h3>
-                              <p className="text-muted-foreground">{vehicle.plateNumber}</p>
+                              <p className="text-muted-foreground">{vehicle.license_plate}</p>
                             </div>
                             <Badge className={vehicle.status === 'rented' ? 'bg-green-500' : 'bg-blue-500'}>
-                              {vehicle.status === 'rented' ? 'Rented' : 'Available'}
+                              {vehicle.status === 'rented' ? 'Rented' : vehicle.status}
                             </Badge>
                           </div>
 
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             <div>
-                              <p className="text-sm text-muted-foreground">Category</p>
-                              <p className="font-medium">{vehicle.category}</p>
+                              <p className="text-sm text-muted-foreground">Color</p>
+                              <p className="font-medium">{vehicle.color || 'N/A'}</p>
                             </div>
                             <div>
-                              <p className="text-sm text-muted-foreground">Weekly Rate</p>
-                              <p className="font-medium">{formatCurrency(vehicle.weeklyRate * multiplier, currency)}</p>
+                              <p className="text-sm text-muted-foreground">License Plate</p>
+                              <p className="font-medium">{vehicle.license_plate}</p>
                             </div>
                             <div>
-                              <p className="text-sm text-muted-foreground">Current Driver</p>
-                              <p className="font-medium">{vehicle.driver?.name || 'None'}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-muted-foreground">Available Earnings</p>
-                              <p className="font-medium text-green-600">
-                                {formatCurrency(vehicle.earnings.available * multiplier, currency)}
-                              </p>
+                              <p className="text-sm text-muted-foreground">Status</p>
+                              <p className="font-medium capitalize">{vehicle.status}</p>
                             </div>
                           </div>
 
@@ -531,7 +525,7 @@ export default function OwnerDashboard() {
                     <div>
                       <h4 className="font-semibold mb-4">Earnings by Vehicle</h4>
                       <div className="space-y-4">
-                        {mockVehicles.filter(v => v.earnings.total > 0).map(vehicle => (
+                        {dbVehicles.map(vehicle => (
                           <div key={vehicle.id} className="flex items-center justify-between p-4 border rounded-lg">
                             <div className="flex items-center gap-4">
                               <div className="h-12 w-12 bg-muted rounded-lg flex items-center justify-center">
@@ -539,7 +533,7 @@ export default function OwnerDashboard() {
                               </div>
                               <div>
                                 <p className="font-medium">{vehicle.make} {vehicle.model}</p>
-                                <p className="text-sm text-muted-foreground">{vehicle.plateNumber}</p>
+                                <p className="text-sm text-muted-foreground">{vehicle.license_plate}</p>
                               </div>
                             </div>
                             <div className="text-right">
