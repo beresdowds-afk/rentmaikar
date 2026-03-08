@@ -178,21 +178,37 @@ class MQTTVehicleTracker {
           this.isConnected = true;
           this.reconnectAttempts = 0;
           
-          // Subscribe to all vehicle topics
-          this.client?.subscribe('rentmaikar/vehicles/+/location', (err) => {
-            if (err) console.error('[MQTT] Subscription error:', err);
-            else console.log('[MQTT] Subscribed to vehicle locations');
+          // Subscribe to expanded telemetry subtopics
+          const telemetryTopics = [
+            'rentmaikar/vehicles/+/telemetry/gps',         // Location data
+            'rentmaikar/vehicles/+/telemetry/engine',      // RPM, temp, fuel
+            'rentmaikar/vehicles/+/telemetry/diagnostics', // Error codes, battery
+            'rentmaikar/vehicles/+/telemetry/batch',       // Bulk historical data
+          ];
+          
+          telemetryTopics.forEach(topic => {
+            this.client?.subscribe(topic, (err) => {
+              if (err) console.error(`[MQTT] Subscription error for ${topic}:`, err);
+              else console.log(`[MQTT] Subscribed to ${topic}`);
+            });
           });
 
+          // Subscribe to legacy telemetry root (backward compat)
+          this.client?.subscribe('rentmaikar/vehicles/+/telemetry', (err) => {
+            if (err) console.error('[MQTT] Subscription error:', err);
+            else console.log('[MQTT] Subscribed to vehicle telemetry (root)');
+          });
+
+          // Subscribe to status confirmations from immobilizer
           this.client?.subscribe('rentmaikar/vehicles/+/status', (err) => {
             if (err) console.error('[MQTT] Subscription error:', err);
             else console.log('[MQTT] Subscribed to vehicle status');
           });
 
-          // Subscribe to accelerometer/sensor data for accident detection
-          this.client?.subscribe('rentmaikar/vehicles/+/sensors', (err) => {
+          // Subscribe to commands topic for command acknowledgements
+          this.client?.subscribe('rentmaikar/vehicles/+/commands', (err) => {
             if (err) console.error('[MQTT] Subscription error:', err);
-            else console.log('[MQTT] Subscribed to vehicle sensors');
+            else console.log('[MQTT] Subscribed to vehicle commands');
           });
 
           resolve();
@@ -240,59 +256,138 @@ class MQTTVehicleTracker {
   private handleMessage(topic: string, message: string): void {
     try {
       const parts = topic.split('/');
+      // Topic format: rentmaikar/vehicles/{vehicle_id}/{type}[/{subtype}]
       const vehicleId = parts[2];
       const messageType = parts[3];
+      const subType = parts[4] || null; // e.g. gps, engine, diagnostics, batch
 
-      if (messageType === 'location') {
+      // ── Telemetry topics ──────────────────────────────────
+      if (messageType === 'telemetry') {
         const data = JSON.parse(message);
-        const location: VehicleLocation = {
-          vehicleId,
-          latitude: data.lat || data.latitude,
-          longitude: data.lng || data.longitude,
-          speed: data.speed || 0,
-          heading: data.heading || 0,
-          ignitionStatus: data.ignition ?? true,
-          batteryLevel: data.battery || 100,
-          timestamp: new Date(data.timestamp || Date.now()),
-          isParked: (data.speed || 0) < PARKED_SPEED_THRESHOLD,
-        };
 
-        // Store latest location for safety checks
-        this.vehicleLocations.set(vehicleId, location);
-        
-        // Reset telemetry failure count on successful data
+        // Reset telemetry failure count on any successful telemetry data
         this.telemetryFailureCounts.set(vehicleId, 0);
         this.resetTelemetryTimeout(vehicleId);
-        
-        // Track speed history for accident detection
-        this.trackSpeedHistory(vehicleId, location.speed);
 
-        // Notify all location callbacks for this vehicle
-        const callbacks = this.locationCallbacks.get(vehicleId);
-        if (callbacks) {
-          callbacks.forEach(cb => cb(location));
-        }
+        switch (subType) {
+          case 'gps':
+          case null: {
+            // GPS / location data (also handles legacy root telemetry with lat/lng)
+            const hasLocation = data.lat || data.latitude || data.lng || data.longitude;
+            if (!hasLocation && subType === null) {
+              // Root telemetry without location — may contain mixed data, fan out
+              if (data.engine || data.rpm !== undefined) this.handleEngineData(vehicleId, data);
+              if (data.dtcCodes || data.checkEngineLight !== undefined) this.handleSensorData(vehicleId, { type: 'diagnostics', ...data });
+              break;
+            }
 
-        // Also notify "all" subscribers
-        const allCallbacks = this.locationCallbacks.get('*');
-        if (allCallbacks) {
-          allCallbacks.forEach(cb => cb(location));
+            const location: VehicleLocation = {
+              vehicleId,
+              latitude: data.lat || data.latitude,
+              longitude: data.lng || data.longitude,
+              speed: data.speed || 0,
+              heading: data.heading || 0,
+              ignitionStatus: data.ignition ?? true,
+              batteryLevel: data.battery || 100,
+              timestamp: new Date(data.timestamp || Date.now()),
+              isParked: (data.speed || 0) < PARKED_SPEED_THRESHOLD,
+            };
+
+            this.vehicleLocations.set(vehicleId, location);
+            this.trackSpeedHistory(vehicleId, location.speed);
+
+            // Notify location callbacks
+            const callbacks = this.locationCallbacks.get(vehicleId);
+            if (callbacks) callbacks.forEach(cb => cb(location));
+            const allCallbacks = this.locationCallbacks.get('*');
+            if (allCallbacks) allCallbacks.forEach(cb => cb(location));
+            break;
+          }
+
+          case 'engine': {
+            this.handleEngineData(vehicleId, data);
+            break;
+          }
+
+          case 'diagnostics': {
+            this.handleSensorData(vehicleId, { type: 'diagnostics', ...data });
+            break;
+          }
+
+          case 'batch': {
+            // Bulk historical data — process each record sequentially
+            const records = Array.isArray(data) ? data : data.records || [];
+            console.log(`[MQTT] Processing batch telemetry for ${vehicleId}: ${records.length} records`);
+            records.forEach((record: any) => {
+              if (record.lat || record.latitude) {
+                const location: VehicleLocation = {
+                  vehicleId,
+                  latitude: record.lat || record.latitude,
+                  longitude: record.lng || record.longitude,
+                  speed: record.speed || 0,
+                  heading: record.heading || 0,
+                  ignitionStatus: record.ignition ?? true,
+                  batteryLevel: record.battery || 100,
+                  timestamp: new Date(record.timestamp || Date.now()),
+                  isParked: (record.speed || 0) < PARKED_SPEED_THRESHOLD,
+                };
+                this.vehicleLocations.set(vehicleId, location);
+                this.trackSpeedHistory(vehicleId, location.speed);
+              }
+            });
+
+            // Notify with latest position after batch processing
+            const latest = this.vehicleLocations.get(vehicleId);
+            if (latest) {
+              const cbs = this.locationCallbacks.get(vehicleId);
+              if (cbs) cbs.forEach(cb => cb(latest));
+              const allCbs = this.locationCallbacks.get('*');
+              if (allCbs) allCbs.forEach(cb => cb(latest));
+            }
+            break;
+          }
         }
       }
 
+      // ── Status confirmation from immobilizer ──────────────
       if (messageType === 'status') {
         const data = JSON.parse(message);
         this.statusCallbacks.forEach(cb => cb(vehicleId, data.status));
       }
 
-      // Handle sensor data (accelerometer, impact sensors)
-      if (messageType === 'sensors') {
+      // ── Commands topic (ack / responses from immobilizer) ─
+      if (messageType === 'commands') {
         const data = JSON.parse(message);
-        this.handleSensorData(vehicleId, data);
+        console.log(`[MQTT] Command response from ${vehicleId}:`, data);
+        // Command acknowledgements are logged; could be extended with callbacks
       }
     } catch (error) {
       console.error('[MQTT] Error parsing message:', error);
     }
+  }
+
+  /**
+   * Handle engine telemetry data (RPM, temperature, fuel level)
+   */
+  private handleEngineData(vehicleId: string, data: any): void {
+    const engineData = {
+      rpm: data.rpm,
+      engineTemp: data.engine_temp || data.engineTemp,
+      coolantTemp: data.coolant_temp || data.coolantTemp,
+      fuelLevel: data.fuel_level || data.fuelLevel,
+      oilPressure: data.oil_pressure || data.oilPressure,
+      transmissionTemp: data.transmission_temp || data.transmissionTemp,
+      odometer: data.odometer,
+      updatedAt: Date.now(),
+    };
+
+    this.vehicleDiagnostics.set(vehicleId, {
+      ...this.vehicleDiagnostics.get(vehicleId),
+      ...engineData,
+    });
+
+    // Also process as sensor data for backward compat
+    this.handleSensorData(vehicleId, { type: 'diagnostics', ...engineData });
   }
 
   private resetTelemetryTimeout(vehicleId: string): void {
@@ -638,7 +733,7 @@ class MQTTVehicleTracker {
         return;
       }
 
-      const topic = `rentmaikar/vehicles/${vehicleId}/command`;
+      const topic = `rentmaikar/vehicles/${vehicleId}/commands`;
       const payload = JSON.stringify({
         command,
         timestamp: new Date().toISOString(),
@@ -735,7 +830,7 @@ class MQTTVehicleTracker {
       return;
     }
 
-    const topic = `rentmaikar/vehicles/${vehicleId}/command`;
+    const topic = `rentmaikar/vehicles/${vehicleId}/commands`;
     const payload = JSON.stringify({
       command: 'report_diagnostics',
       timestamp: new Date().toISOString(),

@@ -73,7 +73,7 @@ function generateClientId(vehicleId: string): string {
 }
 
 function buildTopicPrefix(vehicleId: string): string {
-  return `rentmaikar/vehicle/${vehicleId}`;
+  return `rentmaikar/vehicles/${vehicleId}`;
 }
 
 export const VehicleMqttCredentials = ({ readOnly = false }: Props) => {
@@ -127,12 +127,13 @@ export const VehicleMqttCredentials = ({ readOnly = false }: Props) => {
     const mqttUsername = `vehicle_${form.vehicle_id.replace(/[^a-z0-9]/gi, '').toLowerCase()}`;
     const topicPrefix = buildTopicPrefix(form.vehicle_id);
     const publishTopics = [
-      `${topicPrefix}/location`,
-      `${topicPrefix}/engine`,
-      `${topicPrefix}/sensors`,
+      `${topicPrefix}/telemetry/gps`,
+      `${topicPrefix}/telemetry/engine`,
+      `${topicPrefix}/telemetry/diagnostics`,
+      `${topicPrefix}/telemetry/batch`,
       `${topicPrefix}/status`,
     ];
-    const subscribeTopics = [`${topicPrefix}/command`];
+    const subscribeTopics = [`${topicPrefix}/commands`];
 
     // In production you'd hash on the backend (edge function). Here we store a hint only.
     const passwordHint = `****${password.slice(-4)}`;
