@@ -4,15 +4,18 @@ import { Badge } from '@/components/ui/badge';
 import { 
   calculatePaymentBreakdown, 
   formatCurrency, 
-  type PaymentBreakdown 
 } from '@/lib/payment-config';
-import { CreditCard, Wallet, Building2, TrendingUp } from 'lucide-react';
+import { calculateTaxSync } from '@/lib/tax-engine';
+import { CreditCard, Wallet, Building2, TrendingUp, Receipt } from 'lucide-react';
 
 interface PaymentBreakdownCardProps {
   baseAmount: number;
   currency: 'USD' | 'NGN';
   gateway: 'paypal' | 'paystack';
   showOwnerView?: boolean;
+  showTax?: boolean;
+  customerCountry?: 'USA' | 'Nigeria';
+  stateCode?: string;
 }
 
 export function PaymentBreakdownCard({
@@ -20,8 +23,22 @@ export function PaymentBreakdownCard({
   currency,
   gateway,
   showOwnerView = false,
+  showTax = true,
+  customerCountry,
+  stateCode,
 }: PaymentBreakdownCardProps) {
   const breakdown = calculatePaymentBreakdown(baseAmount, currency);
+  
+  // Determine customer country from currency if not provided
+  const country = customerCountry || (currency === 'NGN' ? 'Nigeria' : 'USA');
+  
+  // Calculate tax (sync version for UI)
+  const taxResult = showTax
+    ? calculateTaxSync(breakdown.driverTotal, currency, country, stateCode)
+    : null;
+
+  const activeTaxLines = taxResult?.taxLines.filter(l => !l.isExempt && l.taxAmount > 0) || [];
+  const exemptLines = taxResult?.taxLines.filter(l => l.isExempt) || [];
 
   return (
     <Card className="w-full max-w-md">
@@ -51,13 +68,35 @@ export function PaymentBreakdownCard({
               </span>
               <span>+{formatCurrency(breakdown.adminFee, currency)}</span>
             </div>
+            
+            {/* Tax Lines */}
+            {showTax && activeTaxLines.map((line, i) => (
+              <div key={i} className="flex justify-between items-center text-blue-600">
+                <span className="flex items-center gap-1">
+                  <Receipt className="h-4 w-4" />
+                  {line.taxType} ({line.rate}%)
+                </span>
+                <span>+{formatCurrency(line.taxAmount, currency)}</span>
+              </div>
+            ))}
+            
+            {/* Exempt lines shown as info */}
+            {showTax && exemptLines.map((line, i) => (
+              <div key={`exempt-${i}`} className="flex justify-between items-center text-muted-foreground text-xs">
+                <span>{line.taxType}: {line.exemptionReason || 'Exempt'}</span>
+                <span>{formatCurrency(0, currency)}</span>
+              </div>
+            ))}
+            
             <Separator />
             <div className="flex justify-between items-center text-lg font-bold">
               <span className="flex items-center gap-2">
                 <Wallet className="h-5 w-5" />
                 You Pay
               </span>
-              <span className="text-primary">{formatCurrency(breakdown.driverTotal, currency)}</span>
+              <span className="text-primary">
+                {formatCurrency(breakdown.driverTotal + (taxResult?.totalTax || 0), currency)}
+              </span>
             </div>
           </div>
         )}
@@ -99,6 +138,14 @@ export function PaymentBreakdownCard({
                 {formatCurrency(breakdown.platformEarnings, currency)} (40%)
               </span>
             </div>
+            {showTax && taxResult && taxResult.totalTax > 0 && (
+              <div className="flex justify-between">
+                <span>Tax Collected</span>
+                <span className="font-medium text-foreground">
+                  {formatCurrency(taxResult.totalTax, currency)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

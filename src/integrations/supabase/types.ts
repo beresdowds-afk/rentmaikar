@@ -3294,6 +3294,292 @@ export type Database = {
           },
         ]
       }
+      tax_entities: {
+        Row: {
+          country_code: string
+          created_at: string
+          entity_name: string
+          entity_type: Database["public"]["Enums"]["entity_type"]
+          id: string
+          is_active: boolean
+          is_primary: boolean
+          jurisdiction_code: string
+          notes: string | null
+          role: string
+          tax_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          country_code: string
+          created_at?: string
+          entity_name: string
+          entity_type: Database["public"]["Enums"]["entity_type"]
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+          jurisdiction_code: string
+          notes?: string | null
+          role?: string
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          country_code?: string
+          created_at?: string
+          entity_name?: string
+          entity_type?: Database["public"]["Enums"]["entity_type"]
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+          jurisdiction_code?: string
+          notes?: string | null
+          role?: string
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tax_line_items: {
+        Row: {
+          created_at: string
+          currency: string
+          exemption_reason: string | null
+          id: string
+          is_exempt: boolean
+          jurisdiction_code: string
+          payment_id: string | null
+          rental_id: string | null
+          tax_amount: number
+          tax_rate: number
+          tax_rule_id: string | null
+          tax_type: Database["public"]["Enums"]["tax_type"]
+          taxable_amount: number
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          exemption_reason?: string | null
+          id?: string
+          is_exempt?: boolean
+          jurisdiction_code: string
+          payment_id?: string | null
+          rental_id?: string | null
+          tax_amount: number
+          tax_rate: number
+          tax_rule_id?: string | null
+          tax_type: Database["public"]["Enums"]["tax_type"]
+          taxable_amount: number
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          exemption_reason?: string | null
+          id?: string
+          is_exempt?: boolean
+          jurisdiction_code?: string
+          payment_id?: string | null
+          rental_id?: string | null
+          tax_amount?: number
+          tax_rate?: number
+          tax_rule_id?: string | null
+          tax_type?: Database["public"]["Enums"]["tax_type"]
+          taxable_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_line_items_tax_rule_id_fkey"
+            columns: ["tax_rule_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_nexus_tracking: {
+        Row: {
+          created_at: string
+          cumulative_revenue: number
+          cumulative_transactions: number
+          currency: string
+          id: string
+          jurisdiction_code: string
+          jurisdiction_name: string
+          nexus_triggered: boolean
+          nexus_triggered_at: string | null
+          period_month: number
+          period_year: number
+          threshold_revenue: number | null
+          threshold_transactions: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cumulative_revenue?: number
+          cumulative_transactions?: number
+          currency?: string
+          id?: string
+          jurisdiction_code: string
+          jurisdiction_name: string
+          nexus_triggered?: boolean
+          nexus_triggered_at?: string | null
+          period_month: number
+          period_year: number
+          threshold_revenue?: number | null
+          threshold_transactions?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cumulative_revenue?: number
+          cumulative_transactions?: number
+          currency?: string
+          id?: string
+          jurisdiction_code?: string
+          jurisdiction_name?: string
+          nexus_triggered?: boolean
+          nexus_triggered_at?: string | null
+          period_month?: number
+          period_year?: number
+          threshold_revenue?: number | null
+          threshold_transactions?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tax_reporting_periods: {
+        Row: {
+          created_at: string
+          currency: string
+          entity_id: string | null
+          exempt_revenue: number
+          filed_at: string | null
+          gross_revenue: number
+          id: string
+          jurisdiction_code: string
+          period_quarter: number
+          period_year: number
+          status: string
+          tax_collected: number
+          tax_owed: number
+          tax_remitted: number
+          tax_type: Database["public"]["Enums"]["tax_type"]
+          taxable_revenue: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          entity_id?: string | null
+          exempt_revenue?: number
+          filed_at?: string | null
+          gross_revenue?: number
+          id?: string
+          jurisdiction_code: string
+          period_quarter: number
+          period_year: number
+          status?: string
+          tax_collected?: number
+          tax_owed?: number
+          tax_remitted?: number
+          tax_type: Database["public"]["Enums"]["tax_type"]
+          taxable_revenue?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          entity_id?: string | null
+          exempt_revenue?: number
+          filed_at?: string | null
+          gross_revenue?: number
+          id?: string
+          jurisdiction_code?: string
+          period_quarter?: number
+          period_year?: number
+          status?: string
+          tax_collected?: number
+          tax_owed?: number
+          tax_remitted?: number
+          tax_type?: Database["public"]["Enums"]["tax_type"]
+          taxable_revenue?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_reporting_periods_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "tax_entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_rules: {
+        Row: {
+          applies_to: string
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          exemption_reason: string | null
+          id: string
+          is_active: boolean
+          is_exempt: boolean
+          jurisdiction_code: string
+          jurisdiction_level: Database["public"]["Enums"]["tax_jurisdiction_level"]
+          jurisdiction_name: string
+          notes: string | null
+          rate_percent: number
+          tax_type: Database["public"]["Enums"]["tax_type"]
+          threshold_amount: number | null
+          threshold_currency: string | null
+          threshold_transactions: number | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          applies_to?: string
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          exemption_reason?: string | null
+          id?: string
+          is_active?: boolean
+          is_exempt?: boolean
+          jurisdiction_code: string
+          jurisdiction_level: Database["public"]["Enums"]["tax_jurisdiction_level"]
+          jurisdiction_name: string
+          notes?: string | null
+          rate_percent?: number
+          tax_type: Database["public"]["Enums"]["tax_type"]
+          threshold_amount?: number | null
+          threshold_currency?: string | null
+          threshold_transactions?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          applies_to?: string
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          exemption_reason?: string | null
+          id?: string
+          is_active?: boolean
+          is_exempt?: boolean
+          jurisdiction_code?: string
+          jurisdiction_level?: Database["public"]["Enums"]["tax_jurisdiction_level"]
+          jurisdiction_name?: string
+          notes?: string | null
+          rate_percent?: number
+          tax_type?: Database["public"]["Enums"]["tax_type"]
+          threshold_amount?: number | null
+          threshold_currency?: string | null
+          threshold_transactions?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       training_completions: {
         Row: {
           completed_at: string
@@ -5028,6 +5314,7 @@ export type Database = {
         | "needs_info"
       application_type: "driver" | "owner"
       device_status: "inactive" | "active" | "offline" | "maintenance"
+      entity_type: "operating_company" | "payment_entity" | "individual"
       feature_scope: "country" | "region" | "city"
       incident_severity: "low" | "medium" | "high" | "critical"
       incident_status:
@@ -5072,6 +5359,13 @@ export type Database = {
         | "vehicle_maintenance"
         | "insurance"
         | "payment_accounts"
+      tax_jurisdiction_level: "country" | "state" | "city"
+      tax_type:
+        | "income_tax"
+        | "vat"
+        | "sales_tax"
+        | "withholding_tax"
+        | "service_tax"
       vehicle_task_status:
         | "reported"
         | "dispatched"
@@ -5225,6 +5519,7 @@ export const Constants = {
       ],
       application_type: ["driver", "owner"],
       device_status: ["inactive", "active", "offline", "maintenance"],
+      entity_type: ["operating_company", "payment_entity", "individual"],
       feature_scope: ["country", "region", "city"],
       incident_severity: ["low", "medium", "high", "critical"],
       incident_status: [
@@ -5268,6 +5563,14 @@ export const Constants = {
         "vehicle_maintenance",
         "insurance",
         "payment_accounts",
+      ],
+      tax_jurisdiction_level: ["country", "state", "city"],
+      tax_type: [
+        "income_tax",
+        "vat",
+        "sales_tax",
+        "withholding_tax",
+        "service_tax",
       ],
       vehicle_task_status: [
         "reported",
