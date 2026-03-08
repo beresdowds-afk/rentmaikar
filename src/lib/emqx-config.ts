@@ -504,11 +504,8 @@ export const EMQX_MONITORED_TOPICS = [
 // ── Recommended MQTT Ports ─────────────────────────────────
 
 export const EMQX_RECOMMENDED_PORTS = [
-  { port: 1883, protocol: 'MQTT', tls: false, description: 'Standard MQTT TCP (devices on private network)' },
-  { port: 8883, protocol: 'MQTTS', tls: true, description: 'MQTT over TLS/SSL (devices over public internet)' },
-  { port: 8083, protocol: 'WS', tls: false, description: 'MQTT over WebSocket (browser dev/testing)' },
-  { port: 8084, protocol: 'WSS', tls: true, description: 'MQTT over Secure WebSocket (browser production)' },
-  { port: 18083, protocol: 'HTTP', tls: true, description: 'EMQX Management REST API & Dashboard' },
+  { port: 8883, protocol: 'MQTTS', tls: true, description: 'MQTT over TLS/SSL — device connections' },
+  { port: 8084, protocol: 'WSS', tls: true, description: 'WebSocket over TLS/SSL — browser connections' },
 ] as const;
 
 // ── Tiered Data Retention Strategy ────────────────────────
