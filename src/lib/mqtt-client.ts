@@ -209,6 +209,15 @@ class MQTTVehicleTracker {
       };
 
       try {
+        // Add Last Will and Testament for vehicle offline detection
+        const lwt = getLastWillConfig('fleet-monitor');
+        finalConfig.options.will = {
+          topic: lwt.topic,
+          payload: Buffer.from(lwt.payload),
+          qos: lwt.qos,
+          retain: lwt.retain,
+        };
+
         this.client = mqtt.connect(finalConfig.brokerUrl, finalConfig.options);
 
         this.client.on('connect', () => {
