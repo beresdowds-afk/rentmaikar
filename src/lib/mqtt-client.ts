@@ -350,6 +350,9 @@ class MQTTVehicleTracker {
 
       // ── Telemetry topics ──────────────────────────────────
       if (messageType === 'telemetry') {
+        // Rate limit check
+        if (this.isRateLimited(vehicleId, message.length)) return;
+
         const data = JSON.parse(message);
 
         // Reset telemetry failure count on any successful telemetry data
