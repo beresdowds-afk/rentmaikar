@@ -120,8 +120,8 @@ export default function DriverDashboard() {
     fetchPhoneStatus();
   }, [user]);
 
-  // Calculate amounts based on region
-  const weeklyRate = isUSA ? 300 : 150000; // USD or NGN
+  // Calculate amounts based on real data or region defaults
+  const weeklyRate = rental ? rental.weeklyRate : (isUSA ? 300 : 150000);
   const adminFee = weeklyRate * (PAYMENT_CONFIG.ADMIN_FEE_PERCENT / 100);
   const totalDue = weeklyRate + adminFee;
 
