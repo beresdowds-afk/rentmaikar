@@ -183,7 +183,7 @@ export default function DriverDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Current Vehicle</p>
-                    <p className="text-2xl font-bold">{vehicle.make} {vehicle.model}</p>
+                    <p className="text-2xl font-bold">{vehicle ? `${vehicle.make} ${vehicle.model}` : 'No vehicle'}</p>
                   </div>
                   <Car className="h-8 w-8 text-primary" />
                 </div>
@@ -194,7 +194,7 @@ export default function DriverDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Days Active</p>
-                    <p className="text-2xl font-bold">{rental.daysActive}</p>
+                    <p className="text-2xl font-bold">{rental?.daysActive ?? 0}</p>
                   </div>
                   <Calendar className="h-8 w-8 text-green-500" />
                 </div>
@@ -206,7 +206,7 @@ export default function DriverDashboard() {
                   <div>
                     <p className="text-sm text-muted-foreground">Total Paid</p>
                     <p className="text-2xl font-bold">
-                      {formatCurrency(isUSA ? rental.totalPaid : rental.totalPaid * 500, currency)}
+                      {formatCurrency(rental?.totalPaid ?? 0, currency)}
                     </p>
                   </div>
                   <DollarSign className="h-8 w-8 text-blue-500" />
@@ -218,7 +218,7 @@ export default function DriverDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Next Payment</p>
-                    <p className="text-2xl font-bold">{rental.nextPaymentDate}</p>
+                    <p className="text-2xl font-bold">{rental?.nextPaymentDate ?? 'N/A'}</p>
                   </div>
                   <Clock className="h-8 w-8 text-orange-500" />
                 </div>
