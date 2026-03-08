@@ -430,7 +430,7 @@ export const IoTMonitoringHub = () => {
                 <CardContent className="pt-4 pb-3">
                   <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-red-600" />
-                    <span className="text-xs font-medium">Raw Impact (>5G)</span>
+                    <span className="text-xs font-medium">Raw Impact ({'>'} 5G)</span>
                   </div>
                   <p className="text-2xl font-bold mt-1">{accidents.filter(a => a.event_type === 'sudden_deceleration' || a.event_type === 'impact').length}</p>
                 </CardContent>
