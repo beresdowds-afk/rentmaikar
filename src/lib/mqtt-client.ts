@@ -391,16 +391,28 @@ class MQTTVehicleTracker {
             if (callbacks) callbacks.forEach(cb => cb(location));
             const allCallbacks = this.locationCallbacks.get('*');
             if (allCallbacks) allCallbacks.forEach(cb => cb(location));
+
+            // Evaluate GPS alert rules (speeding, geofence)
+            this.evaluateAlertRules(vehicleId, 'gps', data);
+
+            // Update GPS schedule based on motion state
+            const isMoving = location.speed >= TELEMETRY_SCHEDULES.GPS.movingThresholdMph;
+            telemetryScheduler.updateGpsMotionState(vehicleId, isMoving, () => this.requestLocationReport(vehicleId));
             break;
           }
 
           case 'engine': {
             this.handleEngineData(vehicleId, data);
+            // Evaluate engine alert rules (overheating, high RPM, low fuel, oil pressure)
+            this.evaluateAlertRules(vehicleId, 'engine', data);
             break;
           }
 
           case 'diagnostics': {
             this.handleSensorData(vehicleId, { type: 'diagnostics', ...data });
+            // Evaluate diagnostic alert rules immediately (on occurrence)
+            this.evaluateAlertRules(vehicleId, 'diagnostics', data);
+            telemetryScheduler.recordDiagnosticEvent(vehicleId);
             break;
           }
 
