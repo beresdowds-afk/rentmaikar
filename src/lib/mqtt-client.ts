@@ -4,8 +4,6 @@ import {
   TELEMETRY_SCHEDULES,
   ALERT_RULES,
   getLastWillConfig,
-  checkTelemetryRateLimit,
-  telemetryScheduler,
   telemetryScheduler,
   type AlertRule,
   type AlertSeverity,
