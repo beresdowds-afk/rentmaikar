@@ -132,6 +132,14 @@ export const VehicleMqttCredentials = ({ readOnly = false }: Props) => {
       `${topicPrefix}/telemetry/diagnostics`,
       `${topicPrefix}/telemetry/batch`,
       `${topicPrefix}/status`,
+      // Accident data from device sensors
+      `${topicPrefix}/accident/raw`,
+      `${topicPrefix}/accident/raw/impact`,
+      `${topicPrefix}/accident/raw/airbag`,
+      `${topicPrefix}/accident/raw/rollover`,
+      `${topicPrefix}/accident/telemetry/location`,
+      `${topicPrefix}/accident/telemetry/images`,
+      `${topicPrefix}/accident/telemetry/vitals`,
     ];
     const subscribeTopics = [`${topicPrefix}/commands`];
 
