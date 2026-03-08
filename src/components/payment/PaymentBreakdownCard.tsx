@@ -4,9 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { 
   calculatePaymentBreakdown, 
   formatCurrency, 
-  type PaymentBreakdown 
 } from '@/lib/payment-config';
-import { calculateTaxSync, type TaxLineItem } from '@/lib/tax-engine';
+import { calculateTaxSync } from '@/lib/tax-engine';
 import { CreditCard, Wallet, Building2, TrendingUp, Receipt } from 'lucide-react';
 
 interface PaymentBreakdownCardProps {
