@@ -29,9 +29,7 @@ const SyncedScriptPlayer = ({ script }: SyncedScriptPlayerProps) => {
   const wordTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const { country: regionCountry } = useRegion();
   const elevenRegion = regionCountry === "Nigeria" ? "NG" : "US";
-  const voiceLabel = regionCountry === "Nigeria"
-    ? "🇳🇬 Kunle (ElevenLabs)"
-    : "🇺🇸 Wilson (ElevenLabs)";
+  const voiceLabel = "🎓 Kevin — Career & Life Coach (ElevenLabs)";
 
   // Build word spans from the script
   const wordSpans: WordSpan[] = [];
