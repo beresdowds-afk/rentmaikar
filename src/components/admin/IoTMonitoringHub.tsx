@@ -10,18 +10,16 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
-  Activity, AlertTriangle, Battery, Car, CheckCircle, Clock, Cpu,
+  Activity, AlertTriangle, Battery,
   Flame, Gauge, MapPin, Radio, RefreshCw, Satellite, Shield,
   Signal, Thermometer, Wifi, WifiOff, Zap, Siren, Eye,
-  TrendingUp, BarChart3, CircleAlert, BellRing, Timer
+  TrendingUp, BarChart3, CircleAlert, BellRing, Timer, Cpu
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import {
   TELEMETRY_SCHEDULES,
   ALERT_RULES,
   MONITORING_THRESHOLDS,
-  type AlertSeverity,
 } from '@/lib/telemetry-scheduler';
 
 // ── Types ──────────────────────────────────────────────────
