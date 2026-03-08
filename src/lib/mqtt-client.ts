@@ -149,7 +149,7 @@ const PARKED_SPEED_THRESHOLD = 2; // mph - vehicle considered parked if speed < 
 
 // Accident detection thresholds
 const ACCIDENT_THRESHOLDS = {
-  SUDDEN_DECELERATION_G: 4.0, // 4G deceleration triggers detection
+  SUDDEN_DECELERATION_G: 5.0, // 5G deceleration triggers detection (P0)
   CRITICAL_G: 8.0, // 8G+ is severe
   SPEED_BUFFER_MS: 5000, // Store last 5 seconds of speed data
 };

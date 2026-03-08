@@ -29,7 +29,7 @@ const iotAccidentSchema = z.object({
 
 // Thresholds for accident detection
 const ACCIDENT_THRESHOLDS = {
-  SUDDEN_DECELERATION_G: 4.0, // 4G deceleration is significant
+  SUDDEN_DECELERATION_G: 5.0, // 5G deceleration threshold (P0)
   CRITICAL_DECELERATION_G: 8.0, // 8G+ is severe impact
   HIGH_SPEED_THRESHOLD: 30, // mph - impacts above this are more serious
   IMPACT_SEVERITY: {
