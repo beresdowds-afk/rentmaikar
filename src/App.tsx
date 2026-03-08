@@ -12,6 +12,8 @@ import CookieConsent from "@/components/CookieConsent";
 import MessageConsent from "@/components/MessageConsent";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import PageSkeleton from "@/components/PageSkeleton";
+import SkipToContent from "@/components/SkipToContent";
+import LiveAnnouncer from "@/components/LiveAnnouncer";
 
 // Lazy-loaded pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -46,10 +48,13 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <SkipToContent />
+              <LiveAnnouncer />
               <CookieConsent />
               <MessageConsent />
               <ErrorBoundary>
                 <Suspense fallback={<PageLoader />}>
+                  <main id="main-content">
                   <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
