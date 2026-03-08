@@ -27,6 +27,7 @@ import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import { VehicleDocumentUpload } from '@/components/documents/VehicleDocumentUpload';
 import { OwnerInsuranceSupport } from '@/components/owner/OwnerInsuranceSupport';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
+import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
 
 import { VoiceCallHistory } from '@/components/voice/VoiceCallHistory';
@@ -185,7 +186,12 @@ export default function OwnerDashboard() {
         <div className="container mx-auto px-4">
           {/* Admin View Banner */}
           <AdminViewBanner dashboardType="owner" />
-          
+
+          {/* Install App Banner */}
+          <div className="mb-6">
+            <InstallAppBanner appName="Rentmaikar Owner" />
+          </div>
+
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>

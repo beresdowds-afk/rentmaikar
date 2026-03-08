@@ -7,6 +7,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { MapPin, RefreshCw, HelpCircle } from 'lucide-react';
 import type { SupportStaff } from '@/types/support';
+import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 
 interface SupportDashboardLayoutProps {
   title: string;
@@ -85,6 +86,11 @@ export const SupportDashboardLayout = ({
                 Refresh
               </Button>
             </div>
+          </div>
+
+          {/* Install App Banner */}
+          <div className="mb-6">
+            <InstallAppBanner appName="Rentmaikar Support" />
           </div>
 
           {/* Stats */}
