@@ -1,5 +1,16 @@
 import mqtt, { MqttClient, IClientOptions } from 'mqtt';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  TELEMETRY_SCHEDULES,
+  ALERT_RULES,
+  MONITORING_THRESHOLDS,
+  getLastWillConfig,
+  getPersistentSessionConfig,
+  checkTelemetryRateLimit,
+  telemetryScheduler,
+  type AlertRule,
+  type AlertSeverity,
+} from '@/lib/telemetry-scheduler';
 
 export interface VehicleLocation {
   vehicleId: string;
@@ -171,14 +182,21 @@ class MQTTVehicleTracker {
   private vehicleSensors: Map<string, any> = new Map();
   private lastAccelerometer: Map<string, { x: number; y: number; z: number; totalG: number }> = new Map();
 
-  // Default broker configuration (would be replaced with actual broker in production)
+  // Alert callbacks
+  private alertCallbacks: Set<(vehicleId: string, rule: AlertRule, result: { severity: AlertSeverity; message: string }) => void> = new Set();
+
+  // Default broker configuration with persistent sessions & last will
   private defaultConfig: MQTTConfig = {
     brokerUrl: 'wss://broker.hivemq.com:8884/mqtt',
     options: {
       clientId: `rentmaikar_${Math.random().toString(16).slice(2, 10)}`,
-      clean: true,
+      clean: getPersistentSessionConfig().cleanSession, // false — persistent session for spotty connections
       connectTimeout: 30000,
       reconnectPeriod: 5000,
+      properties: {
+        sessionExpiryInterval: getPersistentSessionConfig().sessionExpiryIntervalSec,
+        receiveMaximum: getPersistentSessionConfig().receiveMaximum,
+      },
     }
   };
 
