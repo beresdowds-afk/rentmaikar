@@ -33,6 +33,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { DriverBehaviorLogs } from '@/components/admin/DriverBehaviorLogs';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
+import { useDriverDashboard } from '@/hooks/useDriverDashboard';
 import {
   Car,
   Activity,
@@ -56,54 +57,52 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Mock data for the driver dashboard
-const mockRentalData = {
-  vehicle: {
-    id: 'v-001',
-    make: 'Toyota',
-    model: 'Camry',
-    year: 2021,
-    plateNumber: 'ABC-123',
-    category: 'Top Earner',
-    image: '/placeholder.svg',
-  },
-  rental: {
-    id: 'r-001',
-    startDate: '2025-01-10',
-    dailyRate: 50, // Base daily rate
-    weeklyRate: 300, // Base weekly rate
-    paymentFrequency: 'weekly' as const,
-    status: 'active' as const,
-    nextPaymentDate: '2025-01-17',
-    totalPaid: 720,
-    daysActive: 14,
-  },
-  payments: [
-    { id: 'p-001', date: '2025-01-10', amount: 360, status: 'completed', method: 'paypal' },
-    { id: 'p-002', date: '2025-01-17', amount: 360, status: 'completed', method: 'paypal' },
-  ],
-  priceNegotiation: {
-    id: 'pn-001',
-    requestedRate: 280,
-    currentRate: 300,
-    status: 'pending' as const,
-    submittedAt: '2025-01-15',
-    reason: 'Market rates have dropped in my area',
-  },
-};
-
 export default function DriverDashboard() {
-  const { country, currency, currencySymbol } = useRegion();
+  const { country, currency } = useRegion();
   const { user, userRole } = useAuth();
   const isAdminView = userRole === 'admin';
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const { callHistory, isLoading: callsLoading, refreshHistory } = useVoiceCall('driver');
+  const {
+    activeRental,
+    vehicle: dbVehicle,
+    payments: dbPayments,
+    totalPaid: dbTotalPaid,
+    daysActive: dbDaysActive,
+    isLoading: dashboardLoading,
+    hasActiveRental,
+  } = useDriverDashboard();
 
   const isUSA = country === 'USA';
-  const rental = mockRentalData.rental;
-  const vehicle = mockRentalData.vehicle;
+
+  // Use real data when available, otherwise show empty state
+  const vehicle = dbVehicle
+    ? {
+        id: dbVehicle.id,
+        make: dbVehicle.make,
+        model: dbVehicle.model,
+        year: dbVehicle.year,
+        plateNumber: dbVehicle.license_plate,
+        category: 'Active',
+        image: '/placeholder.svg',
+      }
+    : null;
+
+  const rental = activeRental
+    ? {
+        id: activeRental.id,
+        startDate: new Date(activeRental.start_date).toISOString().split('T')[0],
+        dailyRate: Number(activeRental.daily_rate),
+        weeklyRate: Number(activeRental.daily_rate) * 7,
+        paymentFrequency: activeRental.payment_frequency as 'weekly' | 'daily',
+        status: activeRental.status as 'active',
+        nextPaymentDate: 'See payments tab',
+        totalPaid: dbTotalPaid,
+        daysActive: dbDaysActive,
+      }
+    : null;
 
   // Fetch phone verification status
   useEffect(() => {
@@ -121,8 +120,8 @@ export default function DriverDashboard() {
     fetchPhoneStatus();
   }, [user]);
 
-  // Calculate amounts based on region
-  const weeklyRate = isUSA ? 300 : 150000; // USD or NGN
+  // Calculate amounts based on real data or region defaults
+  const weeklyRate = rental ? rental.weeklyRate : (isUSA ? 300 : 150000);
   const adminFee = weeklyRate * (PAYMENT_CONFIG.ADMIN_FEE_PERCENT / 100);
   const totalDue = weeklyRate + adminFee;
 
@@ -184,7 +183,7 @@ export default function DriverDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Current Vehicle</p>
-                    <p className="text-2xl font-bold">{vehicle.make} {vehicle.model}</p>
+                    <p className="text-2xl font-bold">{vehicle ? `${vehicle.make} ${vehicle.model}` : 'No vehicle'}</p>
                   </div>
                   <Car className="h-8 w-8 text-primary" />
                 </div>
@@ -195,7 +194,7 @@ export default function DriverDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Days Active</p>
-                    <p className="text-2xl font-bold">{rental.daysActive}</p>
+                    <p className="text-2xl font-bold">{rental?.daysActive ?? 0}</p>
                   </div>
                   <Calendar className="h-8 w-8 text-green-500" />
                 </div>
@@ -207,7 +206,7 @@ export default function DriverDashboard() {
                   <div>
                     <p className="text-sm text-muted-foreground">Total Paid</p>
                     <p className="text-2xl font-bold">
-                      {formatCurrency(isUSA ? rental.totalPaid : rental.totalPaid * 500, currency)}
+                      {formatCurrency(rental?.totalPaid ?? 0, currency)}
                     </p>
                   </div>
                   <DollarSign className="h-8 w-8 text-blue-500" />
@@ -219,7 +218,7 @@ export default function DriverDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Next Payment</p>
-                    <p className="text-2xl font-bold">{rental.nextPaymentDate}</p>
+                    <p className="text-2xl font-bold">{rental?.nextPaymentDate ?? 'N/A'}</p>
                   </div>
                   <Clock className="h-8 w-8 text-orange-500" />
                 </div>
@@ -276,31 +275,37 @@ export default function DriverDashboard() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                      <img 
-                        src={vehicle.image} 
-                        alt={`${vehicle.make} ${vehicle.model}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Make & Model</p>
-                        <p className="font-medium">{vehicle.make} {vehicle.model}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Year</p>
-                        <p className="font-medium">{vehicle.year}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Plate Number</p>
-                        <p className="font-medium">{vehicle.plateNumber}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Category</p>
-                        <Badge>{vehicle.category}</Badge>
-                      </div>
-                    </div>
+                    {vehicle ? (
+                      <>
+                        <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                          <img 
+                            src={vehicle.image} 
+                            alt={`${vehicle.make} ${vehicle.model}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Make & Model</p>
+                            <p className="font-medium">{vehicle.make} {vehicle.model}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Year</p>
+                            <p className="font-medium">{vehicle.year}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Plate Number</p>
+                            <p className="font-medium">{vehicle.plateNumber}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Category</p>
+                            <Badge>{vehicle.category}</Badge>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No active vehicle rental</p>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -315,7 +320,7 @@ export default function DriverDashboard() {
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
                       <span>Status</span>
-                      <Badge className="bg-green-500">Active</Badge>
+                      <Badge className="bg-green-500">{rental ? 'Active' : 'No Rental'}</Badge>
                     </div>
                     <Separator />
                     <div className="space-y-3">
@@ -336,6 +341,7 @@ export default function DriverDashboard() {
                     <Button 
                       className="w-full mt-4" 
                       onClick={() => setShowPaymentModal(true)}
+                      disabled={!rental}
                     >
                       <CreditCard className="h-4 w-4 mr-2" />
                       Make Payment
@@ -345,13 +351,15 @@ export default function DriverDashboard() {
               </div>
 
               {/* Payment Reminder */}
-              <Alert>
-                <Bell className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Payment Reminder:</strong> Your next payment of {formatCurrency(totalDue, currency)} is due on {rental.nextPaymentDate}.
-                  {!isUSA && ' Payment via Paystack or bank transfer.'}
-                </AlertDescription>
-              </Alert>
+              {rental && (
+                <Alert>
+                  <Bell className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Payment Reminder:</strong> Your next payment of {formatCurrency(totalDue, currency)} is due soon.
+                    {!isUSA && ' Payment via Paystack or bank transfer.'}
+                  </AlertDescription>
+                </Alert>
+              )}
             </TabsContent>
 
             {/* Payments Tab */}
@@ -372,30 +380,34 @@ export default function DriverDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {mockRentalData.payments.map((payment) => (
-                        <div 
-                          key={payment.id} 
-                          className="flex items-center justify-between p-4 border rounded-lg"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                              <CheckCircle className="h-5 w-5 text-green-600" />
+                      {dbPayments.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">No payments yet</p>
+                      ) : (
+                        dbPayments.map((payment) => (
+                          <div 
+                            key={payment.id} 
+                            className="flex items-center justify-between p-4 border rounded-lg"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium capitalize">{payment.payment_frequency} Payment</p>
+                                <p className="text-sm text-muted-foreground">{new Date(payment.created_at).toLocaleDateString()}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium">Weekly Payment</p>
-                              <p className="text-sm text-muted-foreground">{payment.date}</p>
+                            <div className="text-right">
+                              <p className="font-bold">
+                                {formatCurrency(Number(payment.amount), payment.currency as 'USD' | 'NGN')}
+                              </p>
+                              <Badge variant="outline" className="text-xs capitalize">
+                                {payment.payment_method || payment.status}
+                              </Badge>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-bold">
-                              {formatCurrency(isUSA ? payment.amount : payment.amount * 500, currency)}
-                            </p>
-                            <Badge variant="outline" className="text-xs">
-                              {payment.method === 'paypal' ? 'PayPal' : 'Paystack'}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                     <Button 
                       className="w-full mt-6" 

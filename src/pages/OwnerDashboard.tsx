@@ -36,6 +36,7 @@ import { VerificationGate } from '@/components/onboarding/VerificationGate';
 import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useOwnerDashboard } from '@/hooks/useOwnerDashboard';
 import {
   Car,
   Plus,
@@ -60,54 +61,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Mock data for owner dashboard
-const mockVehicles = [
-  {
-    id: 'v-001',
-    make: 'Toyota',
-    model: 'Camry',
-    year: 2021,
-    plateNumber: 'ABC-123',
-    category: 'Top Earner',
-    status: 'rented' as const,
-    driver: { name: 'John Doe', id: 'd-001' },
-    weeklyRate: 300,
-    earnings: { total: 2400, available: 1920 },
-    image: '/placeholder.svg',
-  },
-  {
-    id: 'v-002',
-    make: 'Honda',
-    model: 'Accord',
-    year: 2019,
-    plateNumber: 'DEF-456',
-    category: 'Earnings Optimizer',
-    status: 'rented' as const,
-    driver: { name: 'Jane Smith', id: 'd-002' },
-    weeklyRate: 280,
-    earnings: { total: 2240, available: 1792 },
-    image: '/placeholder.svg',
-  },
-  {
-    id: 'v-003',
-    make: 'Hyundai',
-    model: 'Elantra',
-    year: 2016,
-    plateNumber: 'GHI-789',
-    category: 'Smart Start',
-    status: 'available' as const,
-    driver: null,
-    weeklyRate: 220,
-    earnings: { total: 0, available: 0 },
-    image: '/placeholder.svg',
-  },
-];
-
-const mockWithdrawals = [
-  { id: 'w-001', amount: 1500, status: 'completed', date: '2025-01-10', method: 'bank_transfer' },
-  { id: 'w-002', amount: 1200, status: 'pending', date: '2025-01-15', method: 'bank_transfer' },
-];
-
 const vehicleCategories = [
   { value: 'smart-start', label: 'Smart Start (2015-2016)', maxWeekly: 250 },
   { value: 'earnings-optimizer', label: 'Earnings Optimizer (2017-2020)', maxWeekly: 300 },
@@ -115,7 +68,7 @@ const vehicleCategories = [
 ];
 
 export default function OwnerDashboard() {
-  const { country, currency, currencySymbol } = useRegion();
+  const { country, currency } = useRegion();
   const { user, userRole } = useAuth();
   const isAdminView = userRole === 'admin';
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
@@ -124,8 +77,16 @@ export default function OwnerDashboard() {
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const { callHistory, isLoading: callsLoading, refreshHistory } = useVoiceCall('owner');
+  const {
+    vehicles: dbVehicles,
+    rentals: dbRentals,
+    totalEarnings: dbTotalEarnings,
+    availableBalance: dbAvailableBalance,
+    activeRentals: dbActiveRentals,
+  } = useOwnerDashboard();
 
   const isUSA = country === 'USA';
+  const multiplier = isUSA ? 1 : 500;
 
   // Fetch phone verification status
   useEffect(() => {
@@ -142,12 +103,11 @@ export default function OwnerDashboard() {
     };
     fetchPhoneStatus();
   }, [user]);
-  const multiplier = isUSA ? 1 : 500; // Exchange rate approximation
 
-  // Calculate totals
-  const totalEarnings = mockVehicles.reduce((sum, v) => sum + v.earnings.total, 0) * multiplier;
-  const availableBalance = mockVehicles.reduce((sum, v) => sum + v.earnings.available, 0) * multiplier;
-  const activeVehicles = mockVehicles.filter(v => v.status === 'rented').length;
+  // Use real data 
+  const totalEarnings = dbTotalEarnings || 0;
+  const availableBalance = dbAvailableBalance || 0;
+  const activeVehicles = dbActiveRentals || 0;
 
   const handleAddVehicle = () => {
     toast.success('Vehicle added successfully! Pending admin verification.');
@@ -165,9 +125,9 @@ export default function OwnerDashboard() {
       return;
     }
     
-    const vehicle = mockVehicles.find(v => v.id === selectedVehicle);
-    if (vehicle && amount > vehicle.earnings.available * multiplier) {
-      toast.error('Insufficient available balance for this vehicle');
+    const vehicle = dbVehicles.find(v => v.id === selectedVehicle);
+    if (vehicle && amount > availableBalance) {
+      toast.error('Insufficient available balance');
       return;
     }
 
@@ -225,9 +185,9 @@ export default function OwnerDashboard() {
                           <SelectValue placeholder="Choose a vehicle" />
                         </SelectTrigger>
                         <SelectContent>
-                          {mockVehicles.filter(v => v.earnings.available > 0).map(vehicle => (
+                          {dbVehicles.map(vehicle => (
                             <SelectItem key={vehicle.id} value={vehicle.id}>
-                              {vehicle.make} {vehicle.model} - Available: {formatCurrency(vehicle.earnings.available * multiplier, currency)}
+                              {vehicle.make} {vehicle.model}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -344,7 +304,7 @@ export default function OwnerDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Total Vehicles</p>
-                    <p className="text-2xl font-bold">{mockVehicles.length}</p>
+                    <p className="text-2xl font-bold">{dbVehicles.length}</p>
                   </div>
                   <Car className="h-8 w-8 text-primary" />
                 </div>
@@ -461,51 +421,45 @@ export default function OwnerDashboard() {
             {/* Vehicles Tab */}
             <TabsContent value="vehicles" className="space-y-6">
               <div className="grid gap-6">
-                {mockVehicles.map(vehicle => (
+                {dbVehicles.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No vehicles listed yet. Click "Add Vehicle" to get started.</p>
+                ) : dbVehicles.map(vehicle => (
                   <Card key={vehicle.id}>
                     <CardContent className="p-6">
                       <div className="flex flex-col lg:flex-row gap-6">
-                        {/* Vehicle Image */}
                         <div className="w-full lg:w-48 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                           <img 
-                            src={vehicle.image} 
+                            src="/placeholder.svg" 
                             alt={`${vehicle.make} ${vehicle.model}`}
                             className="w-full h-full object-cover"
                           />
                         </div>
                         
-                        {/* Vehicle Info */}
                         <div className="flex-1 space-y-4">
                           <div className="flex items-start justify-between">
                             <div>
                               <h3 className="text-xl font-bold">
                                 {vehicle.make} {vehicle.model} ({vehicle.year})
                               </h3>
-                              <p className="text-muted-foreground">{vehicle.plateNumber}</p>
+                              <p className="text-muted-foreground">{vehicle.license_plate}</p>
                             </div>
                             <Badge className={vehicle.status === 'rented' ? 'bg-green-500' : 'bg-blue-500'}>
-                              {vehicle.status === 'rented' ? 'Rented' : 'Available'}
+                              {vehicle.status === 'rented' ? 'Rented' : vehicle.status}
                             </Badge>
                           </div>
 
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             <div>
-                              <p className="text-sm text-muted-foreground">Category</p>
-                              <p className="font-medium">{vehicle.category}</p>
+                              <p className="text-sm text-muted-foreground">Color</p>
+                              <p className="font-medium">{vehicle.color || 'N/A'}</p>
                             </div>
                             <div>
-                              <p className="text-sm text-muted-foreground">Weekly Rate</p>
-                              <p className="font-medium">{formatCurrency(vehicle.weeklyRate * multiplier, currency)}</p>
+                              <p className="text-sm text-muted-foreground">License Plate</p>
+                              <p className="font-medium">{vehicle.license_plate}</p>
                             </div>
                             <div>
-                              <p className="text-sm text-muted-foreground">Current Driver</p>
-                              <p className="font-medium">{vehicle.driver?.name || 'None'}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-muted-foreground">Available Earnings</p>
-                              <p className="font-medium text-green-600">
-                                {formatCurrency(vehicle.earnings.available * multiplier, currency)}
-                              </p>
+                              <p className="text-sm text-muted-foreground">Status</p>
+                              <p className="font-medium capitalize">{vehicle.status}</p>
                             </div>
                           </div>
 
@@ -571,7 +525,7 @@ export default function OwnerDashboard() {
                     <div>
                       <h4 className="font-semibold mb-4">Earnings by Vehicle</h4>
                       <div className="space-y-4">
-                        {mockVehicles.filter(v => v.earnings.total > 0).map(vehicle => (
+                        {dbVehicles.map(vehicle => (
                           <div key={vehicle.id} className="flex items-center justify-between p-4 border rounded-lg">
                             <div className="flex items-center gap-4">
                               <div className="h-12 w-12 bg-muted rounded-lg flex items-center justify-center">
@@ -579,14 +533,12 @@ export default function OwnerDashboard() {
                               </div>
                               <div>
                                 <p className="font-medium">{vehicle.make} {vehicle.model}</p>
-                                <p className="text-sm text-muted-foreground">{vehicle.plateNumber}</p>
+                                <p className="text-sm text-muted-foreground">{vehicle.license_plate}</p>
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="font-bold">{formatCurrency(vehicle.earnings.total * multiplier, currency)}</p>
-                              <p className="text-sm text-green-600">
-                                Available: {formatCurrency(vehicle.earnings.available * multiplier, currency)}
-                              </p>
+                              <p className="font-bold">{vehicle.make} {vehicle.model}</p>
+                              <p className="text-sm text-muted-foreground capitalize">{vehicle.status}</p>
                             </div>
                           </div>
                         ))}
@@ -659,7 +611,7 @@ export default function OwnerDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockWithdrawals.map(withdrawal => (
+                    {([] as any[]).map(withdrawal => (
                       <div 
                         key={withdrawal.id}
                         className="flex items-center justify-between p-4 border rounded-lg"

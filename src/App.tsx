@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,26 +10,38 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import CookieConsent from "@/components/CookieConsent";
 import MessageConsent from "@/components/MessageConsent";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import ResetPassword from "./pages/ResetPassword";
-import DriverRegistration from "./pages/DriverRegistration";
-import OwnerRegistration from "./pages/OwnerRegistration";
-import DriverDashboard from "./pages/DriverDashboard";
-import OwnerDashboard from "./pages/OwnerDashboard";
-import Catalogue from "./pages/Catalogue";
-import AdminDashboard from "./pages/AdminDashboard";
-import ApiDocs from "./pages/ApiDocs";
-import Terms from "./pages/Terms";
-import Privacy from "./pages/Privacy";
-import FAQ from "./pages/FAQ";
-import NotFound from "./pages/NotFound";
-import LegalSupportDashboard from "./pages/LegalSupportDashboard";
-import IoTSupportDashboard from "./pages/IoTSupportDashboard";
-import VehicleSupportDashboard from "./pages/VehicleSupportDashboard";
-import DriverTraining from "./pages/DriverTraining";
+import { Loader2 } from "lucide-react";
+
+// Lazy-loaded pages for code splitting
+const Index = lazy(() => import("./pages/Index"));
+const Auth = lazy(() => import("./pages/Auth"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const DriverRegistration = lazy(() => import("./pages/DriverRegistration"));
+const OwnerRegistration = lazy(() => import("./pages/OwnerRegistration"));
+const DriverDashboard = lazy(() => import("./pages/DriverDashboard"));
+const OwnerDashboard = lazy(() => import("./pages/OwnerDashboard"));
+const Catalogue = lazy(() => import("./pages/Catalogue"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const ApiDocs = lazy(() => import("./pages/ApiDocs"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const FAQ = lazy(() => import("./pages/FAQ"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const LegalSupportDashboard = lazy(() => import("./pages/LegalSupportDashboard"));
+const IoTSupportDashboard = lazy(() => import("./pages/IoTSupportDashboard"));
+const VehicleSupportDashboard = lazy(() => import("./pages/VehicleSupportDashboard"));
+const DriverTraining = lazy(() => import("./pages/DriverTraining"));
 
 const queryClient = new QueryClient();
+
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="flex flex-col items-center gap-4">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <p className="text-muted-foreground">Loading...</p>
+    </div>
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -41,106 +54,100 @@ const App = () => (
             <BrowserRouter>
               <CookieConsent />
               <MessageConsent />
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                {/* Registration routes - protected, require account creation first */}
-                <Route 
-                  path="/driver/register" 
-                  element={<DriverRegistration />} 
-                />
-                <Route 
-                  path="/owner/register" 
-                  element={<OwnerRegistration />} 
-                />
-                <Route 
-                  path="/driver/registration" 
-                  element={
-                    <ProtectedRoute allowedRoles={['driver']}>
-                      <DriverRegistration />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/owner/registration" 
-                  element={
-                    <ProtectedRoute allowedRoles={['owner']}>
-                      <OwnerRegistration />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/driver/dashboard" 
-                  element={
-                    <ProtectedRoute allowedRoles={['driver', 'admin']}>
-                      <DriverDashboard />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/owner/dashboard" 
-                  element={
-                    <ProtectedRoute allowedRoles={['owner', 'admin']}>
-                      <OwnerDashboard />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route path="/catalogue/:category" element={<Catalogue />} />
-                <Route 
-                  path="/api-docs" 
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <ApiDocs />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/faq" element={<FAQ />} />
-                <Route 
-                  path="/admin" 
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminDashboard />
-                    </ProtectedRoute>
-                  } 
-                />
-                {/* Support Dashboards */}
-                <Route 
-                  path="/support/legal" 
-                  element={
-                    <ProtectedRoute allowedRoles={['legal_support', 'admin']}>
-                      <LegalSupportDashboard />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/support/iot" 
-                  element={
-                    <ProtectedRoute allowedRoles={['iot_support', 'admin']}>
-                      <IoTSupportDashboard />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/support/vehicle" 
-                  element={
-                    <ProtectedRoute allowedRoles={['vehicle_support', 'admin']}>
-                      <VehicleSupportDashboard />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/driver/training" 
-                  element={
-                    <ProtectedRoute allowedRoles={['driver', 'admin']}>
-                      <DriverTraining />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/driver/register" element={<DriverRegistration />} />
+                  <Route path="/owner/register" element={<OwnerRegistration />} />
+                  <Route 
+                    path="/driver/registration" 
+                    element={
+                      <ProtectedRoute allowedRoles={['driver']}>
+                        <DriverRegistration />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/owner/registration" 
+                    element={
+                      <ProtectedRoute allowedRoles={['owner']}>
+                        <OwnerRegistration />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/driver/dashboard" 
+                    element={
+                      <ProtectedRoute allowedRoles={['driver', 'admin']}>
+                        <DriverDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/owner/dashboard" 
+                    element={
+                      <ProtectedRoute allowedRoles={['owner', 'admin']}>
+                        <OwnerDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route path="/catalogue/:category" element={<Catalogue />} />
+                  <Route 
+                    path="/api-docs" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <ApiDocs />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/faq" element={<FAQ />} />
+                  <Route 
+                    path="/admin" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/support/legal" 
+                    element={
+                      <ProtectedRoute allowedRoles={['legal_support', 'admin']}>
+                        <LegalSupportDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/support/iot" 
+                    element={
+                      <ProtectedRoute allowedRoles={['iot_support', 'admin']}>
+                        <IoTSupportDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/support/vehicle" 
+                    element={
+                      <ProtectedRoute allowedRoles={['vehicle_support', 'admin']}>
+                        <VehicleSupportDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/driver/training" 
+                    element={
+                      <ProtectedRoute allowedRoles={['driver', 'admin']}>
+                        <DriverTraining />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
             </BrowserRouter>
           </TooltipProvider>
         </UserTypeProvider>
