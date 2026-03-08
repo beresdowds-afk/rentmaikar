@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, Eye, CreditCard, Wallet, Mail, Loader2, RefreshCw, TrendingUp, HelpCircle, Inbox, Phone, Headphones } from "lucide-react";
 import { CallCenterPage } from "@/components/admin/voip/CallCenterPage";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
+import { IoTMonitoringHub } from "@/components/admin/IoTMonitoringHub";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
 import { SecretsManagement } from "@/components/admin/SecretsManagement";
@@ -669,6 +670,7 @@ const AdminDashboard = () => {
               )}
               {activeTab === 'assets' && <AssetsRegistry />}
               {activeTab === 'pickup-locations' && <VehiclePickupManagement />}
+              {activeTab === 'iot-monitoring' && <IoTMonitoringHub />}
               {activeTab === 'hardware' && <HardwareManagement />}
               {activeTab === 'mqtt-credentials' && <VehicleMqttCredentials readOnly={false} />}
               {activeTab === 'driver-behavior' && <DriverBehaviorLogs />}
