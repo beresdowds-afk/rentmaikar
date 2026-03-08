@@ -10,7 +10,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import CookieConsent from "@/components/CookieConsent";
 import MessageConsent from "@/components/MessageConsent";
-import { Loader2 } from "lucide-react";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import PageSkeleton from "@/components/PageSkeleton";
 
 // Lazy-loaded pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -34,14 +35,7 @@ const DriverTraining = lazy(() => import("./pages/DriverTraining"));
 
 const queryClient = new QueryClient();
 
-const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background">
-    <div className="flex flex-col items-center gap-4">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <p className="text-muted-foreground">Loading...</p>
-    </div>
-  </div>
-);
+const PageLoader = () => <PageSkeleton />;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -54,8 +48,9 @@ const App = () => (
             <BrowserRouter>
               <CookieConsent />
               <MessageConsent />
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
+              <ErrorBoundary>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
@@ -147,7 +142,8 @@ const App = () => (
                   />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </Suspense>
+                  </Suspense>
+              </ErrorBoundary>
             </BrowserRouter>
           </TooltipProvider>
         </UserTypeProvider>
