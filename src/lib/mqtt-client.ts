@@ -320,34 +320,50 @@ class MQTTVehicleTracker {
 
           alertTopics.forEach(topic => {
             this.client?.subscribe(topic, { qos: 1 }, (err) => {
-              if (err) console.error(`[MQTT] Alert subscription error for ${topic}:`, err);
+              if (err) console.error(`[MQTT/EMQX] Alert sub error for ${topic}:`, err);
             });
           });
-          console.log('[MQTT] Subscribed to accident alert topics');
+
+          // ── EMQX $SYS topics for broker monitoring ──────────
+          Object.values(EMQX_SYS_TOPICS).forEach(sysTopic => {
+            this.client?.subscribe(sysTopic, { qos: 0 }, (err) => {
+              if (err) console.error(`[MQTT/EMQX] $SYS sub error for ${sysTopic}:`, err);
+            });
+          });
+          console.log('[MQTT/EMQX] Subscribed to $SYS broker monitoring topics');
+
+          // Subscribe to EMQX client events for connection tracking
+          this.client?.subscribe('$SYS/brokers/+/clients/+/connected', { qos: 0 });
+          this.client?.subscribe('$SYS/brokers/+/clients/+/disconnected', { qos: 0 });
 
           resolve();
         });
 
         this.client.on('message', (topic, message) => {
+          // Handle $SYS metrics separately
+          if (topic.startsWith('$SYS/')) {
+            this.handleSysMessage(topic, message.toString());
+            return;
+          }
           this.handleMessage(topic, message.toString());
         });
 
         this.client.on('error', (error) => {
-          console.error('[MQTT] Connection error:', error);
+          console.error('[MQTT/EMQX] Connection error:', error);
           reject(error);
         });
 
         this.client.on('close', () => {
-          console.log('[MQTT] Connection closed');
+          console.log('[MQTT/EMQX] Connection closed');
           this.isConnected = false;
         });
 
         this.client.on('reconnect', () => {
           this.reconnectAttempts++;
-          console.log(`[MQTT] Reconnecting... Attempt ${this.reconnectAttempts}`);
+          console.log(`[MQTT/EMQX] Reconnecting... Attempt ${this.reconnectAttempts}`);
           
           if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.error('[MQTT] Max reconnect attempts reached');
+            console.error('[MQTT/EMQX] Max reconnect attempts reached');
             this.client?.end();
           }
         });
@@ -356,6 +372,78 @@ class MQTTVehicleTracker {
         reject(error);
       }
     });
+  }
+
+  /**
+   * Handle EMQX $SYS monitoring messages
+   */
+  private handleSysMessage(topic: string, message: string): void {
+    try {
+      this.sysMetrics.set(topic, message);
+    } catch (e) {
+      // $SYS messages may not be JSON
+      this.sysMetrics.set(topic, message);
+    }
+  }
+
+  /**
+   * Get current EMQX $SYS metrics snapshot
+   */
+  getSysMetrics(): Record<string, any> {
+    const metrics: Record<string, any> = {};
+    this.sysMetrics.forEach((value, key) => {
+      // Simplify key names
+      const shortKey = key.replace(/\$SYS\/brokers\/[^/]+\//, '');
+      metrics[shortKey] = value;
+    });
+    return metrics;
+  }
+
+  /**
+   * Set the EMQX broker profile (production/staging/local)
+   */
+  setBrokerProfile(profile: keyof typeof EMQX_PROFILES): void {
+    this.brokerProfile = profile;
+    const emqx = buildEMQXConnectOptions(profile);
+    this.defaultConfig = {
+      brokerUrl: emqx.brokerUrl,
+      options: emqx.options as any,
+    };
+    console.log(`[MQTT/EMQX] Broker profile set to: ${profile}`);
+  }
+
+  /**
+   * Get current broker profile info
+   */
+  getBrokerProfile(): EMQXBrokerProfile & { profileKey: string } {
+    return {
+      ...EMQX_PROFILES[this.brokerProfile],
+      profileKey: this.brokerProfile,
+    };
+  }
+
+  /**
+   * Toggle shared subscriptions on/off
+   */
+  setSharedSubscriptions(enabled: boolean): void {
+    this.useSharedSubscriptions = enabled;
+    console.log(`[MQTT/EMQX] Shared subscriptions: ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  /**
+   * Query EMQX HTTP API via edge function proxy
+   */
+  async queryEMQXApi(action: string, params?: Record<string, any>): Promise<any> {
+    try {
+      const { data, error } = await supabase.functions.invoke('emqx-monitoring', {
+        body: { action, params },
+      });
+      if (error) throw error;
+      return data?.data;
+    } catch (err) {
+      console.error(`[MQTT/EMQX] API query failed (${action}):`, err);
+      throw err;
+    }
   }
 
   disconnect(): void {
