@@ -215,6 +215,35 @@ This incident was automatically detected by the vehicle's IoT system. Emergency 
       console.error("[IoTAccident] Notification failed:", notifError);
     }
 
+    // P0: Dispatch emergency services for severe/critical
+    if (severity === 'high' || severity === 'critical' || body.triggerType === 'airbag' || body.triggerType === 'fire') {
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/accident-emergency-dispatch`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({
+            incidentId: incident.id,
+            vehicleId: body.vehicleId,
+            driverId: body.driverId,
+            ownerId: body.ownerId,
+            severity: severity === 'high' ? 'severe' : severity === 'critical' ? 'critical' : 'severe',
+            triggerType: body.triggerType,
+            decelerationG: body.decelerationG,
+            speedAtImpact: body.speedAtImpact,
+            latitude: body.latitude,
+            longitude: body.longitude,
+            timestamp: body.timestamp,
+          }),
+        });
+        console.log("[IoTAccident] Emergency dispatch triggered");
+      } catch (dispatchError) {
+        console.error("[IoTAccident] Emergency dispatch failed:", dispatchError);
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
