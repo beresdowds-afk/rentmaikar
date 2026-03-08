@@ -1,6 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { reportError } from "@/lib/error-monitor";
 
 interface Props {
   children: ReactNode;
@@ -25,7 +26,9 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ errorInfo });
-    console.error("[ErrorBoundary]", error, errorInfo);
+    reportError(error, "critical", "ErrorBoundary", {
+      componentStack: errorInfo.componentStack?.slice(0, 1000),
+    });
   }
 
   handleRetry = () => {
