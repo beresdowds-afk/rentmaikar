@@ -6,9 +6,9 @@ const corsHeaders = {
 };
 
 const REGION_VOICES: Record<string, string> = {
-  US: "CwhRBWXzGAHq8TQ4Fs17",   // Roger — Wilson (USA)
-  NG: "iP95p4xoKVk53GoZ742B",   // Chris — Kunle (Nigeria)
-  default: "CwhRBWXzGAHq8TQ4Fs17",
+  US: "aVwphcJSEW1eYLC622Ru",   // Kevin — Career & Life Coach (Instructor)
+  NG: "aVwphcJSEW1eYLC622Ru",   // Kevin — Career & Life Coach (Instructor)
+  default: "aVwphcJSEW1eYLC622Ru",
 };
 
 serve(async (req: Request) => {
