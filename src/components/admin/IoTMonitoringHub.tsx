@@ -14,7 +14,7 @@ import {
   Flame, Gauge, MapPin, Radio, RefreshCw, Satellite, Shield,
   Signal, Thermometer, Wifi, WifiOff, Zap, Siren, Eye,
   TrendingUp, BarChart3, CircleAlert, BellRing, Timer, Cpu,
-  Server, Database, Archive, Clock, Trash2, HardDrive, Lock
+  Server, Database, HardDrive
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
