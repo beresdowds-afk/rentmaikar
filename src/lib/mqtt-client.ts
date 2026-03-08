@@ -3,10 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   TELEMETRY_SCHEDULES,
   ALERT_RULES,
-  MONITORING_THRESHOLDS,
   getLastWillConfig,
-  getPersistentSessionConfig,
   checkTelemetryRateLimit,
+  telemetryScheduler,
   telemetryScheduler,
   type AlertRule,
   type AlertSeverity,
@@ -378,12 +377,7 @@ class MQTTVehicleTracker {
    * Handle EMQX $SYS monitoring messages
    */
   private handleSysMessage(topic: string, message: string): void {
-    try {
-      this.sysMetrics.set(topic, message);
-    } catch (e) {
-      // $SYS messages may not be JSON
-      this.sysMetrics.set(topic, message);
-    }
+    this.sysMetrics.set(topic, message);
   }
 
   /**
