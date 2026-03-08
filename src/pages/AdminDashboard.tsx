@@ -64,6 +64,7 @@ import { AdminDailyTodoList } from "@/components/admin/AdminDailyTodoList";
 import { VehicleMqttCredentials } from "@/components/admin/VehicleMqttCredentials";
 import { DriverBehaviorLogs } from "@/components/admin/DriverBehaviorLogs";
 import { CronJobManagement } from "@/components/admin/CronJobManagement";
+import { TaxManagement } from "@/components/admin/TaxManagement";
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 
 // Mock financial data - in production, this would come from the database
@@ -744,6 +745,7 @@ const AdminDashboard = () => {
               {activeTab === 'api-endpoints' && <ApiEndpointManagement />}
               {activeTab === 'security' && <AdminSecurityDashboard />}
               {activeTab === 'cron-jobs' && <CronJobManagement />}
+              {activeTab === 'tax' && <TaxManagement />}
               {activeTab === 'settings' && <RegionalOperationsManagement />}
             </div>
           )}
