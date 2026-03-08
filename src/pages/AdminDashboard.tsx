@@ -64,6 +64,7 @@ import { AdminDailyTodoList } from "@/components/admin/AdminDailyTodoList";
 import { VehicleMqttCredentials } from "@/components/admin/VehicleMqttCredentials";
 import { DriverBehaviorLogs } from "@/components/admin/DriverBehaviorLogs";
 import { CronJobManagement } from "@/components/admin/CronJobManagement";
+import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 
 // Mock financial data - in production, this would come from the database
 const mockFinancialData = {
@@ -254,6 +255,11 @@ const AdminDashboard = () => {
                 Tour
               </Button>
             </div>
+          </div>
+
+          {/* Install App Banner */}
+          <div className="mb-6">
+            <InstallAppBanner appName="Rentmaikar Admin" />
           </div>
 
           {/* Stats Grid */}

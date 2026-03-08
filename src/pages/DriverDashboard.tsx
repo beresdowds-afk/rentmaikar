@@ -153,7 +153,12 @@ export default function DriverDashboard() {
         <div className="container mx-auto px-4">
           {/* Admin View Banner */}
           <AdminViewBanner dashboardType="driver" />
-          
+
+          {/* Install App Banner */}
+          <div className="mb-6">
+            <InstallAppBanner appName="Rentmaikar Driver" />
+          </div>
+
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
