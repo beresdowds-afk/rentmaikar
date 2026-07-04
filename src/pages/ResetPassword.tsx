@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
+import { Eye, EyeOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { zodResolver } from '@hookform/resolvers/zod';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -225,7 +228,8 @@ const ResetPassword = () => {
                   placeholder="••••••••"
                   {...form.register('password')}
                   disabled={isSubmitting}
-                  className="pr-10"
+                  className="pr-10"// ensure text doesn't overlap the icon
+      {...form.register("password")}
                 />
                 <Button
                   type="button"
