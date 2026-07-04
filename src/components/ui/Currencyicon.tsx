@@ -5,7 +5,11 @@ interface CurrencyIconProps extends React.SVGProps<SVGSVGElement> {
   // optionally override currency code (for rare cases)
   currencyCode?: "USD" | "NGN";
 }
-
+const getCurrencyIcon = (className = "h-4 w-4") => {
+  return country === "Nigeria" 
+    ? <NairaIcon className={className} />
+    : <DollarSign className={className} />;
+};
 export const CurrencyIcon = ({ currencyCode, className, ...props }: CurrencyIconProps) => {
   const { getCurrencyIcon, currency } = useRegion();
   const code = currencyCode || currency;
