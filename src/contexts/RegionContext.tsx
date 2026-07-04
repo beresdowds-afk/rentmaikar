@@ -13,12 +13,11 @@ interface RegionContextType {
   isDetecting: boolean;
   currency: Currency;
   currencySymbol: string;
-  phonePrefix: string;
-  whatsappNumber: string;
-  smsNumber: string;
+  // NEW: helper to get icon component
+  getCurrencyIcon: (className?: string) => React.ReactNode;
+  // NEW: full config for other uses
+  config: RegionConfig;
 }
-
-const RegionContext = createContext<RegionContextType | undefined>(undefined);
 
 interface RegionConfig {
   currency: Currency;
@@ -45,6 +44,100 @@ const regionConfig: Record<Country, RegionConfig> = {
   },
 };
 
+// Import your icon components – adjust paths as needed
+import { DollarSign, NairaIcon } from "@/components/icons"; // or from 'lucide-react'
+
+const RegionContext = createContext<RegionContextType | undefined>(undefined);
+
+const STORAGE_KEY = "region_preference";
+
+export const RegionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [country, setCountry] = useState<Country>("USA");
+  const [regionMode, setRegionMode] = useState<RegionMode>("auto");
+  const [isDetecting, setIsDetecting] = useState(true);
+
+  // Load saved preference on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.country && parsed.mode) {
+          setCountry(parsed.country);
+          setRegionMode(parsed.mode);
+          setIsDetecting(false);
+          return; // skip auto-detection if manual override exists
+        }
+      } catch {}
+    }
+    // Otherwise auto-detect
+    detect();
+  }, []);
+
+  const detect = async () => {
+    setIsDetecting(true);
+    try {
+      // Try IP first, then timezone as fallback
+      let detected = await detectCountryFromIP();
+      if (!detected) detected = detectCountryFromTimezone();
+      if (detected && (detected === "USA" || detected === "Nigeria")) {
+        setCountry(detected);
+        // Save the auto-detected result so next time it's fast
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ country: detected, mode: "auto" }));
+      }
+    } catch (error) {
+      console.warn("Region detection failed, using default (USA)");
+      setCountry("USA");
+    } finally {
+      setIsDetecting(false);
+    }
+  };
+
+  // When user manually changes country, save it
+  const handleSetCountry = (newCountry: Country) => {
+    setCountry(newCountry);
+    setRegionMode("manual");
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ country: newCountry, mode: "manual" }));
+  };
+
+  const config = regionConfig[country];
+  const currencySymbol = config.currencySymbol;
+  const currency = config.currency;
+
+  const getCurrencyIcon = (className = "h-4 w-4") => {
+    // You can use any icon library – here's an example
+    return currency === "NGN" 
+      ? <NairaIcon className={className} /> 
+      : <DollarSign className={className} />;
+  };
+
+  return (
+    <RegionContext.Provider
+      value={{
+        country,
+        setCountry: handleSetCountry,
+        regionMode,
+        setRegionMode: (mode) => {
+          setRegionMode(mode);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ country, mode }));
+        },
+        isDetecting,
+        currency,
+        currencySymbol,
+        getCurrencyIcon,
+        config,
+      }}
+    >
+      {children}
+    </RegionContext.Provider>
+  );
+};
+
+export const useRegion = () => {
+  const context = useContext(RegionContext);
+  if (!context) throw new Error("useRegion must be used within a RegionProvider");
+  return context;
+};
 export const RegionProvider = ({ children }: { children: ReactNode }) => {
   const [isDetecting, setIsDetecting] = useState(false);
   const [regionMode, setRegionMode] = useState<RegionMode>(() => {
