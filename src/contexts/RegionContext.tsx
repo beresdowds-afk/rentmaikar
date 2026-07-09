@@ -1,6 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { DollarSign } from "lucide-react";
 import { detectCountryFromIP, detectCountryFromTimezone } from "@/lib/ip-geolocation";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  getStoredCountry,
+  getStoredMode,
+  persistCountry,
+  persistMode,
+} from "@/lib/region-cookie";
 
 export type Country = "USA" | "Nigeria";
 export type RegionMode = "auto" | "manual";
@@ -52,54 +59,119 @@ const NairaIcon = ({ className }: { className?: string }) => (
 
 const RegionContext = createContext<RegionContextType | undefined>(undefined);
 
+const SAFE_DEFAULT: Country = "USA";
+
 export const RegionProvider = ({ children }: { children: ReactNode }) => {
   const [isDetecting, setIsDetecting] = useState(false);
-  const [regionMode, setRegionMode] = useState<RegionMode>(() => {
-    const saved = localStorage.getItem("region-mode");
-    if (saved === "auto" || saved === "manual") return saved;
-    return "auto";
+
+  const [regionMode, setRegionModeState] = useState<RegionMode>(
+    () => getStoredMode() ?? "auto"
+  );
+
+  const [country, setCountryState] = useState<Country>(() => {
+    const stored = getStoredCountry();
+    if (stored) return stored;
+    try {
+      return detectCountryFromTimezone();
+    } catch {
+      return SAFE_DEFAULT;
+    }
   });
 
-  const [country, setCountry] = useState<Country>(() => {
-    const saved = localStorage.getItem("preferred-country");
-    if (saved === "USA" || saved === "Nigeria") return saved;
-    return detectCountryFromTimezone();
-  });
+  const setCountry = (next: Country) => {
+    setCountryState(next);
+    persistCountry(next);
+  };
 
+  const setRegionMode = (next: RegionMode) => {
+    setRegionModeState(next);
+    persistMode(next);
+  };
+
+  // First-load auto detection (IP -> timezone -> safe default)
   useEffect(() => {
-    const detectRegion = async () => {
-      if (regionMode === "auto") {
-        setIsDetecting(true);
-        try {
-          const result = await detectCountryFromIP();
-          if (result.detected) {
-            setCountry(result.country);
-            localStorage.setItem("preferred-country", result.country);
-          }
-        } catch (error) {
-          console.warn("IP detection failed:", error);
-        } finally {
-          setIsDetecting(false);
+    let cancelled = false;
+    const run = async () => {
+      if (regionMode !== "auto") return;
+      setIsDetecting(true);
+      try {
+        const result = await detectCountryFromIP();
+        if (!cancelled && result.detected) {
+          setCountryState(result.country);
+          persistCountry(result.country);
         }
+      } catch {
+        // keep timezone/stored/default fallback
+      } finally {
+        if (!cancelled) setIsDetecting(false);
       }
     };
-    detectRegion();
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [regionMode]);
 
+  // Sync with the signed-in user's profile preference.
   useEffect(() => {
-    localStorage.setItem("region-mode", regionMode);
-  }, [regionMode]);
+    let cancelled = false;
+    const syncProfile = async (userId: string) => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("preferred_country, region_mode")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (cancelled || !data) return;
+        const pc = data.preferred_country as Country | null;
+        const rm = data.region_mode as RegionMode | null;
+        if (rm === "auto" || rm === "manual") {
+          setRegionModeState(rm);
+          persistMode(rm);
+        }
+        if (pc === "USA" || pc === "Nigeria") {
+          setCountryState(pc);
+          persistCountry(pc);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
 
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) syncProfile(data.user.id);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session?.user) syncProfile(session.user.id);
+    });
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Persist manual selections back to profile if signed in.
   useEffect(() => {
-    if (regionMode === "manual") {
-      localStorage.setItem("preferred-country", country);
-    }
+    if (regionMode !== "manual") return;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return;
+      supabase
+        .from("profiles")
+        .update({ preferred_country: country, region_mode: "manual" })
+        .eq("user_id", data.user.id)
+        .then(() => {});
+    });
   }, [country, regionMode]);
 
   const config = regionConfig[country];
 
   const getCurrencyIcon = (className = "h-4 w-4") =>
-    config.currency === "NGN" ? <NairaIcon className={className} /> : <DollarSign className={className} />;
+    config.currency === "NGN" ? (
+      <NairaIcon className={className} />
+    ) : (
+      <DollarSign className={className} />
+    );
 
   return (
     <RegionContext.Provider
