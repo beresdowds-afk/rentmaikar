@@ -34,6 +34,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { DriverBehaviorLogs } from '@/components/admin/DriverBehaviorLogs';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 import { useDriverDashboard } from '@/hooks/useDriverDashboard';
+import { CallInPanel } from '@/components/driver/CallInPanel';
 import {
   Car,
   Activity,
