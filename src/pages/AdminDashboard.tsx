@@ -689,7 +689,12 @@ const AdminDashboard = () => {
               {activeTab === 'device-revenue' && <DeviceOrderRevenue />}
               {activeTab === 'pricing' && <CategoryPricing />}
               {activeTab === 'incidents' && <AdminIncidentManagement />}
-              {activeTab === 'recalls' && <VehicleRecallManagement />}
+              {activeTab === 'recalls' && (
+                <div className="space-y-6">
+                  <CallInMonitor />
+                  <VehicleRecallManagement />
+                </div>
+              )}
               {activeTab === 'daily-plans' && <DailyPlanManagement />}
               {activeTab === 'weekly-reports' && <AdminWeeklyReportManagement />}
               {activeTab === 'fees' && (
