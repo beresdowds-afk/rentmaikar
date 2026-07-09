@@ -76,11 +76,19 @@ const handler = async (req: Request): Promise<Response> => {
     for (const payment of payments || []) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name, phone, email, notification_sms, notification_whatsapp, notification_email')
+        .select('full_name, phone, email, notification_sms, notification_whatsapp, notification_email, payments_suspended, suspended_reason')
         .eq('user_id', payment.driver_id)
         .single();
 
       if (!profile) continue;
+
+      // Skip suspended drivers (active call-in)
+      if (profile.payments_suspended) {
+        console.log(`[DailyDebits] Skipping ${payment.driver_id} — payments_suspended (${profile.suspended_reason})`);
+        await supabase.from('payments').update({ notification_sent: true }).eq('id', payment.id);
+        continue;
+      }
+
 
       const firstName = profile.full_name?.split(' ')[0] || 'Driver';
       const sym = getCurrencySymbol(payment.currency);

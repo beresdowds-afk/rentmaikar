@@ -22,6 +22,7 @@ import { RoleManagement } from "@/components/admin/RoleManagement";
 import { DailyPlanManagement } from "@/components/admin/DailyPlanManagement";
 import { AdminIncidentManagement } from "@/components/admin/AdminIncidentManagement";
 import { VehicleRecallManagement } from "@/components/admin/VehicleRecallManagement";
+import { CallInMonitor } from "@/components/admin/CallInMonitor";
 import { AdminWeeklyReportManagement } from "@/components/admin/AdminWeeklyReportManagement";
 import { AdminPriceNegotiation } from "@/components/negotiation/AdminPriceNegotiation";
 import LegalAgreementsManagement from "@/components/admin/LegalAgreementsManagement";
@@ -689,7 +690,12 @@ const AdminDashboard = () => {
               {activeTab === 'device-revenue' && <DeviceOrderRevenue />}
               {activeTab === 'pricing' && <CategoryPricing />}
               {activeTab === 'incidents' && <AdminIncidentManagement />}
-              {activeTab === 'recalls' && <VehicleRecallManagement />}
+              {activeTab === 'recalls' && (
+                <div className="space-y-6">
+                  <CallInMonitor />
+                  <VehicleRecallManagement />
+                </div>
+              )}
               {activeTab === 'daily-plans' && <DailyPlanManagement />}
               {activeTab === 'weekly-reports' && <AdminWeeklyReportManagement />}
               {activeTab === 'fees' && (

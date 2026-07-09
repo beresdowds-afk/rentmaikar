@@ -34,6 +34,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { DriverBehaviorLogs } from '@/components/admin/DriverBehaviorLogs';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 import { useDriverDashboard } from '@/hooks/useDriverDashboard';
+import { CallInPanel } from '@/components/driver/CallInPanel';
 import {
   Car,
   Activity,
@@ -176,8 +177,14 @@ export default function DriverDashboard() {
             </div>
           </div>
 
+          {/* Call-In Panel */}
+          <div className="mb-8">
+            <CallInPanel vehicleId={dbVehicle?.id ?? null} rentalId={activeRental?.id ?? null} />
+          </div>
+
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">

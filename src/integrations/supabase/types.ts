@@ -725,6 +725,72 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_call_ins: {
+        Row: {
+          created_at: string
+          driver_id: string
+          end_reason: string | null
+          ended_at: string | null
+          expires_at: string
+          extend_requested: boolean
+          geofence_lat: number | null
+          geofence_lng: number | null
+          geofence_radius_m: number
+          id: string
+          notes: string | null
+          reason: string
+          rental_id: string | null
+          started_at: string
+          status: Database["public"]["Enums"]["call_in_status"]
+          telemetry_snapshot: Json | null
+          type: Database["public"]["Enums"]["call_in_type"]
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          driver_id: string
+          end_reason?: string | null
+          ended_at?: string | null
+          expires_at: string
+          extend_requested?: boolean
+          geofence_lat?: number | null
+          geofence_lng?: number | null
+          geofence_radius_m?: number
+          id?: string
+          notes?: string | null
+          reason: string
+          rental_id?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["call_in_status"]
+          telemetry_snapshot?: Json | null
+          type: Database["public"]["Enums"]["call_in_type"]
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string
+          end_reason?: string | null
+          ended_at?: string | null
+          expires_at?: string
+          extend_requested?: boolean
+          geofence_lat?: number | null
+          geofence_lng?: number | null
+          geofence_radius_m?: number
+          id?: string
+          notes?: string | null
+          reason?: string
+          rental_id?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["call_in_status"]
+          telemetry_snapshot?: Json | null
+          type?: Database["public"]["Enums"]["call_in_type"]
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
       email_analytics: {
         Row: {
           category: string
@@ -2437,12 +2503,16 @@ export type Database = {
           notification_email: boolean | null
           notification_sms: boolean | null
           notification_whatsapp: boolean | null
+          payments_suspended: boolean
           phone: string | null
           phone_verification_code: string | null
           phone_verification_expires_at: string | null
           phone_verified: boolean | null
           preferred_country: string | null
           region_mode: string | null
+          suspended_call_in_id: string | null
+          suspended_reason: string | null
+          suspended_until: string | null
           updated_at: string | null
           user_id: string
         }
@@ -2460,12 +2530,16 @@ export type Database = {
           notification_email?: boolean | null
           notification_sms?: boolean | null
           notification_whatsapp?: boolean | null
+          payments_suspended?: boolean
           phone?: string | null
           phone_verification_code?: string | null
           phone_verification_expires_at?: string | null
           phone_verified?: boolean | null
           preferred_country?: string | null
           region_mode?: string | null
+          suspended_call_in_id?: string | null
+          suspended_reason?: string | null
+          suspended_until?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -2483,12 +2557,16 @@ export type Database = {
           notification_email?: boolean | null
           notification_sms?: boolean | null
           notification_whatsapp?: boolean | null
+          payments_suspended?: boolean
           phone?: string | null
           phone_verification_code?: string | null
           phone_verification_expires_at?: string | null
           phone_verified?: boolean | null
           preferred_country?: string | null
           region_mode?: string | null
+          suspended_call_in_id?: string | null
+          suspended_reason?: string | null
+          suspended_until?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -4426,6 +4504,59 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_geofences: {
+        Row: {
+          active: boolean
+          breached_at: string | null
+          call_in_id: string
+          center_lat: number
+          center_lng: number
+          created_at: string
+          id: string
+          last_checked_at: string | null
+          last_distance_m: number | null
+          radius_m: number
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          active?: boolean
+          breached_at?: string | null
+          call_in_id: string
+          center_lat: number
+          center_lng: number
+          created_at?: string
+          id?: string
+          last_checked_at?: string | null
+          last_distance_m?: number | null
+          radius_m?: number
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          active?: boolean
+          breached_at?: string | null
+          call_in_id?: string
+          center_lat?: number
+          center_lng?: number
+          created_at?: string
+          id?: string
+          last_checked_at?: string | null
+          last_distance_m?: number | null
+          radius_m?: number
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_geofences_call_in_id_fkey"
+            columns: ["call_in_id"]
+            isOneToOne: false
+            referencedRelation: "driver_call_ins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_incidents: {
         Row: {
           acknowledged_at: string | null
@@ -4621,6 +4752,9 @@ export type Database = {
         Row: {
           acknowledged_at: string | null
           acknowledged_by: string | null
+          admin_validated_at: string | null
+          admin_validated_by: string | null
+          admin_validation_status: string | null
           created_at: string
           driver_id: string | null
           driver_notified_at: string | null
@@ -4632,6 +4766,8 @@ export type Database = {
           last_known_location_lng: number | null
           last_successful_ping: string | null
           last_telemetry_snapshot: Json | null
+          owner_approval_status: string | null
+          owner_approved_at: string | null
           owner_id: string | null
           owner_notified_at: string | null
           priority: string
@@ -4641,12 +4777,16 @@ export type Database = {
           resolved_at: string | null
           resolved_by: string | null
           status: string
+          triggered_by_call_ins: string[] | null
           updated_at: string
           vehicle_id: string
         }
         Insert: {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
+          admin_validated_at?: string | null
+          admin_validated_by?: string | null
+          admin_validation_status?: string | null
           created_at?: string
           driver_id?: string | null
           driver_notified_at?: string | null
@@ -4658,6 +4798,8 @@ export type Database = {
           last_known_location_lng?: number | null
           last_successful_ping?: string | null
           last_telemetry_snapshot?: Json | null
+          owner_approval_status?: string | null
+          owner_approved_at?: string | null
           owner_id?: string | null
           owner_notified_at?: string | null
           priority?: string
@@ -4667,12 +4809,16 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           status?: string
+          triggered_by_call_ins?: string[] | null
           updated_at?: string
           vehicle_id: string
         }
         Update: {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
+          admin_validated_at?: string | null
+          admin_validated_by?: string | null
+          admin_validation_status?: string | null
           created_at?: string
           driver_id?: string | null
           driver_notified_at?: string | null
@@ -4684,6 +4830,8 @@ export type Database = {
           last_known_location_lng?: number | null
           last_successful_ping?: string | null
           last_telemetry_snapshot?: Json | null
+          owner_approval_status?: string | null
+          owner_approved_at?: string | null
           owner_id?: string | null
           owner_notified_at?: string | null
           priority?: string
@@ -4693,6 +4841,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           status?: string
+          triggered_by_call_ins?: string[] | null
           updated_at?: string
           vehicle_id?: string
         }
@@ -5709,6 +5858,13 @@ export type Database = {
         | "rejected"
         | "needs_info"
       application_type: "driver" | "owner"
+      call_in_status:
+        | "active"
+        | "expired"
+        | "cancelled"
+        | "breached"
+        | "resolved"
+      call_in_type: "fault" | "maintenance" | "sick"
       device_status: "inactive" | "active" | "offline" | "maintenance"
       entity_type: "operating_company" | "payment_entity" | "individual"
       feature_scope: "country" | "region" | "city"
@@ -5915,6 +6071,14 @@ export const Constants = {
         "needs_info",
       ],
       application_type: ["driver", "owner"],
+      call_in_status: [
+        "active",
+        "expired",
+        "cancelled",
+        "breached",
+        "resolved",
+      ],
+      call_in_type: ["fault", "maintenance", "sick"],
       device_status: ["inactive", "active", "offline", "maintenance"],
       entity_type: ["operating_company", "payment_entity", "individual"],
       feature_scope: ["country", "region", "city"],
