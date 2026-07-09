@@ -36,6 +36,7 @@ const IoTSupportDashboard = lazy(() => import("./pages/IoTSupportDashboard"));
 const VehicleSupportDashboard = lazy(() => import("./pages/VehicleSupportDashboard"));
 const DriverTraining = lazy(() => import("./pages/DriverTraining"));
 const RefereeAttestation = lazy(() => import("./pages/RefereeAttestation"));
+const MobileCallIn = lazy(() => import("./pages/MobileCallIn"));
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,8 @@ const App = () => (
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/referee-attest" element={<RefereeAttestation />} />
+                  <Route path="/m/call-in" element={<ProtectedRoute><MobileCallIn /></ProtectedRoute>} />
+                  <Route path="/m/call-in/:type" element={<ProtectedRoute><MobileCallIn /></ProtectedRoute>} />
                   <Route path="/driver/register" element={<DriverRegistration />} />
                   <Route path="/owner/register" element={<OwnerRegistration />} />
                   <Route 
