@@ -515,8 +515,12 @@ const handler = async (req: Request): Promise<Response> => {
             notification_channel: 'whatsapp',
           });
           results.whatsappSent++;
+        } else {
+          results.whatsappFailed++;
+          log('warn', 'whatsapp_send_failed', { itemType: item.type, itemId: item.id, recipientType });
         }
       }
+
 
       // === ADMIN NOTIFICATIONS ===
       for (const admin of adminProfiles || []) {
