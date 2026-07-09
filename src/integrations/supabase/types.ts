@@ -2387,6 +2387,8 @@ export type Database = {
           phone_verification_code: string | null
           phone_verification_expires_at: string | null
           phone_verified: boolean | null
+          preferred_country: string | null
+          region_mode: string | null
           updated_at: string | null
           user_id: string
         }
@@ -2408,6 +2410,8 @@ export type Database = {
           phone_verification_code?: string | null
           phone_verification_expires_at?: string | null
           phone_verified?: boolean | null
+          preferred_country?: string | null
+          region_mode?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -2429,6 +2433,8 @@ export type Database = {
           phone_verification_code?: string | null
           phone_verification_expires_at?: string | null
           phone_verified?: boolean | null
+          preferred_country?: string | null
+          region_mode?: string | null
           updated_at?: string | null
           user_id?: string
         }
