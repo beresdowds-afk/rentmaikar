@@ -27,15 +27,10 @@ export default function RefereeAttestation() {
     (async () => {
       if (!token) { setError("Missing link token"); setLoading(false); return; }
       try {
-        const { data, error } = await supabase.functions.invoke("referee-attestation", {
-          method: "GET" as any,
-          body: undefined,
-          headers: {},
-          // supabase-js v2 doesn't pass query params — invoke via fetch instead
-        } as any);
-        // fallback: direct fetch with query param
-        const url = `${(supabase as any).functionsUrl ?? ""}/referee-attestation?token=${encodeURIComponent(token)}`;
-        const res = await fetch(url);
+        const base = import.meta.env.VITE_SUPABASE_URL as string;
+        const res = await fetch(`${base}/functions/v1/referee-attestation?token=${encodeURIComponent(token)}`, {
+          headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string },
+        });
         const body = await res.json();
         if (!res.ok) throw new Error(body?.error ?? "Invalid link");
         setCtx(body);
