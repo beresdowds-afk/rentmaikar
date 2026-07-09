@@ -10,6 +10,7 @@ import {
   paymentSuccessMessage,
 } from "../_shared/whatsapp-templates.ts";
 import { 
+import { requireCronSecret } from "../_shared/cron-auth.ts";
   paymentReminderEmail 
 } from "../_shared/email-templates.ts";
 
@@ -149,7 +150,10 @@ const getReminderMessage = (hoursRemaining: number, data: {
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders }
+  const cronDenied = requireCronSecret(req);
+  if (cronDenied) return cronDenied;
+);
   }
 
   try {

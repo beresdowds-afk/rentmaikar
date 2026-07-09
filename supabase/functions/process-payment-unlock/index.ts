@@ -5,6 +5,7 @@ import {
   paymentSuccessMessage,
 } from "../_shared/whatsapp-templates.ts";
 import { 
+import { requireCronSecret } from "../_shared/cron-auth.ts";
   vehicleUnlockedEmail,
   paymentReceiptEmail,
 } from "../_shared/email-templates.ts";
@@ -92,7 +93,10 @@ const sendIoTUnlockCommand = async (vehicleId: string, deviceId: string) => {
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders }
+  const cronDenied = requireCronSecret(req);
+  if (cronDenied) return cronDenied;
+);
   }
 
   const startTime = Date.now();
