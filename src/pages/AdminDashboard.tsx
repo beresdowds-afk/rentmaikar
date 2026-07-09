@@ -23,6 +23,8 @@ import { DailyPlanManagement } from "@/components/admin/DailyPlanManagement";
 import { AdminIncidentManagement } from "@/components/admin/AdminIncidentManagement";
 import { VehicleRecallManagement } from "@/components/admin/VehicleRecallManagement";
 import { CallInMonitor } from "@/components/admin/CallInMonitor";
+import { RecallApprovalPanel } from "@/components/recall/RecallApprovalPanel";
+import { ReferralDeliveryTroubleshooter } from "@/components/admin/ReferralDeliveryTroubleshooter";
 import { AdminWeeklyReportManagement } from "@/components/admin/AdminWeeklyReportManagement";
 import { AdminPriceNegotiation } from "@/components/negotiation/AdminPriceNegotiation";
 import LegalAgreementsManagement from "@/components/admin/LegalAgreementsManagement";
@@ -693,6 +695,8 @@ const AdminDashboard = () => {
               {activeTab === 'recalls' && (
                 <div className="space-y-6">
                   <CallInMonitor />
+                  <RecallApprovalPanel mode="admin" />
+                  <ReferralDeliveryTroubleshooter />
                   <VehicleRecallManagement />
                 </div>
               )}
