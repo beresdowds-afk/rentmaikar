@@ -236,7 +236,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Process vehicle expiry dates
     for (const vehicle of vehicles || []) {
-      const vehicleInfo = `${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.plate_number})`;
+      const vehicleInfo = `${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.license_plate})`;
       
       let ownerProfile = null;
       if (vehicle.owner_id) {
