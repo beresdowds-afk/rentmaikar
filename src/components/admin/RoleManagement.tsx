@@ -668,9 +668,34 @@ export function RoleManagement() {
                                     <Badge className={roleColors[log.old_role]}>{roleLabels[log.old_role]}</Badge>
                                   </div>
                                 )}
-                                {log.notes && (
-                                  <p className="text-sm text-muted-foreground italic">{log.notes}</p>
-                                )}
+                                {log.notes && (() => {
+                                  let parsed: any = null;
+                                  try { parsed = JSON.parse(log.notes); } catch { /* plain text */ }
+                                  if (!parsed || typeof parsed !== 'object') {
+                                    return <p className="text-sm text-muted-foreground italic">{log.notes}</p>;
+                                  }
+                                  return (
+                                    <div className="text-sm text-muted-foreground space-y-1">
+                                      {parsed.summary && <p className="italic">{parsed.summary}</p>}
+                                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                                        {typeof parsed.email_sent === 'boolean' && (
+                                          <Badge variant={parsed.email_sent ? 'default' : 'destructive'} className="gap-1">
+                                            <Mail className="h-3 w-3" />
+                                            Email {parsed.email_sent ? 'sent' : 'failed'}
+                                          </Badge>
+                                        )}
+                                        {parsed.phone && (
+                                          <Badge variant={parsed.sms_sent ? 'default' : 'destructive'} className="gap-1">
+                                            <MessageSquare className="h-3 w-3" />
+                                            SMS {parsed.sms_sent ? 'sent' : 'failed'}
+                                          </Badge>
+                                        )}
+                                        {parsed.email && <span>· {parsed.email}</span>}
+                                        {parsed.phone && <span>· {parsed.phone}</span>}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             </div>
                             <div className="text-right text-sm text-muted-foreground">
