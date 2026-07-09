@@ -232,13 +232,23 @@ export function RoleManagement() {
 
       if (roleError) throw roleError;
 
+      // Ensure the user is enabled platform-wide on creation by an administrator
+      const { error: activeError } = await supabase
+        .from('profiles')
+        .update({ is_active: true })
+        .eq('user_id', authData.user.id);
+
+      if (activeError) {
+        console.error('Failed to set is_active on new user:', activeError);
+      }
+
       // Log the audit entry
       await logAuditEntry(
         authData.user.id,
         'created',
         null,
         newUserRole,
-        `User created with email: ${newUserEmail}`
+        `User created with email: ${newUserEmail} (enabled platform-wide)`
       );
 
       toast.success('User created successfully', {
