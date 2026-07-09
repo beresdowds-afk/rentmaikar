@@ -396,23 +396,27 @@ export function SecretsManagement() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">API Secrets Management</h2>
-        <p className="text-muted-foreground">
-          View and test configured API keys. All actions are audit-logged.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">API Secrets Management</h2>
+          <p className="text-muted-foreground">
+            View and test configured API keys. All actions are audit-logged.
+          </p>
+        </div>
+        <AddSecretDialog onRequest={requestAddSecret} />
       </div>
-
 
       <Alert>
         <Info className="h-4 w-4" />
-        <AlertTitle>Security Notice</AlertTitle>
+        <AlertTitle>How saving works</AlertTitle>
         <AlertDescription>
-          API secrets are securely stored and cannot be viewed or edited directly from this panel. 
-          To update a secret, please contact your system administrator or use the Lovable dashboard 
-          to modify Cloud secrets.
+          Secret values are never stored in this app — they live in Lovable Cloud's encrypted vault
+          and are only readable by server-side edge functions. To add or update a value, use the
+          buttons here: they copy the exact chat command that opens a secure Lovable form. Pasting
+          the value into any UI in this app would expose it in the browser bundle.
         </AlertDescription>
       </Alert>
+
 
       <div className="grid gap-6">
         {Object.entries(groupedSecrets).map(([category, categorySecrets]) => {
