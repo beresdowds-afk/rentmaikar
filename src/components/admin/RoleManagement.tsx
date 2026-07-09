@@ -234,10 +234,21 @@ export function RoleManagement() {
       return;
     }
 
+    const phoneValidationError = validatePhone(newUserPhone);
+    if (phoneValidationError) {
+      setPhoneError(phoneValidationError);
+      toast.error(phoneValidationError);
+      return;
+    }
+    setPhoneError(null);
+
+    const normalizedPhone = newUserPhone.trim()
+      ? '+' + newUserPhone.replace(/[^\d]/g, '')
+      : undefined;
+
     setIsUpdating(true);
+    setCreateResult(null);
     try {
-      // Delegate to the admin edge function so the current admin session is
-      // preserved and the new user receives a password-reset email + SMS.
       const { data, error } = await supabase.functions.invoke(
         'admin-create-user',
         {
@@ -245,7 +256,7 @@ export function RoleManagement() {
             email: newUserEmail,
             full_name: newUserFullName,
             role: newUserRole,
-            phone: newUserPhone || undefined,
+            phone: normalizedPhone,
           },
         }
       );
@@ -253,17 +264,25 @@ export function RoleManagement() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast.success('User created successfully', {
-        description: `${newUserFullName} has been created as ${roleLabels[newUserRole]}. A password-reset email${newUserPhone ? ' and SMS notification' : ''} has been sent.`,
+      setCreateResult({
+        email: data.email,
+        phone: data.phone,
+        email_sent: !!data.email_sent,
+        sms_sent: !!data.sms_sent,
+        email_error: data.email_error,
+        sms_error: data.sms_error,
+        message: data.message,
+        instructions: data.instructions,
       });
 
-      // Reset form
+      toast.success('User created', { description: data.message });
+
+      // Reset input fields but keep the dialog open to display result.
       setNewUserEmail('');
       setNewUserPassword('');
       setNewUserFullName('');
       setNewUserPhone('');
       setNewUserRole('driver');
-      setCreateUserDialogOpen(false);
 
       fetchUsersWithRoles();
       fetchAuditLogs();
@@ -278,6 +297,44 @@ export function RoleManagement() {
       setIsUpdating(false);
     }
   };
+
+  const handleResendReset = async (target: UserWithRole) => {
+    if (!target.email) {
+      toast.error('This user has no email on file');
+      return;
+    }
+    setResendingId(target.user_id);
+    try {
+      const redirectTo = `${window.location.origin}/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(target.email, {
+        redirectTo,
+      });
+      if (error) throw error;
+
+      await logAuditEntry(
+        target.user_id,
+        'role_assigned',
+        null,
+        target.role,
+        JSON.stringify({
+          summary: 'Reset link resent by administrator',
+          email: target.email,
+          email_sent: true,
+        })
+      );
+
+      toast.success('Reset link sent', {
+        description: `A new password-reset email is on its way to ${target.email}.`,
+      });
+      fetchAuditLogs();
+    } catch (err: any) {
+      console.error('Resend reset failed:', err);
+      toast.error('Could not resend reset link', { description: err.message });
+    } finally {
+      setResendingId(null);
+    }
+  };
+
 
   const handleChangeRole = async () => {
     if (!selectedUser || !newRole) return;
