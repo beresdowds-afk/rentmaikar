@@ -29,7 +29,7 @@ const signupSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
-  role: z.enum(['driver', 'owner', 'admin'] as const),
+  role: z.enum(['driver', 'owner'] as const),
   agreeTerms: z.boolean().refine(val => val, 'You must agree to the Terms of Use and Privacy Policy'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -577,7 +577,7 @@ const Auth = () => {
                   <Label htmlFor="signup-role">I am a</Label>
                   <Select
                     value={signupForm.watch('role')}
-                    onValueChange={(value: 'driver' | 'owner' | 'admin') => signupForm.setValue('role', value)}
+                    onValueChange={(value: 'driver' | 'owner') => signupForm.setValue('role', value)}
                     disabled={isSubmitting}
                   >
                     <SelectTrigger>
@@ -594,12 +594,6 @@ const Auth = () => {
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4" />
                           Vehicle Owner
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="admin">
-                        <div className="flex items-center gap-2">
-                          <Shield className="h-4 w-4" />
-                          Administrator
                         </div>
                       </SelectItem>
                     </SelectContent>
