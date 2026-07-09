@@ -620,14 +620,22 @@ export function RoleManagement() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <PasswordInput
-                id="password"
-                placeholder="Enter password"
-                autoComplete="new-password"
-                value={newUserPassword}
-                onChange={(e) => setNewUserPassword(e.target.value)}
+              <Label htmlFor="phone">Phone (optional, for SMS notification)</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+1 555 123 4567"
+                value={newUserPhone}
+                onChange={(e) => setNewUserPhone(e.target.value)}
               />
+            </div>
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
+              <p>
+                <strong className="text-foreground">No initial password needed.</strong>{' '}
+                The new user will receive an email (and SMS if a phone is provided)
+                asking them to sign in as soon as possible and set their own password
+                via the <em>Forgot password</em> flow.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
