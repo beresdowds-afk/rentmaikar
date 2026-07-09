@@ -803,19 +803,21 @@ const handler = async (req: Request): Promise<Response> => {
       results.processed++;
     }
 
-    console.log("Expiry notification results:", results);
+    results.durationMs = Date.now() - jobStartedAt;
+    log('info', 'job_completed', results);
 
     return new Response(JSON.stringify(results), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error: any) {
-    console.error("Error processing expiry notifications:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    log('error', 'job_failed', { error: error?.message, durationMs: Date.now() - jobStartedAt });
+    return new Response(JSON.stringify({ jobId, error: error.message }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   }
 };
+
 
 serve(handler);
