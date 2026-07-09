@@ -341,14 +341,59 @@ export function SecretsManagement() {
     return acc;
   }, {} as Record<string, SecretConfig[]>);
 
+  if (!unlocked) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">API Secrets Management</h2>
+          <p className="text-muted-foreground">
+            Gated portal — admin access with 2FA required
+          </p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Restricted area
+            </CardTitle>
+            <CardDescription>
+              This portal lists third-party credentials configured for the platform. Access is
+              limited to admins with 2FA verified in the current session. Each unlock is written
+              to the admin audit log.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!user && <p className="text-sm text-destructive">You are not signed in.</p>}
+            {user && !isAdmin && (
+              <p className="text-sm text-destructive">Your account is not an admin.</p>
+            )}
+            {user && isAdmin && !twoFactorVerified && (
+              <p className="text-sm text-destructive">
+                2FA is not verified for this session. Sign out and back in with your 2FA code.
+              </p>
+            )}
+            <Button onClick={unlockPortal} disabled={!canAccess || unlocking}>
+              {unlocking ? (
+                <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Unlocking…</>
+              ) : (
+                <><Lock className="w-4 h-4 mr-2" />Unlock secrets portal</>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">API Secrets Management</h2>
         <p className="text-muted-foreground">
-          View and test configured API keys for third-party services
+          View and test configured API keys. All actions are audit-logged.
         </p>
       </div>
+
 
       <Alert>
         <Info className="h-4 w-4" />
