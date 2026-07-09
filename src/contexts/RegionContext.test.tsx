@@ -98,7 +98,16 @@ describe("RegionContext", () => {
   });
 
   it("persists manual country selection to localStorage and cookies across mounts", async () => {
+    // First mount: IP resolves USA, then user switches to manual + Nigeria.
+    (geo.detectCountryFromIP as any).mockResolvedValueOnce({
+      country: "USA",
+      countryCode: "US",
+      detected: true,
+    });
     const { unmount } = renderApp();
+    await waitFor(() =>
+      expect(screen.getByTestId("country").textContent).toBe("USA")
+    );
     await act(async () => {
       screen.getByText("manual").click();
       screen.getByText("ng").click();
@@ -107,14 +116,13 @@ describe("RegionContext", () => {
     expect(document.cookie).toContain("preferred-country=Nigeria");
     unmount();
 
-    // Prevent IP override on re-mount
+    // Second mount: manual mode should suppress IP override
     (geo.detectCountryFromIP as any).mockResolvedValueOnce({
       country: "USA",
       countryCode: "US",
-      detected: false,
+      detected: true,
     });
     renderApp();
-    // Manual mode preserved
     expect(localStorage.getItem("region-mode")).toBe("manual");
     await waitFor(() =>
       expect(screen.getByTestId("country").textContent).toBe("Nigeria")
