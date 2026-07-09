@@ -2524,6 +2524,12 @@ export type Database = {
       referee_verifications: {
         Row: {
           application_id: string
+          attestation_comments: string | null
+          attestation_response: string | null
+          attestation_sent_at: string | null
+          attestation_status: string
+          attestation_token: string | null
+          attested_at: string | null
           created_at: string
           email: string | null
           full_name: string
@@ -2532,6 +2538,7 @@ export type Database = {
           id_type: string | null
           last_notified_at: string | null
           mismatch_reason: string | null
+          notified_channels: Json
           persona_inquiry_id: string | null
           phone: string | null
           referee_index: number
@@ -2542,6 +2549,12 @@ export type Database = {
         }
         Insert: {
           application_id: string
+          attestation_comments?: string | null
+          attestation_response?: string | null
+          attestation_sent_at?: string | null
+          attestation_status?: string
+          attestation_token?: string | null
+          attested_at?: string | null
           created_at?: string
           email?: string | null
           full_name: string
@@ -2550,6 +2563,7 @@ export type Database = {
           id_type?: string | null
           last_notified_at?: string | null
           mismatch_reason?: string | null
+          notified_channels?: Json
           persona_inquiry_id?: string | null
           phone?: string | null
           referee_index: number
@@ -2560,6 +2574,12 @@ export type Database = {
         }
         Update: {
           application_id?: string
+          attestation_comments?: string | null
+          attestation_response?: string | null
+          attestation_sent_at?: string | null
+          attestation_status?: string
+          attestation_token?: string | null
+          attested_at?: string | null
           created_at?: string
           email?: string | null
           full_name?: string
@@ -2568,6 +2588,7 @@ export type Database = {
           id_type?: string | null
           last_notified_at?: string | null
           mismatch_reason?: string | null
+          notified_channels?: Json
           persona_inquiry_id?: string | null
           phone?: string | null
           referee_index?: number
