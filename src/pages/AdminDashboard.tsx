@@ -47,6 +47,7 @@ import { EmailDocs } from "@/components/admin/docs/EmailDocs";
 import { VoIPDocs } from "@/components/admin/docs/VoIPDocs";
 import { AdminSecurityDashboard } from "@/components/admin/AdminSecurityDashboard";
 import RegionalOperationsManagement from "@/components/admin/RegionalOperationsManagement";
+import { RegionAutoBuildWorker } from "@/components/admin/RegionAutoBuildWorker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -749,6 +750,7 @@ const AdminDashboard = () => {
               {activeTab === 'cron-jobs' && <CronJobManagement />}
               {activeTab === 'tax' && <TaxManagement />}
               {activeTab === 'settings' && <RegionalOperationsManagement />}
+              {activeTab === 'region-autobuild' && <RegionAutoBuildWorker />}
             </div>
           )}
 

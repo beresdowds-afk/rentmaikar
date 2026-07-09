@@ -2467,6 +2467,122 @@ export type Database = {
         }
         Relationships: []
       }
+      region_definitions: {
+        Row: {
+          build_error: string | null
+          build_log: Json | null
+          country_code: string
+          country_name: string
+          created_at: string
+          created_by: string | null
+          cultural_tone: string | null
+          currency: string
+          currency_symbol: string
+          flag_emoji: string | null
+          id: string
+          payment_gateway: string
+          phone_prefix: string
+          primary_language: string | null
+          sms_number: string | null
+          sms_provider: string
+          status: string
+          support_hours: string | null
+          timezone: string | null
+          updated_at: string
+          voice_provider: string
+          whatsapp_number: string | null
+          whatsapp_provider: string
+        }
+        Insert: {
+          build_error?: string | null
+          build_log?: Json | null
+          country_code: string
+          country_name: string
+          created_at?: string
+          created_by?: string | null
+          cultural_tone?: string | null
+          currency: string
+          currency_symbol: string
+          flag_emoji?: string | null
+          id?: string
+          payment_gateway?: string
+          phone_prefix: string
+          primary_language?: string | null
+          sms_number?: string | null
+          sms_provider?: string
+          status?: string
+          support_hours?: string | null
+          timezone?: string | null
+          updated_at?: string
+          voice_provider?: string
+          whatsapp_number?: string | null
+          whatsapp_provider?: string
+        }
+        Update: {
+          build_error?: string | null
+          build_log?: Json | null
+          country_code?: string
+          country_name?: string
+          created_at?: string
+          created_by?: string | null
+          cultural_tone?: string | null
+          currency?: string
+          currency_symbol?: string
+          flag_emoji?: string | null
+          id?: string
+          payment_gateway?: string
+          phone_prefix?: string
+          primary_language?: string | null
+          sms_number?: string | null
+          sms_provider?: string
+          status?: string
+          support_hours?: string | null
+          timezone?: string | null
+          updated_at?: string
+          voice_provider?: string
+          whatsapp_number?: string | null
+          whatsapp_provider?: string
+        }
+        Relationships: []
+      }
+      region_localized_content: {
+        Row: {
+          content: Json
+          content_key: string
+          created_at: string
+          generated_by: string | null
+          id: string
+          region_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: Json
+          content_key: string
+          created_at?: string
+          generated_by?: string | null
+          id?: string
+          region_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: Json
+          content_key?: string
+          created_at?: string
+          generated_by?: string | null
+          id?: string
+          region_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "region_localized_content_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "region_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rent_to_own_agreements: {
         Row: {
           admin_witness_id: string | null
