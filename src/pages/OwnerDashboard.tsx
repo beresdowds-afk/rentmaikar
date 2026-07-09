@@ -37,6 +37,7 @@ import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useOwnerDashboard } from '@/hooks/useOwnerDashboard';
+import { RecallApprovalPanel } from '@/components/recall/RecallApprovalPanel';
 import {
   Car,
   Plus,
