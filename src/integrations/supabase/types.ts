@@ -5841,6 +5841,10 @@ export type Database = {
         }
         Returns: string
       }
+      no_pending_application_for_email: {
+        Args: { _email: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
