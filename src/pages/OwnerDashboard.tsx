@@ -37,6 +37,7 @@ import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useOwnerDashboard } from '@/hooks/useOwnerDashboard';
+import { RecallApprovalPanel } from '@/components/recall/RecallApprovalPanel';
 import {
   Car,
   Plus,
@@ -380,13 +381,19 @@ export default function OwnerDashboard() {
                 Documents
               </TabsTrigger>
               <TabsTrigger value="call-history">Call History</TabsTrigger>
+              <TabsTrigger value="recalls">Recalls</TabsTrigger>
               <TabsTrigger value="settings" data-tour="owner-settings">Settings</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="recalls">
+              <RecallApprovalPanel mode="owner" />
+            </TabsContent>
 
             {/* Pickup Locations Tab */}
             <TabsContent value="pickup-locations">
               <VehiclePickupLocation />
             </TabsContent>
+
 
             {/* IoT Device Tab */}
             <TabsContent value="iot-device">
