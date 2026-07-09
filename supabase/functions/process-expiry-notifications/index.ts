@@ -193,11 +193,10 @@ const sendSmsOrWhatsApp = async (
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders }
+    return new Response(null, { headers: corsHeaders });
+  }
   const cronDenied = requireCronSecret(req);
   if (cronDenied) return cronDenied;
-);
-  }
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
