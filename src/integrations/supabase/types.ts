@@ -422,6 +422,7 @@ export type Database = {
           referee3_address: string | null
           referee3_name: string | null
           referee3_phone: string | null
+          referees_verification_status: string
           region: string
           rejection_reason: string | null
           review_notes: string | null
@@ -471,6 +472,7 @@ export type Database = {
           referee3_address?: string | null
           referee3_name?: string | null
           referee3_phone?: string | null
+          referees_verification_status?: string
           region?: string
           rejection_reason?: string | null
           review_notes?: string | null
@@ -520,6 +522,7 @@ export type Database = {
           referee3_address?: string | null
           referee3_name?: string | null
           referee3_phone?: string | null
+          referees_verification_status?: string
           region?: string
           rejection_reason?: string | null
           review_notes?: string | null
@@ -1415,6 +1418,7 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           notes: string | null
+          provider: string
           serial_number: string
           signal_strength: number | null
           sim_number: string | null
@@ -1436,6 +1440,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           notes?: string | null
+          provider?: string
           serial_number: string
           signal_strength?: number | null
           sim_number?: string | null
@@ -1457,6 +1462,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           notes?: string | null
+          provider?: string
           serial_number?: string
           signal_strength?: number | null
           sim_number?: string | null
@@ -1848,6 +1854,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      persona_inquiries: {
+        Row: {
+          created_at: string
+          id: string
+          inquiry_id: string | null
+          mismatch_fields: Json
+          raw_payload: Json
+          region: string | null
+          status: string
+          subject_ref: string | null
+          subject_type: string
+          template_id: string | null
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inquiry_id?: string | null
+          mismatch_fields?: Json
+          raw_payload?: Json
+          region?: string | null
+          status?: string
+          subject_ref?: string | null
+          subject_type: string
+          template_id?: string | null
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inquiry_id?: string | null
+          mismatch_fields?: Json
+          raw_payload?: Json
+          region?: string | null
+          status?: string
+          subject_ref?: string | null
+          subject_type?: string
+          template_id?: string | null
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: []
       }
       platform_cities: {
         Row: {
@@ -2467,6 +2521,71 @@ export type Database = {
         }
         Relationships: []
       }
+      referee_verifications: {
+        Row: {
+          application_id: string
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          id_number: string | null
+          id_type: string | null
+          last_notified_at: string | null
+          mismatch_reason: string | null
+          persona_inquiry_id: string | null
+          phone: string | null
+          referee_index: number
+          status: string
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          id_number?: string | null
+          id_type?: string | null
+          last_notified_at?: string | null
+          mismatch_reason?: string | null
+          persona_inquiry_id?: string | null
+          phone?: string | null
+          referee_index: number
+          status?: string
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          id_number?: string | null
+          id_type?: string | null
+          last_notified_at?: string | null
+          mismatch_reason?: string | null
+          persona_inquiry_id?: string | null
+          phone?: string | null
+          referee_index?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referee_verifications_persona_inquiry_id_fkey"
+            columns: ["persona_inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "persona_inquiries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       region_definitions: {
         Row: {
           build_error: string | null
@@ -2478,9 +2597,11 @@ export type Database = {
           cultural_tone: string | null
           currency: string
           currency_symbol: string
+          default_payment_gateway: string | null
           flag_emoji: string | null
           id: string
           payment_gateway: string
+          payment_gateways: string[]
           phone_prefix: string
           primary_language: string | null
           sms_number: string | null
@@ -2503,9 +2624,11 @@ export type Database = {
           cultural_tone?: string | null
           currency: string
           currency_symbol: string
+          default_payment_gateway?: string | null
           flag_emoji?: string | null
           id?: string
           payment_gateway?: string
+          payment_gateways?: string[]
           phone_prefix: string
           primary_language?: string | null
           sms_number?: string | null
@@ -2528,9 +2651,11 @@ export type Database = {
           cultural_tone?: string | null
           currency?: string
           currency_symbol?: string
+          default_payment_gateway?: string | null
           flag_emoji?: string | null
           id?: string
           payment_gateway?: string
+          payment_gateways?: string[]
           phone_prefix?: string
           primary_language?: string | null
           sms_number?: string | null
@@ -3780,6 +3905,48 @@ export type Database = {
           threshold_transactions?: number | null
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      telemetry_providers: {
+        Row: {
+          api_key_secret_name: string | null
+          base_url: string | null
+          config: Json
+          created_at: string
+          display_name: string
+          id: string
+          is_active: boolean
+          name: string
+          priority: number
+          region_scope: string
+          updated_at: string
+        }
+        Insert: {
+          api_key_secret_name?: string | null
+          base_url?: string | null
+          config?: Json
+          created_at?: string
+          display_name: string
+          id?: string
+          is_active?: boolean
+          name: string
+          priority?: number
+          region_scope?: string
+          updated_at?: string
+        }
+        Update: {
+          api_key_secret_name?: string | null
+          base_url?: string | null
+          config?: Json
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          priority?: number
+          region_scope?: string
+          updated_at?: string
         }
         Relationships: []
       }
