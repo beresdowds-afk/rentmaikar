@@ -494,8 +494,12 @@ const handler = async (req: Request): Promise<Response> => {
             notification_channel: 'sms',
           });
           results.smsSent++;
+        } else {
+          results.smsFailed++;
+          log('warn', 'sms_send_failed', { itemType: item.type, itemId: item.id, recipientType });
         }
       }
+
 
       // === SEND WHATSAPP (via centralized routing) ===
       if (primaryPhone && primaryWhatsapp) {
