@@ -141,6 +141,40 @@ const secrets: SecretConfig[] = [
     docsUrl: "https://paystack.com/docs/api/",
     region: "Nigeria",
   },
+  // IoT / MQTT (EMQX)
+  {
+    name: "EMQX_API_URL",
+    displayName: "EMQX API URL",
+    description: "Base URL for the EMQX broker management API",
+    category: "iot",
+    testable: false,
+    docsUrl: "https://docs.emqx.com/en/emqx/latest/admin/api.html",
+  },
+  {
+    name: "EMQX_API_KEY",
+    displayName: "EMQX API Key",
+    description: "API key for authenticating to the EMQX management API",
+    category: "iot",
+    testable: false,
+    docsUrl: "https://docs.emqx.com/en/emqx/latest/admin/api.html",
+  },
+  {
+    name: "EMQX_API_SECRET",
+    displayName: "EMQX API Secret",
+    description: "API secret paired with the EMQX API key",
+    category: "iot",
+    testable: false,
+    docsUrl: "https://docs.emqx.com/en/emqx/latest/admin/api.html",
+  },
+  // Voice / TTS
+  {
+    name: "ELEVENLABS_API_KEY",
+    displayName: "ElevenLabs API Key",
+    description: "API key for ElevenLabs text-to-speech (driver training narration)",
+    category: "voice",
+    testable: false,
+    docsUrl: "https://elevenlabs.io/docs/api-reference/introduction",
+  },
 ];
 
 const categoryConfig = {
@@ -148,6 +182,8 @@ const categoryConfig = {
   sms_ng: { icon: Phone, label: "SMS/Voice — Nigeria (Termii)", color: "bg-emerald-600", region: "Nigeria" },
   email: { icon: Mail, label: "Email", color: "bg-green-500", region: null },
   payment: { icon: CreditCard, label: "Payment Gateways", color: "bg-purple-500", region: null },
+  iot: { icon: Shield, label: "IoT / MQTT Broker (EMQX)", color: "bg-orange-500", region: null },
+  voice: { icon: Phone, label: "Voice / TTS", color: "bg-pink-500", region: null },
   system: { icon: Shield, label: "System", color: "bg-gray-500", region: null },
 };
 
