@@ -646,10 +646,10 @@ export function RoleManagement() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 placeholder="Enter password"
+                autoComplete="new-password"
                 value={newUserPassword}
                 onChange={(e) => setNewUserPassword(e.target.value)}
               />
