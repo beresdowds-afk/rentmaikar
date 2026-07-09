@@ -17,6 +17,7 @@ import { Loader2, AlertCircle, User, Shield, Users, ArrowLeft, Mail, CheckCircle
 import { toast } from 'sonner';
 import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
 import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
+import { PasswordInput } from '@/components/ui/password-input';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
