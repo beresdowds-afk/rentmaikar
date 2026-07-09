@@ -87,6 +87,7 @@ export function RoleManagement() {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserFullName, setNewUserFullName] = useState('');
+  const [newUserPhone, setNewUserPhone] = useState('');
   const [newUserRole, setNewUserRole] = useState<AppRole>('driver');
   
   const queryClient = useQueryClient();
