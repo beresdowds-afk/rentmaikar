@@ -223,7 +223,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: vehicles, error: vehiclesError } = await supabase
       .from('vehicles')
       .select(`
-        id, make, model, year, plate_number, owner_id,
+        id, make, model, year, license_plate, owner_id,
         insurance_expiry, registration_expiry, inspection_expiry
       `)
       .or(`insurance_expiry.gte.${formatDate(today)},registration_expiry.gte.${formatDate(today)},inspection_expiry.gte.${formatDate(today)}`);
@@ -236,7 +236,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Process vehicle expiry dates
     for (const vehicle of vehicles || []) {
-      const vehicleInfo = `${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.plate_number})`;
+      const vehicleInfo = `${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.license_plate})`;
       
       let ownerProfile = null;
       if (vehicle.owner_id) {
