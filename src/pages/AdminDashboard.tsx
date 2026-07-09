@@ -48,6 +48,7 @@ import { VoIPDocs } from "@/components/admin/docs/VoIPDocs";
 import { AdminSecurityDashboard } from "@/components/admin/AdminSecurityDashboard";
 import RegionalOperationsManagement from "@/components/admin/RegionalOperationsManagement";
 import { RegionAutoBuildWorker } from "@/components/admin/RegionAutoBuildWorker";
+import NegativeAttestationReviewPanel from "@/components/admin/NegativeAttestationReviewPanel";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
