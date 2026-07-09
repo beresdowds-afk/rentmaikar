@@ -175,6 +175,98 @@ const secrets: SecretConfig[] = [
     testable: false,
     docsUrl: "https://elevenlabs.io/docs/api-reference/introduction",
   },
+  // Identity Verification — Persona
+  {
+    name: "PERSONA_API_KEY",
+    displayName: "Persona API Key",
+    description: "Persona secret API key for creating inquiries (drivers, owners, referees)",
+    category: "identity",
+    testable: false,
+    docsUrl: "https://docs.withpersona.com/reference/authentication",
+  },
+  {
+    name: "PERSONA_TEMPLATE_ID_US",
+    displayName: "Persona Template ID (USA)",
+    description: "Persona inquiry template ID for USA verifications",
+    category: "identity",
+    testable: false,
+    region: "USA",
+  },
+  {
+    name: "PERSONA_TEMPLATE_ID_NG",
+    displayName: "Persona Template ID (Nigeria)",
+    description: "Persona inquiry template ID for Nigeria verifications",
+    category: "identity",
+    testable: false,
+    region: "Nigeria",
+  },
+  {
+    name: "PERSONA_WEBHOOK_SECRET",
+    displayName: "Persona Webhook Signing Secret",
+    description: "HMAC secret used to verify inbound Persona webhook signatures",
+    category: "identity",
+    testable: false,
+  },
+  // Payment — Opay (Nigeria default)
+  {
+    name: "OPAY_PUBLIC_KEY",
+    displayName: "Opay Public Key",
+    description: "Opay public key for Nigeria payment processing (default NG PSP)",
+    category: "payment",
+    testable: false,
+    docsUrl: "https://documentation.opaycheckout.com/",
+    region: "Nigeria",
+  },
+  {
+    name: "OPAY_SECRET_KEY",
+    displayName: "Opay Secret Key",
+    description: "Opay secret key for authenticating server-side payment calls",
+    category: "payment",
+    testable: false,
+    docsUrl: "https://documentation.opaycheckout.com/",
+    region: "Nigeria",
+  },
+  {
+    name: "OPAY_MERCHANT_ID",
+    displayName: "Opay Merchant ID",
+    description: "Opay merchant identifier",
+    category: "payment",
+    testable: false,
+    region: "Nigeria",
+  },
+  // Telemetry — Traccar (alternative to EMQX)
+  {
+    name: "TRACCAR_API_URL",
+    displayName: "Traccar API URL",
+    description: "Base URL of the Traccar server REST API (alternative telemetry provider)",
+    category: "iot",
+    testable: false,
+    docsUrl: "https://www.traccar.org/api-reference/",
+  },
+  {
+    name: "TRACCAR_API_TOKEN",
+    displayName: "Traccar API Token",
+    description: "Bearer token for authenticating to the Traccar REST API",
+    category: "iot",
+    testable: false,
+  },
+  // WhatsApp (referee attestation, notifications)
+  {
+    name: "TWILIO_WHATSAPP_FROM",
+    displayName: "Twilio WhatsApp Sender",
+    description: "WhatsApp-enabled Twilio number in whatsapp:+E164 format",
+    category: "sms",
+    testable: false,
+    region: "USA",
+  },
+  // Public app URL (used in outbound links, e.g. referee attestation)
+  {
+    name: "PUBLIC_APP_URL",
+    displayName: "Public App URL",
+    description: "Canonical public URL used in outbound emails/SMS (e.g. referee attestation links)",
+    category: "system",
+    testable: false,
+  },
 ];
 
 const categoryConfig = {
@@ -182,8 +274,9 @@ const categoryConfig = {
   sms_ng: { icon: Phone, label: "SMS/Voice — Nigeria (Termii)", color: "bg-emerald-600", region: "Nigeria" },
   email: { icon: Mail, label: "Email", color: "bg-green-500", region: null },
   payment: { icon: CreditCard, label: "Payment Gateways", color: "bg-purple-500", region: null },
-  iot: { icon: Shield, label: "IoT / MQTT Broker (EMQX)", color: "bg-orange-500", region: null },
+  iot: { icon: Shield, label: "IoT / Telemetry (EMQX & Traccar)", color: "bg-orange-500", region: null },
   voice: { icon: Phone, label: "Voice / TTS", color: "bg-pink-500", region: null },
+  identity: { icon: Shield, label: "Identity Verification (Persona)", color: "bg-indigo-500", region: null },
   system: { icon: Shield, label: "System", color: "bg-gray-500", region: null },
 };
 
