@@ -198,6 +198,15 @@ const handler = async (req: Request): Promise<Response> => {
   const cronDenied = requireCronSecret(req);
   if (cronDenied) return cronDenied;
 
+  const jobId = crypto.randomUUID();
+  const jobStartedAt = Date.now();
+  const log = (level: 'info' | 'warn' | 'error', event: string, data: Record<string, unknown> = {}) => {
+    const entry = { jobId, job: 'process-expiry-notifications', level, event, ts: new Date().toISOString(), ...data };
+    if (level === 'error') console.error(JSON.stringify(entry));
+    else if (level === 'warn') console.warn(JSON.stringify(entry));
+    else console.log(JSON.stringify(entry));
+  };
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -205,6 +214,12 @@ const handler = async (req: Request): Promise<Response> => {
     const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
+
+    log('info', 'job_started', {
+      hasResend: !!resendApiKey,
+      hasTwilio: !!(twilioAccountSid && twilioAuthToken && twilioPhoneNumber),
+      hasTermii: !!Deno.env.get('TERMII_API_KEY'),
+    });
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const resend = resendApiKey ? new Resend(resendApiKey) : null;
@@ -229,8 +244,10 @@ const handler = async (req: Request): Promise<Response> => {
       .or(`insurance_expiry.gte.${formatDate(today)},registration_expiry.gte.${formatDate(today)},inspection_expiry.gte.${formatDate(today)}`);
 
     if (vehiclesError) {
-      console.error("Error fetching vehicles:", vehiclesError);
+      log('error', 'vehicles_fetch_failed', { error: vehiclesError.message });
     }
+    log('info', 'vehicles_loaded', { count: vehicles?.length ?? 0 });
+
 
     const expiringItems: ExpiringItem[] = [];
 
@@ -285,8 +302,9 @@ const handler = async (req: Request): Promise<Response> => {
       .gte('expiry_date', formatDate(today));
 
     if (docsError) {
-      console.error("Error fetching documents:", docsError);
+      log('error', 'documents_fetch_failed', { error: docsError.message });
     }
+    log('info', 'documents_loaded', { count: documents?.length ?? 0 });
 
     for (const doc of documents || []) {
       if (!doc.expiry_date) continue;
@@ -336,6 +354,18 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    log('info', 'expiring_items_identified', {
+      total: expiringItems.length,
+      byTier: NOTIFICATION_TIERS.reduce((acc, t) => {
+        acc[`d${t}`] = expiringItems.filter(i => i.days_until_expiry === t).length;
+        return acc;
+      }, {} as Record<string, number>),
+      byType: expiringItems.reduce((acc, i) => {
+        acc[i.type] = (acc[i.type] ?? 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+    });
+
     // Get admin profiles
     const { data: admins } = await supabase
       .from('user_roles')
@@ -348,15 +378,29 @@ const handler = async (req: Request): Promise<Response> => {
       .select('user_id, email, phone, full_name, notification_sms, notification_whatsapp')
       .in('user_id', adminUserIds);
 
+    log('info', 'admins_loaded', { count: adminProfiles?.length ?? 0 });
+
     const results = {
+      jobId,
+      vehiclesLoaded: vehicles?.length ?? 0,
+      documentsLoaded: documents?.length ?? 0,
+      expiringItemsIdentified: expiringItems.length,
+      skippedAlreadyNotified: 0,
+      notificationsAttempted: 0,
       processed: 0,
       emailsSent: 0,
+      emailsFailed: 0,
       smsSent: 0,
+      smsFailed: 0,
       whatsappSent: 0,
+      whatsappFailed: 0,
       voipCallsMade: 0,
+      voipCallsFailed: 0,
       accountsRestricted: 0,
+      durationMs: 0,
       errors: [] as string[],
     };
+
 
     for (const item of expiringItems) {
       // Dedup check
@@ -368,7 +412,9 @@ const handler = async (req: Request): Promise<Response> => {
         .eq('notification_type', item.type)
         .maybeSingle();
 
-      if (existingNotification) continue;
+      if (existingNotification) { results.skippedAlreadyNotified++; continue; }
+      results.notificationsAttempted++;
+
 
       const typeLabel = item.type.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
       const urgency = getTierUrgency(item.days_until_expiry);
@@ -426,9 +472,13 @@ const handler = async (req: Request): Promise<Response> => {
           });
           results.emailsSent++;
         } catch (e) {
-          results.errors.push(`Email to ${recipientType} failed: ${e}`);
+          results.emailsFailed++;
+          const msg = `Email to ${recipientType} failed: ${e}`;
+          results.errors.push(msg);
+          log('error', 'email_send_failed', { recipientType, itemType: item.type, itemId: item.id, error: String(e) });
         }
       }
+
 
       // === SEND SMS (via centralized routing: Twilio USA / Termii Nigeria) ===
       if (primaryPhone && primarySms) {
@@ -444,8 +494,12 @@ const handler = async (req: Request): Promise<Response> => {
             notification_channel: 'sms',
           });
           results.smsSent++;
+        } else {
+          results.smsFailed++;
+          log('warn', 'sms_send_failed', { itemType: item.type, itemId: item.id, recipientType });
         }
       }
+
 
       // === SEND WHATSAPP (via centralized routing) ===
       if (primaryPhone && primaryWhatsapp) {
@@ -461,8 +515,12 @@ const handler = async (req: Request): Promise<Response> => {
             notification_channel: 'whatsapp',
           });
           results.whatsappSent++;
+        } else {
+          results.whatsappFailed++;
+          log('warn', 'whatsapp_send_failed', { itemType: item.type, itemId: item.id, recipientType });
         }
       }
+
 
       // === ADMIN NOTIFICATIONS ===
       for (const admin of adminProfiles || []) {
@@ -745,19 +803,21 @@ const handler = async (req: Request): Promise<Response> => {
       results.processed++;
     }
 
-    console.log("Expiry notification results:", results);
+    results.durationMs = Date.now() - jobStartedAt;
+    log('info', 'job_completed', results);
 
     return new Response(JSON.stringify(results), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error: any) {
-    console.error("Error processing expiry notifications:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    log('error', 'job_failed', { error: error?.message, durationMs: Date.now() - jobStartedAt });
+    return new Response(JSON.stringify({ jobId, error: error.message }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   }
 };
+
 
 serve(handler);
