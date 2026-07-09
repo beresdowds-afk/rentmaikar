@@ -221,22 +221,31 @@ export function SecretsManagement() {
     }
   };
 
-  const requestRotation = async (secretName: string) => {
+  const copyChatCommand = async (command: string, action: string, secretName: string) => {
     try {
+      await navigator.clipboard.writeText(command);
       await supabase.rpc("log_admin_action", {
-        _action: "requested_secret_rotation",
+        _action: action,
         _target_table: null,
         _target_id: secretName,
-        _details: { secret: secretName } as any,
+        _details: { secret: secretName, command } as any,
       });
       toast.success(
-        `Rotation requested for ${secretName}. In the Lovable chat, ask: "Rotate ${secretName}" — you'll get a secure form to paste the new value.`,
-        { duration: 8000 }
+        `Copied. Paste it into the Lovable chat — a secure form will open to enter the value.`,
+        { duration: 7000 }
       );
     } catch (e: any) {
-      toast.error(`Could not log rotation request: ${e.message ?? e}`);
+      toast.error(`Could not copy: ${e.message ?? e}`);
     }
   };
+
+  const requestRotation = (secretName: string) =>
+    copyChatCommand(`Rotate ${secretName}`, "requested_secret_rotation", secretName);
+
+  const requestAddSecret = (secretName: string) =>
+    copyChatCommand(`Add secret ${secretName}`, "requested_secret_add", secretName);
+
+
 
 
   const testTwilioSecrets = async () => {
