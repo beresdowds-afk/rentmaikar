@@ -505,10 +505,10 @@ const Auth = () => {
                       Forgot password?
                     </Button>
                   </div>
-                  <Input
+                  <PasswordInput
                     id="login-password"
-                    type="password"
                     placeholder="••••••••"
+                    autoComplete="current-password"
                     {...loginForm.register('password')}
                     disabled={isSubmitting}
                   />
