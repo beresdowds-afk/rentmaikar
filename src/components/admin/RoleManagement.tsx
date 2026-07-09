@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminAssistantManagement } from './AdminAssistantManagement';
+import { PasswordInput } from '@/components/ui/password-input';
 
 type AppRole = 'admin' | 'admin_assistant' | 'owner' | 'driver' | 'legal_support' | 'iot_support' | 'vehicle_support';
 
@@ -646,10 +647,10 @@ export function RoleManagement() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 placeholder="Enter password"
+                autoComplete="new-password"
                 value={newUserPassword}
                 onChange={(e) => setNewUserPassword(e.target.value)}
               />

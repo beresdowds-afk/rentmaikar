@@ -17,6 +17,7 @@ import { Loader2, AlertCircle, User, Shield, Users, ArrowLeft, Mail, CheckCircle
 import { toast } from 'sonner';
 import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
 import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
+import { PasswordInput } from '@/components/ui/password-input';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -505,10 +506,10 @@ const Auth = () => {
                       Forgot password?
                     </Button>
                   </div>
-                  <Input
+                  <PasswordInput
                     id="login-password"
-                    type="password"
                     placeholder="••••••••"
+                    autoComplete="current-password"
                     {...loginForm.register('password')}
                     disabled={isSubmitting}
                   />
@@ -607,10 +608,10 @@ const Auth = () => {
                 
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Password</Label>
-                  <Input
+                  <PasswordInput
                     id="signup-password"
-                    type="password"
                     placeholder="••••••••"
+                    autoComplete="new-password"
                     {...signupForm.register('password')}
                     disabled={isSubmitting}
                   />
@@ -621,10 +622,10 @@ const Auth = () => {
                 
                 <div className="space-y-2">
                   <Label htmlFor="signup-confirm">Confirm Password</Label>
-                  <Input
+                  <PasswordInput
                     id="signup-confirm"
-                    type="password"
                     placeholder="••••••••"
+                    autoComplete="new-password"
                     {...signupForm.register('confirmPassword')}
                     disabled={isSubmitting}
                   />
