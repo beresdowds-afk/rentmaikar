@@ -40,6 +40,28 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Strict region enforcement: Opay is only for Nigeria.
+    const regionInput = parsed.data.region_code ?? parsed.data.country;
+    if (!isNigeriaRegion(regionInput)) {
+      return new Response(JSON.stringify({
+        error: "Opay checkout is only available for Nigeria. Use PayPal or the region's default PSP.",
+        code: "region_not_supported",
+      }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (parsed.data.currency !== "NGN") {
+      return new Response(JSON.stringify({ error: "Opay only accepts NGN" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // Phone must be a Nigerian number (+234 or 0 prefix)
+    const phoneDigits = parsed.data.customer.phone.replace(/[^0-9+]/g, "");
+    if (!(phoneDigits.startsWith("+234") || phoneDigits.startsWith("234") || phoneDigits.startsWith("0"))) {
+      return new Response(JSON.stringify({ error: "Opay requires a Nigerian phone number" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const reference = parsed.data.reference ?? crypto.randomUUID();
     const body = {
       country: "NG",
