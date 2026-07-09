@@ -5,10 +5,10 @@ import {
   paymentSuccessMessage,
 } from "../_shared/whatsapp-templates.ts";
 import { 
-import { requireCronSecret } from "../_shared/cron-auth.ts";
   vehicleUnlockedEmail,
   paymentReceiptEmail,
 } from "../_shared/email-templates.ts";
+import { requireCronSecret } from "../_shared/cron-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -10,9 +10,9 @@ import {
   paymentSuccessMessage,
 } from "../_shared/whatsapp-templates.ts";
 import { 
-import { requireCronSecret } from "../_shared/cron-auth.ts";
   paymentReminderEmail 
 } from "../_shared/email-templates.ts";
+import { requireCronSecret } from "../_shared/cron-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
