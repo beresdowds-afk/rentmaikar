@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin, Code, FileText, Shield, HelpCircle } from "lucide-react";
+import { Mail, Phone, MapPin, Code, FileText, Shield, HelpCircle, Cookie } from "lucide-react";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 import { useAuth } from "@/contexts/AuthContext";
 import { EMAIL_CONFIG, COMPANY_INFO } from "@/lib/email-config";
+import { openCookiePreferences } from "@/hooks/useCookieConsent";
 
 const Footer = () => {
   const { userRole } = useAuth();
@@ -80,8 +81,19 @@ const Footer = () => {
                   FAQ
                 </Link>
               </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => openCookiePreferences()}
+                  className="text-primary-foreground/70 hover:text-accent transition-colors flex items-center gap-1"
+                >
+                  <Cookie className="w-3 h-3" />
+                  Cookie Preferences
+                </button>
+              </li>
             </ul>
           </div>
+
 
           {/* Locations */}
           <div>
