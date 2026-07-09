@@ -392,6 +392,233 @@ const EndpointCard = ({ endpoint }: { endpoint: Endpoint }) => {
   );
 };
 
+const AuthenticationSection = () => {
+  const authHeaders = [
+    { name: "Authorization", value: "Bearer rmk_live_...", required: true, note: "Preferred. API key issued from Admin → ERP → API Keys." },
+    { name: "X-API-Key", value: "rmk_live_...", required: false, note: "Alternative to Authorization header." },
+    { name: "Content-Type", value: "application/json", required: true, note: "Required on POST / PUT / PATCH." },
+    { name: "Idempotency-Key", value: "<uuid>", required: false, note: "Recommended for POST /payments and /rentals to safely retry." },
+    { name: "X-Rentmaikar-Region", value: "US | NG", required: false, note: "Overrides region auto-detection for regional routing." },
+  ];
+
+  const rateLimits = [
+    { method: "GET", path: "/v1/vehicles", limit: "120 / min", burst: "30", scope: "read + vehicles" },
+    { method: "POST", path: "/v1/vehicles", limit: "30 / min", burst: "10", scope: "write + vehicles" },
+    { method: "GET", path: "/v1/rentals", limit: "120 / min", burst: "30", scope: "read" },
+    { method: "POST", path: "/v1/rentals", limit: "30 / min", burst: "5", scope: "write" },
+    { method: "GET", path: "/v1/payments", limit: "60 / min", burst: "15", scope: "read + payments" },
+    { method: "POST", path: "/v1/payments/charge", limit: "20 / min", burst: "3", scope: "write + payments" },
+    { method: "GET", path: "/v1/users/{id}", limit: "60 / min", burst: "10", scope: "read + users" },
+    { method: "POST", path: "/v1/notifications/send", limit: "30 / min", burst: "5", scope: "write" },
+    { method: "POST", path: "/v1/keys/{id}/rotate", limit: "5 / min", burst: "1", scope: "admin" },
+  ];
+
+  const scopes = [
+    { scope: "read", desc: "Read any resource returned by GET endpoints." },
+    { scope: "write", desc: "Create and update resources via POST / PATCH." },
+    { scope: "delete", desc: "Delete resources via DELETE." },
+    { scope: "vehicles", desc: "Access /v1/vehicles endpoints." },
+    { scope: "users", desc: "Access /v1/users endpoints." },
+    { scope: "payments", desc: "Access /v1/payments endpoints." },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-primary" /> API Authentication
+          </CardTitle>
+          <CardDescription>
+            All Rentmaikar API requests must be authenticated with an API key. Keys are issued and rotated
+            from <strong>Admin → ERP → API Keys</strong>. Keys carry granular scopes and per-endpoint rate limits.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Required &amp; Recommended Headers</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="py-2 pr-4">Header</th>
+                  <th className="py-2 pr-4">Value</th>
+                  <th className="py-2 pr-4">Required</th>
+                  <th className="py-2">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {authHeaders.map(h => (
+                  <tr key={h.name} className="border-b last:border-0">
+                    <td className="py-2 pr-4"><code className="bg-muted px-2 py-0.5 rounded">{h.name}</code></td>
+                    <td className="py-2 pr-4"><code className="text-xs">{h.value}</code></td>
+                    <td className="py-2 pr-4">
+                      {h.required ? <Badge>Required</Badge> : <Badge variant="outline">Optional</Badge>}
+                    </td>
+                    <td className="py-2 text-muted-foreground">{h.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Authentication Flows</CardTitle>
+          <CardDescription>Copy-paste examples for the most common calls.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="curl">
+            <TabsList>
+              <TabsTrigger value="curl">cURL</TabsTrigger>
+              <TabsTrigger value="js">JavaScript</TabsTrigger>
+              <TabsTrigger value="py">Python</TabsTrigger>
+            </TabsList>
+            <TabsContent value="curl" className="space-y-3">
+              <p className="text-sm text-muted-foreground">Authenticated request:</p>
+              <CodeBlock code={`curl https://api.rentmaikar.com/v1/vehicles \\
+  -H "Authorization: Bearer rmk_live_your_key_here" \\
+  -H "Content-Type: application/json"`} />
+              <p className="text-sm text-muted-foreground">Rotate an API key (admin scope required):</p>
+              <CodeBlock code={`curl -X POST https://api.rentmaikar.com/v1/keys/KEY_ID/rotate \\
+  -H "Authorization: Bearer rmk_live_admin_key"`} />
+            </TabsContent>
+            <TabsContent value="js" className="space-y-3">
+              <CodeBlock code={`const res = await fetch("https://api.rentmaikar.com/v1/rentals", {
+  method: "POST",
+  headers: {
+    Authorization: \`Bearer \${process.env.RENTMAIKAR_API_KEY}\`,
+    "Content-Type": "application/json",
+    "Idempotency-Key": crypto.randomUUID(),
+  },
+  body: JSON.stringify({ vehicle_id: "veh_123", days: 7 }),
+});
+
+if (res.status === 401) throw new Error("Invalid or revoked API key");
+if (res.status === 403) throw new Error("Key missing required scope");
+if (res.status === 429) {
+  const retry = res.headers.get("Retry-After");
+  console.warn(\`Rate limited. Retry after \${retry}s\`);
+}
+const data = await res.json();`} />
+            </TabsContent>
+            <TabsContent value="py" className="space-y-3">
+              <CodeBlock code={`import os, uuid, requests
+
+r = requests.post(
+  "https://api.rentmaikar.com/v1/payments/charge",
+  headers={
+    "Authorization": f"Bearer {os.environ['RENTMAIKAR_API_KEY']}",
+    "Content-Type": "application/json",
+    "Idempotency-Key": str(uuid.uuid4()),
+  },
+  json={"rental_id": "rnt_123", "amount": 15000, "currency": "NGN"},
+  timeout=10,
+)
+
+if r.status_code == 429:
+  print("Rate limited, retry after:", r.headers.get("Retry-After"))
+r.raise_for_status()
+print(r.json())`} />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Zap className="h-5 w-5 text-primary" /> Rate Limits per Endpoint
+          </CardTitle>
+          <CardDescription>
+            Every response includes <code>X-RateLimit-Limit</code>, <code>X-RateLimit-Remaining</code>,
+            and <code>X-RateLimit-Reset</code>. Exceeding a limit returns HTTP <code>429</code> with a
+            <code> Retry-After</code> header (seconds).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="py-2 pr-4">Method</th>
+                  <th className="py-2 pr-4">Path</th>
+                  <th className="py-2 pr-4">Sustained Limit</th>
+                  <th className="py-2 pr-4">Burst</th>
+                  <th className="py-2">Required Scopes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rateLimits.map(r => (
+                  <tr key={`${r.method}-${r.path}`} className="border-b last:border-0">
+                    <td className="py-2 pr-4">
+                      <Badge className={`${methodColors[r.method as keyof typeof methodColors]} font-mono text-xs`}>{r.method}</Badge>
+                    </td>
+                    <td className="py-2 pr-4"><code>{r.path}</code></td>
+                    <td className="py-2 pr-4">{r.limit}</td>
+                    <td className="py-2 pr-4">{r.burst}</td>
+                    <td className="py-2 text-muted-foreground">{r.scope}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">API Key Scopes</CardTitle>
+          <CardDescription>Assign only the scopes the integration needs.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-2 md:grid-cols-2">
+            {scopes.map(s => (
+              <div key={s.scope} className="flex items-start gap-2 rounded-lg border p-3">
+                <Key className="h-4 w-4 mt-0.5 text-primary" />
+                <div>
+                  <code className="text-sm font-semibold">{s.scope}</code>
+                  <p className="text-xs text-muted-foreground">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" /> Error Response Schema
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <CodeBlock code={`{
+  "error": {
+    "code": "insufficient_scope",
+    "message": "This API key does not have the 'payments' scope.",
+    "request_id": "req_01HABC..."
+  }
+}`} />
+          <div className="grid gap-2 text-sm">
+            <div><Badge variant="outline">401</Badge> <code>invalid_key</code> — key missing, revoked, or expired.</div>
+            <div><Badge variant="outline">403</Badge> <code>insufficient_scope</code> — key lacks the required scope.</div>
+            <div><Badge variant="outline">429</Badge> <code>rate_limited</code> — retry after the <code>Retry-After</code> value.</div>
+            <div><Badge variant="outline">5xx</Badge> <code>upstream_error</code> — transient; retry with exponential backoff.</div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+
 const ApiDocs = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
 
@@ -467,12 +694,18 @@ const ApiDocs = () => {
         </div>
 
         {/* API Reference */}
-        <Tabs defaultValue="endpoints" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="authentication" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="authentication">Authentication</TabsTrigger>
             <TabsTrigger value="endpoints">Endpoints</TabsTrigger>
             <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
             <TabsTrigger value="sdks">SDKs & Tools</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="authentication" className="space-y-6">
+            <AuthenticationSection />
+          </TabsContent>
+
 
           <TabsContent value="endpoints" className="space-y-6">
             {/* Category Filter */}

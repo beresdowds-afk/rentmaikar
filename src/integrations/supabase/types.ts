@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_assistant_permissions: {
+        Row: {
+          can_manage_content: boolean
+          can_manage_iot: boolean
+          can_manage_payments: boolean
+          can_manage_rentals: boolean
+          can_manage_support_tasks: boolean
+          can_manage_users: boolean
+          can_manage_vehicles: boolean
+          can_send_communications: boolean
+          can_view_audit_log: boolean
+          can_view_communications: boolean
+          can_view_iot: boolean
+          can_view_payments: boolean
+          can_view_rentals: boolean
+          can_view_reports: boolean
+          can_view_support_tasks: boolean
+          can_view_users: boolean
+          can_view_vehicles: boolean
+          created_at: string
+          granted_by: string | null
+          id: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_manage_content?: boolean
+          can_manage_iot?: boolean
+          can_manage_payments?: boolean
+          can_manage_rentals?: boolean
+          can_manage_support_tasks?: boolean
+          can_manage_users?: boolean
+          can_manage_vehicles?: boolean
+          can_send_communications?: boolean
+          can_view_audit_log?: boolean
+          can_view_communications?: boolean
+          can_view_iot?: boolean
+          can_view_payments?: boolean
+          can_view_rentals?: boolean
+          can_view_reports?: boolean
+          can_view_support_tasks?: boolean
+          can_view_users?: boolean
+          can_view_vehicles?: boolean
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_manage_content?: boolean
+          can_manage_iot?: boolean
+          can_manage_payments?: boolean
+          can_manage_rentals?: boolean
+          can_manage_support_tasks?: boolean
+          can_manage_users?: boolean
+          can_manage_vehicles?: boolean
+          can_send_communications?: boolean
+          can_view_audit_log?: boolean
+          can_view_communications?: boolean
+          can_view_iot?: boolean
+          can_view_payments?: boolean
+          can_view_rentals?: boolean
+          can_view_reports?: boolean
+          can_view_support_tasks?: boolean
+          can_view_users?: boolean
+          can_view_vehicles?: boolean
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       admin_audit_log: {
         Row: {
           action: string
@@ -5272,6 +5350,10 @@ export type Database = {
         }
         Returns: string
       }
+      has_admin_assistant_permission: {
+        Args: { _permission: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -5306,6 +5388,7 @@ export type Database = {
         | "legal_support"
         | "iot_support"
         | "vehicle_support"
+        | "admin_assistant"
       application_status:
         | "pending"
         | "under_review"
@@ -5509,6 +5592,7 @@ export const Constants = {
         "legal_support",
         "iot_support",
         "vehicle_support",
+        "admin_assistant",
       ],
       application_status: [
         "pending",

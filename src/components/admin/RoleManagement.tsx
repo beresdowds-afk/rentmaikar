@@ -9,12 +9,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, Search, Users, Loader2, Mail, UserPlus, Trash2, AlertTriangle, History, Plus } from 'lucide-react';
+import { Shield, Search, Users, Loader2, Mail, UserPlus, Trash2, AlertTriangle, History, Plus, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { AdminAssistantManagement } from './AdminAssistantManagement';
 
-type AppRole = 'admin' | 'owner' | 'driver' | 'legal_support' | 'iot_support' | 'vehicle_support';
+type AppRole = 'admin' | 'admin_assistant' | 'owner' | 'driver' | 'legal_support' | 'iot_support' | 'vehicle_support';
 
 interface UserWithRole {
   id: string;
@@ -40,6 +41,7 @@ interface AuditLogEntry {
 
 const roleLabels: Record<AppRole, string> = {
   admin: 'Administrator',
+  admin_assistant: 'Admin Assistant',
   owner: 'Vehicle Owner',
   driver: 'Driver',
   legal_support: 'Legal Support',
@@ -49,6 +51,7 @@ const roleLabels: Record<AppRole, string> = {
 
 const roleColors: Record<AppRole, string> = {
   admin: 'bg-destructive text-destructive-foreground',
+  admin_assistant: 'bg-amber-500 text-white',
   owner: 'bg-primary text-primary-foreground',
   driver: 'bg-accent text-accent-foreground',
   legal_support: 'bg-blue-500 text-white',
@@ -410,11 +413,16 @@ export function RoleManagement() {
                 <Users className="h-4 w-4" />
                 Users ({users.length})
               </TabsTrigger>
+              <TabsTrigger value="assistants" className="gap-2">
+                <ShieldCheck className="h-4 w-4" />
+                Admin Assistants
+              </TabsTrigger>
               <TabsTrigger value="audit" className="gap-2">
                 <History className="h-4 w-4" />
                 Audit Log ({auditLogs.length})
               </TabsTrigger>
             </TabsList>
+
 
             <TabsContent value="users">
               {/* Filters */}
@@ -426,6 +434,7 @@ export function RoleManagement() {
                   <SelectContent>
                     <SelectItem value="all">All Roles ({users.length})</SelectItem>
                     <SelectItem value="admin">Admin ({roleCounts.admin || 0})</SelectItem>
+                    <SelectItem value="admin_assistant">Admin Assistant ({roleCounts.admin_assistant || 0})</SelectItem>
                     <SelectItem value="owner">Owner ({roleCounts.owner || 0})</SelectItem>
                     <SelectItem value="driver">Driver ({roleCounts.driver || 0})</SelectItem>
                     <SelectItem value="legal_support">Legal Support ({roleCounts.legal_support || 0})</SelectItem>
@@ -514,6 +523,10 @@ export function RoleManagement() {
                   </div>
                 </ScrollArea>
               )}
+            </TabsContent>
+
+            <TabsContent value="assistants">
+              <AdminAssistantManagement />
             </TabsContent>
 
             <TabsContent value="audit">
