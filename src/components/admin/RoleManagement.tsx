@@ -87,6 +87,7 @@ export function RoleManagement() {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserFullName, setNewUserFullName] = useState('');
+  const [newUserPhone, setNewUserPhone] = useState('');
   const [newUserRole, setNewUserRole] = useState<AppRole>('driver');
   
   const queryClient = useQueryClient();
@@ -199,73 +200,46 @@ export function RoleManagement() {
   };
 
   const handleCreateUser = async () => {
-    if (!newUserEmail || !newUserPassword || !newUserFullName) {
-      toast.error('Please fill in all fields');
+    if (!newUserEmail || !newUserFullName) {
+      toast.error('Please provide the user\'s full name and email');
       return;
     }
 
     setIsUpdating(true);
     try {
-      // Sign up the new user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newUserEmail,
-        password: newUserPassword,
-        options: {
-          data: {
+      // Delegate to the admin edge function so the current admin session is
+      // preserved and the new user receives a password-reset email + SMS.
+      const { data, error } = await supabase.functions.invoke(
+        'admin-create-user',
+        {
+          body: {
+            email: newUserEmail,
             full_name: newUserFullName,
+            role: newUserRole,
+            phone: newUserPhone || undefined,
           },
-        },
-      });
-
-      if (authError) throw authError;
-
-      if (!authData.user) {
-        throw new Error('Failed to create user');
-      }
-
-      // Assign the role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: newUserRole,
-        });
-
-      if (roleError) throw roleError;
-
-      // Ensure the user is enabled platform-wide on creation by an administrator
-      const { error: activeError } = await supabase
-        .from('profiles')
-        .update({ is_active: true })
-        .eq('user_id', authData.user.id);
-
-      if (activeError) {
-        console.error('Failed to set is_active on new user:', activeError);
-      }
-
-      // Log the audit entry
-      await logAuditEntry(
-        authData.user.id,
-        'created',
-        null,
-        newUserRole,
-        `User created with email: ${newUserEmail} (enabled platform-wide)`
+        }
       );
 
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
       toast.success('User created successfully', {
-        description: `${newUserFullName} has been created with ${roleLabels[newUserRole]} role.`,
+        description: `${newUserFullName} has been created as ${roleLabels[newUserRole]}. A password-reset email${newUserPhone ? ' and SMS notification' : ''} has been sent.`,
       });
 
       // Reset form
       setNewUserEmail('');
       setNewUserPassword('');
       setNewUserFullName('');
+      setNewUserPhone('');
       setNewUserRole('driver');
       setCreateUserDialogOpen(false);
-      
+
       fetchUsersWithRoles();
       fetchAuditLogs();
       queryClient.invalidateQueries({ queryKey: ['user-roles'] });
+
     } catch (error: any) {
       console.error('Error creating user:', error);
       toast.error('Failed to create user', {
@@ -646,14 +620,22 @@ export function RoleManagement() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <PasswordInput
-                id="password"
-                placeholder="Enter password"
-                autoComplete="new-password"
-                value={newUserPassword}
-                onChange={(e) => setNewUserPassword(e.target.value)}
+              <Label htmlFor="phone">Phone (optional, for SMS notification)</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+1 555 123 4567"
+                value={newUserPhone}
+                onChange={(e) => setNewUserPhone(e.target.value)}
               />
+            </div>
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
+              <p>
+                <strong className="text-foreground">No initial password needed.</strong>{' '}
+                The new user will receive an email (and SMS if a phone is provided)
+                asking them to sign in as soon as possible and set their own password
+                via the <em>Forgot password</em> flow.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
