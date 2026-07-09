@@ -223,7 +223,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: vehicles, error: vehiclesError } = await supabase
       .from('vehicles')
       .select(`
-        id, make, model, year, plate_number, owner_id,
+        id, make, model, year, license_plate, owner_id,
         insurance_expiry, registration_expiry, inspection_expiry
       `)
       .or(`insurance_expiry.gte.${formatDate(today)},registration_expiry.gte.${formatDate(today)},inspection_expiry.gte.${formatDate(today)}`);
