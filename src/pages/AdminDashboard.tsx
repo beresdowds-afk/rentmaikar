@@ -48,6 +48,7 @@ import { VoIPDocs } from "@/components/admin/docs/VoIPDocs";
 import { AdminSecurityDashboard } from "@/components/admin/AdminSecurityDashboard";
 import RegionalOperationsManagement from "@/components/admin/RegionalOperationsManagement";
 import { RegionAutoBuildWorker } from "@/components/admin/RegionAutoBuildWorker";
+import NegativeAttestationReviewPanel from "@/components/admin/NegativeAttestationReviewPanel";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -492,6 +493,14 @@ const AdminDashboard = () => {
                 <Headphones className="h-4 w-4" />
                 Support Tasks
               </Button>
+              <Button
+                variant={activeTab === 'attestation-review' ? 'default' : 'outline'}
+                className="gap-2"
+                onClick={() => { setPortalView('crm'); setActiveTab('attestation-review'); }}
+              >
+                <AlertTriangle className="h-4 w-4" />
+                Referee Reviews
+              </Button>
             </div>
           </div>
 
@@ -524,6 +533,7 @@ const AdminDashboard = () => {
           {portalView === 'crm' && (
             <div className="space-y-6">
               {activeTab === 'applications' && <ApplicationManagement />}
+              {activeTab === 'attestation-review' && <NegativeAttestationReviewPanel />}
               {activeTab === 'accounts' && <UserAccountsView />}
               {activeTab === 'roles' && <RoleManagement />}
               {activeTab === 'negotiations' && <AdminPriceNegotiation />}

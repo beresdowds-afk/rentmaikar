@@ -171,7 +171,7 @@ export const REGION_FIXTURES: Record<string, RegionTemplateConfig> = {
     phonePrefix: "+234",
     smsProvider: "termii",
     whatsappProvider: "twilio",
-    paymentGateway: "paystack",
+    paymentGateway: "opay",
     supportHours: "8am-8pm WAT",
   },
   Ghana: {
