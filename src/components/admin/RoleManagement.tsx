@@ -661,7 +661,7 @@ export function RoleManagement() {
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(roleLabels) as AppRole[]).map((role) => (
+                  {(['admin', 'admin_assistant', 'owner', 'driver', 'legal_support', 'iot_support', 'vehicle_support'] as AppRole[]).map((role) => (
                     <SelectItem key={role} value={role}>
                       {roleLabels[role]}
                     </SelectItem>
