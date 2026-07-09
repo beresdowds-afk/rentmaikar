@@ -572,6 +572,21 @@ export function RoleManagement() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => handleResendReset(user)}
+                                disabled={resendingId === user.user_id || !user.email}
+                                className="gap-1"
+                                title="Resend password-reset email"
+                              >
+                                {resendingId === user.user_id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Send className="h-4 w-4" />
+                                )}
+                                Resend reset link
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => openChangeRoleDialog(user)}
                                 className="gap-1"
                               >
