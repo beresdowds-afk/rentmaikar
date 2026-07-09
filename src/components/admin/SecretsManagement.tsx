@@ -221,22 +221,31 @@ export function SecretsManagement() {
     }
   };
 
-  const requestRotation = async (secretName: string) => {
+  const copyChatCommand = async (command: string, action: string, secretName: string) => {
     try {
+      await navigator.clipboard.writeText(command);
       await supabase.rpc("log_admin_action", {
-        _action: "requested_secret_rotation",
+        _action: action,
         _target_table: null,
         _target_id: secretName,
-        _details: { secret: secretName } as any,
+        _details: { secret: secretName, command } as any,
       });
       toast.success(
-        `Rotation requested for ${secretName}. In the Lovable chat, ask: "Rotate ${secretName}" — you'll get a secure form to paste the new value.`,
-        { duration: 8000 }
+        `Copied. Paste it into the Lovable chat — a secure form will open to enter the value.`,
+        { duration: 7000 }
       );
     } catch (e: any) {
-      toast.error(`Could not log rotation request: ${e.message ?? e}`);
+      toast.error(`Could not copy: ${e.message ?? e}`);
     }
   };
+
+  const requestRotation = (secretName: string) =>
+    copyChatCommand(`Rotate ${secretName}`, "requested_secret_rotation", secretName);
+
+  const requestAddSecret = (secretName: string) =>
+    copyChatCommand(`Add secret ${secretName}`, "requested_secret_add", secretName);
+
+
 
 
   const testTwilioSecrets = async () => {
@@ -387,23 +396,27 @@ export function SecretsManagement() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">API Secrets Management</h2>
-        <p className="text-muted-foreground">
-          View and test configured API keys. All actions are audit-logged.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">API Secrets Management</h2>
+          <p className="text-muted-foreground">
+            View and test configured API keys. All actions are audit-logged.
+          </p>
+        </div>
+        <AddSecretDialog onRequest={requestAddSecret} />
       </div>
-
 
       <Alert>
         <Info className="h-4 w-4" />
-        <AlertTitle>Security Notice</AlertTitle>
+        <AlertTitle>How saving works</AlertTitle>
         <AlertDescription>
-          API secrets are securely stored and cannot be viewed or edited directly from this panel. 
-          To update a secret, please contact your system administrator or use the Lovable dashboard 
-          to modify Cloud secrets.
+          Secret values are never stored in this app — they live in Lovable Cloud's encrypted vault
+          and are only readable by server-side edge functions. To add or update a value, use the
+          buttons here: they copy the exact chat command that opens a secure Lovable form. Pasting
+          the value into any UI in this app would expose it in the browser bundle.
         </AlertDescription>
       </Alert>
+
 
       <div className="grid gap-6">
         {Object.entries(groupedSecrets).map(([category, categorySecrets]) => {
@@ -613,3 +626,58 @@ export function SecretsManagement() {
     </div>
   );
 }
+
+function AddSecretDialog({ onRequest }: { onRequest: (name: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const valid = /^[A-Z_][A-Z0-9_]*$/.test(name);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="default">
+          <Key className="w-4 h-4 mr-2" />
+          Add new secret
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add a new secret</DialogTitle>
+          <DialogDescription>
+            Enter the secret name (uppercase, underscores). We'll copy a chat command; paste it
+            into Lovable chat and a secure form will open to enter the value. Values are never
+            typed into this app.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2 py-2">
+          <Label htmlFor="secret-name">Secret name</Label>
+          <Input
+            id="secret-name"
+            placeholder="MY_NEW_API_KEY"
+            value={name}
+            onChange={(e) => setName(e.target.value.toUpperCase())}
+          />
+          {!valid && name.length > 0 && (
+            <p className="text-xs text-destructive">
+              Use only A–Z, 0–9 and underscore; must start with a letter or underscore.
+            </p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button
+            disabled={!valid}
+            onClick={() => {
+              onRequest(name);
+              setOpen(false);
+              setName("");
+            }}
+          >
+            Copy chat command
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
