@@ -5,6 +5,8 @@ import { z } from "https://esm.sh/zod@3.23.8";
 const Body = z.object({
   amount: z.number().positive().max(50_000_000),
   currency: z.enum(["NGN"]).default("NGN"),
+  region_code: z.string().max(32).optional(),
+  country: z.string().max(32).optional(),
   reference: z.string().min(3).max(64).optional(),
   callback_url: z.string().url().optional(),
   rental_id: z.string().uuid().optional(),
@@ -14,6 +16,12 @@ const Body = z.object({
     phone: z.string().min(6).max(20),
   }),
 });
+
+function isNigeriaRegion(v?: string | null) {
+  if (!v) return true; // permissive when unknown; currency+phone still gate below
+  const s = v.toUpperCase();
+  return s === "NG" || s === "NGA" || s === "NIGERIA";
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
