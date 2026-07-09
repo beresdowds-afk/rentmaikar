@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, Search, Users, Loader2, Mail, UserPlus, Trash2, AlertTriangle, History, Plus, ShieldCheck } from 'lucide-react';
+import { Shield, Search, Users, Loader2, Mail, UserPlus, Trash2, AlertTriangle, History, Plus, ShieldCheck, CheckCircle2, XCircle, Send, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -89,8 +89,37 @@ export function RoleManagement() {
   const [newUserFullName, setNewUserFullName] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
   const [newUserRole, setNewUserRole] = useState<AppRole>('driver');
-  
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [createResult, setCreateResult] = useState<null | {
+    email: string;
+    phone: string | null;
+    email_sent: boolean;
+    sms_sent: boolean;
+    email_error?: string | null;
+    sms_error?: string | null;
+    message: string;
+    instructions: string;
+  }>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
   const queryClient = useQueryClient();
+
+  // Format as international phone: keep leading +, digits only after.
+  const formatPhone = (raw: string) => {
+    const hasPlus = raw.trim().startsWith('+');
+    const digits = raw.replace(/[^\d]/g, '');
+    return (hasPlus ? '+' : '') + digits;
+  };
+
+  const validatePhone = (raw: string): string | null => {
+    if (!raw.trim()) return null;
+    const cleaned = '+' + raw.replace(/[^\d]/g, '');
+    if (!/^\+\d{8,15}$/.test(cleaned)) {
+      return 'Enter a valid international number, e.g. +15551234567';
+    }
+    return null;
+  };
+
 
   useEffect(() => {
     fetchUsersWithRoles();
@@ -205,10 +234,21 @@ export function RoleManagement() {
       return;
     }
 
+    const phoneValidationError = validatePhone(newUserPhone);
+    if (phoneValidationError) {
+      setPhoneError(phoneValidationError);
+      toast.error(phoneValidationError);
+      return;
+    }
+    setPhoneError(null);
+
+    const normalizedPhone = newUserPhone.trim()
+      ? '+' + newUserPhone.replace(/[^\d]/g, '')
+      : undefined;
+
     setIsUpdating(true);
+    setCreateResult(null);
     try {
-      // Delegate to the admin edge function so the current admin session is
-      // preserved and the new user receives a password-reset email + SMS.
       const { data, error } = await supabase.functions.invoke(
         'admin-create-user',
         {
@@ -216,7 +256,7 @@ export function RoleManagement() {
             email: newUserEmail,
             full_name: newUserFullName,
             role: newUserRole,
-            phone: newUserPhone || undefined,
+            phone: normalizedPhone,
           },
         }
       );
@@ -224,17 +264,25 @@ export function RoleManagement() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast.success('User created successfully', {
-        description: `${newUserFullName} has been created as ${roleLabels[newUserRole]}. A password-reset email${newUserPhone ? ' and SMS notification' : ''} has been sent.`,
+      setCreateResult({
+        email: data.email,
+        phone: data.phone,
+        email_sent: !!data.email_sent,
+        sms_sent: !!data.sms_sent,
+        email_error: data.email_error,
+        sms_error: data.sms_error,
+        message: data.message,
+        instructions: data.instructions,
       });
 
-      // Reset form
+      toast.success('User created', { description: data.message });
+
+      // Reset input fields but keep the dialog open to display result.
       setNewUserEmail('');
       setNewUserPassword('');
       setNewUserFullName('');
       setNewUserPhone('');
       setNewUserRole('driver');
-      setCreateUserDialogOpen(false);
 
       fetchUsersWithRoles();
       fetchAuditLogs();
@@ -249,6 +297,44 @@ export function RoleManagement() {
       setIsUpdating(false);
     }
   };
+
+  const handleResendReset = async (target: UserWithRole) => {
+    if (!target.email) {
+      toast.error('This user has no email on file');
+      return;
+    }
+    setResendingId(target.user_id);
+    try {
+      const redirectTo = `${window.location.origin}/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(target.email, {
+        redirectTo,
+      });
+      if (error) throw error;
+
+      await logAuditEntry(
+        target.user_id,
+        'role_assigned',
+        null,
+        target.role,
+        JSON.stringify({
+          summary: 'Reset link resent by administrator',
+          email: target.email,
+          email_sent: true,
+        })
+      );
+
+      toast.success('Reset link sent', {
+        description: `A new password-reset email is on its way to ${target.email}.`,
+      });
+      fetchAuditLogs();
+    } catch (err: any) {
+      console.error('Resend reset failed:', err);
+      toast.error('Could not resend reset link', { description: err.message });
+    } finally {
+      setResendingId(null);
+    }
+  };
+
 
   const handleChangeRole = async () => {
     if (!selectedUser || !newRole) return;
@@ -486,6 +572,21 @@ export function RoleManagement() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => handleResendReset(user)}
+                                disabled={resendingId === user.user_id || !user.email}
+                                className="gap-1"
+                                title="Resend password-reset email"
+                              >
+                                {resendingId === user.user_id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Send className="h-4 w-4" />
+                                )}
+                                Resend reset link
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => openChangeRoleDialog(user)}
                                 className="gap-1"
                               >
@@ -567,9 +668,34 @@ export function RoleManagement() {
                                     <Badge className={roleColors[log.old_role]}>{roleLabels[log.old_role]}</Badge>
                                   </div>
                                 )}
-                                {log.notes && (
-                                  <p className="text-sm text-muted-foreground italic">{log.notes}</p>
-                                )}
+                                {log.notes && (() => {
+                                  let parsed: any = null;
+                                  try { parsed = JSON.parse(log.notes); } catch { /* plain text */ }
+                                  if (!parsed || typeof parsed !== 'object') {
+                                    return <p className="text-sm text-muted-foreground italic">{log.notes}</p>;
+                                  }
+                                  return (
+                                    <div className="text-sm text-muted-foreground space-y-1">
+                                      {parsed.summary && <p className="italic">{parsed.summary}</p>}
+                                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                                        {typeof parsed.email_sent === 'boolean' && (
+                                          <Badge variant={parsed.email_sent ? 'default' : 'destructive'} className="gap-1">
+                                            <Mail className="h-3 w-3" />
+                                            Email {parsed.email_sent ? 'sent' : 'failed'}
+                                          </Badge>
+                                        )}
+                                        {parsed.phone && (
+                                          <Badge variant={parsed.sms_sent ? 'default' : 'destructive'} className="gap-1">
+                                            <MessageSquare className="h-3 w-3" />
+                                            SMS {parsed.sms_sent ? 'sent' : 'failed'}
+                                          </Badge>
+                                        )}
+                                        {parsed.email && <span>· {parsed.email}</span>}
+                                        {parsed.phone && <span>· {parsed.phone}</span>}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             </div>
                             <div className="text-right text-sm text-muted-foreground">
@@ -587,9 +713,17 @@ export function RoleManagement() {
         </CardContent>
       </Card>
 
-      {/* Create User Dialog */}
-      <Dialog open={createUserDialogOpen} onOpenChange={setCreateUserDialogOpen}>
-        <DialogContent>
+      <Dialog
+        open={createUserDialogOpen}
+        onOpenChange={(open) => {
+          setCreateUserDialogOpen(open);
+          if (!open) {
+            setCreateResult(null);
+            setPhoneError(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5" />
@@ -599,85 +733,204 @@ export function RoleManagement() {
               Create a new user account with a specific role
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="full-name">Full Name</Label>
-              <Input
-                id="full-name"
-                placeholder="Enter full name"
-                value={newUserFullName}
-                onChange={(e) => setNewUserFullName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter email address"
-                value={newUserEmail}
-                onChange={(e) => setNewUserEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone (optional, for SMS notification)</Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="+1 555 123 4567"
-                value={newUserPhone}
-                onChange={(e) => setNewUserPhone(e.target.value)}
-              />
-            </div>
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
-              <p>
-                <strong className="text-foreground">No initial password needed.</strong>{' '}
-                The new user will receive an email (and SMS if a phone is provided)
-                asking them to sign in as soon as possible and set their own password
-                via the <em>Forgot password</em> flow.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select value={newUserRole} onValueChange={(v) => setNewUserRole(v as AppRole)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(['admin', 'admin_assistant', 'owner', 'driver', 'legal_support', 'iot_support', 'vehicle_support'] as AppRole[]).map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {roleLabels[role]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {newUserRole === 'admin' && (
-              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                <div className="flex items-center gap-2 text-destructive text-sm">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span className="font-medium">Warning: Admin role grants full platform access</span>
+
+          {createResult ? (
+            <div className="space-y-4 py-4">
+              <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+                <p className="font-semibold text-foreground">
+                  {createResult.message}
+                </p>
+                <div className="grid gap-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    {createResult.email_sent ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-destructive" />
+                    )}
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      Password-reset email to{' '}
+                      <strong>{createResult.email}</strong>:{' '}
+                      {createResult.email_sent ? 'sent' : 'failed'}
+                    </span>
+                  </div>
+                  {createResult.email_error && (
+                    <p className="text-xs text-destructive pl-6">
+                      {createResult.email_error}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2">
+                    {createResult.phone ? (
+                      createResult.sms_sent ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-destructive" />
+                      )
+                    ) : (
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      {createResult.phone
+                        ? `SMS to ${createResult.phone}: ${
+                            createResult.sms_sent ? 'sent' : 'failed'
+                          }`
+                        : 'No phone provided — SMS skipped.'}
+                    </span>
+                  </div>
+                  {createResult.sms_error && (
+                    <p className="text-xs text-destructive pl-6">
+                      {createResult.sms_error}
+                    </p>
+                  )}
                 </div>
               </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateUserDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateUser} disabled={isUpdating}>
-              {isUpdating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Creating...
-                </>
-              ) : (
-                'Create User'
-              )}
-            </Button>
-          </DialogFooter>
+              <div className="rounded-lg border p-4 space-y-2">
+                <p className="text-sm font-semibold">Login &amp; reset instructions</p>
+                <pre className="whitespace-pre-wrap text-sm text-muted-foreground font-sans">
+                  {createResult.instructions}
+                </pre>
+              </div>
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setCreateResult(null);
+                  }}
+                >
+                  Create another user
+                </Button>
+                <Button onClick={() => setCreateUserDialogOpen(false)}>
+                  Done
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="full-name">Full Name</Label>
+                  <Input
+                    id="full-name"
+                    placeholder="Enter full name"
+                    value={newUserFullName}
+                    onChange={(e) => setNewUserFullName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter email address"
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">
+                    Phone (optional, for SMS notification)
+                  </Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="+15551234567"
+                    value={newUserPhone}
+                    onChange={(e) => {
+                      const formatted = formatPhone(e.target.value);
+                      setNewUserPhone(formatted);
+                      setPhoneError(validatePhone(formatted));
+                    }}
+                    onBlur={() =>
+                      setPhoneError(validatePhone(newUserPhone))
+                    }
+                    aria-invalid={!!phoneError}
+                  />
+                  {phoneError ? (
+                    <p className="text-xs text-destructive">{phoneError}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      International format, e.g. +15551234567 or +2348012345678.
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
+                  <p>
+                    <strong className="text-foreground">
+                      No initial password needed.
+                    </strong>{' '}
+                    The new user will receive an email (and SMS if a phone is
+                    provided) asking them to sign in as soon as possible and
+                    set their own password via the <em>Forgot password</em>{' '}
+                    flow.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select
+                    value={newUserRole}
+                    onValueChange={(v) => setNewUserRole(v as AppRole)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(
+                        [
+                          'admin',
+                          'admin_assistant',
+                          'owner',
+                          'driver',
+                          'legal_support',
+                          'iot_support',
+                          'vehicle_support',
+                        ] as AppRole[]
+                      ).map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {roleLabels[role]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {newUserRole === 'admin' && (
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <div className="flex items-center gap-2 text-destructive text-sm">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span className="font-medium">
+                        Warning: Admin role grants full platform access
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setCreateUserDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateUser}
+                  disabled={isUpdating || !!phoneError}
+                >
+                  {isUpdating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create User'
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
+
 
       {/* Change Role Dialog */}
       <Dialog open={changeRoleDialogOpen} onOpenChange={setChangeRoleDialogOpen}>
