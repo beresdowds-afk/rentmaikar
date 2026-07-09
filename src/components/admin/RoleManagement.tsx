@@ -89,8 +89,37 @@ export function RoleManagement() {
   const [newUserFullName, setNewUserFullName] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
   const [newUserRole, setNewUserRole] = useState<AppRole>('driver');
-  
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [createResult, setCreateResult] = useState<null | {
+    email: string;
+    phone: string | null;
+    email_sent: boolean;
+    sms_sent: boolean;
+    email_error?: string | null;
+    sms_error?: string | null;
+    message: string;
+    instructions: string;
+  }>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
   const queryClient = useQueryClient();
+
+  // Format as international phone: keep leading +, digits only after.
+  const formatPhone = (raw: string) => {
+    const hasPlus = raw.trim().startsWith('+');
+    const digits = raw.replace(/[^\d]/g, '');
+    return (hasPlus ? '+' : '') + digits;
+  };
+
+  const validatePhone = (raw: string): string | null => {
+    if (!raw.trim()) return null;
+    const cleaned = '+' + raw.replace(/[^\d]/g, '');
+    if (!/^\+\d{8,15}$/.test(cleaned)) {
+      return 'Enter a valid international number, e.g. +15551234567';
+    }
+    return null;
+  };
+
 
   useEffect(() => {
     fetchUsersWithRoles();
