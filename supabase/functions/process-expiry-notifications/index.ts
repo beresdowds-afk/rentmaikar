@@ -302,8 +302,9 @@ const handler = async (req: Request): Promise<Response> => {
       .gte('expiry_date', formatDate(today));
 
     if (docsError) {
-      console.error("Error fetching documents:", docsError);
+      log('error', 'documents_fetch_failed', { error: docsError.message });
     }
+    log('info', 'documents_loaded', { count: documents?.length ?? 0 });
 
     for (const doc of documents || []) {
       if (!doc.expiry_date) continue;
@@ -353,6 +354,18 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    log('info', 'expiring_items_identified', {
+      total: expiringItems.length,
+      byTier: NOTIFICATION_TIERS.reduce((acc, t) => {
+        acc[`d${t}`] = expiringItems.filter(i => i.days_until_expiry === t).length;
+        return acc;
+      }, {} as Record<string, number>),
+      byType: expiringItems.reduce((acc, i) => {
+        acc[i.type] = (acc[i.type] ?? 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+    });
+
     // Get admin profiles
     const { data: admins } = await supabase
       .from('user_roles')
@@ -365,15 +378,29 @@ const handler = async (req: Request): Promise<Response> => {
       .select('user_id, email, phone, full_name, notification_sms, notification_whatsapp')
       .in('user_id', adminUserIds);
 
+    log('info', 'admins_loaded', { count: adminProfiles?.length ?? 0 });
+
     const results = {
+      jobId,
+      vehiclesLoaded: vehicles?.length ?? 0,
+      documentsLoaded: documents?.length ?? 0,
+      expiringItemsIdentified: expiringItems.length,
+      skippedAlreadyNotified: 0,
+      notificationsAttempted: 0,
       processed: 0,
       emailsSent: 0,
+      emailsFailed: 0,
       smsSent: 0,
+      smsFailed: 0,
       whatsappSent: 0,
+      whatsappFailed: 0,
       voipCallsMade: 0,
+      voipCallsFailed: 0,
       accountsRestricted: 0,
+      durationMs: 0,
       errors: [] as string[],
     };
+
 
     for (const item of expiringItems) {
       // Dedup check
