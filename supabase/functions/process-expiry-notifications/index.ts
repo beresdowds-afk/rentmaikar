@@ -198,6 +198,15 @@ const handler = async (req: Request): Promise<Response> => {
   const cronDenied = requireCronSecret(req);
   if (cronDenied) return cronDenied;
 
+  const jobId = crypto.randomUUID();
+  const jobStartedAt = Date.now();
+  const log = (level: 'info' | 'warn' | 'error', event: string, data: Record<string, unknown> = {}) => {
+    const entry = { jobId, job: 'process-expiry-notifications', level, event, ts: new Date().toISOString(), ...data };
+    if (level === 'error') console.error(JSON.stringify(entry));
+    else if (level === 'warn') console.warn(JSON.stringify(entry));
+    else console.log(JSON.stringify(entry));
+  };
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -205,6 +214,12 @@ const handler = async (req: Request): Promise<Response> => {
     const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
+
+    log('info', 'job_started', {
+      hasResend: !!resendApiKey,
+      hasTwilio: !!(twilioAccountSid && twilioAuthToken && twilioPhoneNumber),
+      hasTermii: !!Deno.env.get('TERMII_API_KEY'),
+    });
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const resend = resendApiKey ? new Resend(resendApiKey) : null;
@@ -229,8 +244,10 @@ const handler = async (req: Request): Promise<Response> => {
       .or(`insurance_expiry.gte.${formatDate(today)},registration_expiry.gte.${formatDate(today)},inspection_expiry.gte.${formatDate(today)}`);
 
     if (vehiclesError) {
-      console.error("Error fetching vehicles:", vehiclesError);
+      log('error', 'vehicles_fetch_failed', { error: vehiclesError.message });
     }
+    log('info', 'vehicles_loaded', { count: vehicles?.length ?? 0 });
+
 
     const expiringItems: ExpiringItem[] = [];
 
