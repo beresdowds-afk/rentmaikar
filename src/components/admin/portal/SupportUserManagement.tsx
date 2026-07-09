@@ -664,9 +664,9 @@ export const SupportUserManagement = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Password *</Label>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       placeholder="Minimum 8 characters"
+                      autoComplete="new-password"
                       value={newUser.password}
                       onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
                     />
