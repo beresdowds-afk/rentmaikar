@@ -26,7 +26,7 @@ export function ReferralDeliveryTroubleshooter() {
       const { data, error } = await supabase
         .from("messaging_events")
         .select("*")
-        .ilike("event_source", "notify-referees%")
+        .or("template_name.ilike.%referee%,event_type.ilike.%referee%")
         .gte("created_at", since)
         .order("created_at", { ascending: false })
         .limit(500);
@@ -41,11 +41,14 @@ export function ReferralDeliveryTroubleshooter() {
     const map = new Map<string, FailureRow>();
     for (const ev of data ?? []) {
       const meta: any = ev.metadata ?? {};
-      const applicantKey = meta.applicant_id ?? meta.application_id ?? meta.driver_id ?? ev.recipient ?? "unknown";
-      const applicantLabel = meta.applicant_name ?? meta.email ?? ev.recipient ?? applicantKey;
+      const applicantKey =
+        meta.applicant_id ?? meta.application_id ?? meta.driver_id ?? ev.user_id ?? ev.recipient ?? "unknown";
+      const applicantLabel =
+        meta.applicant_name ?? meta.email ?? ev.recipient ?? applicantKey;
       const channel = ev.channel ?? "unknown";
-      const isFailure = ev.status === "failed" || ev.status === "error" || ev.status === "bounced";
-      const isSent = ev.status === "sent" || ev.status === "delivered";
+      const et = (ev.event_type ?? "").toLowerCase();
+      const isFailure = et.includes("fail") || et.includes("error") || et.includes("bounce") || !!ev.error_message;
+      const isSent = et.includes("sent") || et.includes("delivered") || et === "delivery";
 
       let row = map.get(applicantKey);
       if (!row) {
@@ -56,7 +59,7 @@ export function ReferralDeliveryTroubleshooter() {
       const c = row.by_channel[channel] ?? { sent: 0, failed: 0 };
       if (isFailure) {
         c.failed++;
-        c.last_error = meta.error ?? ev.error_message ?? c.last_error;
+        c.last_error = ev.error_message ?? meta.error ?? c.last_error;
         c.last_at = ev.created_at;
       } else if (isSent) c.sent++;
       row.by_channel[channel] = c;
@@ -69,6 +72,7 @@ export function ReferralDeliveryTroubleshooter() {
         return bf - af;
       });
   })();
+
 
   const totalEvents = data?.length ?? 0;
   const totalFailures = rows.reduce(
