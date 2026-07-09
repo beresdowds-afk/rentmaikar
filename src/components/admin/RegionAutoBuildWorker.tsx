@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Sparkles, Globe2, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Loader2, Sparkles, Globe2, RefreshCw, CheckCircle2, XCircle, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -22,8 +25,16 @@ interface RegionRow {
   payment_gateway: string;
   sms_provider: string;
   build_error: string | null;
+  build_log: any[] | null;
   updated_at: string;
 }
+
+interface LocalizedContentRow {
+  content_key: string;
+  content: any;
+}
+
+const TOTAL_STEPS = 6;
 
 const emptyForm = {
   country_name: "",
@@ -42,9 +53,16 @@ const emptyForm = {
   cultural_tone: "warm, trustworthy, community-oriented",
 };
 
+const stepsCompleted = (log: any[] | null | undefined) =>
+  (log ?? []).filter((e) => e?.event === "step_done").length;
+
 export const RegionAutoBuildWorker = () => {
   const [form, setForm] = useState(emptyForm);
   const [building, setBuilding] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewData, setPreviewData] = useState<any | null>(null);
+  const [previewRegion, setPreviewRegion] = useState<RegionRow | null>(null);
+  const [previewContent, setPreviewContent] = useState<LocalizedContentRow[]>([]);
   const [regions, setRegions] = useState<RegionRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,7 +70,7 @@ export const RegionAutoBuildWorker = () => {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from("region_definitions")
-      .select("id,country_name,country_code,currency,currency_symbol,phone_prefix,flag_emoji,status,payment_gateway,sms_provider,build_error,updated_at")
+      .select("id,country_name,country_code,currency,currency_symbol,phone_prefix,flag_emoji,status,payment_gateway,sms_provider,build_error,build_log,updated_at")
       .order("updated_at", { ascending: false });
     if (error) toast.error(error.message);
     setRegions((data ?? []) as RegionRow[]);
@@ -61,24 +79,70 @@ export const RegionAutoBuildWorker = () => {
 
   useEffect(() => { load(); }, []);
 
-  const build = async () => {
+  // Realtime subscription for live job status.
+  useEffect(() => {
+    const channel = supabase
+      .channel("region-autobuild-status")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "region_definitions" },
+        (payload: any) => {
+          setRegions((prev) => {
+            if (payload.eventType === "DELETE") {
+              return prev.filter((r) => r.id !== payload.old.id);
+            }
+            const next = payload.new as RegionRow;
+            const idx = prev.findIndex((r) => r.id === next.id);
+            if (idx === -1) return [next, ...prev];
+            const copy = [...prev];
+            copy[idx] = { ...copy[idx], ...next };
+            return copy;
+          });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  const build = async (preview_only = false) => {
     if (!form.country_name || !form.country_code || !form.currency || !form.currency_symbol || !form.phone_prefix) {
       toast.error("Country name, code, currency, symbol, and phone prefix are required");
       return;
     }
-    setBuilding(true);
-    const t = toast.loading(`Auto-building region for ${form.country_name}…`);
+    const busy = preview_only ? setPreviewing : setBuilding;
+    busy(true);
+    const t = toast.loading(preview_only ? `Generating preview for ${form.country_name}…` : `Auto-building region for ${form.country_name}…`);
     try {
-      const { data, error } = await supabase.functions.invoke("region-autobuild", { body: form });
+      const { data, error } = await supabase.functions.invoke("region-autobuild", {
+        body: { ...form, preview_only },
+      });
       if (error) throw error;
-      toast.success(`Region built for ${form.country_name}`, { id: t, description: `${data?.log?.length ?? 0} content blocks generated` });
-      setForm(emptyForm);
-      load();
+      if (preview_only) {
+        setPreviewData(data?.preview ?? null);
+        setPreviewRegion(null);
+        setPreviewContent([]);
+        toast.success("Preview ready — review before publishing", { id: t });
+      } else {
+        toast.success(`Region built for ${form.country_name}`, { id: t, description: `${data?.log?.length ?? 0} events` });
+        setForm(emptyForm);
+        load();
+      }
     } catch (e: any) {
-      toast.error("Auto-build failed", { id: t, description: e.message });
+      toast.error(preview_only ? "Preview failed" : "Auto-build failed", { id: t, description: e.message });
     } finally {
-      setBuilding(false);
+      busy(false);
     }
+  };
+
+  const openPreview = async (r: RegionRow) => {
+    setPreviewRegion(r);
+    setPreviewData(null);
+    const { data, error } = await (supabase as any)
+      .from("region_localized_content")
+      .select("content_key,content")
+      .eq("region_id", r.id);
+    if (error) return toast.error(error.message);
+    setPreviewContent((data ?? []) as LocalizedContentRow[]);
   };
 
   const rebuild = async (r: RegionRow) => {
@@ -106,7 +170,6 @@ export const RegionAutoBuildWorker = () => {
     const { error } = await (supabase as any).from("region_definitions").update({ status: next }).eq("id", r.id);
     if (error) return toast.error(error.message);
     toast.success(next === "published" ? "Region published" : "Region unpublished");
-    load();
   };
 
   const remove = async (r: RegionRow) => {
@@ -114,7 +177,6 @@ export const RegionAutoBuildWorker = () => {
     const { error } = await (supabase as any).from("region_definitions").delete().eq("id", r.id);
     if (error) return toast.error(error.message);
     toast.success("Region deleted");
-    load();
   };
 
   const statusColor = (s: string) =>
@@ -127,7 +189,7 @@ export const RegionAutoBuildWorker = () => {
           <Sparkles className="h-5 w-5 text-primary" />
           <div>
             <h3 className="text-lg font-semibold">Region Auto-Build Worker</h3>
-            <p className="text-sm text-muted-foreground">Spin up a new region: config + AI-generated localized copy across hero, categories, features, testimonials, CTA and how-it-works.</p>
+            <p className="text-sm text-muted-foreground">Spin up a new region: config + AI-generated localized copy across hero, categories, features, testimonials, CTA and how-it-works. Preview before publishing.</p>
           </div>
         </div>
 
@@ -207,8 +269,11 @@ export const RegionAutoBuildWorker = () => {
         </div>
 
         <div className="flex justify-end mt-4 gap-2">
-          <Button variant="outline" onClick={() => setForm(emptyForm)} disabled={building}>Reset</Button>
-          <Button onClick={build} disabled={building}>
+          <Button variant="outline" onClick={() => setForm(emptyForm)} disabled={building || previewing}>Reset</Button>
+          <Button variant="secondary" onClick={() => build(true)} disabled={building || previewing}>
+            {previewing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating preview…</> : <><Eye className="w-4 h-4 mr-2" /> Preview</>}
+          </Button>
+          <Button onClick={() => build(false)} disabled={building || previewing}>
             {building ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Building…</> : <><Sparkles className="w-4 h-4 mr-2" /> Auto-Build Region</>}
           </Button>
         </div>
@@ -219,6 +284,7 @@ export const RegionAutoBuildWorker = () => {
           <div className="flex items-center gap-3">
             <Globe2 className="h-5 w-5 text-primary" />
             <h3 className="text-lg font-semibold">Generated Regions ({regions.length})</h3>
+            <Badge variant="outline" className="text-xs">Live status</Badge>
           </div>
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
@@ -229,35 +295,100 @@ export const RegionAutoBuildWorker = () => {
           <p className="text-sm text-muted-foreground text-center py-8">No regions yet. Build your first region above.</p>
         )}
 
-        <div className="space-y-2">
-          {regions.map((r) => (
-            <div key={r.id} className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{r.flag_emoji || "🌐"}</span>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{r.country_name}</p>
-                    <Badge variant={statusColor(r.status) as any}>{r.status}</Badge>
-                    {r.status === "ready" && <CheckCircle2 className="w-4 h-4 text-success" />}
-                    {r.status === "failed" && <XCircle className="w-4 h-4 text-destructive" />}
+        <div className="space-y-3">
+          {regions.map((r) => {
+            const done = stepsCompleted(r.build_log);
+            const pct = r.status === "building" ? Math.round((done / TOTAL_STEPS) * 100) : r.status === "ready" || r.status === "published" ? 100 : 0;
+            const lastEvent = (r.build_log ?? []).slice(-1)[0];
+            return (
+              <div key={r.id} className="p-3 border rounded-lg">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-2xl">{r.flag_emoji || "🌐"}</span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium truncate">{r.country_name}</p>
+                        <Badge variant={statusColor(r.status) as any}>{r.status}</Badge>
+                        {r.status === "ready" && <CheckCircle2 className="w-4 h-4 text-success" />}
+                        {r.status === "failed" && <XCircle className="w-4 h-4 text-destructive" />}
+                        {r.status === "building" && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {r.country_code} · {r.currency_symbol} {r.currency} · {r.phone_prefix} · {r.payment_gateway} · {r.sms_provider}
+                      </p>
+                      {r.build_error && <p className="text-xs text-destructive mt-1">Error: {r.build_error}</p>}
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {r.country_code} · {r.currency_symbol} {r.currency} · {r.phone_prefix} · {r.payment_gateway} · {r.sms_provider}
-                  </p>
-                  {r.build_error && <p className="text-xs text-destructive mt-1">Error: {r.build_error}</p>}
+                  <div className="flex gap-2 shrink-0">
+                    <Button size="sm" variant="outline" onClick={() => openPreview(r)} disabled={r.status === "building"}>
+                      <Eye className="w-4 h-4 mr-1" /> Preview
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => rebuild(r)}>Edit / Rebuild</Button>
+                    <Button size="sm" variant={r.status === "published" ? "secondary" : "default"} onClick={() => publish(r)} disabled={r.status === "building" || r.status === "failed"}>
+                      {r.status === "published" ? "Unpublish" : "Publish"}
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => remove(r)}>Delete</Button>
+                  </div>
                 </div>
+                {(r.status === "building" || r.status === "ready" || r.status === "failed") && (
+                  <div className="mt-2 space-y-1">
+                    <Progress value={pct} className="h-1.5" />
+                    <p className="text-xs text-muted-foreground">
+                      {done}/{TOTAL_STEPS} steps
+                      {lastEvent?.key ? ` · last: ${lastEvent.event} (${lastEvent.key})` : lastEvent?.event ? ` · ${lastEvent.event}` : ""}
+                    </p>
+                  </div>
+                )}
               </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => rebuild(r)}>Edit / Rebuild</Button>
-                <Button size="sm" variant={r.status === "published" ? "secondary" : "hero"} onClick={() => publish(r)} disabled={r.status === "building" || r.status === "failed"}>
-                  {r.status === "published" ? "Unpublish" : "Publish"}
-                </Button>
-                <Button size="sm" variant="destructive" onClick={() => remove(r)}>Delete</Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
+
+      {/* Preview modal: either newly generated preview (no region row) or existing region content */}
+      <Dialog open={!!previewData || !!previewRegion} onOpenChange={(open) => { if (!open) { setPreviewData(null); setPreviewRegion(null); setPreviewContent([]); } }}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {previewRegion ? `Preview: ${previewRegion.country_name}` : `Preview: ${form.country_name || "New region"}`}
+            </DialogTitle>
+            <DialogDescription>
+              Localized content and configuration. Review before publishing.
+            </DialogDescription>
+          </DialogHeader>
+          <Tabs defaultValue="hero" className="w-full">
+            <TabsList className="flex-wrap h-auto">
+              {(previewData ? Object.keys(previewData) : previewContent.map((c) => c.content_key)).map((k) => (
+                <TabsTrigger key={k} value={k}>{k}</TabsTrigger>
+              ))}
+              <TabsTrigger value="config">config</TabsTrigger>
+            </TabsList>
+            {(previewData
+              ? Object.entries(previewData)
+              : previewContent.map((c) => [c.content_key, c.content] as [string, any])
+            ).map(([k, v]) => (
+              <TabsContent key={k} value={k}>
+                <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto max-h-[50vh]">
+                  {JSON.stringify(v, null, 2)}
+                </pre>
+              </TabsContent>
+            ))}
+            <TabsContent value="config">
+              <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto max-h-[50vh]">
+                {JSON.stringify(previewRegion ?? form, null, 2)}
+              </pre>
+            </TabsContent>
+          </Tabs>
+          <div className="flex justify-end gap-2 pt-2">
+            {previewRegion && previewRegion.status !== "published" && (
+              <Button onClick={() => { publish(previewRegion); setPreviewRegion(null); }}>
+                Publish {previewRegion.country_name}
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => { setPreviewData(null); setPreviewRegion(null); setPreviewContent([]); }}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
