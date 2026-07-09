@@ -188,11 +188,56 @@ const categoryConfig = {
 };
 
 export function SecretsManagement() {
+  const { user, userRole, twoFactorVerified } = useAuth();
+  const [unlocked, setUnlocked] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
   const [testingSecret, setTestingSecret] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, "success" | "error" | null>>({});
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [testPhone, setTestPhone] = useState("");
   const [testEmail, setTestEmail] = useState("");
+
+  const isAdmin = userRole === "admin";
+  const canAccess = isAdmin && twoFactorVerified;
+
+  const unlockPortal = async () => {
+    if (!canAccess) {
+      toast.error("Requires an admin account with 2FA verified this session.");
+      return;
+    }
+    setUnlocking(true);
+    try {
+      await supabase.rpc("log_admin_action", {
+        _action: "opened_secrets_portal",
+        _target_table: null,
+        _target_id: null,
+        _details: { at: new Date().toISOString() } as any,
+      });
+      setUnlocked(true);
+    } catch (e: any) {
+      toast.error(`Access log failed: ${e.message ?? e}`);
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
+  const requestRotation = async (secretName: string) => {
+    try {
+      await supabase.rpc("log_admin_action", {
+        _action: "requested_secret_rotation",
+        _target_table: null,
+        _target_id: secretName,
+        _details: { secret: secretName } as any,
+      });
+      toast.success(
+        `Rotation requested for ${secretName}. In the Lovable chat, ask: "Rotate ${secretName}" — you'll get a secure form to paste the new value.`,
+        { duration: 8000 }
+      );
+    } catch (e: any) {
+      toast.error(`Could not log rotation request: ${e.message ?? e}`);
+    }
+  };
+
 
   const testTwilioSecrets = async () => {
     if (!testPhone) {
