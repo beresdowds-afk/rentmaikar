@@ -22,6 +22,7 @@ import { RoleManagement } from "@/components/admin/RoleManagement";
 import { DailyPlanManagement } from "@/components/admin/DailyPlanManagement";
 import { AdminIncidentManagement } from "@/components/admin/AdminIncidentManagement";
 import { VehicleRecallManagement } from "@/components/admin/VehicleRecallManagement";
+import { CallInMonitor } from "@/components/admin/CallInMonitor";
 import { AdminWeeklyReportManagement } from "@/components/admin/AdminWeeklyReportManagement";
 import { AdminPriceNegotiation } from "@/components/negotiation/AdminPriceNegotiation";
 import LegalAgreementsManagement from "@/components/admin/LegalAgreementsManagement";
