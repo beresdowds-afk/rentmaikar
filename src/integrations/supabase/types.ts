@@ -2379,6 +2379,7 @@ export type Database = {
           email_verified: boolean | null
           full_name: string | null
           id: string
+          is_active: boolean
           notification_email: boolean | null
           notification_sms: boolean | null
           notification_whatsapp: boolean | null
@@ -2399,6 +2400,7 @@ export type Database = {
           email_verified?: boolean | null
           full_name?: string | null
           id?: string
+          is_active?: boolean
           notification_email?: boolean | null
           notification_sms?: boolean | null
           notification_whatsapp?: boolean | null
@@ -2419,6 +2421,7 @@ export type Database = {
           email_verified?: boolean | null
           full_name?: string | null
           id?: string
+          is_active?: boolean
           notification_email?: boolean | null
           notification_sms?: boolean | null
           notification_whatsapp?: boolean | null
