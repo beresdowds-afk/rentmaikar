@@ -1,92 +1,86 @@
-## Scope
+## Driver Call-In System
 
-Four related additions across the platform. All region-aware via `RegionContext`.
+Add three "Call In" actions on the Driver Dashboard — **Vehicle Fault**, **Maintenance Schedule**, and **Sick Call-In( incl**ude notes for nature of fault and maintenance call in) — that pause payments, geofence the vehicle to a 20 m radius, capture detailed real time vehicle telemetry at point of call in, logges report and escalate to a vehicle recall when abused.
 
----
+### 1. Driver Dashboard UI
 
-### 1. Meta Pixel integration
+New "Call In" card on `src/pages/DriverDashboard.tsx` with three buttons. Each opens a confirmation dialog that:
 
-- Add Meta Pixel base script to `index.html` (loaded async, uses `VITE_META_PIXEL_ID`).
-- Include `<noscript><img/></noscript>` fallback in `<body>` (per HTML rules).
-- Create `src/lib/meta-pixel.ts` helper exporting `trackEvent(name, params)` and `trackPageView()`.
-- Wire `trackPageView()` into the router (listen to route changes in `App.tsx`).
-- Fire standard events at key moments: `Lead` (registration start), `CompleteRegistration`, `SubmitApplication`, `Purchase` (payment success), `Contact` (support open).
-- Consent-aware: gated by existing `rentmaikar_message_consent` / cookie consent — no pixel until user consents.
-- Ask user to add `VITE_META_PIXEL_ID` (build-time public var, safe in codebase once provided). For now, script no-ops when the ID is missing.
+- Captures current vehicle GPS (from latest MQTT/Traccar telemetry) as geofence center.
+- Requires a short reason (validated with Zod, max 500 chars).
+- Shows the rules: 24 h validity (fault/maintenance), 7 d cap (sick, needs owner+admin approval beyond that), auto-reactivation on geofence breach.
 
-### 2. TRACCAR alternative to EMQX
+An "Active Call-Ins" panel shows the live call-in, remaining time, geofence status, and a "Cancel Call-In" button.
 
-Prep only — do not remove EMQX. Add a switchable telemetry backend.
+If the driver has an active recall request or approved recall, the Call In buttons are disabled with an explanatory message.
 
-- New table `telemetry_providers` (id, name enum: `emqx`|`traccar`, is_active, base_url, api_key_secret_name, region_scope, priority).
-- Migration seeds current EMQX as active default.
-- New shared module `supabase/functions/_shared/telemetry-client.ts` with `getActiveProvider()` and adapters `emqxAdapter` / `traccarAdapter` exposing a common interface: `publish`, `subscribeStatus`, `getDeviceState`, `sendCommand`.
-- Traccar adapter uses REST API (`/api/positions`, `/api/commands/send`, `/api/devices`) — reads `TRACCAR_BASE_URL` + `TRACCAR_API_TOKEN` secrets (added via `add_secret` when user is ready to activate).
-- Update `iot_devices` table: add `provider` column (default `emqx`).
-- Admin UI: new "Telemetry Providers" card in IoT settings to toggle active provider and set per-region priority.
-- Existing edge functions (`emqx-monitoring`, MQTT publishers) call `telemetry-client` instead of hitting EMQX directly. Behavior unchanged while EMQX remains active.
+### 2. Database (new migration)
 
-### 3. PayPal (USA default) and Opay (NG default) as default PSPs
+- `**driver_call_ins**`: `driver_id`, `rental_id`, `vehicle_id`, `type` (`fault` | `maintenance` | `sick`), `reason`, `status` (`active` | `expired` | `cancelled` | `breached` | `resolved`), `geofence_lat`, `geofence_lng`, `geofence_radius_m` (default 20), `started_at`, `expires_at`, `ended_at`, `end_reason`, standard timestamps.
+- `**vehicle_geofences**`: active geofence per vehicle tied to a call-in (`vehicle_id`, `call_in_id`, `center_lat`, `center_lng`, `radius_m`, `active`, `breached_at`).
+- Extend `**vehicle_recalls**` with `triggered_by_call_ins` (uuid[]) and `owner_approval_status`, `admin_validation_status` if not already present.
+- RLS: driver reads/creates own call-ins; owner reads call-ins on their vehicles; admin/admin_assistant full access. GRANTs for authenticated + service_role.
+- Trigger on insert: sets `expires_at = now() + 24h` for fault/maintenance, `+ 7d` for sick.
+- Trigger on insert: sets `profiles.payments_suspended = true` (new boolean column) and records `suspended_reason`, `suspended_until`.
+- Trigger on status change to `expired`/`cancelled`/`breached`/`resolved`: clears suspension unless another active call-in exists.
 
-- Extend `region_definitions.payment_gateways` semantics: first array item = default PSP.
-- Migration: update USA row → `payment_gateways = ['paypal', ...existing]`; NG row → `payment_gateways = ['opay', ...existing]`.
-- New `src/lib/payment-providers.ts`: `getDefaultPSP(country)` reads from `RegionContext.regionDefinition.payment_gateways[0]`, with fallback map (`US→paypal`, `NG→opay`, `GH→paystack`, default → `paypal`).
-- Checkout components (`PaymentMethodSelector`, `RentalCheckout`, `SubscriptionCheckout`) call `getDefaultPSP()` to pre-select provider, but still show other options if configured.
-- Edge functions:
-  - `supabase/functions/create-paypal-order/index.ts` — creates PayPal order (uses `PAYPAL_CLIENT_ID` + `PAYPAL_SECRET`, requested via `add_secret`).
-  - `supabase/functions/create-opay-payment/index.ts` — creates Opay checkout session (uses `OPAY_PUBLIC_KEY`, `OPAY_SECRET_KEY`, `OPAY_MERCHANT_ID`, requested via `add_secret`).
-  - Both write to `payments` table with `provider` field.
-- Admin `RegionAutoBuildWorker` default-provider dropdown updated to show PayPal/Opay first.
+### 3. Payment Suspension
 
-### 4. Persona identity verification + automated referee verification
+- Add `payments_suspended`, `suspended_reason`, `suspended_until` on `profiles`.
+- `process-daily-debits`, `process-predue-reminders`, and `process-payment-defaults` skip drivers where `payments_suspended = true` and log the skip in `messaging_events`.
+- Driver dashboard payment card shows a "Payments Suspended" banner with call-in reference and expiry.
 
-**Persona as primary KYC**
+### 4. Geofence Enforcement (edge function + cron)
 
-- Add `persona_inquiries` table: `id, user_id, subject_type (self|referee), subject_ref (referee_id), inquiry_id, template_id, status (created|pending|approved|declined|needs_review), verified_at, mismatch_fields jsonb, raw_payload jsonb`.
-- Edge function `persona-create-inquiry`: server-side creates an inquiry using `PERSONA_API_KEY` + `PERSONA_TEMPLATE_ID` (requested via `add_secret`), returns hosted-flow URL + inquiry id. Region-aware template selection (`PERSONA_TEMPLATE_ID_US`, `_NG`).
-- Edge function `persona-webhook` (public, HMAC-verified with `PERSONA_WEBHOOK_SECRET`): updates `persona_inquiries.status` and triggers referee reconciliation.
-- Client component `src/components/verification/PersonaVerification.tsx`: opens Persona hosted flow, polls status. Replaces existing KYC entrypoints in registration + document verification screens (feature-flagged; existing flows remain until Persona keys are configured).
+- New edge function `**enforce-call-in-geofence**` (cron every 60 s, `verify_jwt = false`, `CRON_SECRET` guarded):
+  - Loads active `vehicle_geofences`.
+  - Fetches latest vehicle location via existing telemetry client (MQTT snapshot table / Traccar).
+  - Computes Haversine distance (reuse `src/lib/geo-utils.ts` logic ported to Deno). Breach if distance > `radius_m`.
+  - On breach: marks call-in `breached`, geofence `active=false`, reactivates payments, logs to `messaging_events`, notifies driver + owner + admin via `send-inbox-reply` (email + SMS/WhatsApp per region).
+- New edge function `**expire-call-ins**` (cron every 5 min): flips `active`→`expired` when `expires_at < now()`, clears suspension.
 
-**Referee verification (new)**
+### 5. Recall Escalation
 
-- Applications already collect referees. Add table `referee_verifications` (`id, application_id, referee_index, full_name, phone, email, id_type, id_number, persona_inquiry_id, status, mismatch_reason, verified_at`).
-- On application submit (or admin trigger), edge function `verify-referees` iterates each referee and creates a Persona inquiry using the credentials the user submitted for that referee (name, DOB, ID number, phone). Uses Persona's "government ID + selfie" template for full check, or "database" template for name/phone/ID cross-check when no selfie possible.
-- Persona webhook updates `referee_verifications.status`. On `declined` or field mismatch:
-  - Insert row into `expiry_notifications` / trigger `send-inbox-message` edge function to notify the user via inbox + email + SMS (Twilio for US, Termii for NG — via RegionContext).
-  - Message: "Referee #N could not be verified: <reason>. Please update your referee details."
-  - Mark `applications.referees_verification_status = 'action_required'`.
-- Admin UI: new "Referee Verification" panel in the application review screen shows per-referee status, mismatches, and a "Re-run verification" button.
-- User UI: `RefereeSection` in profile shows verification badge per referee and inline edit form when action required.
+- New edge function `**check-repeat-call-ins**` (runs after each call-in insert via trigger `pg_net` webhook, and nightly):
+  - If a driver has ≥1 fault/maintenance call-in on each of 2 consecutive calendar days for the same vehicle, insert a `vehicle_recalls` row with `status='requested'`, `reason='repeat_call_ins'`, and link the triggering call-ins.
+  - Notify driver, owner, and admin dashboards (in-app + email).
+- Sick call-in >7 days: when `expires_at` is reached and driver flags "extend", a recall request is created requiring **owner consent** + **admin approval** before the vehicle is released for reassignment.
+- Extend `src/components/admin/VehicleRecallManagement.tsx` and add an owner-side approval card (`src/components/owner/RecallApprovalCard.tsx`) with Approve/Reject actions. Approval requires both owner + admin; either rejection cancels the recall.
 
----
+### 6. Notifications
 
-## Secrets to request (in order, after confirmation)
+Reuse `notify-referees`-style multi-channel sender (`send-inbox-reply` / `send-sms-notification` / WhatsApp) with region-aware templates in `src/lib/region-templates.ts` for: call-in created, geofence breached, payment reactivated, recall requested, recall approved/rejected.
 
-1. `VITE_META_PIXEL_ID` (build-time; add via Workspace → Build Secrets, OR paste value to hardcode as public config).
-2. `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET`, `PAYPAL_MODE` (`sandbox`/`live`).
-3. `OPAY_PUBLIC_KEY`, `OPAY_SECRET_KEY`, `OPAY_MERCHANT_ID`.
-4. `PERSONA_API_KEY`, `PERSONA_TEMPLATE_ID_US`, `PERSONA_TEMPLATE_ID_NG`, `PERSONA_WEBHOOK_SECRET`.
-5. (Later, when activating) `TRACCAR_BASE_URL`, `TRACCAR_API_TOKEN`.
+### 7. Tests
 
-All edge functions will fail gracefully with a clear "provider not configured" response if secrets are missing, so the UI can be shipped before keys arrive.
+- Unit: geofence Haversine breach logic, call-in expiry timing, repeat-call-in detector (2 consecutive days), suspension skip in debit worker.
+- Component: Driver dashboard Call In dialog validation and disabled states.
+- Integration (vitest + supabase mocks): create call-in → payment suspended → simulate breach → payment reactivated + notifications logged.
 
----
+### Files
 
-## Technical notes
+**New**
 
-- All new tables include `GRANT`s per public-schema rule and RLS policies scoped to `auth.uid()` / `has_role(_,'admin')`.
-- Region context drives: default PSP, Persona template, referee-notification channel, Meta Pixel event locale.
-- New tests: `src/lib/__tests__/payment-providers.test.ts`, `src/lib/__tests__/meta-pixel.test.ts`, `supabase/functions/_shared/telemetry-client.test.ts` (adapter contract), referee-verification unit test.
-- No breaking changes to existing checkout, IoT, or KYC flows — new paths are additive and feature-flagged on secret presence.
+- `supabase/migrations/<ts>_driver_call_ins.sql`
+- `supabase/functions/enforce-call-in-geofence/index.ts`
+- `supabase/functions/expire-call-ins/index.ts`
+- `supabase/functions/check-repeat-call-ins/index.ts`
+- `supabase/functions/create-call-in/index.ts` (server-side create with validation + geofence init)
+- `src/components/driver/CallInPanel.tsx`
+- `src/components/driver/CallInDialog.tsx`
+- `src/components/owner/RecallApprovalCard.tsx`
+- `src/hooks/useCallIns.ts`
+- `src/lib/__tests__/call-in-geofence.test.ts`
+- `src/lib/__tests__/call-in-repeat.test.ts`
 
----
+**Edited**
 
-## Deliverables checklist
-
-- [ ] Meta Pixel: index.html, `meta-pixel.ts`, route + event hooks
-- [ ] Telemetry: migration, adapters, `telemetry-client`, admin toggle
-- [ ] PSPs: migration, `payment-providers.ts`, PayPal + Opay edge functions, checkout wiring
-- [ ] Persona: migration, `persona-create-inquiry` + `persona-webhook` functions, client component, KYC wiring
-- [ ] Referee verification: migration, `verify-referees` function, notification hook, admin + user UI
-- [ ] Tests for each area
-- [ ] Request secrets in follow-up messages as each block is ready
+- `src/pages/DriverDashboard.tsx` (mount CallInPanel, suspension banner)
+- `src/pages/OwnerDashboard.tsx` (recall approvals)
+- `src/pages/AdminDashboard.tsx` (call-in monitoring tab in VehicleRecallManagement)
+- `src/components/admin/VehicleRecallManagement.tsx`
+- `supabase/functions/process-daily-debits/index.ts`
+- `supabase/functions/process-predue-reminders/index.ts`
+- `supabase/functions/process-payment-defaults/index.ts`
+- `src/lib/region-templates.ts`
+- `supabase/config.toml` (cron entries for the three new functions)
