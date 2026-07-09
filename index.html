@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="Rentmaikar" />
     <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
     <link rel="apple-touch-icon" href="/favicon.jpg" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.paypal.com https://api.paystack.co; frame-src 'self' https://www.paypal.com https://paystack.com; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://unpkg.com https://www.facebook.com https://*.facebook.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.paypal.com https://api.paystack.co https://cashierapi.opayweb.com https://withpersona.com https://*.facebook.com; frame-src 'self' https://www.paypal.com https://paystack.com https://withpersona.com; object-src 'none'; base-uri 'self'; form-action 'self'" />
 
     <meta property="og:title" content="Rentmaikar - Rideshare Vehicle Rentals" />
     <meta property="og:description" content="Rent vehicles for rideshare driving or list your car for passive income. Serving USA and Nigeria." />
@@ -28,6 +28,8 @@
 
   <body>
     <div id="root"></div>
+    <!-- Meta Pixel (loaded via src/lib/meta-pixel.ts once user consent + VITE_META_PIXEL_ID are set) -->
+    <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?ev=PageView&noscript=1" /></noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
