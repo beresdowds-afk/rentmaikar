@@ -450,7 +450,16 @@ export function SecretsManagement() {
                             <ExternalLink className="w-4 h-4" />
                           </Button>
                         )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => requestRotation(secret.name)}
+                        >
+                          <RotateCw className="w-4 h-4 mr-1" />
+                          Request rotation
+                        </Button>
                       </div>
+
                     </div>
                   ))}
 
