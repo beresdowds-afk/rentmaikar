@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Lock, RotateCw } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +40,7 @@ interface SecretConfig {
   name: string;
   displayName: string;
   description: string;
-  category: "sms" | "sms_ng" | "email" | "payment" | "system";
+  category: "sms" | "sms_ng" | "email" | "payment" | "iot" | "voice" | "system";
   testable: boolean;
   docsUrl?: string;
   region?: "USA" | "Nigeria";
@@ -139,6 +141,40 @@ const secrets: SecretConfig[] = [
     docsUrl: "https://paystack.com/docs/api/",
     region: "Nigeria",
   },
+  // IoT / MQTT (EMQX)
+  {
+    name: "EMQX_API_URL",
+    displayName: "EMQX API URL",
+    description: "Base URL for the EMQX broker management API",
+    category: "iot",
+    testable: false,
+    docsUrl: "https://docs.emqx.com/en/emqx/latest/admin/api.html",
+  },
+  {
+    name: "EMQX_API_KEY",
+    displayName: "EMQX API Key",
+    description: "API key for authenticating to the EMQX management API",
+    category: "iot",
+    testable: false,
+    docsUrl: "https://docs.emqx.com/en/emqx/latest/admin/api.html",
+  },
+  {
+    name: "EMQX_API_SECRET",
+    displayName: "EMQX API Secret",
+    description: "API secret paired with the EMQX API key",
+    category: "iot",
+    testable: false,
+    docsUrl: "https://docs.emqx.com/en/emqx/latest/admin/api.html",
+  },
+  // Voice / TTS
+  {
+    name: "ELEVENLABS_API_KEY",
+    displayName: "ElevenLabs API Key",
+    description: "API key for ElevenLabs text-to-speech (driver training narration)",
+    category: "voice",
+    testable: false,
+    docsUrl: "https://elevenlabs.io/docs/api-reference/introduction",
+  },
 ];
 
 const categoryConfig = {
@@ -146,15 +182,62 @@ const categoryConfig = {
   sms_ng: { icon: Phone, label: "SMS/Voice — Nigeria (Termii)", color: "bg-emerald-600", region: "Nigeria" },
   email: { icon: Mail, label: "Email", color: "bg-green-500", region: null },
   payment: { icon: CreditCard, label: "Payment Gateways", color: "bg-purple-500", region: null },
+  iot: { icon: Shield, label: "IoT / MQTT Broker (EMQX)", color: "bg-orange-500", region: null },
+  voice: { icon: Phone, label: "Voice / TTS", color: "bg-pink-500", region: null },
   system: { icon: Shield, label: "System", color: "bg-gray-500", region: null },
 };
 
 export function SecretsManagement() {
+  const { user, userRole, twoFactorVerified } = useAuth();
+  const [unlocked, setUnlocked] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
   const [testingSecret, setTestingSecret] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, "success" | "error" | null>>({});
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [testPhone, setTestPhone] = useState("");
   const [testEmail, setTestEmail] = useState("");
+
+  const isAdmin = userRole === "admin";
+  const canAccess = isAdmin && twoFactorVerified;
+
+  const unlockPortal = async () => {
+    if (!canAccess) {
+      toast.error("Requires an admin account with 2FA verified this session.");
+      return;
+    }
+    setUnlocking(true);
+    try {
+      await supabase.rpc("log_admin_action", {
+        _action: "opened_secrets_portal",
+        _target_table: null,
+        _target_id: null,
+        _details: { at: new Date().toISOString() } as any,
+      });
+      setUnlocked(true);
+    } catch (e: any) {
+      toast.error(`Access log failed: ${e.message ?? e}`);
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
+  const requestRotation = async (secretName: string) => {
+    try {
+      await supabase.rpc("log_admin_action", {
+        _action: "requested_secret_rotation",
+        _target_table: null,
+        _target_id: secretName,
+        _details: { secret: secretName } as any,
+      });
+      toast.success(
+        `Rotation requested for ${secretName}. In the Lovable chat, ask: "Rotate ${secretName}" — you'll get a secure form to paste the new value.`,
+        { duration: 8000 }
+      );
+    } catch (e: any) {
+      toast.error(`Could not log rotation request: ${e.message ?? e}`);
+    }
+  };
+
 
   const testTwilioSecrets = async () => {
     if (!testPhone) {
@@ -258,14 +341,59 @@ export function SecretsManagement() {
     return acc;
   }, {} as Record<string, SecretConfig[]>);
 
+  if (!unlocked) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">API Secrets Management</h2>
+          <p className="text-muted-foreground">
+            Gated portal — admin access with 2FA required
+          </p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Restricted area
+            </CardTitle>
+            <CardDescription>
+              This portal lists third-party credentials configured for the platform. Access is
+              limited to admins with 2FA verified in the current session. Each unlock is written
+              to the admin audit log.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!user && <p className="text-sm text-destructive">You are not signed in.</p>}
+            {user && !isAdmin && (
+              <p className="text-sm text-destructive">Your account is not an admin.</p>
+            )}
+            {user && isAdmin && !twoFactorVerified && (
+              <p className="text-sm text-destructive">
+                2FA is not verified for this session. Sign out and back in with your 2FA code.
+              </p>
+            )}
+            <Button onClick={unlockPortal} disabled={!canAccess || unlocking}>
+              {unlocking ? (
+                <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Unlocking…</>
+              ) : (
+                <><Lock className="w-4 h-4 mr-2" />Unlock secrets portal</>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">API Secrets Management</h2>
         <p className="text-muted-foreground">
-          View and test configured API keys for third-party services
+          View and test configured API keys. All actions are audit-logged.
         </p>
       </div>
+
 
       <Alert>
         <Info className="h-4 w-4" />
@@ -322,7 +450,16 @@ export function SecretsManagement() {
                             <ExternalLink className="w-4 h-4" />
                           </Button>
                         )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => requestRotation(secret.name)}
+                        >
+                          <RotateCw className="w-4 h-4 mr-1" />
+                          Request rotation
+                        </Button>
                       </div>
+
                     </div>
                   ))}
 
