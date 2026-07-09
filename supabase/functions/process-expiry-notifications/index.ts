@@ -472,9 +472,13 @@ const handler = async (req: Request): Promise<Response> => {
           });
           results.emailsSent++;
         } catch (e) {
-          results.errors.push(`Email to ${recipientType} failed: ${e}`);
+          results.emailsFailed++;
+          const msg = `Email to ${recipientType} failed: ${e}`;
+          results.errors.push(msg);
+          log('error', 'email_send_failed', { recipientType, itemType: item.type, itemId: item.id, error: String(e) });
         }
       }
+
 
       // === SEND SMS (via centralized routing: Twilio USA / Termii Nigeria) ===
       if (primaryPhone && primarySms) {
