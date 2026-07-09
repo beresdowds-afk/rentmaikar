@@ -525,6 +525,7 @@ const AdminDashboard = () => {
           {portalView === 'crm' && (
             <div className="space-y-6">
               {activeTab === 'applications' && <ApplicationManagement />}
+              {activeTab === 'attestation-review' && <NegativeAttestationReviewPanel />}
               {activeTab === 'accounts' && <UserAccountsView />}
               {activeTab === 'roles' && <RoleManagement />}
               {activeTab === 'negotiations' && <AdminPriceNegotiation />}
