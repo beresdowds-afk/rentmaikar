@@ -63,6 +63,22 @@ export default function RefereeVerificationPanel({ applicationId, canRun = true 
     }
   }
 
+  async function sendInvites() {
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("notify-referees", {
+        body: { application_id: applicationId },
+      });
+      if (error) throw error;
+      toast.success(`Attestation invites sent to ${data?.sent ?? 0} referee(s) via email, SMS and WhatsApp`);
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not send invites");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="rounded-lg border p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -70,10 +86,16 @@ export default function RefereeVerificationPanel({ applicationId, canRun = true 
           <Shield /> Referee verification
         </h3>
         {canRun && (
-          <Button size="sm" variant="outline" onClick={run} disabled={busy}>
-            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-            Re-run verification
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={sendInvites} disabled={busy}>
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Send attestation invites
+            </Button>
+            <Button size="sm" variant="outline" onClick={run} disabled={busy}>
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Re-run verification
+            </Button>
+          </div>
         )}
       </div>
       {loading ? <p className="text-sm text-muted-foreground">Loading…</p> : rows.length === 0 ? (
