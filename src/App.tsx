@@ -14,6 +14,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import PageSkeleton from "@/components/PageSkeleton";
 import SkipToContent from "@/components/SkipToContent";
 import LiveAnnouncer from "@/components/LiveAnnouncer";
+import MetaPixelRouteTracker from "@/components/MetaPixelRouteTracker";
 
 // Lazy-loaded pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -48,6 +49,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <MetaPixelRouteTracker />
               <SkipToContent />
               <LiveAnnouncer />
               <CookieConsent />
