@@ -49,6 +49,16 @@ verify_jwt = false
 [functions.sms-commands]
 verify_jwt = false
 
+# Call-in geofence + expiry workers (cron-only, protected by CRON_SECRET header check)
+[functions.enforce-call-in-geofence]
+verify_jwt = false
+
+[functions.expire-call-ins]
+verify_jwt = false
+
+[functions.check-repeat-call-ins]
+verify_jwt = false
+
 # ─────────────────────────────────────────────
 # IoT / Device triggers (called by embedded hardware)
 # ─────────────────────────────────────────────
