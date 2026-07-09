@@ -622,10 +622,10 @@ const Auth = () => {
                 
                 <div className="space-y-2">
                   <Label htmlFor="signup-confirm">Confirm Password</Label>
-                  <Input
+                  <PasswordInput
                     id="signup-confirm"
-                    type="password"
                     placeholder="••••••••"
+                    autoComplete="new-password"
                     {...signupForm.register('confirmPassword')}
                     disabled={isSubmitting}
                   />
