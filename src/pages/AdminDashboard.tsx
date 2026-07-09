@@ -493,6 +493,14 @@ const AdminDashboard = () => {
                 <Headphones className="h-4 w-4" />
                 Support Tasks
               </Button>
+              <Button
+                variant={activeTab === 'attestation-review' ? 'default' : 'outline'}
+                className="gap-2"
+                onClick={() => { setPortalView('crm'); setActiveTab('attestation-review'); }}
+              >
+                <AlertTriangle className="h-4 w-4" />
+                Referee Reviews
+              </Button>
             </div>
           </div>
 
