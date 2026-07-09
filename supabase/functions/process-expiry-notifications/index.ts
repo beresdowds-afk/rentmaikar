@@ -412,7 +412,9 @@ const handler = async (req: Request): Promise<Response> => {
         .eq('notification_type', item.type)
         .maybeSingle();
 
-      if (existingNotification) continue;
+      if (existingNotification) { results.skippedAlreadyNotified++; continue; }
+      results.notificationsAttempted++;
+
 
       const typeLabel = item.type.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
       const urgency = getTierUrgency(item.days_until_expiry);
