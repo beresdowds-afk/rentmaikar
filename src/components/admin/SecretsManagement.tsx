@@ -626,3 +626,58 @@ export function SecretsManagement() {
     </div>
   );
 }
+
+function AddSecretDialog({ onRequest }: { onRequest: (name: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const valid = /^[A-Z_][A-Z0-9_]*$/.test(name);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="default">
+          <Key className="w-4 h-4 mr-2" />
+          Add new secret
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add a new secret</DialogTitle>
+          <DialogDescription>
+            Enter the secret name (uppercase, underscores). We'll copy a chat command; paste it
+            into Lovable chat and a secure form will open to enter the value. Values are never
+            typed into this app.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2 py-2">
+          <Label htmlFor="secret-name">Secret name</Label>
+          <Input
+            id="secret-name"
+            placeholder="MY_NEW_API_KEY"
+            value={name}
+            onChange={(e) => setName(e.target.value.toUpperCase())}
+          />
+          {!valid && name.length > 0 && (
+            <p className="text-xs text-destructive">
+              Use only A–Z, 0–9 and underscore; must start with a letter or underscore.
+            </p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button
+            disabled={!valid}
+            onClick={() => {
+              onRequest(name);
+              setOpen(false);
+              setName("");
+            }}
+          >
+            Copy chat command
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
