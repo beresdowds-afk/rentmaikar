@@ -62,6 +62,14 @@ export const OwnerPriceNegotiation = () => {
   const { country } = useRegion();
   const currency = country === 'Nigeria' ? 'NGN' : 'USD';
   const currencySymbol = currency === 'NGN' ? '₦' : '$';
+  const { getForCategory: getSpec, formatRange, visible: yearsVisible } = useCategoryYearSpecs(country);
+  const rangeSuffix = (key: 'budget' | 'standard' | 'premium') => {
+    if (!yearsVisible) return '';
+    const spec = getSpec(key);
+    const fallback: Record<string, string> = { budget: '2015-16', standard: '2017-20', premium: '2021-25' };
+    return ` (${spec ? formatRange(spec) : fallback[key]})`;
+  };
+  
   
   const { vehicles, isLoading: vehiclesLoading } = useOwnerVehicles();
   const { 
