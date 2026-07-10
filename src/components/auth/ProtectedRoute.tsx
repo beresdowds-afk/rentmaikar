@@ -37,10 +37,21 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
   // If roles are specified, check if user has one of the allowed roles
   if (allowedRoles && allowedRoles.length > 0) {
     if (!userRole || !allowedRoles.includes(userRole)) {
-      // User doesn't have required role - redirect to appropriate dashboard or home
-      return <Navigate to="/" replace />;
+      // Send user to their own home dashboard rather than the landing page
+      const roleHome: Record<AppRole, string> = {
+        admin: '/admin',
+        admin_assistant: '/admin-assistant',
+        owner: '/owner/dashboard',
+        driver: '/driver/dashboard',
+        legal_support: '/support/legal',
+        iot_support: '/support/iot',
+        vehicle_support: '/support/vehicle',
+      };
+      const fallback = userRole ? roleHome[userRole] : '/';
+      return <Navigate to={fallback} replace />;
     }
   }
+
 
   return <>{children}</>;
 };
