@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-export type PortalType = 'crm' | 'erp' | 'support' | 'marketing';
+export type PortalType = 'crm' | 'erp' | 'support' | 'marketing' | 'docs';
 
 export interface PortalTab {
   value: string;
@@ -39,6 +39,8 @@ export const erpTabs: PortalTab[] = [
   { value: "assets", label: "Assets Registry", icon: <ClipboardList className="h-4 w-4" />, dataTour: "admin-assets" },
   { value: "pickup-locations", label: "Pickup Locations", icon: <MapPin className="h-4 w-4" /> },
   { value: "iot-monitoring", label: "IoT Monitoring Hub", icon: <Radio className="h-4 w-4" /> },
+  { value: "hardware", label: "Hardware", icon: <Cpu className="h-4 w-4" /> },
+  { value: "mqtt-credentials", label: "MQTT Credentials", icon: <Wifi className="h-4 w-4" /> },
   { value: "driver-behavior", label: "Driver Behavior", icon: <Activity className="h-4 w-4" /> },
   { value: "device-orders", label: "Device Orders", icon: <Package className="h-4 w-4" />, dataTour: "admin-device-orders" },
   { value: "device-revenue", label: "Device Revenue", icon: <BarChart3 className="h-4 w-4" /> },
@@ -47,11 +49,20 @@ export const erpTabs: PortalTab[] = [
   { value: "recalls", label: "Vehicle Recalls", icon: <WifiOff className="h-4 w-4" /> },
   { value: "daily-plans", label: "Daily Plans", icon: <Ban className="h-4 w-4" /> },
   { value: "weekly-reports", label: "Weekly Reports", icon: <Camera className="h-4 w-4" />, dataTour: "admin-inspections" },
+  { value: "fees", label: "Fee Structure", icon: <Wallet className="h-4 w-4" /> },
   { value: "tax", label: "Tax & Compliance", icon: <TrendingUp className="h-4 w-4" /> },
+  { value: "secrets", label: "API Secrets", icon: <KeyRound className="h-4 w-4" /> },
+  { value: "api-keys", label: "API Keys", icon: <KeyRound className="h-4 w-4" /> },
+  { value: "webhooks", label: "Webhooks", icon: <Webhook className="h-4 w-4" /> },
+  { value: "api-endpoints", label: "API Endpoints", icon: <Code className="h-4 w-4" /> },
+  { value: "security", label: "Security", icon: <Shield className="h-4 w-4" /> },
   { value: "cron-jobs", label: "Cron Jobs", icon: <Clock className="h-4 w-4" /> },
+  { value: "settings", label: "Regional Operations", icon: <Settings className="h-4 w-4" /> },
+  { value: "region-autobuild", label: "Region Auto-Build", icon: <Globe className="h-4 w-4" /> },
 ];
 
 export const supportTabs: PortalTab[] = [
+  { value: "task-portal", label: "Task Portal", icon: <LayoutGrid className="h-4 w-4" />, dataTour: "admin-portal" },
   { value: "contacts", label: "Contact Settings", icon: <MessageSquare className="h-4 w-4" />, dataTour: "admin-contacts" },
   { value: "insurance", label: "Insurance Support", icon: <Shield className="h-4 w-4" /> },
   { value: "nigeria-verification", label: "🇳🇬 Nigeria Verification", icon: <Flag className="h-4 w-4" /> },
@@ -68,7 +79,11 @@ export const marketingTabs: PortalTab[] = [
   { value: "google", label: "Google Ads", icon: <Chrome className="h-4 w-4" /> },
 ];
 
-export const docsTabs: PortalTab[] = [];
+export const docsTabs: PortalTab[] = [
+  { value: "messaging-docs", label: "SMS & WhatsApp", icon: <MessageSquare className="h-4 w-4" /> },
+  { value: "email-docs", label: "Email System", icon: <Mail className="h-4 w-4" /> },
+  { value: "voip-docs", label: "VoIP & IVR", icon: <Phone className="h-4 w-4" /> },
+];
 
 interface PortalNavigationProps {
   activePortal: PortalType;
@@ -89,6 +104,7 @@ export const PortalNavigation = ({
       case 'erp': return erpTabs;
       case 'support': return supportTabs;
       case 'marketing': return marketingTabs;
+      case 'docs': return docsTabs;
     }
   };
 
@@ -98,6 +114,7 @@ export const PortalNavigation = ({
       case 'erp': return <Building2 className="h-4 w-4" />;
       case 'support': return <Headphones className="h-4 w-4" />;
       case 'marketing': return <Share2 className="h-4 w-4" />;
+      case 'docs': return <BookOpen className="h-4 w-4" />;
     }
   };
 
@@ -107,6 +124,7 @@ export const PortalNavigation = ({
       case 'erp': return 'ERP';
       case 'support': return 'Support';
       case 'marketing': return 'Marketing';
+      case 'docs': return 'Docs';
     }
   };
 
@@ -116,6 +134,7 @@ export const PortalNavigation = ({
       case 'erp': return 'Operations, assets & fleet management';
       case 'support': return 'Communications & task management';
       case 'marketing': return 'Social media & campaign management';
+      case 'docs': return 'Communication system documentation';
     }
   };
 
