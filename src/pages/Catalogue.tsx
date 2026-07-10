@@ -90,7 +90,13 @@ const Catalogue = () => {
   const itemsPerPage = 8;
 
   const driverHome = getDriverHomeLocation(country);
-  const info = categoryInfo[category] || categoryInfo.budget;
+  const baseInfo = categoryInfo[category] || categoryInfo.budget;
+  const { getForCategory, formatRange, visible: yearSpecsVisible } = useCategoryYearSpecs(country);
+  const dynamicSpec = getForCategory(category);
+  const info = {
+    ...baseInfo,
+    years: yearSpecsVisible && dynamicSpec ? formatRange(dynamicSpec) : baseInfo.years,
+  };
   const allVehicles = mockVehicles[category] || mockVehicles.budget;
 
   // Filter vehicles by country first and calculate distances
