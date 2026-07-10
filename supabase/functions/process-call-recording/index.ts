@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireServiceRole } from "../_shared/auth-guards.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,17 +13,33 @@ interface ProcessRecordingRequest {
   recordingSid: string;
 }
 
+// Only accept Twilio-hosted recording URLs to prevent SSRF and credential leaks.
+const isTwilioRecordingUrl = (url: string): boolean => {
+  try {
+    const u = new URL(url);
+    return (
+      u.protocol === 'https:' &&
+      (u.hostname === 'api.twilio.com' || u.hostname.endsWith('.twilio.com'))
+    );
+  } catch {
+    return false;
+  }
+};
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Internal-only endpoint: require service-role bearer token.
+  const authError = requireServiceRole(req);
+  if (authError) return authError;
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // This can be called from Twilio webhook or manually
     const body: ProcessRecordingRequest = await req.json();
     const { callId, recordingUrl, recordingSid } = body;
 
@@ -32,6 +49,15 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    if (!isTwilioRecordingUrl(recordingUrl)) {
+      console.error('Rejected non-Twilio recording URL:', recordingUrl);
+      return new Response(
+        JSON.stringify({ error: 'recordingUrl must be a Twilio-hosted URL' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
 
     // Update call status to processing
     await supabase
