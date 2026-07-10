@@ -44,6 +44,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import SignaturePad from '@/components/legal/SignaturePad';
 import LegalAgreementDocument from '@/components/legal/LegalAgreementDocument';
+import { SplitPane } from '@/components/ui/split-pane';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface Agreement {
   id: string;
