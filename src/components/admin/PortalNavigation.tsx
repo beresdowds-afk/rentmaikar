@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, ShieldCheck, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail, Wifi, Activity, Clock, Radio, Globe, Star } from "lucide-react";
+import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, ShieldCheck, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail, Wifi, Activity, Clock, Radio, Globe, Star, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -49,6 +49,8 @@ export const erpTabs: PortalTab[] = [
   { value: "device-orders", label: "Device Orders", icon: <Package className="h-4 w-4" />, dataTour: "admin-device-orders" },
   { value: "device-revenue", label: "Device Revenue", icon: <BarChart3 className="h-4 w-4" /> },
   { value: "pricing", label: "Category Pricing", icon: <Tag className="h-4 w-4" /> },
+  { value: "category-year-specs", label: "Category Year Specs", icon: <Calendar className="h-4 w-4" /> },
+
   { value: "incidents", label: "Incidents", icon: <Wrench className="h-4 w-4" />, dataTour: "admin-incidents" },
   { value: "recalls", label: "Vehicle Recalls", icon: <WifiOff className="h-4 w-4" /> },
   { value: "daily-plans", label: "Daily Plans", icon: <Ban className="h-4 w-4" /> },
