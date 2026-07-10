@@ -71,6 +71,7 @@ const actionLabels: Record<string, string> = {
 export function RoleManagement() {
   const { user } = useAuth();
   const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [logsLoading, setLogsLoading] = useState(true);
