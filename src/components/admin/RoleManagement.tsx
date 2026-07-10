@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminAssistantManagement } from './AdminAssistantManagement';
+import { AdminAssistantUserAssignments } from './AdminAssistantUserAssignments';
 import { PasswordInput } from '@/components/ui/password-input';
 
 type AppRole = 'admin' | 'admin_assistant' | 'owner' | 'driver' | 'legal_support' | 'iot_support' | 'vehicle_support';
