@@ -23,6 +23,9 @@ verify_jwt = false
 [functions.hologram-sync]
 verify_jwt = false
 
+[functions.send-meta-capi]
+verify_jwt = false
+
 [functions.recording-status-callback]
 verify_jwt = false
 
