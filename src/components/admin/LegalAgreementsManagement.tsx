@@ -26,18 +26,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  FileText, 
-  Plus, 
-  Search, 
-  Eye, 
-  CheckCircle, 
-  Clock, 
+import {
+  FileText,
+  Plus,
+  Search,
+  Eye,
+  CheckCircle,
+  Clock,
   AlertCircle,
   Send,
   Download,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,6 +58,8 @@ import SignaturePad from '@/components/legal/SignaturePad';
 import LegalAgreementDocument from '@/components/legal/LegalAgreementDocument';
 import { SplitPane } from '@/components/ui/split-pane';
 import { Checkbox } from '@/components/ui/checkbox';
+
+const PAGE_SIZE = 10;
 
 interface Agreement {
   id: string;
