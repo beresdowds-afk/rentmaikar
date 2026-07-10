@@ -71,10 +71,18 @@ const Auth = () => {
     if (user && !authLoading && twoFactorVerified && !show2FA) {
       if (userRole === 'admin') {
         navigate('/admin', { replace: true });
+      } else if (userRole === 'admin_assistant') {
+        navigate('/admin-assistant', { replace: true });
       } else if (userRole === 'owner') {
         navigate('/owner/dashboard', { replace: true });
       } else if (userRole === 'driver') {
         navigate('/driver/dashboard', { replace: true });
+      } else if (userRole === 'legal_support') {
+        navigate('/support/legal', { replace: true });
+      } else if (userRole === 'iot_support') {
+        navigate('/support/iot', { replace: true });
+      } else if (userRole === 'vehicle_support') {
+        navigate('/support/vehicle', { replace: true });
       } else {
         navigate(from, { replace: true });
       }
