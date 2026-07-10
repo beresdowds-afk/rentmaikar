@@ -73,6 +73,8 @@ import { DriverBehaviorLogs } from "@/components/admin/DriverBehaviorLogs";
 import { CronJobManagement } from "@/components/admin/CronJobManagement";
 import { TaxManagement } from "@/components/admin/TaxManagement";
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
+import { ScrollableStrip } from '@/components/ui/scrollable-strip';
+
 
 // Mock financial data - in production, this would come from the database
 const mockFinancialData = {
