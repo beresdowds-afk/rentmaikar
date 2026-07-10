@@ -1,6 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { requireAuthenticatedUser } from "../_shared/auth-guards.ts";
 
 const Body = z.object({
   amount: z.number().positive().max(1_000_000),
@@ -11,7 +12,12 @@ const Body = z.object({
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const authRes = await requireAuthenticatedUser(req);
+  if (authRes instanceof Response) return authRes;
+
   try {
+
     const clientId = Deno.env.get("PAYPAL_CLIENT_ID");
     const secret = Deno.env.get("PAYPAL_SECRET");
     const mode = (Deno.env.get("PAYPAL_MODE") ?? "sandbox").toLowerCase();

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
+import { requireServiceRole } from "../_shared/auth-guards.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -22,6 +23,9 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const _authError = requireServiceRole(req);
+  if (_authError) return _authError;
+
 
   try {
     const body: TaskNotificationRequest = await req.json();

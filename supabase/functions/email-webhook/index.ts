@@ -461,11 +461,12 @@ const verifyResendSignature = async (req: Request): Promise<boolean> => {
     const signature = req.headers.get('svix-signature') || req.headers.get('webhook-signature');
     const webhookSecret = Deno.env.get('RESEND_WEBHOOK_SECRET');
     
-    // If no secret is configured, skip verification (log warning)
+    // Fail closed: if no secret is configured, reject all requests.
     if (!webhookSecret) {
-      console.warn('RESEND_WEBHOOK_SECRET not configured - skipping email webhook signature verification');
-      return true; // Allow through but log warning
+      console.error('RESEND_WEBHOOK_SECRET not configured - rejecting email webhook request');
+      return false;
     }
+
     
     if (!signature) {
       console.warn('Missing webhook signature header on email-webhook request');

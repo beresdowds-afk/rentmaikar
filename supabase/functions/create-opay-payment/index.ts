@@ -1,6 +1,9 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { requireAuthenticatedUser } from "../_shared/auth-guards.ts";
+
+
 
 const Body = z.object({
   amount: z.number().positive().max(50_000_000),
@@ -25,8 +28,13 @@ function isNigeriaRegion(v?: string | null) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const authRes = await requireAuthenticatedUser(req);
+  if (authRes instanceof Response) return authRes;
+
   try {
     const secretKey = Deno.env.get("OPAY_SECRET_KEY");
+
     const publicKey = Deno.env.get("OPAY_PUBLIC_KEY");
     const merchantId = Deno.env.get("OPAY_MERCHANT_ID");
     if (!secretKey || !publicKey || !merchantId) {
