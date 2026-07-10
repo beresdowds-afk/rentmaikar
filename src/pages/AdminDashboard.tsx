@@ -5,6 +5,8 @@ import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { IoTMonitoringHub } from "@/components/admin/IoTMonitoringHub";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
+import { VehicleCategoryYearSpecs } from "@/components/admin/VehicleCategoryYearSpecs";
+
 import { SecretsManagement } from "@/components/admin/SecretsManagement";
 import { ApiKeyManagement } from "@/components/admin/ApiKeyManagement";
 import { WebhookManagement } from "@/components/admin/WebhookManagement";
