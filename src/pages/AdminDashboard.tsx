@@ -785,14 +785,6 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* Docs Portal */}
-          {portalView === 'docs' && (
-            <div className="space-y-6">
-              {activeTab === 'messaging-docs' && <MessagingDocs />}
-              {activeTab === 'email-docs' && <EmailDocs />}
-              {activeTab === 'voip-docs' && <VoIPDocs />}
-            </div>
-          )}
         </div>
       </main>
       <Footer />
