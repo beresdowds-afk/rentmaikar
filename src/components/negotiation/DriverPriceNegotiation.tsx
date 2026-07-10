@@ -58,6 +58,16 @@ export const DriverPriceNegotiation = () => {
   const { country } = useRegion();
   const currency = country === 'Nigeria' ? 'NGN' : 'USD';
   const currencySymbol = currency === 'NGN' ? '₦' : '$';
+  const { getForCategory: getSpec, formatRange, visible: yearsVisible } = useCategoryYearSpecs(country);
+  const rangeFor = (key: 'budget' | 'standard' | 'premium') => {
+    if (!yearsVisible) return '';
+    const spec = getSpec(key);
+    return spec ? formatRange(spec) : `${PRICE_CEILINGS[key].min}-${PRICE_CEILINGS[key].max}`;
+  };
+  const rangeSuffix = (key: 'budget' | 'standard' | 'premium') => {
+    const r = rangeFor(key);
+    return r ? ` (${r})` : '';
+  };
   
   const { 
     negotiations, 
