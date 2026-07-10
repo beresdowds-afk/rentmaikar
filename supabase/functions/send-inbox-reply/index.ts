@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
-import { wachimp } from "../_shared/wachimp-client.ts";
+import { whatchimp } from "../_shared/whatchimp-client.ts";
 import { manychat } from "../_shared/manychat-client.ts";
 
 const corsHeaders = {
@@ -72,22 +72,22 @@ serve(async (req) => {
       regionWhatsappProvider = commProv?.whatsapp_provider ?? null;
     }
 
-    // ─── WhatsApp: honor per-region provider preference (Wachimp / Twilio / Termii) ───
+    // ─── WhatsApp: honor per-region provider preference (Whatchimp / Twilio / Termii) ───
     const isNigeria = recipientPhone.startsWith("+234");
     let messageSid = "";
     let messageStatus = "";
 
-    if (channel === "whatsapp" && regionWhatsappProvider === "wachimp" && wachimp.isConfigured()) {
-      const result = await wachimp.sendMessage({ to: recipientPhone, body: messageContent });
-      if (!result.ok) throw new Error(`Wachimp send failed: ${JSON.stringify(result)}`);
+    if (channel === "whatsapp" && regionWhatsappProvider === "whatchimp" && whatchimp.isConfigured()) {
+      const result = await whatchimp.sendMessage({ to: recipientPhone, body: messageContent });
+      if (!result.ok) throw new Error(`Whatchimp send failed: ${JSON.stringify(result)}`);
       messageSid = result.messageId;
       messageStatus = "sent";
       await supabase.from("inbox_messages").update({
         external_id: messageSid,
-        metadata: { provider: "wachimp", status: messageStatus, sent_at: new Date().toISOString() },
+        metadata: { provider: "whatchimp", status: messageStatus, sent_at: new Date().toISOString() },
       }).eq("conversation_id", conversationId).eq("content", messageContent).eq("sender_type", "admin")
         .is("external_id", null).order("created_at", { ascending: false }).limit(1);
-      return new Response(JSON.stringify({ success: true, provider: "wachimp", messageSid }), {
+      return new Response(JSON.stringify({ success: true, provider: "whatchimp", messageSid }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
