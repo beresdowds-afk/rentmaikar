@@ -1,4 +1,5 @@
-import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, ShieldCheck, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail, Wifi, Activity, Clock, Radio, Globe } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, ShieldCheck, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail, Wifi, Activity, Clock, Radio, Globe, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,6 +10,8 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+
 
 export type PortalType = 'crm' | 'erp' | 'support' | 'marketing' | 'docs';
 
