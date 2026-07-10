@@ -245,9 +245,9 @@ const AdminDashboard = () => {
               </div>
               <div>
                 <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
-                  Admin Dashboard
+                  Admin Assistants Dashboard
                 </h1>
-                <p className="text-muted-foreground">Manage vehicles, drivers, and payments</p>
+                <p className="text-muted-foreground">Scoped operations workspace for admin assistants</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
