@@ -92,7 +92,9 @@ Deno.serve(async (req) => {
     };
 
     const encoder = new TextEncoder();
-    const signingSecret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const signingSecret =
+      Deno.env.get('MQTT_JWT_SECRET') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
     const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
     const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
     const signingInput = `${header}.${payloadB64}`;
