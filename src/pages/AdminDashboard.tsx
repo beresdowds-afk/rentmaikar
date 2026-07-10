@@ -700,6 +700,8 @@ const AdminDashboard = () => {
               {activeTab === 'device-orders' && <IoTDeviceOrders />}
               {activeTab === 'device-revenue' && <DeviceOrderRevenue />}
               {activeTab === 'pricing' && <CategoryPricing />}
+              {activeTab === 'category-year-specs' && <VehicleCategoryYearSpecs />}
+
               {activeTab === 'incidents' && <AdminIncidentManagement />}
               {activeTab === 'recalls' && (
                 <div className="space-y-6">
