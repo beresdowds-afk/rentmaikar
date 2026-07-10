@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, DollarSign } from "lucide-react";
+import { ArrowRight, DollarSign, Loader2 } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
 import { useUserType } from "@/contexts/UserTypeContext";
 import { getCategoryContent } from "@/lib/localized-content";
+import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
+import { Skeleton } from "@/components/ui/skeleton";
 import categoryBudget from "@/assets/category-budget.jpg";
 import categoryStandard from "@/assets/category-standard.jpg";
 import categoryPremium from "@/assets/category-premium.jpg";
