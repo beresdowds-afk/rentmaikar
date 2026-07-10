@@ -73,6 +73,8 @@ import { DriverBehaviorLogs } from "@/components/admin/DriverBehaviorLogs";
 import { CronJobManagement } from "@/components/admin/CronJobManagement";
 import { TaxManagement } from "@/components/admin/TaxManagement";
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
+import { ScrollableStrip } from '@/components/ui/scrollable-strip';
+
 
 // Mock financial data - in production, this would come from the database
 const mockFinancialData = {
@@ -487,10 +489,10 @@ const AdminAssistantDashboard = () => {
               />
             </div>
             {/* Independent Quick Access Buttons */}
-            <div className="flex flex-wrap items-center gap-2">
+            <ScrollableStrip ariaLabel="Quick access shortcuts">
               <Button
                 variant={activeTab === 'inbox' ? 'default' : 'outline'}
-                className="gap-2"
+                className="gap-2 shrink-0"
                 onClick={() => { setPortalView('support'); setActiveTab('inbox'); }}
               >
                 <Inbox className="h-4 w-4" />
@@ -498,7 +500,7 @@ const AdminAssistantDashboard = () => {
               </Button>
               <Button
                 variant={activeTab === 'call-center' ? 'default' : 'outline'}
-                className="gap-2"
+                className="gap-2 shrink-0"
                 onClick={() => { setPortalView('support'); setActiveTab('call-center'); }}
               >
                 <Phone className="h-4 w-4" />
@@ -506,7 +508,7 @@ const AdminAssistantDashboard = () => {
               </Button>
               <Button
                 variant={activeTab === 'support-tasks' ? 'default' : 'outline'}
-                className="gap-2"
+                className="gap-2 shrink-0"
                 onClick={() => { setPortalView('support'); setActiveTab('support-tasks'); }}
               >
                 <Headphones className="h-4 w-4" />
@@ -514,13 +516,14 @@ const AdminAssistantDashboard = () => {
               </Button>
               <Button
                 variant={activeTab === 'attestation-review' ? 'default' : 'outline'}
-                className="gap-2"
+                className="gap-2 shrink-0"
                 onClick={() => { setPortalView('crm'); setActiveTab('attestation-review'); }}
               >
                 <AlertTriangle className="h-4 w-4" />
                 Referee Reviews
               </Button>
-            </div>
+            </ScrollableStrip>
+
           </div>
 
           {/* Portal Analytics Cards */}

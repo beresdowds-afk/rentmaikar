@@ -333,7 +333,7 @@ const VehicleTrackingMap = () => {
       </div>
 
       {/* Map */}
-      <div className="h-[500px] rounded-xl overflow-hidden border border-border">
+      <div className="h-[500px] xl:h-[min(760px,72dvh)] rounded-xl overflow-hidden border border-border">
         <MapContainer
           center={[selectedRegion.center.lat, selectedRegion.center.lng]}
           zoom={selectedRegion.zoom}

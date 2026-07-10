@@ -310,13 +310,13 @@ export const AdminUnifiedInbox = () => {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="grid grid-cols-1 md:grid-cols-3 h-[600px]">
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 h-[600px] xl:h-[min(760px,72dvh)]">
           {/* Conversation List */}
-          <div className="border-r">
+          <div className="border-r xl:col-span-2">
             <div className="p-3 border-b bg-muted/30">
               <Input placeholder="Search conversations..." className="h-8" />
             </div>
-            <ScrollArea className="h-[552px]">
+            <ScrollArea className="h-[calc(600px-48px)] xl:h-[calc(min(760px,72dvh)-48px)]">
               {isLoading ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -341,7 +341,8 @@ export const AdminUnifiedInbox = () => {
           </div>
 
           {/* Message Thread */}
-          <div className="col-span-2">
+          <div className="col-span-2 xl:col-span-3">
+
             {selectedConversation ? (
               <MessageThread 
                 conversation={selectedConversation}
