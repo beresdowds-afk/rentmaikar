@@ -619,6 +619,10 @@ export function RoleManagement() {
               <AdminAssistantManagement />
             </TabsContent>
 
+            <TabsContent value="assignments">
+              <AdminAssistantUserAssignments />
+            </TabsContent>
+
             <TabsContent value="audit">
               {logsLoading ? (
                 <div className="flex items-center justify-center py-8 gap-3">
