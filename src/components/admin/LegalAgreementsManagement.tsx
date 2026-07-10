@@ -103,6 +103,8 @@ const LegalAgreementsManagement: React.FC = () => {
   const [viewAgreement, setViewAgreement] = useState<Agreement | null>(null);
   const [isWitnessing, setIsWitnessing] = useState(false);
   const [witnessSignature, setWitnessSignature] = useState<string | null>(null);
+  const [selectedAgreementId, setSelectedAgreementId] = useState<string | null>(null);
+  const [selectedBulkIds, setSelectedBulkIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchData();
