@@ -96,6 +96,13 @@ export default function OwnerDashboard() {
   const isUSA = country === 'USA';
   const multiplier = isUSA ? 1 : 500;
 
+  const { getForCategory: getCategorySpec, formatRange: formatCategoryRange, visible: yearSpecsVisible } = useCategoryYearSpecs(country);
+  const vehicleCategories = VEHICLE_CATEGORY_DEFS.map((def) => {
+    const spec = getCategorySpec(def.specKey);
+    const range = yearSpecsVisible && spec ? formatCategoryRange(spec) : FALLBACK_CATEGORY_YEARS[def.specKey];
+    return { ...def, label: range ? `${def.label} (${range})` : def.label };
+  });
+
   // Fetch phone verification status
   useEffect(() => {
     const fetchPhoneStatus = async () => {
