@@ -92,6 +92,36 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_assistant_user_assignments: {
+        Row: {
+          assigned_by: string | null
+          assistant_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          target_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          assistant_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          target_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_by?: string | null
+          assistant_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          target_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_audit_log: {
         Row: {
           action: string
@@ -5805,6 +5835,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
       get_support_staff_city: {
         Args: {
           _type: Database["public"]["Enums"]["support_task_type"]
