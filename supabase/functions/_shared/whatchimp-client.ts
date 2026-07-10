@@ -1,8 +1,8 @@
-// Wachimp WhatsApp client — Meta Business Cloud API partner.
+// Whatchimp WhatsApp client — Meta Business Cloud API partner.
 // Stubbed behind secrets so the send-inbox-reply and send-sms-notification
 // routers can safely reference it before credentials arrive.
 //
-// Env: WACHIMP_API_KEY, WACHIMP_PHONE_NUMBER_ID, WACHIMP_API_BASE (optional)
+// Env: WHATCHIMP_API_KEY, WHATCHIMP_PHONE_NUMBER_ID, WHATCHIMP_API_BASE (optional)
 
 interface SendArgs {
   to: string;                 // E.164 e.g. +15551234567
@@ -15,14 +15,14 @@ interface SendArgs {
 }
 
 function creds() {
-  const apiKey = Deno.env.get("WACHIMP_API_KEY");
-  const phoneNumberId = Deno.env.get("WACHIMP_PHONE_NUMBER_ID");
+  const apiKey = Deno.env.get("WHATCHIMP_API_KEY");
+  const phoneNumberId = Deno.env.get("WHATCHIMP_PHONE_NUMBER_ID");
   if (!apiKey || !phoneNumberId) return null;
-  const base = Deno.env.get("WACHIMP_API_BASE") || "https://api.wachimp.com/v1";
+  const base = Deno.env.get("WHATCHIMP_API_BASE") || "https://api.whatchimp.com/v1";
   return { apiKey, phoneNumberId, base };
 }
 
-export const wachimp = {
+export const whatchimp = {
   isConfigured: () => !!creds(),
 
   async sendMessage(args: SendArgs) {
@@ -74,14 +74,14 @@ export const wachimp = {
     if (!res.ok) {
       return { ok: false as const, reason: "provider_error" as const, status: res.status, body };
     }
-    const messageId = (body?.messages?.[0]?.id as string) || `wachimp_${Date.now()}`;
+    const messageId = (body?.messages?.[0]?.id as string) || `whatchimp_${Date.now()}`;
     return { ok: true as const, messageId, body };
   },
 };
 
 // Verify inbound webhook HMAC (Meta-style x-hub-signature-256)
-export async function verifyWachimpSignature(rawBody: string, signatureHeader: string | null) {
-  const secret = Deno.env.get("WACHIMP_WEBHOOK_SECRET");
+export async function verifyWhatchimpSignature(rawBody: string, signatureHeader: string | null) {
+  const secret = Deno.env.get("WHATCHIMP_WEBHOOK_SECRET");
   if (!secret) return false;
   if (!signatureHeader) return false;
   const provided = signatureHeader.startsWith("sha256=") ? signatureHeader.slice(7) : signatureHeader;

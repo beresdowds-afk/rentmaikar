@@ -20,14 +20,14 @@ Four integrations, each behind secrets so nothing breaks until credentials are a
 - Admin panel section "SIM Cards" showing the table read-only for now, with a "Configure Hologram" banner when secrets are absent.
 - Secrets (requested only when user confirms rollout): `HOLOGRAM_API_KEY`, `HOLOGRAM_ORG_ID`.
 
-### 3. Wachimp — third WhatsApp provider (global)
+### 3. Whatchimp — third WhatsApp provider (global)
 
-- Extend `communication_providers` rows with a `wachimp` entry alongside `twilio` and `termii`.
-- New `_shared/wachimp-client.ts` with `sendMessage({ to, body, templateName?, mediaUrl? })` calling the Wachimp/Meta Business Cloud API. Auth via `WACHIMP_API_KEY` + `WACHIMP_PHONE_NUMBER_ID`.
-- Update `send-inbox-reply` and `send-sms-notification` region router: if the destination region's `communication_providers.preferred_whatsapp_provider = 'wachimp'`, route WhatsApp through Wachimp; otherwise keep current Twilio(US)/Termii(NG) behavior. Global fallback for regions with no local provider = Wachimp.
-- New webhook `supabase/functions/wachimp-webhook/index.ts` (verify_jwt=false, HMAC signature check with `WACHIMP_WEBHOOK_SECRET`) that normalizes inbound messages into `inbox_conversations` / `inbox_messages` — same shape as Twilio/Termii webhooks.
-- Admin Communication Providers UI: add per-region WhatsApp provider dropdown (Twilio / Termii / Wachimp).
-- Secrets: `WACHIMP_API_KEY`, `WACHIMP_PHONE_NUMBER_ID`, `WACHIMP_WEBHOOK_SECRET`.
+- Extend `communication_providers` rows with a `whatchimp` entry alongside `twilio` and `termii`.
+- New `_shared/whatchimp-client.ts` with `sendMessage({ to, body, templateName?, mediaUrl? })` calling the Whatchimp/Meta Business Cloud API. Auth via `WHATCHIMP_API_KEY` + `WHATCHIMP_PHONE_NUMBER_ID`.
+- Update `send-inbox-reply` and `send-sms-notification` region router: if the destination region's `communication_providers.preferred_whatsapp_provider = 'whatchimp'`, route WhatsApp through Whatchimp; otherwise keep current Twilio(US)/Termii(NG) behavior. Global fallback for regions with no local provider = Whatchimp.
+- New webhook `supabase/functions/whatchimp-webhook/index.ts` (verify_jwt=false, HMAC signature check with `WHATCHIMP_WEBHOOK_SECRET`) that normalizes inbound messages into `inbox_conversations` / `inbox_messages` — same shape as Twilio/Termii webhooks.
+- Admin Communication Providers UI: add per-region WhatsApp provider dropdown (Twilio / Termii / Whatchimp).
+- Secrets: `WHATCHIMP_API_KEY`, `WHATCHIMP_PHONE_NUMBER_ID`, `WHATCHIMP_WEBHOOK_SECRET`.
 
 ### 4. ManyChat — Instagram/Facebook DMs + campaign automation
 
@@ -43,7 +43,7 @@ Four integrations, each behind secrets so nothing breaks until credentials are a
 ## Rollout order
 
 1. Traccar parallel + flip switch (adapter already exists, biggest safety upside).
-2. Wachimp WhatsApp router + webhook (unblocks global rollout).
+2. Whatchimp WhatsApp router + webhook (unblocks global rollout).
 3. ManyChat webhook + inbox routing.
 4. Hologram stub + `iot_sim_cards` table.
 

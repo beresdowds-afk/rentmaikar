@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { verifyWachimpSignature } from "../_shared/wachimp-client.ts";
+import { verifyWhatchimpSignature } from "../_shared/whatchimp-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,7 +16,7 @@ serve(async (req) => {
     const mode = url.searchParams.get("hub.mode");
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge");
-    const expected = Deno.env.get("WACHIMP_VERIFY_TOKEN") || Deno.env.get("WACHIMP_WEBHOOK_SECRET");
+    const expected = Deno.env.get("WHATCHIMP_VERIFY_TOKEN") || Deno.env.get("WHATCHIMP_WEBHOOK_SECRET");
     if (mode === "subscribe" && expected && token === expected) {
       return new Response(challenge || "", { status: 200 });
     }
@@ -25,19 +25,19 @@ serve(async (req) => {
 
   const raw = await req.text();
   const sig = req.headers.get("x-hub-signature-256");
-  const configured = !!Deno.env.get("WACHIMP_WEBHOOK_SECRET");
+  const configured = !!Deno.env.get("WHATCHIMP_WEBHOOK_SECRET");
 
   if (configured) {
-    const ok = await verifyWachimpSignature(raw, sig);
+    const ok = await verifyWhatchimpSignature(raw, sig);
     if (!ok) {
-      console.error("wachimp-webhook: bad signature");
+      console.error("whatchimp-webhook: bad signature");
       return new Response(JSON.stringify({ error: "invalid signature" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
   } else {
-    console.warn("wachimp-webhook: WACHIMP_WEBHOOK_SECRET not set, accepting without verification (dev only)");
+    console.warn("whatchimp-webhook: WHATCHIMP_WEBHOOK_SECRET not set, accepting without verification (dev only)");
   }
 
   try {
@@ -48,7 +48,7 @@ serve(async (req) => {
 
     const payload = JSON.parse(raw);
 
-    // Meta/Wachimp payload shape: entry[].changes[].value.messages[]
+    // Meta/Whatchimp payload shape: entry[].changes[].value.messages[]
     const entries = Array.isArray(payload?.entry) ? payload.entry : [];
     for (const entry of entries) {
       const changes = Array.isArray(entry?.changes) ? entry.changes : [];
@@ -56,7 +56,7 @@ serve(async (req) => {
         const messages = change?.value?.messages || [];
         for (const msg of messages) {
           const from = "+" + String(msg.from || "").replace(/^\+/, "");
-          const messageId = msg.id || `wachimp_${Date.now()}`;
+          const messageId = msg.id || `whatchimp_${Date.now()}`;
           const text = msg.text?.body || msg.button?.text || msg.interactive?.button_reply?.title || "";
           const mediaUrl = msg.image?.link || msg.document?.link || null;
 
@@ -79,7 +79,7 @@ serve(async (req) => {
                 channel: "whatsapp",
                 user_phone: from,
                 status: "open",
-                subject: `New WhatsApp (Wachimp) from ${from}`,
+                subject: `New WhatsApp (Whatchimp) from ${from}`,
                 last_message_at: new Date().toISOString(),
               })
               .select("id")
@@ -101,7 +101,7 @@ serve(async (req) => {
             sender_name: from,
             external_id: messageId,
             metadata: {
-              provider: "wachimp",
+              provider: "whatchimp",
               media_url: mediaUrl,
               raw: msg,
             },
@@ -115,7 +115,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("wachimp-webhook error:", e);
+    console.error("whatchimp-webhook error:", e);
     return new Response(JSON.stringify({ success: false, error: String(e) }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
