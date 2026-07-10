@@ -116,7 +116,14 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
                 </Link>
                 {userRole === 'admin' && (
                   <Link to="/admin">
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" title="Admin Portal">
+                      <Shield className="w-5 h-5" />
+                    </Button>
+                  </Link>
+                )}
+                {userRole === 'admin_assistant' && (
+                  <Link to="/admin-assistant">
+                    <Button variant="ghost" size="icon" title="Admin Assistant Portal">
                       <Shield className="w-5 h-5" />
                     </Button>
                   </Link>
