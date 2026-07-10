@@ -571,36 +571,133 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
 
             {/* Split-pane list + detail on xl+ */}
             <div className="hidden xl:block">
-              {selectedBulkIds.size > 0 && (
-                <div className="mb-3 flex items-center justify-between rounded-md bg-primary/10 px-3 py-2 text-sm">
-                  <span>{selectedBulkIds.size} agreement(s) selected</span>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => setSelectedBulkIds(new Set())}>
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-              )}
               {(() => {
                 const selectedAgreement =
                   filteredAgreements.find((a) => a.id === selectedAgreementId) ?? null;
+                const selectedCount = selectedBulkIds.size;
+                const hasSelection = selectedCount > 0;
+                const allSelected =
+                  filteredAgreements.length > 0 &&
+                  filteredAgreements.every((a) => selectedBulkIds.has(a.id));
 
-                const list = (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 px-2 pb-2 border-b text-xs text-muted-foreground">
+                const selectedAgreements = filteredAgreements.filter((a) =>
+                  selectedBulkIds.has(a.id),
+                );
+
+                const handleBulkResend = async () => {
+                  const completed = selectedAgreements.filter((a) => a.status === 'completed');
+                  if (completed.length === 0) {
+                    toast.error('Only completed agreements can be re-sent');
+                    return;
+                  }
+                  toast.loading(`Re-sending ${completed.length} agreement(s)...`, { id: 'bulk-resend' });
+                  let ok = 0;
+                  for (const a of completed) {
+                    try {
+                      await supabase.functions.invoke('send-agreement-email', {
+                        body: {
+                          agreementId: a.id,
+                          driverEmail: a.driver_profile?.email,
+                          driverName: a.driver_profile?.full_name,
+                          ownerEmail: a.owner_profile?.email,
+                          ownerName: a.owner_profile?.full_name,
+                          vehicleInfo: a.vehicle
+                            ? `${a.vehicle.year} ${a.vehicle.make} ${a.vehicle.model}`
+                            : 'Vehicle',
+                        },
+                      });
+                      ok += 1;
+                    } catch (err) {
+                      console.error('Resend failed for', a.id, err);
+                    }
+                  }
+                  toast.success(`Re-sent ${ok} of ${completed.length} agreement(s)`, { id: 'bulk-resend' });
+                };
+
+                const handleBulkExport = () => {
+                  if (selectedAgreements.length === 0) return;
+                  const rows = [
+                    ['ID', 'Driver', 'Driver Email', 'Owner', 'Owner Email', 'Vehicle', 'Status', 'Created'],
+                    ...selectedAgreements.map((a) => [
+                      a.id,
+                      a.driver_profile?.full_name ?? '',
+                      a.driver_profile?.email ?? '',
+                      a.owner_profile?.full_name ?? '',
+                      a.owner_profile?.email ?? '',
+                      a.vehicle ? `${a.vehicle.year} ${a.vehicle.make} ${a.vehicle.model}` : '',
+                      a.status,
+                      format(new Date(a.created_at), 'yyyy-MM-dd'),
+                    ]),
+                  ];
+                  const csv = rows
+                    .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
+                    .join('\n');
+                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `legal-agreements-${format(new Date(), 'yyyyMMdd-HHmm')}.csv`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                  toast.success(`Exported ${selectedAgreements.length} agreement(s)`);
+                };
+
+                const bulkBar = (
+                  <div
+                    className={`mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+                      hasSelection ? 'border-primary/40 bg-primary/10' : 'border-dashed bg-muted/40'
+                    }`}
+                    role="toolbar"
+                    aria-label="Bulk actions"
+                  >
+                    <div className="flex items-center gap-3">
                       <Checkbox
-                        aria-label="Select all visible"
-                        checked={
-                          filteredAgreements.length > 0 &&
-                          filteredAgreements.every((a) => selectedBulkIds.has(a.id))
-                        }
+                        aria-label={allSelected ? 'Unselect all visible' : 'Select all visible'}
+                        checked={allSelected}
                         onCheckedChange={(v) => {
                           if (v) setSelectedBulkIds(new Set(filteredAgreements.map((a) => a.id)));
                           else setSelectedBulkIds(new Set());
                         }}
                       />
-                      Select visible ({filteredAgreements.length})
+                      <span className={hasSelection ? 'font-medium' : 'text-muted-foreground'}>
+                        {hasSelection
+                          ? `${selectedCount} of ${filteredAgreements.length} selected`
+                          : `Select agreements to enable bulk actions (${filteredAgreements.length} visible)`}
+                      </span>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!hasSelection}
+                        onClick={handleBulkResend}
+                        title={hasSelection ? 'Re-send completed agreement emails' : 'Select rows first'}
+                      >
+                        <Send className="h-4 w-4 mr-1" /> Resend emails
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!hasSelection}
+                        onClick={handleBulkExport}
+                        title={hasSelection ? 'Export selected as CSV' : 'Select rows first'}
+                      >
+                        <Download className="h-4 w-4 mr-1" /> Export CSV
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={!hasSelection}
+                        onClick={() => setSelectedBulkIds(new Set())}
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                );
+
+                const list = (
+                  <div className="space-y-2">
                     {filteredAgreements.map((agreement) => {
                       const isSelected = selectedAgreementId === agreement.id;
                       return (
@@ -717,20 +814,33 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                 );
 
                 return (
-                  <SplitPane
-                    list={list}
-                    detail={detail}
-                    hasSelection={!!selectedAgreement}
-                    emptyState={
-                      <div className="text-center text-sm text-muted-foreground py-16">
-                        <FileText className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                        Select an agreement to preview signatures and status.
-                      </div>
-                    }
-                  />
+                  <>
+                    {bulkBar}
+                    <SplitPane
+                      list={list}
+                      detail={detail}
+                      hasSelection={!!selectedAgreement}
+                      emptyState={
+                        <div className="text-center text-sm text-muted-foreground py-16">
+                          <FileText className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                          {hasSelection ? (
+                            <>
+                              <p className="font-medium text-foreground">
+                                {selectedCount} agreement{selectedCount === 1 ? '' : 's'} selected for bulk actions
+                              </p>
+                              <p className="mt-1">Click a row's name to preview signatures and status.</p>
+                            </>
+                          ) : (
+                            'Select an agreement to preview signatures and status.'
+                          )}
+                        </div>
+                      }
+                    />
+                  </>
                 );
               })()}
             </div>
+
           </>
         )}
 
