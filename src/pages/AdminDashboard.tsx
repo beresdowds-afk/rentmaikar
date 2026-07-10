@@ -539,6 +539,7 @@ const AdminDashboard = () => {
               {activeTab === 'attestation-review' && <NegativeAttestationReviewPanel />}
               {activeTab === 'accounts' && <UserAccountsView />}
               {activeTab === 'roles' && <RoleManagement />}
+              {activeTab === 'admin-assistants' && <AdminAssistantManagement />}
               {activeTab === 'negotiations' && <AdminPriceNegotiation />}
               {activeTab === 'approvals' && (
                 <Card className="p-6">
