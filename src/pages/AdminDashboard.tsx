@@ -167,7 +167,7 @@ const AdminDashboard = () => {
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [portalView, setPortalView] = useState<PortalType>('support');
-  const [activeTab, setActiveTab] = useState<string>('task-portal');
+  const [activeTab, setActiveTab] = useState<string>('inbox');
   const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
 
   // Calculate converted values
@@ -245,9 +245,9 @@ const AdminDashboard = () => {
               </div>
               <div>
                 <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
-                  Admin Dashboard
+                  Admin Assistants Dashboard
                 </h1>
-                <p className="text-muted-foreground">Manage vehicles, drivers, and payments</p>
+                <p className="text-muted-foreground">Scoped operations workspace for admin assistants</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -785,14 +785,6 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* Docs Portal */}
-          {portalView === 'docs' && (
-            <div className="space-y-6">
-              {activeTab === 'messaging-docs' && <MessagingDocs />}
-              {activeTab === 'email-docs' && <EmailDocs />}
-              {activeTab === 'voip-docs' && <VoIPDocs />}
-            </div>
-          )}
         </div>
       </main>
       <Footer />
