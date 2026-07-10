@@ -267,9 +267,9 @@ export const DriverPriceNegotiation = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="budget">Budget (2015-2016) - Up to {currencySymbol}250/week</SelectItem>
-                        <SelectItem value="standard">Standard (2017-2020) - Up to {currencySymbol}300/week</SelectItem>
-                        <SelectItem value="premium">Premium (2021-2025) - Up to {currencySymbol}350/week</SelectItem>
+                        <SelectItem value="budget">Budget{rangeSuffix('budget')} - Up to {currencySymbol}250/week</SelectItem>
+                        <SelectItem value="standard">Standard{rangeSuffix('standard')} - Up to {currencySymbol}300/week</SelectItem>
+                        <SelectItem value="premium">Premium{rangeSuffix('premium')} - Up to {currencySymbol}350/week</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
