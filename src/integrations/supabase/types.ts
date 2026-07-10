@@ -4534,6 +4534,48 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_category_year_specs: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          label: string
+          max_year: number
+          min_year: number
+          region: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          max_year: number
+          min_year: number
+          region: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          max_year?: number
+          min_year?: number
+          region?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       vehicle_geofences: {
         Row: {
           active: boolean
