@@ -174,15 +174,43 @@ const CategoryCards = () => {
         </div>
 
         {/* Category Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {categories.map((category) => (
-            <CategoryCard 
-              key={category.variant} 
-              {...category} 
-              viewCta={content.viewCta}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" aria-busy>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="space-y-3">
+                <Skeleton className="h-48 w-full rounded-xl" />
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            ))}
+            <span className="sr-only">Loading vehicle categories…</span>
+          </div>
+        ) : isError || specs.length === 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {categories.map((category) => (
+              <CategoryCard
+                key={category.variant}
+                {...category}
+                viewCta={content.viewCta}
+              />
+            ))}
+            {isError && (
+              <p className="col-span-full text-center text-sm text-muted-foreground">
+                Live year-model data is unavailable — showing default tiers.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {categories.map((category) => (
+              <CategoryCard
+                key={category.variant}
+                {...category}
+                viewCta={content.viewCta}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
