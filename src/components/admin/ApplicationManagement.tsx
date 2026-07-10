@@ -379,9 +379,77 @@ export const ApplicationManagement = () => {
                       (currentPage - 1) * itemsPerPage,
                       currentPage * itemsPerPage
                     );
+                    const selectedApp =
+                      paginatedApps.find((a) => a.id === selectedListAppId) ??
+                      filteredApps.find((a) => a.id === selectedListAppId) ??
+                      null;
+
+                    const list = (
+                      <>
+                        <div className="space-y-2">
+                          {paginatedApps.map((app) => {
+                            const status = statusConfig[app.status];
+                            const isSelected = selectedListAppId === app.id;
+                            const isDriver = app.application_type === 'driver';
+                            return (
+                              <button
+                                type="button"
+                                key={app.id}
+                                onClick={() => setSelectedListAppId(app.id)}
+                                aria-selected={isSelected}
+                                className={`w-full text-left rounded-lg border p-3 hover:bg-accent/40 transition-colors ${
+                                  isSelected ? 'border-primary ring-1 ring-primary bg-primary/5' : ''
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className={`p-2 rounded-full shrink-0 ${isDriver ? 'bg-purple-100' : 'bg-indigo-100'}`}>
+                                    {isDriver ? (
+                                      <User className="h-4 w-4 text-purple-600" />
+                                    ) : (
+                                      <Car className="h-4 w-4 text-indigo-600" />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="font-medium truncate">{app.first_name} {app.last_name}</p>
+                                      <Badge className={`text-[10px] ${status.color}`}>
+                                        {status.label}
+                                      </Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground truncate">{app.email}</p>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      {app.city}, {app.country.toUpperCase()} · {format(new Date(app.created_at), 'MMM dd')}
+                                    </p>
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <DataPagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          onPageChange={setCurrentPage}
+                          className="mt-4"
+                        />
+                      </>
+                    );
+
+                    const detail = selectedApp && (
+                      <ApplicationCard
+                        application={selectedApp}
+                        supportStaff={supportStaff}
+                        onApprove={() => handleQuickApprove(selectedApp)}
+                        onReject={() => handleQuickReject(selectedApp)}
+                        onMarkReview={() => handleMarkUnderReview(selectedApp)}
+                        onAssign={(staffId) => assignStaffMutation.mutate({ appId: selectedApp.id, staffId })}
+                      />
+                    );
+
                     return (
                       <>
-                        <div className="space-y-3">
+                        {/* On < xl show inline list of full ApplicationCards for parity */}
+                        <div className="xl:hidden space-y-3">
                           {paginatedApps.map((app) => (
                             <ApplicationCard
                               key={app.id}
@@ -393,13 +461,27 @@ export const ApplicationManagement = () => {
                               onAssign={(staffId) => assignStaffMutation.mutate({ appId: app.id, staffId })}
                             />
                           ))}
+                          <DataPagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
+                            className="mt-4"
+                          />
                         </div>
-                        <DataPagination
-                          currentPage={currentPage}
-                          totalPages={totalPages}
-                          onPageChange={setCurrentPage}
-                          className="mt-6"
-                        />
+                        {/* xl+: split-pane list + detail */}
+                        <div className="hidden xl:block">
+                          <SplitPane
+                            list={list}
+                            detail={detail}
+                            hasSelection={!!selectedApp}
+                            emptyState={
+                              <div className="text-center text-sm text-muted-foreground py-16">
+                                <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                                Select an application to see full details and actions.
+                              </div>
+                            }
+                          />
+                        </div>
                       </>
                     );
                   })()}
