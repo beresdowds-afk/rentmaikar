@@ -480,6 +480,8 @@ const AdminAssistantDashboard = () => {
                 activeTab={activeTab}
                 onPortalChange={setPortalView}
                 onTabChange={setActiveTab}
+                excludeTabs={EXCLUDED_TABS}
+                excludePortals={EXCLUDED_PORTALS}
               />
             </div>
             {/* Independent Quick Access Buttons */}
