@@ -482,6 +482,8 @@ const AdminAssistantDashboard = () => {
                 onTabChange={setActiveTab}
                 excludeTabs={EXCLUDED_TABS}
                 excludePortals={EXCLUDED_PORTALS}
+                storageScope="admin-assistant"
+
               />
             </div>
             {/* Independent Quick Access Buttons */}

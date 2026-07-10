@@ -469,7 +469,9 @@ const AdminDashboard = () => {
                 activeTab={activeTab}
                 onPortalChange={setPortalView}
                 onTabChange={setActiveTab}
+                storageScope="admin"
               />
+
             </div>
             {/* Independent Quick Access Buttons */}
             <div className="flex flex-wrap items-center gap-2">
