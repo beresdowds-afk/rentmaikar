@@ -1,4 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  isRegionYearSpecsVisible,
+  setRegionYearSpecsVisibility,
+} from "@/hooks/useCategoryYearSpecs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, Save, Trash2, X, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
