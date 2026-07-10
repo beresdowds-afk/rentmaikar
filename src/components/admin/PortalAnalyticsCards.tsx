@@ -277,7 +277,7 @@ export const PortalAnalyticsCards = ({ activePortal, onNavigate }: PortalAnalyti
   }
 
   return (
-    <div className={`grid grid-cols-2 md:grid-cols-3 ${cards.length > 4 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3 mb-6`}>
+    <div className={`grid grid-cols-2 md:grid-cols-3 ${cards.length > 4 ? 'lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8' : 'lg:grid-cols-4 xl:grid-cols-6'} gap-3 mb-6`}>
       {cards.map((card, index) => (
         <Card 
           key={index} 
@@ -293,6 +293,7 @@ export const PortalAnalyticsCards = ({ activePortal, onNavigate }: PortalAnalyti
           <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
         </Card>
       ))}
+
     </div>
   );
 };

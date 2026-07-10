@@ -150,7 +150,7 @@ export default function DriverDashboard() {
         <Header />
         
         <main className="pt-24 pb-16">
-        <div className="container mx-auto px-4">
+        <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 xl:max-w-[1600px] 2xl:max-w-[1800px]">
           {/* Admin View Banner */}
           <AdminViewBanner dashboardType="driver" />
 
@@ -183,7 +183,7 @@ export default function DriverDashboard() {
           </div>
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 2xl:grid-cols-8 gap-4 mb-8">
 
             <Card>
               <CardContent className="pt-6">
