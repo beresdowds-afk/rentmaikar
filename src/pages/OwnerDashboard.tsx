@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { useRegion } from '@/contexts/RegionContext';
+import { useCategoryYearSpecs } from '@/hooks/useCategoryYearSpecs';
 import { formatCurrency, PAYMENT_CONFIG } from '@/lib/payment-config';
 import { OwnerPriceNegotiation } from '@/components/negotiation/OwnerPriceNegotiation';
 import { PhoneVerification } from '@/components/phone/PhoneVerification';
