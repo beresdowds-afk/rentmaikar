@@ -38,11 +38,16 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
 
   const getDashboardLink = () => {
     if (userRole === 'admin') return '/admin';
+    if (userRole === 'admin_assistant') return '/admin-assistant';
     if (userRole === 'owner') return '/owner/dashboard';
     if (userRole === 'driver') return '/driver/dashboard';
+    if (userRole === 'legal_support') return '/support/legal';
+    if (userRole === 'iot_support') return '/support/iot';
+    if (userRole === 'vehicle_support') return '/support/vehicle';
     // Fallback based on userType context
     return userType === 'driver' ? '/driver/dashboard' : '/owner/dashboard';
   };
+
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass-effect" role="banner">
@@ -111,7 +116,14 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
                 </Link>
                 {userRole === 'admin' && (
                   <Link to="/admin">
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" title="Admin Portal">
+                      <Shield className="w-5 h-5" />
+                    </Button>
+                  </Link>
+                )}
+                {userRole === 'admin_assistant' && (
+                  <Link to="/admin-assistant">
+                    <Button variant="ghost" size="icon" title="Admin Assistant Portal">
                       <Shield className="w-5 h-5" />
                     </Button>
                   </Link>
@@ -210,6 +222,14 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
                         <Button variant="ghost" className="w-full gap-2">
                           <Shield className="w-4 h-4" />
                           Admin Portal
+                        </Button>
+                      </Link>
+                    )}
+                    {userRole === 'admin_assistant' && (
+                      <Link to="/admin-assistant" onClick={() => setIsMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full gap-2">
+                          <Shield className="w-4 h-4" />
+                          Admin Assistant Portal
                         </Button>
                       </Link>
                     )}
