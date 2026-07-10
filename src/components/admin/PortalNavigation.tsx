@@ -1,4 +1,4 @@
-import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail, Wifi, Activity, Clock, Radio, Globe } from "lucide-react";
+import { ChevronDown, Building2, UsersRound, Headphones, LayoutGrid, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, ShieldCheck, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail, Wifi, Activity, Clock, Radio, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ export const crmTabs: PortalTab[] = [
   { value: "applications", label: "Applications", icon: <UserPlus className="h-4 w-4" />, dataTour: "admin-applications" },
   { value: "accounts", label: "User Accounts", icon: <UserCircle className="h-4 w-4" />, dataTour: "admin-accounts" },
   { value: "roles", label: "Role Management", icon: <Shield className="h-4 w-4" />, dataTour: "admin-roles" },
+  { value: "admin-assistants", label: "Admin Assistants", icon: <ShieldCheck className="h-4 w-4" /> },
   { value: "negotiations", label: "Negotiations", icon: <HandshakeIcon className="h-4 w-4" />, dataTour: "admin-negotiations" },
   { value: "approvals", label: "Pending Approvals", icon: <ClipboardList className="h-4 w-4" /> },
   { value: "defaults", label: "Payment Defaults", icon: <Wallet className="h-4 w-4" /> },
@@ -90,22 +91,33 @@ interface PortalNavigationProps {
   activeTab: string;
   onPortalChange: (portal: PortalType) => void;
   onTabChange: (tab: string) => void;
+  excludeTabs?: string[];
+  excludePortals?: PortalType[];
 }
+
+
 
 export const PortalNavigation = ({
   activePortal,
   activeTab,
   onPortalChange,
   onTabChange,
+  excludeTabs,
+  excludePortals,
 }: PortalNavigationProps) => {
+  const excludedTabSet = new Set(excludeTabs || []);
+  const excludedPortalSet = new Set(excludePortals || []);
   const getTabsForPortal = (portal: PortalType): PortalTab[] => {
-    switch (portal) {
-      case 'crm': return crmTabs;
-      case 'erp': return erpTabs;
-      case 'support': return supportTabs;
-      case 'marketing': return marketingTabs;
-      case 'docs': return docsTabs;
-    }
+    const base = (() => {
+      switch (portal) {
+        case 'crm': return crmTabs;
+        case 'erp': return erpTabs;
+        case 'support': return supportTabs;
+        case 'marketing': return marketingTabs;
+        case 'docs': return docsTabs;
+      }
+    })();
+    return base.filter(t => !excludedTabSet.has(t.value));
   };
 
   const getPortalIcon = (portal: PortalType) => {
@@ -140,12 +152,15 @@ export const PortalNavigation = ({
 
   const currentTabs = getTabsForPortal(activePortal);
   const currentTabLabel = currentTabs.find(t => t.value === activeTab)?.label || 'Select...';
+  const visiblePortals = (['crm', 'erp', 'support', 'marketing', 'docs'] as PortalType[])
+    .filter(p => !excludedPortalSet.has(p));
 
   return (
     <div className="flex flex-col gap-4 mb-6">
       {/* Portal Buttons with Dropdowns */}
       <div className="flex flex-wrap items-center gap-2">
-        {(['crm', 'erp', 'support', 'marketing', 'docs'] as PortalType[]).map((portal) => (
+        {visiblePortals.map((portal) => (
+
           <DropdownMenu key={portal}>
             <DropdownMenuTrigger asChild>
               <Button

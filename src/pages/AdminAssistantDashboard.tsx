@@ -162,13 +162,24 @@ const paymentDefaults: PaymentDefault[] = [
   },
 ];
 
-const AdminDashboard = () => {
+const AdminAssistantDashboard = () => {
   const _region = useRegion();
   const { rates, isLoading: ratesLoading, convertToUSD, refetch: refetchRates } = useCurrencyConversion();
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [portalView, setPortalView] = useState<PortalType>('support');
-  const [activeTab, setActiveTab] = useState<string>('task-portal');
+  const [activeTab, setActiveTab] = useState<string>('inbox');
+
+  const EXCLUDED_TABS = [
+    // ERP: infrastructure/admin-only
+    'hardware', 'mqtt-credentials', 'fees', 'secrets', 'api-keys',
+    'webhooks', 'api-endpoints', 'security', 'settings', 'region-autobuild',
+    // Support: portal
+    'task-portal',
+    // CRM: assistant-management is admin-only
+    'admin-assistants',
+  ];
+  const EXCLUDED_PORTALS: PortalType[] = ['docs'];
   const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
 
   // Calculate converted values
@@ -246,9 +257,9 @@ const AdminDashboard = () => {
               </div>
               <div>
                 <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
-                  Admin Dashboard
+                  Admin Assistant Dashboard
                 </h1>
-                <p className="text-muted-foreground">Manage vehicles, drivers, and payments</p>
+                <p className="text-muted-foreground">Scoped admin tools available to you</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -267,7 +278,7 @@ const AdminDashboard = () => {
 
           {/* Install App Banner */}
           <div className="mb-6">
-            <InstallAppBanner appName="Rentmaikar Admin" />
+            <InstallAppBanner appName="Rentmaikar Assistant" />
           </div>
 
           {/* Stats Grid */}
@@ -469,6 +480,8 @@ const AdminDashboard = () => {
                 activeTab={activeTab}
                 onPortalChange={setPortalView}
                 onTabChange={setActiveTab}
+                excludeTabs={EXCLUDED_TABS}
+                excludePortals={EXCLUDED_PORTALS}
               />
             </div>
             {/* Independent Quick Access Buttons */}
@@ -803,4 +816,4 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default AdminAssistantDashboard;
