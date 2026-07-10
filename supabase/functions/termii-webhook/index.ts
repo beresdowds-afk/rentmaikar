@@ -166,6 +166,33 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ─── Termii Webhook Authentication ───
+  // Fail closed: require a shared secret configured in the Termii dashboard.
+  // Accept it via ?secret=... query param OR the `x-termii-secret` header.
+  // Internal calls with the Supabase service-role bearer are also allowed.
+  const configuredSecret = Deno.env.get("TERMII_WEBHOOK_SECRET");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const authHeader = req.headers.get("Authorization") || "";
+  const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  const providedHeader = req.headers.get("x-termii-secret") || "";
+  const providedQuery = new URL(req.url).searchParams.get("secret") || "";
+  const isServiceRole = !!serviceKey && bearer === serviceKey;
+  const isSharedSecret =
+    !!configuredSecret &&
+    (providedHeader === configuredSecret || providedQuery === configuredSecret);
+
+  if (!isServiceRole && !isSharedSecret) {
+    console.error(
+      "termii-webhook: unauthorized request (missing/invalid TERMII_WEBHOOK_SECRET or service-role bearer)",
+    );
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
