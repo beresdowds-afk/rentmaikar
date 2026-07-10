@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireServiceRole } from "../_shared/auth-guards.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -11,11 +12,13 @@ const corsHeaders = {
 
 interface AgreementEmailRequest {
   agreementId: string;
-  driverEmail: string;
-  driverName: string;
-  ownerEmail: string;
-  ownerName: string;
-  vehicleInfo: string;
+  // Caller-supplied fields below are treated as HINTS ONLY. The authoritative
+  // recipient email addresses are looked up from the database via agreementId.
+  driverEmail?: string;
+  driverName?: string;
+  ownerEmail?: string;
+  ownerName?: string;
+  vehicleInfo?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -23,15 +26,13 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Internal-only endpoint: require service-role bearer token.
+  const authError = requireServiceRole(req);
+  if (authError) return authError;
+
   try {
-    const { 
-      agreementId, 
-      driverEmail, 
-      driverName, 
-      ownerEmail, 
-      ownerName, 
-      vehicleInfo 
-    }: AgreementEmailRequest = await req.json();
+    const body: AgreementEmailRequest = await req.json();
+    const { agreementId, vehicleInfo } = body;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -59,12 +60,32 @@ const handler = async (req: Request): Promise<Response> => {
       pickupDetails = vehicle;
     }
 
-    // Fetch owner profile for contact details
+    // Fetch owner and driver profiles for authoritative contact details.
+    // Never trust caller-supplied recipient email addresses.
     const { data: ownerProfile } = await supabase
       .from("profiles")
-      .select("phone, email")
+      .select("phone, email, full_name")
       .eq("user_id", agreement.owner_id)
       .single();
+
+    const { data: driverProfile } = await supabase
+      .from("profiles")
+      .select("phone, email, full_name")
+      .eq("user_id", agreement.driver_id)
+      .single();
+
+    const driverEmail = driverProfile?.email;
+    const ownerEmail = ownerProfile?.email;
+    const driverName = driverProfile?.full_name || body.driverName || "Driver";
+    const ownerName = ownerProfile?.full_name || body.ownerName || "Owner";
+
+    if (!driverEmail || !ownerEmail) {
+      return new Response(
+        JSON.stringify({ error: "Missing recipient email on driver or owner profile" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
 
     const agreementDate = new Date(agreement.created_at).toLocaleDateString("en-US", {
       year: "numeric",
