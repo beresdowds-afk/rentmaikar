@@ -83,6 +83,7 @@ export const ApplicationManagement = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [selectedListAppId, setSelectedListAppId] = useState<string | null>(null);
 
   // Fetch applications
   const { data: applications = [], isLoading, refetch } = useQuery({
