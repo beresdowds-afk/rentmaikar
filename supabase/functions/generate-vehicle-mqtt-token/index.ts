@@ -46,9 +46,10 @@ Deno.serve(async (req) => {
         .from('support_staff')
         .select('id')
         .eq('user_id', userId)
-        .eq('support_type', 'iot')
+        .in('support_type', ['iot_installation', 'iot_maintenance'])
         .eq('is_active', true),
     ]);
+
     const isAdmin = (roleRows?.length ?? 0) > 0;
     const isIotStaff = (iotStaff?.length ?? 0) > 0;
     if (!isAdmin && !isIotStaff) {
