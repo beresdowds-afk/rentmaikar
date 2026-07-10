@@ -225,6 +225,14 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
                         </Button>
                       </Link>
                     )}
+                    {userRole === 'admin_assistant' && (
+                      <Link to="/admin-assistant" onClick={() => setIsMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full gap-2">
+                          <Shield className="w-4 h-4" />
+                          Admin Assistant Portal
+                        </Button>
+                      </Link>
+                    )}
                     <Button variant="ghost" className="w-full gap-2" onClick={() => { handleSignOut(); setIsMenuOpen(false); }}>
                       <LogOut className="w-4 h-4" />
                       Sign Out
