@@ -38,11 +38,16 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
 
   const getDashboardLink = () => {
     if (userRole === 'admin') return '/admin';
+    if (userRole === 'admin_assistant') return '/admin-assistant';
     if (userRole === 'owner') return '/owner/dashboard';
     if (userRole === 'driver') return '/driver/dashboard';
+    if (userRole === 'legal_support') return '/support/legal';
+    if (userRole === 'iot_support') return '/support/iot';
+    if (userRole === 'vehicle_support') return '/support/vehicle';
     // Fallback based on userType context
     return userType === 'driver' ? '/driver/dashboard' : '/owner/dashboard';
   };
+
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass-effect" role="banner">
