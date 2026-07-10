@@ -345,7 +345,21 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
     return matchesSearch && matchesStatus;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredAgreements.length / PAGE_SIZE));
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+  const pagedAgreements = filteredAgreements.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
+
   const ownerVehicles = vehicles.filter(v => v.owner_id === selectedOwner);
+
+
 
   return (
     <Card>
