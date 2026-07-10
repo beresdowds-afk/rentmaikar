@@ -8,6 +8,8 @@ import {
   fillTemplate,
   detectTemplateLanguage,
 } from "../_shared/whatsapp-templates.ts";
+import { requireServiceRole } from "../_shared/auth-guards.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
