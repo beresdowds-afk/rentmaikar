@@ -96,9 +96,52 @@ interface PortalNavigationProps {
   onTabChange: (tab: string) => void;
   excludeTabs?: string[];
   excludePortals?: PortalType[];
+  /** Namespace for per-user last-selection persistence (e.g. "admin", "admin-assistant"). */
+  storageScope?: string;
 }
 
+type LastByPortal = Partial<Record<PortalType, string>>;
 
+const STORAGE_PREFIX = "rentmaikar:portal-nav:last";
+
+function useLastSelection(scope: string) {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [last, setLast] = useState<LastByPortal>({});
+
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) return;
+      const id = data.user?.id ?? "anon";
+      setUserId(id);
+      try {
+        const raw = localStorage.getItem(`${STORAGE_PREFIX}:${scope}:${id}`);
+        if (raw) setLast(JSON.parse(raw));
+      } catch {
+        /* ignore */
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [scope]);
+
+  const remember = (portal: PortalType, tab: string) => {
+    setLast((prev) => {
+      const next = { ...prev, [portal]: tab };
+      if (userId) {
+        try {
+          localStorage.setItem(`${STORAGE_PREFIX}:${scope}:${userId}`, JSON.stringify(next));
+        } catch {
+          /* ignore quota */
+        }
+      }
+      return next;
+    });
+  };
+
+  return { last, remember };
+}
 
 export const PortalNavigation = ({
   activePortal,
@@ -107,9 +150,12 @@ export const PortalNavigation = ({
   onTabChange,
   excludeTabs,
   excludePortals,
+  storageScope = "admin",
 }: PortalNavigationProps) => {
   const excludedTabSet = new Set(excludeTabs || []);
   const excludedPortalSet = new Set(excludePortals || []);
+  const { last, remember } = useLastSelection(storageScope);
+
   const getTabsForPortal = (portal: PortalType): PortalTab[] => {
     const base = (() => {
       switch (portal) {
@@ -161,54 +207,97 @@ export const PortalNavigation = ({
   return (
     <div className="flex flex-col gap-4 mb-6">
       {/* Portal Buttons with Dropdowns */}
-      <div className="flex flex-wrap items-center gap-2">
-        {visiblePortals.map((portal) => (
-
-          <DropdownMenu key={portal}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant={activePortal === portal ? 'default' : 'outline'}
-                className={cn(
-                  "gap-2 min-w-[120px]",
-                  activePortal === portal && "ring-2 ring-primary/20"
-                )}
+      <nav
+        aria-label="Dashboard portals"
+        className="flex flex-wrap items-center gap-2"
+      >
+        {visiblePortals.map((portal) => {
+          const tabs = getTabsForPortal(portal);
+          const lastTab = last[portal];
+          const lastTabMeta = tabs.find(t => t.value === lastTab);
+          const portalLabel = getPortalLabel(portal);
+          return (
+            <DropdownMenu key={portal}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant={activePortal === portal ? 'default' : 'outline'}
+                  className={cn(
+                    "gap-2 min-w-[120px] min-h-11",
+                    activePortal === portal && "ring-2 ring-primary/20"
+                  )}
+                  aria-label={`Open ${portalLabel} portal menu`}
+                >
+                  {getPortalIcon(portal)}
+                  {portalLabel}
+                  <ChevronDown className="h-3 w-3 ml-1" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                sideOffset={6}
+                collisionPadding={12}
+                avoidCollisions
+                className="w-64 max-w-[calc(100vw-1.5rem)] bg-popover z-50"
+                aria-label={`${portalLabel} portal navigation`}
               >
-                {getPortalIcon(portal)}
-                {getPortalLabel(portal)}
-                <ChevronDown className="h-3 w-3 ml-1" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56 bg-popover z-50">
-              <DropdownMenuLabel className="text-xs text-muted-foreground">
-                {getPortalDescription(portal)}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <div className="max-h-[360px] overflow-y-auto overscroll-contain pr-1">
-                {getTabsForPortal(portal).map((tab) => (
-                  <DropdownMenuItem
-                    key={tab.value}
-                    className={cn(
-                      "cursor-pointer gap-2",
-                      activePortal === portal && activeTab === tab.value && "bg-accent"
-                    )}
-                    onClick={() => {
-                      onPortalChange(portal);
-                      onTabChange(tab.value);
-                    }}
-                  >
-                    {tab.icon}
-                    {tab.label}
-                  </DropdownMenuItem>
-                ))}
-              </div>
-            </DropdownMenuContent>
-
-          </DropdownMenu>
-        ))}
-      </div>
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  {getPortalDescription(portal)}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <div
+                  className="max-h-[min(360px,60dvh)] overflow-y-auto overscroll-contain pr-1"
+                  style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
+                  role="presentation"
+                >
+                  {tabs.map((tab) => {
+                    const isActive = activePortal === portal && activeTab === tab.value;
+                    const isLast = !isActive && lastTab === tab.value;
+                    return (
+                      <DropdownMenuItem
+                        key={tab.value}
+                        className={cn(
+                          "cursor-pointer gap-2 min-h-11",
+                          isActive && "bg-accent",
+                          isLast && "ring-1 ring-primary/40 bg-primary/5"
+                        )}
+                        aria-current={isActive ? "page" : undefined}
+                        onSelect={() => {
+                          onPortalChange(portal);
+                          onTabChange(tab.value);
+                          remember(portal, tab.value);
+                        }}
+                      >
+                        {tab.icon}
+                        <span className="flex-1">{tab.label}</span>
+                        {isLast && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground"
+                            aria-label="Last used"
+                          >
+                            <Star className="h-3 w-3" aria-hidden="true" />
+                            Last
+                          </span>
+                        )}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </div>
+                {lastTabMeta && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <div className="px-2 py-1.5 text-[11px] text-muted-foreground">
+                      Last used: <span className="font-medium text-foreground">{lastTabMeta.label}</span>
+                    </div>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        })}
+      </nav>
 
       {/* Current Selection Indicator */}
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-2 text-sm" aria-live="polite">
         <span className="text-muted-foreground">Current view:</span>
         <span className="font-medium text-foreground flex items-center gap-1.5">
           {getPortalIcon(activePortal)}
@@ -218,3 +307,4 @@ export const PortalNavigation = ({
     </div>
   );
 };
+
