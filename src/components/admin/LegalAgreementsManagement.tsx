@@ -768,7 +768,7 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
 
                 const list = (
                   <div className="space-y-2">
-                    {filteredAgreements.map((agreement) => {
+                    {pagedAgreements.map((agreement) => {
                       const isSelected = selectedAgreementId === agreement.id;
                       return (
                         <div
