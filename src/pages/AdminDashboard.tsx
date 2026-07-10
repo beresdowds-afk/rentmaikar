@@ -167,7 +167,7 @@ const AdminDashboard = () => {
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [portalView, setPortalView] = useState<PortalType>('support');
-  const [activeTab, setActiveTab] = useState<string>('task-portal');
+  const [activeTab, setActiveTab] = useState<string>('inbox');
   const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
 
   // Calculate converted values
