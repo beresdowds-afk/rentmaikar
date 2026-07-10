@@ -602,9 +602,18 @@ const handler = async (req: Request): Promise<Response> => {
     } else {
       const jsonData = await req.json();
 
+      // ─── Internal JSON action branch (service-role only) ───
+      // These actions mutate payments, documents, and rental state and must
+      // never be callable by anonymous or driver/owner-authenticated requests.
+      if (jsonData.action) {
+        const authError = requireServiceRole(req);
+        if (authError) return authError;
+      }
+
       // ─── Internal payment completion webhook ───
       if (jsonData.action === "payment_completed") {
         const { userId, rentalId, transactionId, status, amount, currency } = jsonData;
+
         console.log(`[Payment Completion] user=${userId} rental=${rentalId} txn=${transactionId}`);
 
         // Update payment default to resolved
