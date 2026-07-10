@@ -524,14 +524,18 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                   <TableRow>
                     <TableHead className="w-10">
                       <Checkbox
-                        aria-label="Select all"
+                        aria-label="Select all on this page"
                         checked={
-                          filteredAgreements.length > 0 &&
-                          filteredAgreements.every((a) => selectedBulkIds.has(a.id))
+                          pagedAgreements.length > 0 &&
+                          pagedAgreements.every((a) => selectedBulkIds.has(a.id))
                         }
                         onCheckedChange={(v) => {
-                          if (v) setSelectedBulkIds(new Set(filteredAgreements.map((a) => a.id)));
-                          else setSelectedBulkIds(new Set());
+                          setSelectedBulkIds((prev) => {
+                            const next = new Set(prev);
+                            if (v) pagedAgreements.forEach((a) => next.add(a.id));
+                            else pagedAgreements.forEach((a) => next.delete(a.id));
+                            return next;
+                          });
                         }}
                       />
                     </TableHead>
