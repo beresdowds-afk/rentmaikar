@@ -89,7 +89,6 @@ export const PortalNavigation = ({
       case 'erp': return erpTabs;
       case 'support': return supportTabs;
       case 'marketing': return marketingTabs;
-      case 'docs': return docsTabs;
     }
   };
 
@@ -99,7 +98,6 @@ export const PortalNavigation = ({
       case 'erp': return <Building2 className="h-4 w-4" />;
       case 'support': return <Headphones className="h-4 w-4" />;
       case 'marketing': return <Share2 className="h-4 w-4" />;
-      case 'docs': return <BookOpen className="h-4 w-4" />;
     }
   };
 
@@ -109,7 +107,6 @@ export const PortalNavigation = ({
       case 'erp': return 'ERP';
       case 'support': return 'Support';
       case 'marketing': return 'Marketing';
-      case 'docs': return 'Docs';
     }
   };
 
@@ -119,7 +116,6 @@ export const PortalNavigation = ({
       case 'erp': return 'Operations, assets & fleet management';
       case 'support': return 'Communications & task management';
       case 'marketing': return 'Social media & campaign management';
-      case 'docs': return 'Communication system documentation';
     }
   };
 
