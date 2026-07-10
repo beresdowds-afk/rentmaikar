@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, DollarSign, Loader2 } from "lucide-react";
+import { ArrowRight, DollarSign } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
 import { useUserType } from "@/contexts/UserTypeContext";
 import { getCategoryContent } from "@/lib/localized-content";
