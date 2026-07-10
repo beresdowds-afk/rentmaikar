@@ -140,7 +140,9 @@ const handler = async (req: Request): Promise<Response> => {
                 To: phone,
                 From: twilioPhoneNumber,
                 Body: smsMessage,
+                StatusCallback: `${Deno.env.get("SUPABASE_URL")}/functions/v1/twilio-webhook`,
               }),
+
             }
           );
 

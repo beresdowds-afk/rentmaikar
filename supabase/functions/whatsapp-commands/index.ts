@@ -288,7 +288,9 @@ const sendWhatsAppRaw = async (to: string, message: string): Promise<{ provider:
       body: JSON.stringify({
         to: cleanPhone, from: termiiSenderId, sms: message,
         type: "plain", channel: "whatsapp", api_key: termiiApiKey,
+        notify_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/termii-webhook`,
       }),
+
     });
     const body = await response.text();
     if (!response.ok) throw new Error(`Termii error: ${body}`);
@@ -306,6 +308,8 @@ const sendWhatsAppRaw = async (to: string, message: string): Promise<{ provider:
   formData.append("To", `whatsapp:${to}`);
   formData.append("From", `whatsapp:${fromNumber}`);
   formData.append("Body", message);
+  formData.append("StatusCallback", `${Deno.env.get("SUPABASE_URL")}/functions/v1/twilio-webhook`);
+
 
   const response = await fetch(url, {
     method: "POST",
