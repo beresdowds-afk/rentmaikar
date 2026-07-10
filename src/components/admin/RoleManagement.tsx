@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminAssistantManagement } from './AdminAssistantManagement';
+import { AdminAssistantUserAssignments } from './AdminAssistantUserAssignments';
 import { PasswordInput } from '@/components/ui/password-input';
 
 type AppRole = 'admin' | 'admin_assistant' | 'owner' | 'driver' | 'legal_support' | 'iot_support' | 'vehicle_support';
@@ -488,6 +489,10 @@ export function RoleManagement() {
                 <ShieldCheck className="h-4 w-4" />
                 Admin Assistants
               </TabsTrigger>
+              <TabsTrigger value="assignments" className="gap-2">
+                <ShieldCheck className="h-4 w-4" />
+                User Assignments
+              </TabsTrigger>
               <TabsTrigger value="audit" className="gap-2">
                 <History className="h-4 w-4" />
                 Audit Log ({auditLogs.length})
@@ -613,6 +618,10 @@ export function RoleManagement() {
 
             <TabsContent value="assistants">
               <AdminAssistantManagement />
+            </TabsContent>
+
+            <TabsContent value="assignments">
+              <AdminAssistantUserAssignments />
             </TabsContent>
 
             <TabsContent value="audit">
