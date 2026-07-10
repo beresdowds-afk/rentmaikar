@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRegion } from '@/contexts/RegionContext';
+import { useCategoryYearSpecs } from '@/hooks/useCategoryYearSpecs';
 import { usePriceNegotiations, type PriceNegotiation } from '@/hooks/usePriceNegotiations';
 
 const requestSchema = z.object({
@@ -57,6 +58,16 @@ export const DriverPriceNegotiation = () => {
   const { country } = useRegion();
   const currency = country === 'Nigeria' ? 'NGN' : 'USD';
   const currencySymbol = currency === 'NGN' ? '₦' : '$';
+  const { getForCategory: getSpec, formatRange, visible: yearsVisible } = useCategoryYearSpecs(country);
+  const rangeFor = (key: 'budget' | 'standard' | 'premium') => {
+    if (!yearsVisible) return '';
+    const spec = getSpec(key);
+    return spec ? formatRange(spec) : `${PRICE_CEILINGS[key].min}-${PRICE_CEILINGS[key].max}`;
+  };
+  const rangeSuffix = (key: 'budget' | 'standard' | 'premium') => {
+    const r = rangeFor(key);
+    return r ? ` (${r})` : '';
+  };
   
   const { 
     negotiations, 
@@ -256,9 +267,9 @@ export const DriverPriceNegotiation = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="budget">Budget (2015-2016) - Up to {currencySymbol}250/week</SelectItem>
-                        <SelectItem value="standard">Standard (2017-2020) - Up to {currencySymbol}300/week</SelectItem>
-                        <SelectItem value="premium">Premium (2021-2025) - Up to {currencySymbol}350/week</SelectItem>
+                        <SelectItem value="budget">Budget{rangeSuffix('budget')} - Up to {currencySymbol}250/week</SelectItem>
+                        <SelectItem value="standard">Standard{rangeSuffix('standard')} - Up to {currencySymbol}300/week</SelectItem>
+                        <SelectItem value="premium">Premium{rangeSuffix('premium')} - Up to {currencySymbol}350/week</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
@@ -354,7 +365,7 @@ export const DriverPriceNegotiation = () => {
       <Alert>
         <DollarSign className="h-4 w-4" />
         <AlertDescription>
-          <strong>Weekly Price Ceilings:</strong> Budget (2015-16): {currencySymbol}250 | Standard (2017-20): {currencySymbol}300 | Premium (2021-25): {currencySymbol}350
+          <strong>Weekly Price Ceilings:</strong> Budget{rangeSuffix('budget')}: {currencySymbol}250 | Standard{rangeSuffix('standard')}: {currencySymbol}300 | Premium{rangeSuffix('premium')}: {currencySymbol}350
         </AlertDescription>
       </Alert>
 

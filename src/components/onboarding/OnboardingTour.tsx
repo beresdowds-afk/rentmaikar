@@ -36,7 +36,7 @@ const tourSteps: TourStep[] = [
   {
     id: "categories",
     title: "Browse Vehicle Categories",
-    description: "Explore our three pricing tiers — Budget (2015–2016), Standard (2017–2020), and Premium (2021–2025) — each with daily or weekly payment options.",
+    description: "Explore our three pricing tiers — Budget, Standard, and Premium — each with daily or weekly payment options. Year ranges are shown on every category card and reflect the latest admin configuration.",
     target: "[data-tour='categories']",
     icon: Car,
     position: "top"

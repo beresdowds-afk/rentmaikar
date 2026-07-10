@@ -2,11 +2,30 @@ import { Link } from "react-router-dom";
 import { Mail, Phone, MapPin, Code, FileText, Shield, HelpCircle, Cookie } from "lucide-react";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRegion } from "@/contexts/RegionContext";
+import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
 import { EMAIL_CONFIG, COMPANY_INFO } from "@/lib/email-config";
 import { openCookiePreferences } from "@/hooks/useCookieConsent";
 
+const FALLBACK_YEARS: Record<string, string> = {
+  budget: "2015 - 2016",
+  standard: "2017 - 2020",
+  premium: "2021 - 2025",
+};
+
 const Footer = () => {
   const { userRole } = useAuth();
+  const { country } = useRegion();
+  const { getForCategory, formatRange, visible: yearsVisible } = useCategoryYearSpecs(country);
+  const yearsFor = (key: "budget" | "standard" | "premium") => {
+    if (!yearsVisible) return "";
+    const spec = getForCategory(key);
+    return spec ? formatRange(spec) : FALLBACK_YEARS[key];
+  };
+  const yearLabel = (key: "budget" | "standard" | "premium") => {
+    const range = yearsFor(key);
+    return range ? ` (${range})` : "";
+  };
   
   return (
     <footer className="bg-primary text-primary-foreground" role="contentinfo">
@@ -32,17 +51,17 @@ const Footer = () => {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link to="/catalogue/budget" className="text-primary-foreground/70 hover:text-accent transition-colors">
-                  Budget Cars (2015-2016)
+                  Budget Cars{yearLabel("budget")}
                 </Link>
               </li>
               <li>
                 <Link to="/catalogue/standard" className="text-primary-foreground/70 hover:text-accent transition-colors">
-                  Standard Cars (2017-2020)
+                  Standard Cars{yearLabel("standard")}
                 </Link>
               </li>
               <li>
                 <Link to="/catalogue/premium" className="text-primary-foreground/70 hover:text-accent transition-colors">
-                  Premium Cars (2021-2025)
+                  Premium Cars{yearLabel("premium")}
                 </Link>
               </li>
               <li>

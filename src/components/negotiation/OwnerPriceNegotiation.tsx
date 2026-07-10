@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRegion } from '@/contexts/RegionContext';
+import { useCategoryYearSpecs } from '@/hooks/useCategoryYearSpecs';
 import { usePriceNegotiations, useOwnerVehicles, type PriceNegotiation } from '@/hooks/usePriceNegotiations';
 
 const requestSchema = z.object({
@@ -61,6 +62,14 @@ export const OwnerPriceNegotiation = () => {
   const { country } = useRegion();
   const currency = country === 'Nigeria' ? 'NGN' : 'USD';
   const currencySymbol = currency === 'NGN' ? '₦' : '$';
+  const { getForCategory: getSpec, formatRange, visible: yearsVisible } = useCategoryYearSpecs(country);
+  const rangeSuffix = (key: 'budget' | 'standard' | 'premium') => {
+    if (!yearsVisible) return '';
+    const spec = getSpec(key);
+    const fallback: Record<string, string> = { budget: '2015-16', standard: '2017-20', premium: '2021-25' };
+    return ` (${spec ? formatRange(spec) : fallback[key]})`;
+  };
+  
   
   const { vehicles, isLoading: vehiclesLoading } = useOwnerVehicles();
   const { 
@@ -367,7 +376,7 @@ export const OwnerPriceNegotiation = () => {
       <Alert>
         <DollarSign className="h-4 w-4" />
         <AlertDescription>
-          <strong>Weekly Rate Ceilings by Category:</strong> Smart Start (2015-16): {currencySymbol}250 | Earnings Optimizer (2017-20): {currencySymbol}300 | Top Earner (2021-25): {currencySymbol}350
+          <strong>Weekly Rate Ceilings by Category:</strong> Smart Start{rangeSuffix('budget')}: {currencySymbol}250 | Earnings Optimizer{rangeSuffix('standard')}: {currencySymbol}300 | Top Earner{rangeSuffix('premium')}: {currencySymbol}350
         </AlertDescription>
       </Alert>
 

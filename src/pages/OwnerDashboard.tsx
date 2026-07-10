@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { useRegion } from '@/contexts/RegionContext';
+import { useCategoryYearSpecs } from '@/hooks/useCategoryYearSpecs';
 import { formatCurrency, PAYMENT_CONFIG } from '@/lib/payment-config';
 import { OwnerPriceNegotiation } from '@/components/negotiation/OwnerPriceNegotiation';
 import { PhoneVerification } from '@/components/phone/PhoneVerification';
@@ -62,11 +63,17 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const vehicleCategories = [
-  { value: 'smart-start', label: 'Smart Start (2015-2016)', maxWeekly: 250 },
-  { value: 'earnings-optimizer', label: 'Earnings Optimizer (2017-2020)', maxWeekly: 300 },
-  { value: 'top-earner', label: 'Top Earner (2021-2025)', maxWeekly: 350 },
-];
+const VEHICLE_CATEGORY_DEFS = [
+  { value: 'smart-start', label: 'Smart Start', specKey: 'budget', maxWeekly: 250 },
+  { value: 'earnings-optimizer', label: 'Earnings Optimizer', specKey: 'standard', maxWeekly: 300 },
+  { value: 'top-earner', label: 'Top Earner', specKey: 'premium', maxWeekly: 350 },
+] as const;
+
+const FALLBACK_CATEGORY_YEARS: Record<string, string> = {
+  budget: '2015-2016',
+  standard: '2017-2020',
+  premium: '2021-2025',
+};
 
 export default function OwnerDashboard() {
   const { country, currency } = useRegion();
@@ -88,6 +95,13 @@ export default function OwnerDashboard() {
 
   const isUSA = country === 'USA';
   const multiplier = isUSA ? 1 : 500;
+
+  const { getForCategory: getCategorySpec, formatRange: formatCategoryRange, visible: yearSpecsVisible } = useCategoryYearSpecs(country);
+  const vehicleCategories = VEHICLE_CATEGORY_DEFS.map((def) => {
+    const spec = getCategorySpec(def.specKey);
+    const range = yearSpecsVisible && spec ? formatCategoryRange(spec) : FALLBACK_CATEGORY_YEARS[def.specKey];
+    return { ...def, label: range ? `${def.label} (${range})` : def.label };
+  });
 
   // Fetch phone verification status
   useEffect(() => {
