@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { DataPagination } from '@/components/ui/data-pagination';
+import { SplitPane } from '@/components/ui/split-pane';
 import {
   User, Car, Search, Eye, CheckCircle, XCircle, Clock, AlertCircle,
   Mail, Phone, MapPin, Calendar, RefreshCw, UserPlus, ClipboardList
