@@ -26,18 +26,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  FileText, 
-  Plus, 
-  Search, 
-  Eye, 
-  CheckCircle, 
-  Clock, 
+import {
+  FileText,
+  Plus,
+  Search,
+  Eye,
+  CheckCircle,
+  Clock,
   AlertCircle,
   Send,
   Download,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,6 +58,8 @@ import SignaturePad from '@/components/legal/SignaturePad';
 import LegalAgreementDocument from '@/components/legal/LegalAgreementDocument';
 import { SplitPane } from '@/components/ui/split-pane';
 import { Checkbox } from '@/components/ui/checkbox';
+
+const PAGE_SIZE = 10;
 
 interface Agreement {
   id: string;
@@ -105,6 +119,9 @@ const LegalAgreementsManagement: React.FC = () => {
   const [witnessSignature, setWitnessSignature] = useState<string | null>(null);
   const [selectedAgreementId, setSelectedAgreementId] = useState<string | null>(null);
   const [selectedBulkIds, setSelectedBulkIds] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [confirmAction, setConfirmAction] = useState<null | 'resend' | 'clear'>(null);
+  const [isBulkRunning, setIsBulkRunning] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -328,7 +345,57 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
     return matchesSearch && matchesStatus;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredAgreements.length / PAGE_SIZE));
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+  const pagedAgreements = filteredAgreements.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
+
+  const selectedAgreements = filteredAgreements.filter((a) => selectedBulkIds.has(a.id));
+
+  const runBulkResend = async () => {
+    const completed = selectedAgreements.filter((a) => a.status === 'completed');
+    if (completed.length === 0) {
+      toast.error('Only completed agreements can be re-sent');
+      return;
+    }
+    setIsBulkRunning(true);
+    toast.loading(`Re-sending ${completed.length} agreement(s)...`, { id: 'bulk-resend' });
+    let ok = 0;
+    for (const a of completed) {
+      try {
+        await supabase.functions.invoke('send-agreement-email', {
+          body: {
+            agreementId: a.id,
+            driverEmail: a.driver_profile?.email,
+            driverName: a.driver_profile?.full_name,
+            ownerEmail: a.owner_profile?.email,
+            ownerName: a.owner_profile?.full_name,
+            vehicleInfo: a.vehicle
+              ? `${a.vehicle.year} ${a.vehicle.make} ${a.vehicle.model}`
+              : 'Vehicle',
+          },
+        });
+        ok += 1;
+      } catch (err) {
+        console.error('Resend failed for', a.id, err);
+      }
+    }
+    setIsBulkRunning(false);
+    toast.success(`Re-sent ${ok} of ${completed.length} agreement(s)`, { id: 'bulk-resend' });
+  };
+
   const ownerVehicles = vehicles.filter(v => v.owner_id === selectedOwner);
+
+
+
+
 
   return (
     <Card>
@@ -477,15 +544,28 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
             {/* Table view — mobile / laptop */}
             <div className="xl:hidden">
               {selectedBulkIds.size > 0 && (
-                <div className="mb-3 flex items-center justify-between rounded-md bg-primary/10 px-3 py-2 text-sm">
-                  <span>{selectedBulkIds.size} selected</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setSelectedBulkIds(new Set())}
-                  >
-                    Clear
-                  </Button>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm">
+                  <span>{selectedBulkIds.size} selected (persists across pages)</span>
+                  <div className="flex items-center gap-2">
+                    {selectedBulkIds.size < filteredAgreements.length && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setSelectedBulkIds(new Set(filteredAgreements.map((a) => a.id)))
+                        }
+                      >
+                        Select all {filteredAgreements.length} matching
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setConfirmAction('clear')}
+                    >
+                      Clear
+                    </Button>
+                  </div>
                 </div>
               )}
               <Table>
@@ -493,14 +573,18 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                   <TableRow>
                     <TableHead className="w-10">
                       <Checkbox
-                        aria-label="Select all"
+                        aria-label="Select all on this page"
                         checked={
-                          filteredAgreements.length > 0 &&
-                          filteredAgreements.every((a) => selectedBulkIds.has(a.id))
+                          pagedAgreements.length > 0 &&
+                          pagedAgreements.every((a) => selectedBulkIds.has(a.id))
                         }
                         onCheckedChange={(v) => {
-                          if (v) setSelectedBulkIds(new Set(filteredAgreements.map((a) => a.id)));
-                          else setSelectedBulkIds(new Set());
+                          setSelectedBulkIds((prev) => {
+                            const next = new Set(prev);
+                            if (v) pagedAgreements.forEach((a) => next.add(a.id));
+                            else pagedAgreements.forEach((a) => next.delete(a.id));
+                            return next;
+                          });
                         }}
                       />
                     </TableHead>
@@ -513,7 +597,7 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAgreements.map((agreement) => (
+                  {pagedAgreements.map((agreement) => (
                     <TableRow key={agreement.id}>
                       <TableCell>
                         <Checkbox
@@ -576,43 +660,12 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                   filteredAgreements.find((a) => a.id === selectedAgreementId) ?? null;
                 const selectedCount = selectedBulkIds.size;
                 const hasSelection = selectedCount > 0;
-                const allSelected =
+                const allOnPageSelected =
+                  pagedAgreements.length > 0 &&
+                  pagedAgreements.every((a) => selectedBulkIds.has(a.id));
+                const allMatchingSelected =
                   filteredAgreements.length > 0 &&
-                  filteredAgreements.every((a) => selectedBulkIds.has(a.id));
-
-                const selectedAgreements = filteredAgreements.filter((a) =>
-                  selectedBulkIds.has(a.id),
-                );
-
-                const handleBulkResend = async () => {
-                  const completed = selectedAgreements.filter((a) => a.status === 'completed');
-                  if (completed.length === 0) {
-                    toast.error('Only completed agreements can be re-sent');
-                    return;
-                  }
-                  toast.loading(`Re-sending ${completed.length} agreement(s)...`, { id: 'bulk-resend' });
-                  let ok = 0;
-                  for (const a of completed) {
-                    try {
-                      await supabase.functions.invoke('send-agreement-email', {
-                        body: {
-                          agreementId: a.id,
-                          driverEmail: a.driver_profile?.email,
-                          driverName: a.driver_profile?.full_name,
-                          ownerEmail: a.owner_profile?.email,
-                          ownerName: a.owner_profile?.full_name,
-                          vehicleInfo: a.vehicle
-                            ? `${a.vehicle.year} ${a.vehicle.make} ${a.vehicle.model}`
-                            : 'Vehicle',
-                        },
-                      });
-                      ok += 1;
-                    } catch (err) {
-                      console.error('Resend failed for', a.id, err);
-                    }
-                  }
-                  toast.success(`Re-sent ${ok} of ${completed.length} agreement(s)`, { id: 'bulk-resend' });
-                };
+                  selectedCount >= filteredAgreements.length;
 
                 const handleBulkExport = () => {
                   if (selectedAgreements.length === 0) return;
@@ -650,27 +703,43 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                     role="toolbar"
                     aria-label="Bulk actions"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       <Checkbox
-                        aria-label={allSelected ? 'Unselect all visible' : 'Select all visible'}
-                        checked={allSelected}
+                        aria-label={allOnPageSelected ? 'Unselect page' : 'Select current page'}
+                        checked={allOnPageSelected}
                         onCheckedChange={(v) => {
-                          if (v) setSelectedBulkIds(new Set(filteredAgreements.map((a) => a.id)));
-                          else setSelectedBulkIds(new Set());
+                          setSelectedBulkIds((prev) => {
+                            const next = new Set(prev);
+                            if (v) pagedAgreements.forEach((a) => next.add(a.id));
+                            else pagedAgreements.forEach((a) => next.delete(a.id));
+                            return next;
+                          });
                         }}
                       />
                       <span className={hasSelection ? 'font-medium' : 'text-muted-foreground'}>
                         {hasSelection
-                          ? `${selectedCount} of ${filteredAgreements.length} selected`
-                          : `Select agreements to enable bulk actions (${filteredAgreements.length} visible)`}
+                          ? `${selectedCount} of ${filteredAgreements.length} selected · persists across pages`
+                          : `Select agreements to enable bulk actions (${filteredAgreements.length} matching)`}
                       </span>
+                      {hasSelection && !allMatchingSelected && (
+                        <Button
+                          size="sm"
+                          variant="link"
+                          className="h-auto p-0"
+                          onClick={() =>
+                            setSelectedBulkIds(new Set(filteredAgreements.map((a) => a.id)))
+                          }
+                        >
+                          Select all {filteredAgreements.length} matching results
+                        </Button>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={!hasSelection}
-                        onClick={handleBulkResend}
+                        disabled={!hasSelection || isBulkRunning}
+                        onClick={() => setConfirmAction('resend')}
                         title={hasSelection ? 'Re-send completed agreement emails' : 'Select rows first'}
                       >
                         <Send className="h-4 w-4 mr-1" /> Resend emails
@@ -688,7 +757,7 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                         size="sm"
                         variant="ghost"
                         disabled={!hasSelection}
-                        onClick={() => setSelectedBulkIds(new Set())}
+                        onClick={() => setConfirmAction('clear')}
                       >
                         Clear
                       </Button>
@@ -696,9 +765,10 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                   </div>
                 );
 
+
                 const list = (
                   <div className="space-y-2">
-                    {filteredAgreements.map((agreement) => {
+                    {pagedAgreements.map((agreement) => {
                       const isSelected = selectedAgreementId === agreement.id;
                       return (
                         <div
@@ -841,8 +911,87 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
               })()}
             </div>
 
+            {/* Pagination controls (shared) */}
+            {filteredAgreements.length > PAGE_SIZE && (
+              <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+                <span>
+                  Showing {(currentPage - 1) * PAGE_SIZE + 1}–
+                  {Math.min(currentPage * PAGE_SIZE, filteredAgreements.length)} of{' '}
+                  {filteredAgreements.length}
+                  {selectedBulkIds.size > 0 && ` · ${selectedBulkIds.size} selected across pages`}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage <= 1}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Prev
+                  </Button>
+                  <span>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage >= totalPages}
+                  >
+                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </>
         )}
+
+        {/* Bulk action confirmation */}
+        <AlertDialog
+          open={confirmAction !== null}
+          onOpenChange={(open) => !open && setConfirmAction(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {confirmAction === 'resend'
+                  ? `Re-send ${selectedAgreements.filter((a) => a.status === 'completed').length} agreement email(s)?`
+                  : 'Clear current selection?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {confirmAction === 'resend' ? (
+                  <>
+                    This will re-send completed agreement emails to both driver and owner for each
+                    selected row. Non-completed agreements in the selection will be skipped.
+                  </>
+                ) : (
+                  <>
+                    You have {selectedBulkIds.size} agreement(s) selected across pages. Clearing will
+                    remove all of them from your selection.
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isBulkRunning}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={isBulkRunning}
+                onClick={async (e) => {
+                  e.preventDefault();
+                  if (confirmAction === 'resend') {
+                    await runBulkResend();
+                  } else if (confirmAction === 'clear') {
+                    setSelectedBulkIds(new Set());
+                  }
+                  setConfirmAction(null);
+                }}
+              >
+                {confirmAction === 'resend' ? 'Re-send emails' : 'Clear selection'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
 
         {/* View Agreement Dialog */}
         <Dialog open={!!viewAgreement} onOpenChange={(open) => !open && setViewAgreement(null)}>
