@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { supabase } from "@/integrations/supabase/client";
+import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
 
 const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   // Owner Details
