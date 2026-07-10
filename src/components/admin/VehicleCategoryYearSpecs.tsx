@@ -187,6 +187,9 @@ export const VehicleCategoryYearSpecs = () => {
         </div>
       </div>
 
+      <RegionVisibilityPanel />
+
+
       {showNew && (
         <Card className="p-4 mb-6 border-dashed">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
