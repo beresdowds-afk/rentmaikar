@@ -51,17 +51,17 @@ const Footer = () => {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link to="/catalogue/budget" className="text-primary-foreground/70 hover:text-accent transition-colors">
-                  Budget Cars (2015-2016)
+                  Budget Cars{yearLabel("budget")}
                 </Link>
               </li>
               <li>
                 <Link to="/catalogue/standard" className="text-primary-foreground/70 hover:text-accent transition-colors">
-                  Standard Cars (2017-2020)
+                  Standard Cars{yearLabel("standard")}
                 </Link>
               </li>
               <li>
                 <Link to="/catalogue/premium" className="text-primary-foreground/70 hover:text-accent transition-colors">
-                  Premium Cars (2021-2025)
+                  Premium Cars{yearLabel("premium")}
                 </Link>
               </li>
               <li>
