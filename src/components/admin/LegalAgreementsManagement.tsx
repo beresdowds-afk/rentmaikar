@@ -357,7 +357,43 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
     currentPage * PAGE_SIZE,
   );
 
+  const selectedAgreements = filteredAgreements.filter((a) => selectedBulkIds.has(a.id));
+
+  const runBulkResend = async () => {
+    const completed = selectedAgreements.filter((a) => a.status === 'completed');
+    if (completed.length === 0) {
+      toast.error('Only completed agreements can be re-sent');
+      return;
+    }
+    setIsBulkRunning(true);
+    toast.loading(`Re-sending ${completed.length} agreement(s)...`, { id: 'bulk-resend' });
+    let ok = 0;
+    for (const a of completed) {
+      try {
+        await supabase.functions.invoke('send-agreement-email', {
+          body: {
+            agreementId: a.id,
+            driverEmail: a.driver_profile?.email,
+            driverName: a.driver_profile?.full_name,
+            ownerEmail: a.owner_profile?.email,
+            ownerName: a.owner_profile?.full_name,
+            vehicleInfo: a.vehicle
+              ? `${a.vehicle.year} ${a.vehicle.make} ${a.vehicle.model}`
+              : 'Vehicle',
+          },
+        });
+        ok += 1;
+      } catch (err) {
+        console.error('Resend failed for', a.id, err);
+      }
+    }
+    setIsBulkRunning(false);
+    toast.success(`Re-sent ${ok} of ${completed.length} agreement(s)`, { id: 'bulk-resend' });
+  };
+
   const ownerVehicles = vehicles.filter(v => v.owner_id === selectedOwner);
+
+
 
 
 
