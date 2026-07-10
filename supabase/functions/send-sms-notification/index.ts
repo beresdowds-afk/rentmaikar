@@ -252,6 +252,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log(`Sending ${body.channel.toUpperCase()} via Termii to ${body.phone}: ${body.notificationType}`);
 
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const termiiResponse = await fetch('https://api.ng.termii.com/api/sms/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -262,8 +263,10 @@ const handler = async (req: Request): Promise<Response> => {
           type: 'plain',
           channel: termiiChannel,
           api_key: termiiApiKey,
+          notify_url: `${supabaseUrl}/functions/v1/termii-webhook`,
         }),
       });
+
 
       const termiiData = await termiiResponse.json();
 
@@ -329,6 +332,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     formData.append('To', toNumber);
     formData.append('Body', message);
+    formData.append('StatusCallback', `${Deno.env.get("SUPABASE_URL")}/functions/v1/twilio-webhook`);
+
 
     const twilioResponse = await fetch(twilioUrl, {
       method: 'POST',
