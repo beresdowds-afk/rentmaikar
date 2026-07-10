@@ -1,6 +1,9 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { requireAuthenticatedUser } from "../_shared/auth-guards.ts";
+
+
 
 const Body = z.object({
   amount: z.number().positive().max(50_000_000),
