@@ -542,75 +542,179 @@ export function RoleManagement() {
                 ))}
               </div>
 
-              {/* User List */}
+              {/* User List — split-pane on xl+, stacked below */}
               {filteredUsers.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>No users found with the selected criteria</p>
                 </div>
-              ) : (
-                <ScrollArea className="h-[400px]">
-                  <div className="space-y-3 pr-4">
-                    {filteredUsers.map(user => (
-                      <Card key={user.id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                                <Shield className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                              <div>
-                                <h3 className="font-semibold">{user.full_name || 'No name'}</h3>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <Mail className="h-3 w-3" />
-                                  {user.email || 'No email'}
+              ) : (() => {
+                const selectedUser =
+                  filteredUsers.find((u) => u.id === selectedUserId) ??
+                  users.find((u) => u.id === selectedUserId) ??
+                  null;
+
+                const list = (
+                  <div className="space-y-3">
+                    {filteredUsers.map((user) => {
+                      const isSelected = selectedUserId === user.id;
+                      return (
+                        <Card
+                          key={user.id}
+                          role="button"
+                          tabIndex={0}
+                          aria-selected={isSelected}
+                          onClick={() => setSelectedUserId(user.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setSelectedUserId(user.id);
+                            }
+                          }}
+                          className={`hover:shadow-md transition-shadow cursor-pointer ${
+                            isSelected ? 'ring-2 ring-primary bg-primary/5' : ''
+                          }`}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between gap-3 flex-wrap xl:flex-nowrap">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-10 h-10 shrink-0 rounded-full bg-muted flex items-center justify-center">
+                                  <Shield className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                                <div className="min-w-0">
+                                  <h3 className="font-semibold truncate">{user.full_name || 'No name'}</h3>
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground truncate">
+                                    <Mail className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">{user.email || 'No email'}</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <Badge className={roleColors[user.role]}>
+                              <div className="flex items-center gap-2 xl:hidden">
+                                <Badge className={roleColors[user.role]}>
+                                  {roleLabels[user.role]}
+                                </Badge>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); handleResendReset(user); }}
+                                  disabled={resendingId === user.user_id || !user.email}
+                                  className="gap-1"
+                                  title="Resend password-reset email"
+                                >
+                                  {resendingId === user.user_id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Send className="h-4 w-4" />
+                                  )}
+                                  Resend
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); openChangeRoleDialog(user); }}
+                                  className="gap-1"
+                                >
+                                  <UserPlus className="h-4 w-4" />
+                                  Change
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); openDeleteRoleDialog(user); }}
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <Badge className={`hidden xl:inline-flex ${roleColors[user.role]}`}>
                                 {roleLabels[user.role]}
                               </Badge>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleResendReset(user)}
-                                disabled={resendingId === user.user_id || !user.email}
-                                className="gap-1"
-                                title="Resend password-reset email"
-                              >
-                                {resendingId === user.user_id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Send className="h-4 w-4" />
-                                )}
-                                Resend reset link
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openChangeRoleDialog(user)}
-                                className="gap-1"
-                              >
-                                <UserPlus className="h-4 w-4" />
-                                Change Role
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openDeleteRoleDialog(user)}
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
-                </ScrollArea>
-              )}
+                );
+
+                const detail = selectedUser && (
+                  <div className="space-y-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                        <Shield className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-lg truncate">
+                          {selectedUser.full_name || 'No name'}
+                        </h3>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {selectedUser.email || 'No email'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Role</p>
+                        <Badge className={`mt-1 ${roleColors[selectedUser.role]}`}>
+                          {roleLabels[selectedUser.role]}
+                        </Badge>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Created</p>
+                        <p className="mt-1">{formatDate(selectedUser.created_at)}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-2 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleResendReset(selectedUser)}
+                        disabled={resendingId === selectedUser.user_id || !selectedUser.email}
+                        className="gap-1"
+                      >
+                        {resendingId === selectedUser.user_id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                        Resend reset link
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openChangeRoleDialog(selectedUser)}
+                        className="gap-1"
+                      >
+                        <UserPlus className="h-4 w-4" />
+                        Change role
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openDeleteRoleDialog(selectedUser)}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Remove role
+                      </Button>
+                    </div>
+                  </div>
+                );
+
+                return (
+                  <SplitPane
+                    list={list}
+                    detail={detail}
+                    hasSelection={!!selectedUser}
+                    emptyState={
+                      <div className="text-center text-sm text-muted-foreground py-16">
+                        <Users className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                        Select a user to see role details and quick actions.
+                      </div>
+                    }
+                  />
+                );
+              })()}
             </TabsContent>
 
             <TabsContent value="assistants">
