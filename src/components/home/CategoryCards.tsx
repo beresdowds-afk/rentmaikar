@@ -3,6 +3,8 @@ import { ArrowRight, DollarSign } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
 import { useUserType } from "@/contexts/UserTypeContext";
 import { getCategoryContent } from "@/lib/localized-content";
+import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
+import { Skeleton } from "@/components/ui/skeleton";
 import categoryBudget from "@/assets/category-budget.jpg";
 import categoryStandard from "@/assets/category-standard.jpg";
 import categoryPremium from "@/assets/category-premium.jpg";
@@ -92,21 +94,40 @@ const CategoryCard = ({
   );
 };
 
+const FALLBACK_YEARS: Record<string, string> = {
+  budget: "2015 - 2016",
+  standard: "2017 - 2020",
+  premium: "2021 - 2025",
+};
+
 const CategoryCards = () => {
   const { country } = useRegion();
   const { userType } = useUserType();
   const content = getCategoryContent(country);
+  const {
+    getForCategory,
+    formatRange,
+    isLoading,
+    isError,
+    visible: yearSpecsVisible,
+    specs,
+  } = useCategoryYearSpecs(country);
 
   // Only show CategoryCards for drivers (or when no type selected)
-  // Owners don't need to browse rental categories
   if (userType === "owner") {
     return null;
   }
 
+  const yearsFor = (key: "budget" | "standard" | "premium") => {
+    if (!yearSpecsVisible) return "";
+    const spec = getForCategory(key);
+    return spec ? formatRange(spec) : FALLBACK_YEARS[key];
+  };
+
   const categories = [
     {
       title: content.budget.title,
-      years: "2015 - 2016",
+      years: yearsFor("budget"),
       minPrice: content.budget.minPriceLabel,
       maxPrice: content.budget.priceLabel,
       description: content.budget.description,
@@ -116,7 +137,7 @@ const CategoryCards = () => {
     },
     {
       title: content.standard.title,
-      years: "2017 - 2020",
+      years: yearsFor("standard"),
       minPrice: content.standard.minPriceLabel,
       maxPrice: content.standard.priceLabel,
       description: content.standard.description,
@@ -126,7 +147,7 @@ const CategoryCards = () => {
     },
     {
       title: content.premium.title,
-      years: "2021 - 2025",
+      years: yearsFor("premium"),
       minPrice: content.premium.minPriceLabel,
       maxPrice: content.premium.priceLabel,
       description: content.premium.description,
@@ -153,15 +174,43 @@ const CategoryCards = () => {
         </div>
 
         {/* Category Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {categories.map((category) => (
-            <CategoryCard 
-              key={category.variant} 
-              {...category} 
-              viewCta={content.viewCta}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" aria-busy>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="space-y-3">
+                <Skeleton className="h-48 w-full rounded-xl" />
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            ))}
+            <span className="sr-only">Loading vehicle categories…</span>
+          </div>
+        ) : isError || specs.length === 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {categories.map((category) => (
+              <CategoryCard
+                key={category.variant}
+                {...category}
+                viewCta={content.viewCta}
+              />
+            ))}
+            {isError && (
+              <p className="col-span-full text-center text-sm text-muted-foreground">
+                Live year-model data is unavailable — showing default tiers.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {categories.map((category) => (
+              <CategoryCard
+                key={category.variant}
+                {...category}
+                viewCta={content.viewCta}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

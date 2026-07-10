@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { supabase } from "@/integrations/supabase/client";
+import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
 
 const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   // Owner Details
@@ -108,10 +109,26 @@ const OwnerRegistration = () => {
   const selectedYear = watch("vehicleYear");
   const cities = selectedCountry === "usa" ? usaCities : nigeriaCities;
 
-  // Calculate suggested price based on year
+  // Calculate suggested price based on year (uses editable year specs)
+  const yearSpecsRegion = selectedCountry === "usa" ? "USA" : "Nigeria";
+  const { specs: yearSpecs } = useCategoryYearSpecs(yearSpecsRegion);
   const getSuggestedPrice = () => {
     if (!selectedYear) return null;
     const year = parseInt(selectedYear);
+    // Fallback pricing map matches historical hardcoded values
+    const priceByCategory: Record<string, string> = {
+      premium: "$350/week (Premium)",
+      standard: "$300/week (Standard)",
+      budget: "$250/week (Budget)",
+    };
+    const match = [...yearSpecs]
+      .sort((a, b) => b.sort_order - a.sort_order)
+      .find((s) => year >= s.min_year && year <= s.max_year);
+    if (match) {
+      return priceByCategory[match.category] ??
+        `${match.label} tier (${match.min_year}-${match.max_year})`;
+    }
+    // Legacy fallback
     if (year >= 2021) return "$350/week (Premium)";
     if (year >= 2017) return "$300/week (Standard)";
     return "$250/week (Budget)";

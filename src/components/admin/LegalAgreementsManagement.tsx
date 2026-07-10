@@ -44,6 +44,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import SignaturePad from '@/components/legal/SignaturePad';
 import LegalAgreementDocument from '@/components/legal/LegalAgreementDocument';
+import { SplitPane } from '@/components/ui/split-pane';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface Agreement {
   id: string;
@@ -101,6 +103,8 @@ const LegalAgreementsManagement: React.FC = () => {
   const [viewAgreement, setViewAgreement] = useState<Agreement | null>(null);
   const [isWitnessing, setIsWitnessing] = useState(false);
   const [witnessSignature, setWitnessSignature] = useState<string | null>(null);
+  const [selectedAgreementId, setSelectedAgreementId] = useState<string | null>(null);
+  const [selectedBulkIds, setSelectedBulkIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchData();
@@ -469,58 +473,265 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
             <p>No agreements found</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Driver</TableHead>
-                <TableHead>Owner</TableHead>
-                <TableHead>Vehicle</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAgreements.map((agreement) => (
-                <TableRow key={agreement.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{agreement.driver_profile?.full_name || 'Unknown'}</p>
-                      <p className="text-sm text-muted-foreground">{agreement.driver_profile?.email}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{agreement.owner_profile?.full_name || 'Unknown'}</p>
-                      <p className="text-sm text-muted-foreground">{agreement.owner_profile?.email}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {agreement.vehicle ? (
-                      <div>
-                        <p className="font-medium">{agreement.vehicle.year} {agreement.vehicle.make} {agreement.vehicle.model}</p>
-                        <p className="text-sm text-muted-foreground">{agreement.vehicle.license_plate}</p>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">No vehicle</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(agreement.status, agreement)}</TableCell>
-                  <TableCell>{format(new Date(agreement.created_at), 'MMM dd, yyyy')}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setViewAgreement(agreement)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
+          <>
+            {/* Table view — mobile / laptop */}
+            <div className="xl:hidden">
+              {selectedBulkIds.size > 0 && (
+                <div className="mb-3 flex items-center justify-between rounded-md bg-primary/10 px-3 py-2 text-sm">
+                  <span>{selectedBulkIds.size} selected</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelectedBulkIds(new Set())}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        aria-label="Select all"
+                        checked={
+                          filteredAgreements.length > 0 &&
+                          filteredAgreements.every((a) => selectedBulkIds.has(a.id))
+                        }
+                        onCheckedChange={(v) => {
+                          if (v) setSelectedBulkIds(new Set(filteredAgreements.map((a) => a.id)));
+                          else setSelectedBulkIds(new Set());
+                        }}
+                      />
+                    </TableHead>
+                    <TableHead>Driver</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Vehicle</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredAgreements.map((agreement) => (
+                    <TableRow key={agreement.id}>
+                      <TableCell>
+                        <Checkbox
+                          aria-label={`Select agreement ${agreement.id}`}
+                          checked={selectedBulkIds.has(agreement.id)}
+                          onCheckedChange={(v) => {
+                            setSelectedBulkIds((prev) => {
+                              const next = new Set(prev);
+                              if (v) next.add(agreement.id);
+                              else next.delete(agreement.id);
+                              return next;
+                            });
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{agreement.driver_profile?.full_name || 'Unknown'}</p>
+                          <p className="text-sm text-muted-foreground">{agreement.driver_profile?.email}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{agreement.owner_profile?.full_name || 'Unknown'}</p>
+                          <p className="text-sm text-muted-foreground">{agreement.owner_profile?.email}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {agreement.vehicle ? (
+                          <div>
+                            <p className="font-medium">{agreement.vehicle.year} {agreement.vehicle.make} {agreement.vehicle.model}</p>
+                            <p className="text-sm text-muted-foreground">{agreement.vehicle.license_plate}</p>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">No vehicle</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(agreement.status, agreement)}</TableCell>
+                      <TableCell>{format(new Date(agreement.created_at), 'MMM dd, yyyy')}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setViewAgreement(agreement)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Split-pane list + detail on xl+ */}
+            <div className="hidden xl:block">
+              {selectedBulkIds.size > 0 && (
+                <div className="mb-3 flex items-center justify-between rounded-md bg-primary/10 px-3 py-2 text-sm">
+                  <span>{selectedBulkIds.size} agreement(s) selected</span>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedBulkIds(new Set())}>
+                      Clear
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </div>
+                </div>
+              )}
+              {(() => {
+                const selectedAgreement =
+                  filteredAgreements.find((a) => a.id === selectedAgreementId) ?? null;
+
+                const list = (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 px-2 pb-2 border-b text-xs text-muted-foreground">
+                      <Checkbox
+                        aria-label="Select all visible"
+                        checked={
+                          filteredAgreements.length > 0 &&
+                          filteredAgreements.every((a) => selectedBulkIds.has(a.id))
+                        }
+                        onCheckedChange={(v) => {
+                          if (v) setSelectedBulkIds(new Set(filteredAgreements.map((a) => a.id)));
+                          else setSelectedBulkIds(new Set());
+                        }}
+                      />
+                      Select visible ({filteredAgreements.length})
+                    </div>
+                    {filteredAgreements.map((agreement) => {
+                      const isSelected = selectedAgreementId === agreement.id;
+                      return (
+                        <div
+                          key={agreement.id}
+                          className={`flex items-start gap-2 rounded-lg border p-3 transition-colors ${
+                            isSelected ? 'border-primary ring-1 ring-primary bg-primary/5' : 'hover:bg-accent/40'
+                          }`}
+                        >
+                          <Checkbox
+                            aria-label={`Select ${agreement.id}`}
+                            checked={selectedBulkIds.has(agreement.id)}
+                            onCheckedChange={(v) => {
+                              setSelectedBulkIds((prev) => {
+                                const next = new Set(prev);
+                                if (v) next.add(agreement.id);
+                                else next.delete(agreement.id);
+                                return next;
+                              });
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAgreementId(agreement.id)}
+                            className="flex-1 text-left min-w-0"
+                          >
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-medium truncate">
+                                {agreement.driver_profile?.full_name || 'Unknown driver'}
+                              </p>
+                              {getStatusBadge(agreement.status, agreement)}
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">
+                              Owner: {agreement.owner_profile?.full_name || 'Unknown'}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {agreement.vehicle
+                                ? `${agreement.vehicle.year} ${agreement.vehicle.make} ${agreement.vehicle.model}`
+                                : 'No vehicle'} · {format(new Date(agreement.created_at), 'MMM dd, yyyy')}
+                            </p>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+
+                const detail = selectedAgreement && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Agreement</p>
+                        <p className="font-semibold">
+                          {selectedAgreement.driver_profile?.full_name || 'Unknown'} ↔{' '}
+                          {selectedAgreement.owner_profile?.full_name || 'Unknown'}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setViewAgreement(selectedAgreement)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" /> Open full view
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase">Status</p>
+                        <div className="mt-1">
+                          {getStatusBadge(selectedAgreement.status, selectedAgreement)}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase">Created</p>
+                        <p className="mt-1">
+                          {format(new Date(selectedAgreement.created_at), 'MMM dd, yyyy')}
+                        </p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground uppercase">Vehicle</p>
+                        <p className="mt-1">
+                          {selectedAgreement.vehicle
+                            ? `${selectedAgreement.vehicle.year} ${selectedAgreement.vehicle.make} ${selectedAgreement.vehicle.model} (${selectedAgreement.vehicle.license_plate})`
+                            : 'No vehicle attached'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase">Driver signed</p>
+                        <p className="mt-1">
+                          {selectedAgreement.driver_signed_at
+                            ? format(new Date(selectedAgreement.driver_signed_at), 'MMM dd, yyyy HH:mm')
+                            : 'Pending'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase">Owner signed</p>
+                        <p className="mt-1">
+                          {selectedAgreement.owner_signed_at
+                            ? format(new Date(selectedAgreement.owner_signed_at), 'MMM dd, yyyy HH:mm')
+                            : 'Pending'}
+                        </p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground uppercase">Admin witnessed</p>
+                        <p className="mt-1">
+                          {selectedAgreement.admin_witnessed_at
+                            ? format(new Date(selectedAgreement.admin_witnessed_at), 'MMM dd, yyyy HH:mm')
+                            : 'Not yet witnessed'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+
+                return (
+                  <SplitPane
+                    list={list}
+                    detail={detail}
+                    hasSelection={!!selectedAgreement}
+                    emptyState={
+                      <div className="text-center text-sm text-muted-foreground py-16">
+                        <FileText className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                        Select an agreement to preview signatures and status.
+                      </div>
+                    }
+                  />
+                );
+              })()}
+            </div>
+          </>
         )}
 
         {/* View Agreement Dialog */}
