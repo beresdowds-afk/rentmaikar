@@ -508,15 +508,28 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
             {/* Table view — mobile / laptop */}
             <div className="xl:hidden">
               {selectedBulkIds.size > 0 && (
-                <div className="mb-3 flex items-center justify-between rounded-md bg-primary/10 px-3 py-2 text-sm">
-                  <span>{selectedBulkIds.size} selected</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setSelectedBulkIds(new Set())}
-                  >
-                    Clear
-                  </Button>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm">
+                  <span>{selectedBulkIds.size} selected (persists across pages)</span>
+                  <div className="flex items-center gap-2">
+                    {selectedBulkIds.size < filteredAgreements.length && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setSelectedBulkIds(new Set(filteredAgreements.map((a) => a.id)))
+                        }
+                      >
+                        Select all {filteredAgreements.length} matching
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setConfirmAction('clear')}
+                    >
+                      Clear
+                    </Button>
+                  </div>
                 </div>
               )}
               <Table>
