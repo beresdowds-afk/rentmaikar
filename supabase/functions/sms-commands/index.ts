@@ -278,8 +278,10 @@ const sendSMS = async (
               type: "plain",
               channel: "generic",
               api_key: termiiApiKey,
+              notify_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/termii-webhook`,
             }),
           });
+
           const data = await res.json();
           if (!res.ok || data.code !== "ok") throw new Error(data.message || "Termii SMS failed");
         }
@@ -307,8 +309,9 @@ const sendSMS = async (
 
       const supabaseUrl = Deno.env.get("SUPABASE_URL");
       if (supabaseUrl) {
-        formData.append("StatusCallback", `${supabaseUrl}/functions/v1/voip-status-callback`);
+        formData.append("StatusCallback", `${supabaseUrl}/functions/v1/twilio-webhook`);
       }
+
 
       const res = await fetch(url, {
         method: "POST",

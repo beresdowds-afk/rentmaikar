@@ -111,8 +111,9 @@ async function sendTwilio(to: string, body: string, channel: "sms" | "whatsapp")
     const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, {
       method: "POST",
       headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ To: dest, From: from, Body: body }),
+      body: new URLSearchParams({ To: dest, From: from, Body: body, StatusCallback: `${Deno.env.get("SUPABASE_URL")}/functions/v1/twilio-webhook` }),
     });
+
     const txt = r.ok ? "" : await r.text().catch(() => "");
     return { ok: r.ok, status: r.status, error: txt.slice(0, 300) };
   });
@@ -126,8 +127,9 @@ async function sendTermii(to: string, body: string): Promise<ChannelResult> {
     const r = await fetch("https://api.ng.termii.com/api/sms/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to, from: TERMII_SENDER_ID, sms: body, type: "plain", channel: "generic", api_key: TERMII_API_KEY }),
+      body: JSON.stringify({ to, from: TERMII_SENDER_ID, sms: body, type: "plain", channel: "generic", api_key: TERMII_API_KEY, notify_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/termii-webhook` }),
     });
+
     const txt = r.ok ? "" : await r.text().catch(() => "");
     return { ok: r.ok, status: r.status, error: txt.slice(0, 300) };
   });
