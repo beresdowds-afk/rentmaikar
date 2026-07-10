@@ -119,6 +119,9 @@ const LegalAgreementsManagement: React.FC = () => {
   const [witnessSignature, setWitnessSignature] = useState<string | null>(null);
   const [selectedAgreementId, setSelectedAgreementId] = useState<string | null>(null);
   const [selectedBulkIds, setSelectedBulkIds] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [confirmAction, setConfirmAction] = useState<null | 'resend' | 'clear'>(null);
+  const [isBulkRunning, setIsBulkRunning] = useState(false);
 
   useEffect(() => {
     fetchData();
