@@ -118,8 +118,10 @@ serve(async (req) => {
           type: "plain",
           channel: termiiChannel,
           api_key: termiiApiKey,
+          notify_url: `${supabaseUrl}/functions/v1/termii-webhook`,
         }),
       });
+
 
       const termiiData = await termiiResponse.json();
 
@@ -157,6 +159,8 @@ serve(async (req) => {
       formData.append("To", toNumber);
       formData.append("From", fromNumber);
       formData.append("Body", messageContent);
+      formData.append("StatusCallback", `${supabaseUrl}/functions/v1/twilio-webhook`);
+
 
       const twilioResponse = await fetch(twilioUrl, {
         method: "POST",
