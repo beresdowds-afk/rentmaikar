@@ -176,6 +176,8 @@ const AdminAssistantDashboard = () => {
     // ERP: infrastructure/admin-only
     'hardware', 'mqtt-credentials', 'fees', 'secrets', 'api-keys',
     'webhooks', 'api-endpoints', 'security', 'settings', 'region-autobuild',
+    'category-year-specs',
+
     // Support: portal
     'task-portal',
     // CRM: assistant-management is admin-only
