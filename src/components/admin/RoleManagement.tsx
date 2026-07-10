@@ -488,6 +488,10 @@ export function RoleManagement() {
                 <ShieldCheck className="h-4 w-4" />
                 Admin Assistants
               </TabsTrigger>
+              <TabsTrigger value="assignments" className="gap-2">
+                <ShieldCheck className="h-4 w-4" />
+                User Assignments
+              </TabsTrigger>
               <TabsTrigger value="audit" className="gap-2">
                 <History className="h-4 w-4" />
                 Audit Log ({auditLogs.length})
