@@ -168,7 +168,18 @@ const AdminAssistantDashboard = () => {
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [portalView, setPortalView] = useState<PortalType>('support');
-  const [activeTab, setActiveTab] = useState<string>('task-portal');
+  const [activeTab, setActiveTab] = useState<string>('inbox');
+
+  const EXCLUDED_TABS = [
+    // ERP: infrastructure/admin-only
+    'hardware', 'mqtt-credentials', 'fees', 'secrets', 'api-keys',
+    'webhooks', 'api-endpoints', 'security', 'settings', 'region-autobuild',
+    // Support: portal
+    'task-portal',
+    // CRM: assistant-management is admin-only
+    'admin-assistants',
+  ];
+  const EXCLUDED_PORTALS: PortalType[] = ['docs'];
   const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
 
   // Calculate converted values
