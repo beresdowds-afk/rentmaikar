@@ -43,6 +43,8 @@ const sendWhatsAppMessage = async (to: string, message: string) => {
   formData.append("To", `whatsapp:${to}`);
   formData.append("From", `whatsapp:${fromNumber}`);
   formData.append("Body", message);
+  formData.append("StatusCallback", `${Deno.env.get("SUPABASE_URL")}/functions/v1/twilio-webhook`);
+
 
   const response = await fetch(url, {
     method: "POST",
