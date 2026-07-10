@@ -23,6 +23,7 @@ export const crmTabs: PortalTab[] = [
   { value: "applications", label: "Applications", icon: <UserPlus className="h-4 w-4" />, dataTour: "admin-applications" },
   { value: "accounts", label: "User Accounts", icon: <UserCircle className="h-4 w-4" />, dataTour: "admin-accounts" },
   { value: "roles", label: "Role Management", icon: <Shield className="h-4 w-4" />, dataTour: "admin-roles" },
+  { value: "admin-assistants", label: "Admin Assistants", icon: <ShieldCheck className="h-4 w-4" /> },
   { value: "negotiations", label: "Negotiations", icon: <HandshakeIcon className="h-4 w-4" />, dataTour: "admin-negotiations" },
   { value: "approvals", label: "Pending Approvals", icon: <ClipboardList className="h-4 w-4" /> },
   { value: "defaults", label: "Payment Defaults", icon: <Wallet className="h-4 w-4" /> },
