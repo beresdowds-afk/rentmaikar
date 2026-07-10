@@ -62,11 +62,17 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const vehicleCategories = [
-  { value: 'smart-start', label: 'Smart Start (2015-2016)', maxWeekly: 250 },
-  { value: 'earnings-optimizer', label: 'Earnings Optimizer (2017-2020)', maxWeekly: 300 },
-  { value: 'top-earner', label: 'Top Earner (2021-2025)', maxWeekly: 350 },
-];
+const VEHICLE_CATEGORY_DEFS = [
+  { value: 'smart-start', label: 'Smart Start', specKey: 'budget', maxWeekly: 250 },
+  { value: 'earnings-optimizer', label: 'Earnings Optimizer', specKey: 'standard', maxWeekly: 300 },
+  { value: 'top-earner', label: 'Top Earner', specKey: 'premium', maxWeekly: 350 },
+] as const;
+
+const FALLBACK_CATEGORY_YEARS: Record<string, string> = {
+  budget: '2015-2016',
+  standard: '2017-2020',
+  premium: '2021-2025',
+};
 
 export default function OwnerDashboard() {
   const { country, currency } = useRegion();
