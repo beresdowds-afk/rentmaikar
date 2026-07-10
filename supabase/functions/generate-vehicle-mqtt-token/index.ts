@@ -32,6 +32,31 @@ Deno.serve(async (req) => {
       });
     }
 
+    const userId = claims.claims.sub as string;
+
+    const adminClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    // Authorization: only admins or active IoT support staff may mint MQTT tokens.
+    const [{ data: roleRows }, { data: iotStaff }] = await Promise.all([
+      adminClient.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin'),
+      adminClient
+        .from('support_staff')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('support_type', 'iot')
+        .eq('is_active', true),
+    ]);
+    const isAdmin = (roleRows?.length ?? 0) > 0;
+    const isIotStaff = (iotStaff?.length ?? 0) > 0;
+    if (!isAdmin && !isIotStaff) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     const { credentialId, vehicleId, expiryDays = 30 } = await req.json();
 
     if (!credentialId || !vehicleId) {
@@ -40,10 +65,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const adminClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
 
     const { data: cred, error: credError } = await adminClient
       .from('vehicle_mqtt_credentials')
