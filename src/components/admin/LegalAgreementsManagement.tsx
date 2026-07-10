@@ -660,43 +660,12 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                   filteredAgreements.find((a) => a.id === selectedAgreementId) ?? null;
                 const selectedCount = selectedBulkIds.size;
                 const hasSelection = selectedCount > 0;
-                const allSelected =
+                const allOnPageSelected =
+                  pagedAgreements.length > 0 &&
+                  pagedAgreements.every((a) => selectedBulkIds.has(a.id));
+                const allMatchingSelected =
                   filteredAgreements.length > 0 &&
-                  filteredAgreements.every((a) => selectedBulkIds.has(a.id));
-
-                const selectedAgreements = filteredAgreements.filter((a) =>
-                  selectedBulkIds.has(a.id),
-                );
-
-                const handleBulkResend = async () => {
-                  const completed = selectedAgreements.filter((a) => a.status === 'completed');
-                  if (completed.length === 0) {
-                    toast.error('Only completed agreements can be re-sent');
-                    return;
-                  }
-                  toast.loading(`Re-sending ${completed.length} agreement(s)...`, { id: 'bulk-resend' });
-                  let ok = 0;
-                  for (const a of completed) {
-                    try {
-                      await supabase.functions.invoke('send-agreement-email', {
-                        body: {
-                          agreementId: a.id,
-                          driverEmail: a.driver_profile?.email,
-                          driverName: a.driver_profile?.full_name,
-                          ownerEmail: a.owner_profile?.email,
-                          ownerName: a.owner_profile?.full_name,
-                          vehicleInfo: a.vehicle
-                            ? `${a.vehicle.year} ${a.vehicle.make} ${a.vehicle.model}`
-                            : 'Vehicle',
-                        },
-                      });
-                      ok += 1;
-                    } catch (err) {
-                      console.error('Resend failed for', a.id, err);
-                    }
-                  }
-                  toast.success(`Re-sent ${ok} of ${completed.length} agreement(s)`, { id: 'bulk-resend' });
-                };
+                  selectedCount >= filteredAgreements.length;
 
                 const handleBulkExport = () => {
                   if (selectedAgreements.length === 0) return;
@@ -734,27 +703,43 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                     role="toolbar"
                     aria-label="Bulk actions"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       <Checkbox
-                        aria-label={allSelected ? 'Unselect all visible' : 'Select all visible'}
-                        checked={allSelected}
+                        aria-label={allOnPageSelected ? 'Unselect page' : 'Select current page'}
+                        checked={allOnPageSelected}
                         onCheckedChange={(v) => {
-                          if (v) setSelectedBulkIds(new Set(filteredAgreements.map((a) => a.id)));
-                          else setSelectedBulkIds(new Set());
+                          setSelectedBulkIds((prev) => {
+                            const next = new Set(prev);
+                            if (v) pagedAgreements.forEach((a) => next.add(a.id));
+                            else pagedAgreements.forEach((a) => next.delete(a.id));
+                            return next;
+                          });
                         }}
                       />
                       <span className={hasSelection ? 'font-medium' : 'text-muted-foreground'}>
                         {hasSelection
-                          ? `${selectedCount} of ${filteredAgreements.length} selected`
-                          : `Select agreements to enable bulk actions (${filteredAgreements.length} visible)`}
+                          ? `${selectedCount} of ${filteredAgreements.length} selected · persists across pages`
+                          : `Select agreements to enable bulk actions (${filteredAgreements.length} matching)`}
                       </span>
+                      {hasSelection && !allMatchingSelected && (
+                        <Button
+                          size="sm"
+                          variant="link"
+                          className="h-auto p-0"
+                          onClick={() =>
+                            setSelectedBulkIds(new Set(filteredAgreements.map((a) => a.id)))
+                          }
+                        >
+                          Select all {filteredAgreements.length} matching results
+                        </Button>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={!hasSelection}
-                        onClick={handleBulkResend}
+                        disabled={!hasSelection || isBulkRunning}
+                        onClick={() => setConfirmAction('resend')}
                         title={hasSelection ? 'Re-send completed agreement emails' : 'Select rows first'}
                       >
                         <Send className="h-4 w-4 mr-1" /> Resend emails
@@ -772,13 +757,14 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                         size="sm"
                         variant="ghost"
                         disabled={!hasSelection}
-                        onClick={() => setSelectedBulkIds(new Set())}
+                        onClick={() => setConfirmAction('clear')}
                       >
                         Clear
                       </Button>
                     </div>
                   </div>
                 );
+
 
                 const list = (
                   <div className="space-y-2">
