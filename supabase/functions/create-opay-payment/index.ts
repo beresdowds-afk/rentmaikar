@@ -28,8 +28,13 @@ function isNigeriaRegion(v?: string | null) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const authRes = await requireAuthenticatedUser(req);
+  if (authRes instanceof Response) return authRes;
+
   try {
     const secretKey = Deno.env.get("OPAY_SECRET_KEY");
+
     const publicKey = Deno.env.get("OPAY_PUBLIC_KEY");
     const merchantId = Deno.env.get("OPAY_MERCHANT_ID");
     if (!secretKey || !publicKey || !merchantId) {
