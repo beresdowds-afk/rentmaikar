@@ -9,6 +9,7 @@ import { DataPagination } from "@/components/ui/data-pagination";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { useRegion } from "@/contexts/RegionContext";
+import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
 import { isVehicleInRange, getVehicleDistance, getNigeriaParentCity } from "@/lib/geo-utils";
 import categoryBudget from "@/assets/category-budget.jpg";
 import categoryStandard from "@/assets/category-standard.jpg";
