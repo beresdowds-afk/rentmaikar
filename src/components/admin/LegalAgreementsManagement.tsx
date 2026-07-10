@@ -911,8 +911,87 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
               })()}
             </div>
 
+            {/* Pagination controls (shared) */}
+            {filteredAgreements.length > PAGE_SIZE && (
+              <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+                <span>
+                  Showing {(currentPage - 1) * PAGE_SIZE + 1}–
+                  {Math.min(currentPage * PAGE_SIZE, filteredAgreements.length)} of{' '}
+                  {filteredAgreements.length}
+                  {selectedBulkIds.size > 0 && ` · ${selectedBulkIds.size} selected across pages`}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage <= 1}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Prev
+                  </Button>
+                  <span>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage >= totalPages}
+                  >
+                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </>
         )}
+
+        {/* Bulk action confirmation */}
+        <AlertDialog
+          open={confirmAction !== null}
+          onOpenChange={(open) => !open && setConfirmAction(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {confirmAction === 'resend'
+                  ? `Re-send ${selectedAgreements.filter((a) => a.status === 'completed').length} agreement email(s)?`
+                  : 'Clear current selection?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {confirmAction === 'resend' ? (
+                  <>
+                    This will re-send completed agreement emails to both driver and owner for each
+                    selected row. Non-completed agreements in the selection will be skipped.
+                  </>
+                ) : (
+                  <>
+                    You have {selectedBulkIds.size} agreement(s) selected across pages. Clearing will
+                    remove all of them from your selection.
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isBulkRunning}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={isBulkRunning}
+                onClick={async (e) => {
+                  e.preventDefault();
+                  if (confirmAction === 'resend') {
+                    await runBulkResend();
+                  } else if (confirmAction === 'clear') {
+                    setSelectedBulkIds(new Set());
+                  }
+                  setConfirmAction(null);
+                }}
+              >
+                {confirmAction === 'resend' ? 'Re-send emails' : 'Clear selection'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
 
         {/* View Agreement Dialog */}
         <Dialog open={!!viewAgreement} onOpenChange={(open) => !open && setViewAgreement(null)}>
