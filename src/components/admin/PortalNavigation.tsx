@@ -180,23 +180,26 @@ export const PortalNavigation = ({
                 {getPortalDescription(portal)}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {getTabsForPortal(portal).map((tab) => (
-                <DropdownMenuItem
-                  key={tab.value}
-                  className={cn(
-                    "cursor-pointer gap-2",
-                    activePortal === portal && activeTab === tab.value && "bg-accent"
-                  )}
-                  onClick={() => {
-                    onPortalChange(portal);
-                    onTabChange(tab.value);
-                  }}
-                >
-                  {tab.icon}
-                  {tab.label}
-                </DropdownMenuItem>
-              ))}
+              <div className="max-h-[360px] overflow-y-auto overscroll-contain pr-1">
+                {getTabsForPortal(portal).map((tab) => (
+                  <DropdownMenuItem
+                    key={tab.value}
+                    className={cn(
+                      "cursor-pointer gap-2",
+                      activePortal === portal && activeTab === tab.value && "bg-accent"
+                    )}
+                    onClick={() => {
+                      onPortalChange(portal);
+                      onTabChange(tab.value);
+                    }}
+                  >
+                    {tab.icon}
+                    {tab.label}
+                  </DropdownMenuItem>
+                ))}
+              </div>
             </DropdownMenuContent>
+
           </DropdownMenu>
         ))}
       </div>
