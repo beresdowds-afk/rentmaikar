@@ -588,6 +588,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           voice_provider: string
+          whatsapp_provider: string | null
         }
         Insert: {
           country_code_prefix: string
@@ -603,6 +604,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           voice_provider?: string
+          whatsapp_provider?: string | null
         }
         Update: {
           country_code_prefix?: string
@@ -618,6 +620,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           voice_provider?: string
+          whatsapp_provider?: string | null
         }
         Relationships: []
       }
@@ -1576,6 +1579,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      iot_sim_cards: {
+        Row: {
+          activated_at: string | null
+          created_at: string
+          data_limit_mb: number | null
+          data_usage_mb: number | null
+          device_id: string | null
+          iccid: string
+          id: string
+          imsi: string | null
+          last_session_at: string | null
+          metadata: Json | null
+          msisdn: string | null
+          plan_name: string | null
+          provider: string
+          provider_sim_id: string | null
+          status: string
+          suspended_at: string | null
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          created_at?: string
+          data_limit_mb?: number | null
+          data_usage_mb?: number | null
+          device_id?: string | null
+          iccid: string
+          id?: string
+          imsi?: string | null
+          last_session_at?: string | null
+          metadata?: Json | null
+          msisdn?: string | null
+          plan_name?: string | null
+          provider?: string
+          provider_sim_id?: string | null
+          status?: string
+          suspended_at?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          created_at?: string
+          data_limit_mb?: number | null
+          data_usage_mb?: number | null
+          device_id?: string | null
+          iccid?: string
+          id?: string
+          imsi?: string | null
+          last_session_at?: string | null
+          metadata?: Json | null
+          msisdn?: string | null
+          plan_name?: string | null
+          provider?: string
+          provider_sim_id?: string | null
+          status?: string
+          suspended_at?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: []
       }
       legal_agreements: {
         Row: {
@@ -4076,6 +4142,57 @@ export type Database = {
           priority?: number
           region_scope?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      telemetry_shadow_log: {
+        Row: {
+          created_at: string
+          device_id: string | null
+          divergence_score: number | null
+          id: string
+          notes: string | null
+          primary_lat: number | null
+          primary_lng: number | null
+          primary_online: boolean | null
+          primary_provider: string
+          shadow_lat: number | null
+          shadow_lng: number | null
+          shadow_online: boolean | null
+          shadow_provider: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_id?: string | null
+          divergence_score?: number | null
+          id?: string
+          notes?: string | null
+          primary_lat?: number | null
+          primary_lng?: number | null
+          primary_online?: boolean | null
+          primary_provider: string
+          shadow_lat?: number | null
+          shadow_lng?: number | null
+          shadow_online?: boolean | null
+          shadow_provider: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_id?: string | null
+          divergence_score?: number | null
+          id?: string
+          notes?: string | null
+          primary_lat?: number | null
+          primary_lng?: number | null
+          primary_online?: boolean | null
+          primary_provider?: string
+          shadow_lat?: number | null
+          shadow_lng?: number | null
+          shadow_online?: boolean | null
+          shadow_provider?: string
+          vehicle_id?: string | null
         }
         Relationships: []
       }
