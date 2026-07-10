@@ -90,7 +90,11 @@ interface PortalNavigationProps {
   activeTab: string;
   onPortalChange: (portal: PortalType) => void;
   onTabChange: (tab: string) => void;
+  excludeTabs?: string[];
+  excludePortals?: PortalType[];
 }
+
+
 
 export const PortalNavigation = ({
   activePortal,
