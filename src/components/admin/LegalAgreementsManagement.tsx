@@ -548,7 +548,7 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAgreements.map((agreement) => (
+                  {pagedAgreements.map((agreement) => (
                     <TableRow key={agreement.id}>
                       <TableCell>
                         <Checkbox
