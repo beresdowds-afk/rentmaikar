@@ -101,15 +101,22 @@ export const PortalNavigation = ({
   activeTab,
   onPortalChange,
   onTabChange,
+  excludeTabs,
+  excludePortals,
 }: PortalNavigationProps) => {
+  const excludedTabSet = new Set(excludeTabs || []);
+  const excludedPortalSet = new Set(excludePortals || []);
   const getTabsForPortal = (portal: PortalType): PortalTab[] => {
-    switch (portal) {
-      case 'crm': return crmTabs;
-      case 'erp': return erpTabs;
-      case 'support': return supportTabs;
-      case 'marketing': return marketingTabs;
-      case 'docs': return docsTabs;
-    }
+    const base = (() => {
+      switch (portal) {
+        case 'crm': return crmTabs;
+        case 'erp': return erpTabs;
+        case 'support': return supportTabs;
+        case 'marketing': return marketingTabs;
+        case 'docs': return docsTabs;
+      }
+    })();
+    return base.filter(t => !excludedTabSet.has(t.value));
   };
 
   const getPortalIcon = (portal: PortalType) => {
@@ -144,12 +151,15 @@ export const PortalNavigation = ({
 
   const currentTabs = getTabsForPortal(activePortal);
   const currentTabLabel = currentTabs.find(t => t.value === activeTab)?.label || 'Select...';
+  const visiblePortals = (['crm', 'erp', 'support', 'marketing', 'docs'] as PortalType[])
+    .filter(p => !excludedPortalSet.has(p));
 
   return (
     <div className="flex flex-col gap-4 mb-6">
       {/* Portal Buttons with Dropdowns */}
       <div className="flex flex-wrap items-center gap-2">
-        {(['crm', 'erp', 'support', 'marketing', 'docs'] as PortalType[]).map((portal) => (
+        {visiblePortals.map((portal) => (
+
           <DropdownMenu key={portal}>
             <DropdownMenuTrigger asChild>
               <Button
