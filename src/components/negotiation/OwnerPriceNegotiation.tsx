@@ -376,7 +376,7 @@ export const OwnerPriceNegotiation = () => {
       <Alert>
         <DollarSign className="h-4 w-4" />
         <AlertDescription>
-          <strong>Weekly Rate Ceilings by Category:</strong> Smart Start (2015-16): {currencySymbol}250 | Earnings Optimizer (2017-20): {currencySymbol}300 | Top Earner (2021-25): {currencySymbol}350
+          <strong>Weekly Rate Ceilings by Category:</strong> Smart Start{rangeSuffix('budget')}: {currencySymbol}250 | Earnings Optimizer{rangeSuffix('standard')}: {currencySymbol}300 | Top Earner{rangeSuffix('premium')}: {currencySymbol}350
         </AlertDescription>
       </Alert>
 
