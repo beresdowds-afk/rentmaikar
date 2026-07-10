@@ -183,7 +183,7 @@ export default function DriverDashboard() {
           </div>
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 2xl:grid-cols-8 gap-4 mb-8">
 
             <Card>
               <CardContent className="pt-6">
