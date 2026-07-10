@@ -26,6 +26,7 @@ const DriverDashboard = lazy(() => import("./pages/DriverDashboard"));
 const OwnerDashboard = lazy(() => import("./pages/OwnerDashboard"));
 const Catalogue = lazy(() => import("./pages/Catalogue"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminAssistantDashboard = lazy(() => import("./pages/AdminAssistantDashboard"));
 const ApiDocs = lazy(() => import("./pages/ApiDocs"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
