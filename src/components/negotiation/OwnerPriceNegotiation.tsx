@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRegion } from '@/contexts/RegionContext';
+import { useCategoryYearSpecs } from '@/hooks/useCategoryYearSpecs';
 import { usePriceNegotiations, useOwnerVehicles, type PriceNegotiation } from '@/hooks/usePriceNegotiations';
 
 const requestSchema = z.object({
