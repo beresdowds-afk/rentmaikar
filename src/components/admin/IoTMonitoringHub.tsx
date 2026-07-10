@@ -14,8 +14,10 @@ import {
   Flame, Gauge, MapPin, Radio, RefreshCw, Satellite, Shield,
   Signal, Thermometer, Wifi, WifiOff, Zap, Siren, Eye,
   TrendingUp, BarChart3, CircleAlert, BellRing, Timer, Cpu,
-  Server, Database, HardDrive
+  Server, Database, HardDrive, Router
 } from 'lucide-react';
+import { TelemetryProviderSwitch } from './TelemetryProviderSwitch';
+import { IoTSimCardsPanel } from './IoTSimCardsPanel';
 import { supabase } from '@/integrations/supabase/client';
 import {
   TELEMETRY_SCHEDULES,
@@ -278,7 +280,16 @@ export const IoTMonitoringHub = () => {
             <Database className="h-3.5 w-3.5" />
             Data Retention
           </TabsTrigger>
+          <TabsTrigger value="providers" className="gap-1.5">
+            <Router className="h-3.5 w-3.5" />
+            Providers &amp; SIMs
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="providers" className="space-y-4">
+          <TelemetryProviderSwitch />
+          <IoTSimCardsPanel />
+        </TabsContent>
 
         {/* ── FLEET OVERVIEW ────────────────────────────── */}
         <TabsContent value="overview">
