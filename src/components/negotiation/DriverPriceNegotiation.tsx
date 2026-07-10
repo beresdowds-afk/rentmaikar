@@ -365,7 +365,7 @@ export const DriverPriceNegotiation = () => {
       <Alert>
         <DollarSign className="h-4 w-4" />
         <AlertDescription>
-          <strong>Weekly Price Ceilings:</strong> Budget (2015-16): {currencySymbol}250 | Standard (2017-20): {currencySymbol}300 | Premium (2021-25): {currencySymbol}350
+          <strong>Weekly Price Ceilings:</strong> Budget{rangeSuffix('budget')}: {currencySymbol}250 | Standard{rangeSuffix('standard')}: {currencySymbol}300 | Premium{rangeSuffix('premium')}: {currencySymbol}350
         </AlertDescription>
       </Alert>
 
