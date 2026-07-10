@@ -1,86 +1,59 @@
-## Driver Call-In System
 
-Add three "Call In" actions on the Driver Dashboard — **Vehicle Fault**, **Maintenance Schedule**, and **Sick Call-In( incl**ude notes for nature of fault and maintenance call in) — that pause payments, geofence the vehicle to a 20 m radius, capture detailed real time vehicle telemetry at point of call in, logges report and escalate to a vehicle recall when abused.
+## Scope
 
-### 1. Driver Dashboard UI
+Four integrations, each behind secrets so nothing breaks until credentials are added.
 
-New "Call In" card on `src/pages/DriverDashboard.tsx` with three buttons. Each opens a confirmation dialog that:
+---
 
-- Captures current vehicle GPS (from latest MQTT/Traccar telemetry) as geofence center.
-- Requires a short reason (validated with Zod, max 500 chars).
-- Shows the rules: 24 h validity (fault/maintenance), 7 d cap (sick, needs owner+admin approval beyond that), auto-reactivation on geofence breach.
+### 1. Traccar — parallel with EMQX + admin flip switch
 
-An "Active Call-Ins" panel shows the live call-in, remaining time, geofence status, and a "Cancel Call-In" button.
+- `telemetry_providers` already supports multiple rows with `is_active` + `priority`. Add UI in **Admin → Telemetry Providers** with a single "Active provider" radio (EMQX / Traccar) that flips `is_active` atomically (a DB transaction so only one row is active at a time).
+- Keep both adapters registered. Every telemetry-consuming edge function routes through `getTelemetryAdapter()` (already exists in `_shared/telemetry-client.ts`). Migrate the direct EMQX callers (`emqx-monitoring`, `telemetry-health-monitor`, `iot-accident-detection`, `enforce-call-in-geofence`, `vehicle-shutdown-warning`, `process-payment-unlock`) to the adapter so the flip actually takes effect.
+- Add a "shadow read" mode: when Traccar is inactive, still hit its `getDeviceState` in `telemetry-health-monitor` and log divergence to a new `telemetry_shadow_log` table. Lets us validate Traccar with real vehicles before flipping.
+- Secrets needed (request via `add_secret`): `TRACCAR_BASE_URL`, `TRACCAR_API_TOKEN`.
 
-If the driver has an active recall request or approved recall, the Call In buttons are disabled with an explanatory message.
+### 2. Hologram — stubbed behind secrets
 
-### 2. Database (new migration)
+- New file `supabase/functions/_shared/hologram-client.ts` with `activateSim`, `suspendSim`, `getSimUsage`, `listSims`. All methods check `HOLOGRAM_API_KEY` / `HOLOGRAM_ORG_ID`; if missing, return `{ ok: false, reason: "not_configured" }` — no throws.
+- New table `iot_sim_cards` (iccid, msisdn, device_id FK, status, data_usage_mb, activated_at, provider defaults to `'hologram'`).
+- New edge function `hologram-sync` (cron-authenticated) that walks `iot_sim_cards` and refreshes usage/status. No-op when unconfigured.
+- Admin panel section "SIM Cards" showing the table read-only for now, with a "Configure Hologram" banner when secrets are absent.
+- Secrets (requested only when user confirms rollout): `HOLOGRAM_API_KEY`, `HOLOGRAM_ORG_ID`.
 
-- `**driver_call_ins**`: `driver_id`, `rental_id`, `vehicle_id`, `type` (`fault` | `maintenance` | `sick`), `reason`, `status` (`active` | `expired` | `cancelled` | `breached` | `resolved`), `geofence_lat`, `geofence_lng`, `geofence_radius_m` (default 20), `started_at`, `expires_at`, `ended_at`, `end_reason`, standard timestamps.
-- `**vehicle_geofences**`: active geofence per vehicle tied to a call-in (`vehicle_id`, `call_in_id`, `center_lat`, `center_lng`, `radius_m`, `active`, `breached_at`).
-- Extend `**vehicle_recalls**` with `triggered_by_call_ins` (uuid[]) and `owner_approval_status`, `admin_validation_status` if not already present.
-- RLS: driver reads/creates own call-ins; owner reads call-ins on their vehicles; admin/admin_assistant full access. GRANTs for authenticated + service_role.
-- Trigger on insert: sets `expires_at = now() + 24h` for fault/maintenance, `+ 7d` for sick.
-- Trigger on insert: sets `profiles.payments_suspended = true` (new boolean column) and records `suspended_reason`, `suspended_until`.
-- Trigger on status change to `expired`/`cancelled`/`breached`/`resolved`: clears suspension unless another active call-in exists.
+### 3. Wachimp — third WhatsApp provider (global)
 
-### 3. Payment Suspension
+- Extend `communication_providers` rows with a `wachimp` entry alongside `twilio` and `termii`.
+- New `_shared/wachimp-client.ts` with `sendMessage({ to, body, templateName?, mediaUrl? })` calling the Wachimp/Meta Business Cloud API. Auth via `WACHIMP_API_KEY` + `WACHIMP_PHONE_NUMBER_ID`.
+- Update `send-inbox-reply` and `send-sms-notification` region router: if the destination region's `communication_providers.preferred_whatsapp_provider = 'wachimp'`, route WhatsApp through Wachimp; otherwise keep current Twilio(US)/Termii(NG) behavior. Global fallback for regions with no local provider = Wachimp.
+- New webhook `supabase/functions/wachimp-webhook/index.ts` (verify_jwt=false, HMAC signature check with `WACHIMP_WEBHOOK_SECRET`) that normalizes inbound messages into `inbox_conversations` / `inbox_messages` — same shape as Twilio/Termii webhooks.
+- Admin Communication Providers UI: add per-region WhatsApp provider dropdown (Twilio / Termii / Wachimp).
+- Secrets: `WACHIMP_API_KEY`, `WACHIMP_PHONE_NUMBER_ID`, `WACHIMP_WEBHOOK_SECRET`.
 
-- Add `payments_suspended`, `suspended_reason`, `suspended_until` on `profiles`.
-- `process-daily-debits`, `process-predue-reminders`, and `process-payment-defaults` skip drivers where `payments_suspended = true` and log the skip in `messaging_events`.
-- Driver dashboard payment card shows a "Payments Suspended" banner with call-in reference and expiry.
+### 4. ManyChat — Instagram/Facebook DMs + campaign automation
 
-### 4. Geofence Enforcement (edge function + cron)
+- New `_shared/manychat-client.ts`: `sendContent(subscriberId, flowNs)`, `sendMessage(subscriberId, text)`, `tagSubscriber`, `triggerFlow`. Auth via `MANYCHAT_API_TOKEN`.
+- New webhook `supabase/functions/manychat-webhook/index.ts` receives Instagram/FB DM events → writes to `inbox_conversations` with `channel='instagram'` / `'facebook_messenger'` (values already reserved in the social messaging channels doc).
+- `send-inbox-reply` gains IG/FB routing: when conversation channel is Instagram/Facebook, dispatch via ManyChat.
+- Outbound campaigns: extend `social_media_campaigns` execution to call `manychat.triggerFlow` for `platform in ('instagram','facebook_messenger')`. Existing campaigns table already has the columns.
+- Admin "Social Messaging" tab: connection status + flow ID mapping (`social_messaging_configs`).
+- Secrets: `MANYCHAT_API_TOKEN`, `MANYCHAT_WEBHOOK_SECRET`.
 
-- New edge function `**enforce-call-in-geofence**` (cron every 60 s, `verify_jwt = false`, `CRON_SECRET` guarded):
-  - Loads active `vehicle_geofences`.
-  - Fetches latest vehicle location via existing telemetry client (MQTT snapshot table / Traccar).
-  - Computes Haversine distance (reuse `src/lib/geo-utils.ts` logic ported to Deno). Breach if distance > `radius_m`.
-  - On breach: marks call-in `breached`, geofence `active=false`, reactivates payments, logs to `messaging_events`, notifies driver + owner + admin via `send-inbox-reply` (email + SMS/WhatsApp per region).
-- New edge function `**expire-call-ins**` (cron every 5 min): flips `active`→`expired` when `expires_at < now()`, clears suspension.
+---
 
-### 5. Recall Escalation
+## Rollout order
 
-- New edge function `**check-repeat-call-ins**` (runs after each call-in insert via trigger `pg_net` webhook, and nightly):
-  - If a driver has ≥1 fault/maintenance call-in on each of 2 consecutive calendar days for the same vehicle, insert a `vehicle_recalls` row with `status='requested'`, `reason='repeat_call_ins'`, and link the triggering call-ins.
-  - Notify driver, owner, and admin dashboards (in-app + email).
-- Sick call-in >7 days: when `expires_at` is reached and driver flags "extend", a recall request is created requiring **owner consent** + **admin approval** before the vehicle is released for reassignment.
-- Extend `src/components/admin/VehicleRecallManagement.tsx` and add an owner-side approval card (`src/components/owner/RecallApprovalCard.tsx`) with Approve/Reject actions. Approval requires both owner + admin; either rejection cancels the recall.
+1. Traccar parallel + flip switch (adapter already exists, biggest safety upside).
+2. Wachimp WhatsApp router + webhook (unblocks global rollout).
+3. ManyChat webhook + inbox routing.
+4. Hologram stub + `iot_sim_cards` table.
 
-### 6. Notifications
+Each phase ships behind secrets so nothing activates until you provide credentials. I'll request secrets with `add_secret` only when we reach each phase and you confirm.
 
-Reuse `notify-referees`-style multi-channel sender (`send-inbox-reply` / `send-sms-notification` / WhatsApp) with region-aware templates in `src/lib/region-templates.ts` for: call-in created, geofence breached, payment reactivated, recall requested, recall approved/rejected.
+## Technical notes
 
-### 7. Tests
+- No changes to existing EMQX behavior — Traccar runs alongside, and the flip is an admin action.
+- All new webhooks: `verify_jwt = false` + HMAC signature check in code (same pattern as `termii-webhook`).
+- RLS + GRANTs added for `iot_sim_cards` (admin-only), `telemetry_shadow_log` (admin-only).
+- Frontend admin UI additions kept minimal: one radio switch (Traccar flip), one dropdown per region (WhatsApp provider), one read-only table (SIM cards), one status card (ManyChat).
 
-- Unit: geofence Haversine breach logic, call-in expiry timing, repeat-call-in detector (2 consecutive days), suspension skip in debit worker.
-- Component: Driver dashboard Call In dialog validation and disabled states.
-- Integration (vitest + supabase mocks): create call-in → payment suspended → simulate breach → payment reactivated + notifications logged.
-
-### Files
-
-**New**
-
-- `supabase/migrations/<ts>_driver_call_ins.sql`
-- `supabase/functions/enforce-call-in-geofence/index.ts`
-- `supabase/functions/expire-call-ins/index.ts`
-- `supabase/functions/check-repeat-call-ins/index.ts`
-- `supabase/functions/create-call-in/index.ts` (server-side create with validation + geofence init)
-- `src/components/driver/CallInPanel.tsx`
-- `src/components/driver/CallInDialog.tsx`
-- `src/components/owner/RecallApprovalCard.tsx`
-- `src/hooks/useCallIns.ts`
-- `src/lib/__tests__/call-in-geofence.test.ts`
-- `src/lib/__tests__/call-in-repeat.test.ts`
-
-**Edited**
-
-- `src/pages/DriverDashboard.tsx` (mount CallInPanel, suspension banner)
-- `src/pages/OwnerDashboard.tsx` (recall approvals)
-- `src/pages/AdminDashboard.tsx` (call-in monitoring tab in VehicleRecallManagement)
-- `src/components/admin/VehicleRecallManagement.tsx`
-- `supabase/functions/process-daily-debits/index.ts`
-- `supabase/functions/process-predue-reminders/index.ts`
-- `supabase/functions/process-payment-defaults/index.ts`
-- `src/lib/region-templates.ts`
-- `supabase/config.toml` (cron entries for the three new functions)
+Confirm and I'll start with Phase 1 (Traccar).

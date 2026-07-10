@@ -14,6 +14,15 @@ verify_jwt = false
 [functions.email-webhook]
 verify_jwt = false
 
+[functions.wachimp-webhook]
+verify_jwt = false
+
+[functions.manychat-webhook]
+verify_jwt = false
+
+[functions.hologram-sync]
+verify_jwt = false
+
 [functions.recording-status-callback]
 verify_jwt = false
 

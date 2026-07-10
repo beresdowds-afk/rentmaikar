@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
+import { wachimp } from "../_shared/wachimp-client.ts";
+import { manychat } from "../_shared/manychat-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,34 +24,73 @@ serve(async (req) => {
 
     const { conversationId, messageContent, channel, recipientPhone } = await req.json();
 
-    if (!conversationId || !messageContent || !channel || !recipientPhone) {
-      throw new Error("Missing required fields: conversationId, messageContent, channel, recipientPhone");
+    if (!conversationId || !messageContent || !channel) {
+      throw new Error("Missing required fields: conversationId, messageContent, channel");
     }
 
-    // ─── Look up conversation region & forwarding number ───
+    // ─── Look up conversation region + metadata (needed for social routing) ───
     const { data: conversation } = await supabase
       .from("inbox_conversations")
-      .select("region")
+      .select("region, metadata, channel")
       .eq("id", conversationId)
       .single();
 
+    // ─── Social channels (Instagram / Facebook Messenger) → ManyChat ───
+    if (channel === "instagram" || channel === "facebook_messenger") {
+      const subscriberId = (conversation?.metadata as Record<string, unknown> | null)?.manychat_subscriber_id as string | undefined;
+      if (!subscriberId) throw new Error("ManyChat subscriber_id missing on conversation");
+      if (!manychat.isConfigured()) throw new Error("ManyChat not configured (MANYCHAT_API_TOKEN missing)");
+      const result = await manychat.sendMessage(subscriberId, messageContent);
+      if (!result.ok) throw new Error(`ManyChat send failed: ${JSON.stringify(result)}`);
+      await supabase.from("inbox_messages").update({
+        external_id: `manychat_${Date.now()}`,
+        metadata: { provider: "manychat", sent_at: new Date().toISOString() },
+      }).eq("conversation_id", conversationId).eq("content", messageContent).eq("sender_type", "admin")
+        .is("external_id", null).order("created_at", { ascending: false }).limit(1);
+      return new Response(JSON.stringify({ success: true, provider: "manychat" }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!recipientPhone) throw new Error("recipientPhone required for phone-based channels");
+
     let forwardingFrom: string | null = null;
+    let regionWhatsappProvider: string | null = null;
     if (conversation?.region) {
       const { data: region } = await supabase
         .from("platform_regions")
         .select("forwarding_sms, forwarding_whatsapp")
         .eq("code", conversation.region)
         .single();
+      if (region) forwardingFrom = channel === "whatsapp" ? region.forwarding_whatsapp : region.forwarding_sms;
 
-      if (region) {
-        forwardingFrom = channel === "whatsapp" ? region.forwarding_whatsapp : region.forwarding_sms;
-      }
+      const { data: commProv } = await supabase
+        .from("communication_providers")
+        .select("whatsapp_provider")
+        .eq("region_code", conversation.region)
+        .maybeSingle();
+      regionWhatsappProvider = commProv?.whatsapp_provider ?? null;
     }
 
-    // ─── Determine provider based on phone region ───
+    // ─── WhatsApp: honor per-region provider preference (Wachimp / Twilio / Termii) ───
     const isNigeria = recipientPhone.startsWith("+234");
     let messageSid = "";
     let messageStatus = "";
+
+    if (channel === "whatsapp" && regionWhatsappProvider === "wachimp" && wachimp.isConfigured()) {
+      const result = await wachimp.sendMessage({ to: recipientPhone, body: messageContent });
+      if (!result.ok) throw new Error(`Wachimp send failed: ${JSON.stringify(result)}`);
+      messageSid = result.messageId;
+      messageStatus = "sent";
+      await supabase.from("inbox_messages").update({
+        external_id: messageSid,
+        metadata: { provider: "wachimp", status: messageStatus, sent_at: new Date().toISOString() },
+      }).eq("conversation_id", conversationId).eq("content", messageContent).eq("sender_type", "admin")
+        .is("external_id", null).order("created_at", { ascending: false }).limit(1);
+      return new Response(JSON.stringify({ success: true, provider: "wachimp", messageSid }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (isNigeria) {
       // ─── TERMII (Nigeria +234) ───
