@@ -413,4 +413,56 @@ export const VehicleCategoryYearSpecs = () => {
   );
 };
 
+const RegionVisibilityPanel = () => {
+  const REGIONS_LIST = ["USA", "NIGERIA"] as const;
+  const [visibility, setVisibility] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(REGIONS_LIST.map((r) => [r, isRegionYearSpecsVisible(r)])),
+  );
+
+  useEffect(() => {
+    const handler = () => {
+      setVisibility(
+        Object.fromEntries(REGIONS_LIST.map((r) => [r, isRegionYearSpecsVisible(r)])),
+      );
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+
+  const toggle = (region: string, value: boolean) => {
+    setRegionYearSpecsVisibility(region, value);
+    setVisibility((v) => ({ ...v, [region]: value }));
+    toast.success(
+      `Year specs ${value ? "shown" : "hidden"} for ${region} on public pages`,
+    );
+  };
+
+  return (
+    <Card className="p-4 mb-6 bg-muted/30">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <p className="font-medium text-sm">Public visibility per region</p>
+          <p className="text-xs text-muted-foreground">
+            Hide year-model badges from the driver-facing category cards without
+            deleting the underlying specs.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-4">
+          {REGIONS_LIST.map((r) => (
+            <label key={r} className="flex items-center gap-2 text-sm">
+              <Switch
+                checked={visibility[r] ?? true}
+                onCheckedChange={(v) => toggle(r, v)}
+                aria-label={`Toggle year-spec visibility for ${r}`}
+              />
+              <span>{r}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+
 export default VehicleCategoryYearSpecs;
