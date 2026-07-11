@@ -35,6 +35,7 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>({
     emailVerified: false,
     phoneVerified: false,
+    identityVerified: false,
     registrationComplete: false,
   });
   const [isResendingEmail, setIsResendingEmail] = useState(false);
