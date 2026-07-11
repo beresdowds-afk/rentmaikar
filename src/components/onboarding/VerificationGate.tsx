@@ -67,10 +67,10 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
       // Check email verification from auth
       const emailVerified = user.email_confirmed_at !== null;
       
-      // Check phone verification and registration from profile
+      // Check phone + identity verification from profile
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('phone_verified, phone')
+        .select('phone_verified, phone, identity_verified_at, identity_verification_status')
         .eq('user_id', user.id)
         .single();
       
@@ -79,6 +79,7 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
       }
       
       const phoneVerified = profile?.phone_verified || false;
+      const identityVerified = !!profile?.identity_verified_at || profile?.identity_verification_status === 'approved';
       
       // Check if user has submitted an application (registration complete)
       const { data: application } = await supabase
@@ -92,6 +93,7 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
       setVerificationStatus({
         emailVerified,
         phoneVerified,
+        identityVerified,
         registrationComplete,
       });
     } catch (error) {
