@@ -19,6 +19,25 @@ const STATUS_MAP: Record<string, string> = {
   expired: "expired",
 };
 
+function collectMismatches(attrs: any): Record<string, unknown> {
+  const mm: Record<string, unknown> = {};
+  const checks = attrs?.checks ?? attrs?.["checks"] ?? [];
+  if (Array.isArray(checks)) {
+    for (const c of checks) {
+      const st = c?.status ?? c?.attributes?.status;
+      if (st && st !== "passed") {
+        mm[c?.name ?? c?.attributes?.name ?? "unknown"] = {
+          status: st,
+          reasons: c?.reasons ?? c?.attributes?.reasons,
+        };
+      }
+    }
+  }
+  const dr = attrs?.["decision-reason"] ?? attrs?.decision_reason;
+  if (dr) mm._decision_reason = dr;
+  return mm;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return new Response("method not allowed", { status: 405, headers: corsHeaders });
@@ -27,7 +46,6 @@ Deno.serve(async (req) => {
     const raw = await req.text();
     if (secret) {
       const provided = req.headers.get("persona-signature") ?? "";
-      // Persona sends `t=timestamp,v1=hash` — extract v1
       const v1 = provided.split(",").find((p) => p.trim().startsWith("v1="))?.split("=")[1] ?? provided;
       const expected = await hmac(secret, raw);
       if (v1 !== expected) {
@@ -37,51 +55,65 @@ Deno.serve(async (req) => {
     const evt = JSON.parse(raw);
     const inquiry = evt?.data?.attributes?.payload?.data ?? evt?.data;
     const inquiryId = inquiry?.id ?? inquiry?.attributes?.["inquiry-id"];
-    const status = STATUS_MAP[inquiry?.attributes?.status] ?? "pending";
+    const attrs = inquiry?.attributes ?? {};
+    const status = STATUS_MAP[attrs?.status] ?? "pending";
     if (!inquiryId) return new Response("missing inquiry id", { status: 400, headers: corsHeaders });
 
     const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const mismatch = collectMismatches(attrs);
+
     const { data: row } = await supa
       .from("persona_inquiries")
       .update({
         status,
         verified_at: status === "approved" ? new Date().toISOString() : null,
+        mismatch_fields: mismatch,
         raw_payload: evt,
       })
       .eq("inquiry_id", inquiryId)
       .select()
       .maybeSingle();
 
-    // Cascade to referee if this inquiry belongs to a referee
-    if (row && row.subject_type === "referee" && row.subject_ref) {
-      const newStatus = status === "approved" ? "verified"
-        : status === "declined" ? "action_required"
-        : status === "needs_review" ? "mismatch"
-        : "running";
-      const { data: refRow } = await supa
-        .from("referee_verifications")
-        .update({
-          status: newStatus,
-          mismatch_reason: status === "approved" ? null : (inquiry?.attributes?.["decision-reason"] ?? null),
-          verified_at: status === "approved" ? new Date().toISOString() : null,
-        })
-        .eq("id", row.subject_ref)
-        .select("application_id, user_id, full_name, referee_index")
-        .maybeSingle();
+    if (row) {
+      // Self approval → mark profile
+      if (row.subject_type === "self") {
+        await supa.from("profiles").update({
+          identity_verification_status: status,
+          identity_verified_at: status === "approved" ? new Date().toISOString() : null,
+          identity_verified_inquiry_id: status === "approved" ? inquiryId : null,
+        }).eq("user_id", row.user_id);
+      }
 
-      if (refRow && newStatus !== "verified") {
-        // Notify user via inbox (best-effort)
-        await supa.from("inbox_messages").insert({
-          user_id: refRow.user_id,
-          direction: "inbound",
-          channel: "system",
-          subject: "Referee verification issue",
-          body: `Referee #${refRow.referee_index + 1} (${refRow.full_name}) could not be verified. Please review and update this referee's details in your application.`,
-          status: "unread",
-        }).then(() => {}, () => {});
-        await supa.from("applications")
-          .update({ referees_verification_status: "action_required" })
-          .eq("id", refRow.application_id);
+      // Referee cascade
+      if (row.subject_type === "referee" && row.subject_ref) {
+        const newStatus = status === "approved" ? "verified"
+          : status === "declined" ? "action_required"
+          : status === "needs_review" ? "mismatch"
+          : "running";
+        const { data: refRow } = await supa
+          .from("referee_verifications")
+          .update({
+            status: newStatus,
+            mismatch_reason: status === "approved" ? null : (attrs?.["decision-reason"] ?? null),
+            verified_at: status === "approved" ? new Date().toISOString() : null,
+          })
+          .eq("id", row.subject_ref)
+          .select("application_id, user_id, full_name, referee_index")
+          .maybeSingle();
+
+        if (refRow && newStatus !== "verified") {
+          await supa.from("inbox_messages").insert({
+            user_id: refRow.user_id,
+            direction: "inbound",
+            channel: "system",
+            subject: "Referee verification issue",
+            body: `Referee #${refRow.referee_index + 1} (${refRow.full_name}) could not be verified. Please review and update this referee's details in your application.`,
+            status: "unread",
+          }).then(() => {}, () => {});
+          await supa.from("applications")
+            .update({ referees_verification_status: "action_required" })
+            .eq("id", refRow.application_id);
+        }
       }
     }
 

@@ -5,7 +5,7 @@ import { z } from "https://esm.sh/zod@3.23.8";
 const Body = z.object({
   subject_type: z.enum(["self", "referee"]),
   subject_ref: z.string().max(200).optional(),
-  region: z.enum(["USA", "Nigeria", "US", "NG"]).optional(),
+  region: z.string().max(40).optional(),
   fields: z.object({
     name_first: z.string().max(80).optional(),
     name_last: z.string().max(80).optional(),
@@ -17,11 +17,34 @@ const Body = z.object({
   }).partial().optional(),
 });
 
-const templateForRegion = (r?: string) => {
-  const rr = (r ?? "").toUpperCase();
-  if (rr.startsWith("NG") || rr === "NIGERIA") return Deno.env.get("PERSONA_TEMPLATE_ID_NG");
-  return Deno.env.get("PERSONA_TEMPLATE_ID_US") ?? Deno.env.get("PERSONA_TEMPLATE_ID");
-};
+const PERSONA_BASE = "https://withpersona.com/api/v1";
+const PERSONA_VERSION = "2023-01-05";
+
+function normalizeCountry(r?: string): string {
+  const rr = (r ?? "").toUpperCase().trim();
+  if (rr.startsWith("NG") || rr === "NIGERIA") return "NG";
+  if (rr.startsWith("US") || rr === "USA" || rr === "UNITED STATES") return "US";
+  return rr || "US";
+}
+
+async function resolveTemplate(supa: any, country: string): Promise<{ template_id: string | null; env_id: string | null }> {
+  // DB first
+  const { data } = await supa
+    .from("persona_region_templates")
+    .select("inquiry_template_id, environment_id, is_active")
+    .eq("country_code", country)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (data?.inquiry_template_id) {
+    return { template_id: data.inquiry_template_id, env_id: data.environment_id ?? Deno.env.get("PERSONA_ENVIRONMENT_ID") ?? null };
+  }
+  // Env fallback
+  const envKey = country === "NG" ? "PERSONA_TEMPLATE_ID_NG" : "PERSONA_TEMPLATE_ID_US";
+  return {
+    template_id: Deno.env.get(envKey) ?? Deno.env.get("PERSONA_TEMPLATE_ID") ?? null,
+    env_id: Deno.env.get("PERSONA_ENVIRONMENT_ID") ?? null,
+  };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -42,15 +65,15 @@ Deno.serve(async (req) => {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const templateId = templateForRegion(parsed.data.region);
+    const country = normalizeCountry(parsed.data.region);
+    const { template_id, env_id } = await resolveTemplate(supa, country);
 
-    if (!apiKey || !templateId) {
-      // Provider not yet configured — record the intent so the UI can queue it.
+    if (!apiKey || !template_id) {
       const { data, error } = await supa.from("persona_inquiries").insert({
         user_id: userData.user.id,
         subject_type: parsed.data.subject_type,
         subject_ref: parsed.data.subject_ref ?? null,
-        region: parsed.data.region ?? null,
+        region: country,
         status: "created",
       }).select().single();
       if (error) throw error;
@@ -59,17 +82,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    const res = await fetch("https://withpersona.com/api/v1/inquiries", {
+    // Create inquiry
+    const res = await fetch(`${PERSONA_BASE}/inquiries`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "Persona-Version": "2023-01-05",
+        "Persona-Version": PERSONA_VERSION,
       },
       body: JSON.stringify({
         data: {
           attributes: {
-            "inquiry-template-id": templateId,
+            "inquiry-template-id": template_id,
             "reference-id": `${parsed.data.subject_type}:${parsed.data.subject_ref ?? userData.user.id}`,
             fields: {
               "name-first": parsed.data.fields?.name_first,
@@ -89,14 +113,30 @@ Deno.serve(async (req) => {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const inquiryId = body?.data?.id;
+    const inquiryId = body?.data?.id as string;
+
+    // Generate a session token for embedded resume
+    let sessionToken: string | null = null;
+    try {
+      const st = await fetch(`${PERSONA_BASE}/inquiries/${inquiryId}/resume`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "Persona-Version": PERSONA_VERSION,
+        },
+      });
+      const stBody = await st.json();
+      sessionToken = stBody?.meta?.["session-token"] ?? stBody?.data?.attributes?.["session-token"] ?? null;
+    } catch (_e) { /* non-fatal */ }
+
     const { data: row, error } = await supa.from("persona_inquiries").insert({
       user_id: userData.user.id,
       subject_type: parsed.data.subject_type,
       subject_ref: parsed.data.subject_ref ?? null,
-      region: parsed.data.region ?? null,
+      region: country,
       inquiry_id: inquiryId,
-      template_id: templateId,
+      template_id: template_id,
       status: "pending",
       raw_payload: body,
     }).select().single();
@@ -104,7 +144,11 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       inquiry: row,
-      hosted_url: `https://withpersona.com/verify?inquiry-id=${inquiryId}`,
+      inquiry_id: inquiryId,
+      session_token: sessionToken,
+      template_id,
+      environment_id: env_id,
+      hosted_url: `https://withpersona.com/verify?inquiry-id=${inquiryId}${env_id ? `&environment-id=${env_id}` : ""}`,
       provider_configured: true,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
