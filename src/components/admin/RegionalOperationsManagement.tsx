@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRegionalOperations } from "@/hooks/useRegionalOperations";
+import PersonaTemplateManagement from "@/components/admin/PersonaTemplateManagement";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
