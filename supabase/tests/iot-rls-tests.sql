@@ -36,6 +36,19 @@ DECLARE
   vehicle_id     uuid := '00000000-0000-0000-0000-00000000ceec';
   driver_id      uuid := '00000000-0000-0000-0000-000000000dd1';
 BEGIN
+  -- Seed auth.users first (FK target). We run as superuser inside a
+  -- transaction that will be rolled back, so nothing persists.
+  INSERT INTO auth.users(id, instance_id, aud, role, email,
+                         encrypted_password, created_at, updated_at)
+  VALUES
+    (admin_id,       '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin.rls.test@example.com',       '', now(), now()),
+    (iot_install_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'iot-install.rls.test@example.com', '', now(), now()),
+    (iot_maint_id,   '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'iot-maint.rls.test@example.com',   '', now(), now()),
+    (legal_id,       '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'legal.rls.test@example.com',       '', now(), now()),
+    (vehicle_id,     '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'vehicle.rls.test@example.com',     '', now(), now()),
+    (driver_id,      '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'driver.rls.test@example.com',      '', now(), now())
+  ON CONFLICT (id) DO NOTHING;
+
   INSERT INTO public.user_roles(user_id, role) VALUES
     (admin_id,       'admin'),
     (iot_install_id, 'iot_support'),
