@@ -634,7 +634,12 @@ export const IoTMonitoringHub = () => {
                       <Badge variant={rule.enabled ? 'default' : 'secondary'} className="text-xs">
                         {rule.enabled ? 'Active' : 'Disabled'}
                       </Badge>
-                      <Switch checked={rule.enabled} disabled aria-label={`Toggle ${rule.name}`} />
+                      <Switch
+                        checked={rule.enabled}
+                        disabled
+                        aria-label={`${rule.name} — engine-configured, read-only`}
+                        title="Alert rules are engine-configured and read-only in this view"
+                      />
                     </div>
                   </div>
                 ))}
