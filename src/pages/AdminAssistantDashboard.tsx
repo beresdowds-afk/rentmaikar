@@ -49,6 +49,7 @@ import { useAdminOnboardingTour } from "@/hooks/useAdminOnboardingTour";
 import { MessagingDocs } from "@/components/admin/docs/MessagingDocs";
 import { EmailDocs } from "@/components/admin/docs/EmailDocs";
 import { VoIPDocs } from "@/components/admin/docs/VoIPDocs";
+import PlatformGlossary from "@/components/admin/docs/PlatformGlossary";
 import { AdminSecurityDashboard } from "@/components/admin/AdminSecurityDashboard";
 import RegionalOperationsManagement from "@/components/admin/RegionalOperationsManagement";
 import { RegionAutoBuildWorker } from "@/components/admin/RegionAutoBuildWorker";
@@ -813,6 +814,7 @@ const AdminAssistantDashboard = () => {
               {activeTab === 'messaging-docs' && <MessagingDocs />}
               {activeTab === 'email-docs' && <EmailDocs />}
               {activeTab === 'voip-docs' && <VoIPDocs />}
+              {activeTab === 'glossary' && <PlatformGlossary />}
             </div>
           )}
         </div>
