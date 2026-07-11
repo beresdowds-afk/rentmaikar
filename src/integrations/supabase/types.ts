@@ -2065,6 +2065,62 @@ export type Database = {
         }
         Relationships: []
       }
+      persona_region_templates: {
+        Row: {
+          auto_generated: boolean
+          country_code: string
+          created_at: string
+          environment_id: string | null
+          id: string
+          inquiry_template_id: string | null
+          is_active: boolean
+          provision_error: string | null
+          provision_status: string
+          provisioned_at: string | null
+          region_id: string | null
+          source_template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_generated?: boolean
+          country_code: string
+          created_at?: string
+          environment_id?: string | null
+          id?: string
+          inquiry_template_id?: string | null
+          is_active?: boolean
+          provision_error?: string | null
+          provision_status?: string
+          provisioned_at?: string | null
+          region_id?: string | null
+          source_template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_generated?: boolean
+          country_code?: string
+          created_at?: string
+          environment_id?: string | null
+          id?: string
+          inquiry_template_id?: string | null
+          is_active?: boolean
+          provision_error?: string | null
+          provision_status?: string
+          provisioned_at?: string | null
+          region_id?: string | null
+          source_template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "persona_region_templates_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "region_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_cities: {
         Row: {
           center_lat: number | null
@@ -2595,6 +2651,9 @@ export type Database = {
           email_verified: boolean | null
           full_name: string | null
           id: string
+          identity_verification_status: string | null
+          identity_verified_at: string | null
+          identity_verified_inquiry_id: string | null
           is_active: boolean
           notification_email: boolean | null
           notification_sms: boolean | null
@@ -2622,6 +2681,9 @@ export type Database = {
           email_verified?: boolean | null
           full_name?: string | null
           id?: string
+          identity_verification_status?: string | null
+          identity_verified_at?: string | null
+          identity_verified_inquiry_id?: string | null
           is_active?: boolean
           notification_email?: boolean | null
           notification_sms?: boolean | null
@@ -2649,6 +2711,9 @@ export type Database = {
           email_verified?: boolean | null
           full_name?: string | null
           id?: string
+          identity_verification_status?: string | null
+          identity_verified_at?: string | null
+          identity_verified_inquiry_id?: string | null
           is_active?: boolean
           notification_email?: boolean | null
           notification_sms?: boolean | null
