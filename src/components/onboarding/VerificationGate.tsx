@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PhoneVerification } from '@/components/phone/PhoneVerification';
+import PersonaVerification from '@/components/verification/PersonaVerification';
 
 interface VerificationGateProps {
   children: React.ReactNode;
