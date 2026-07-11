@@ -803,6 +803,7 @@ const AdminDashboard = () => {
               {activeTab === 'messaging-docs' && <MessagingDocs />}
               {activeTab === 'email-docs' && <EmailDocs />}
               {activeTab === 'voip-docs' && <VoIPDocs />}
+              {activeTab === 'glossary' && <PlatformGlossary />}
             </div>
           )}
         </div>
