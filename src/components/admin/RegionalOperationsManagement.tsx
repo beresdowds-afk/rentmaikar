@@ -520,6 +520,8 @@ const RegionalOperationsManagement = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <PersonaTemplateManagement />
     </div>
   );
 };
