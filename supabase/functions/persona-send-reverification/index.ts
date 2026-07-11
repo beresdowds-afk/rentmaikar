@@ -1,0 +1,145 @@
+// Admin-triggered re-verification: creates a fresh Persona inquiry and emails/SMS the hosted link.
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
+
+const Body = z.object({
+  user_id: z.string().uuid(),
+  reason: z.string().max(500).optional(),
+  channel: z.enum(["email", "sms", "both"]).default("both"),
+});
+
+const PERSONA_BASE = "https://withpersona.com/api/v1";
+const PERSONA_VERSION = "2023-01-05";
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  try {
+    const parsed = Body.safeParse(await req.json());
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: parsed.error.flatten() }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const auth = req.headers.get("authorization") ?? "";
+    const jwt = auth.replace(/^Bearer\s+/i, "");
+    const { data: userData, error: userErr } = await supa.auth.getUser(jwt);
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: roleRow } = await supa
+      .from("user_roles").select("role")
+      .eq("user_id", userData.user.id).eq("role", "admin").maybeSingle();
+    if (!roleRow) {
+      return new Response(JSON.stringify({ error: "forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: profile } = await supa
+      .from("profiles")
+      .select("user_id, email, phone, full_name, country")
+      .eq("user_id", parsed.data.user_id)
+      .maybeSingle();
+    if (!profile) {
+      return new Response(JSON.stringify({ error: "user not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const country = (profile.country ?? "US").toUpperCase().startsWith("NG") ? "NG" : "US";
+    const { data: tmpl } = await supa
+      .from("persona_region_templates")
+      .select("inquiry_template_id, environment_id")
+      .eq("country_code", country).eq("is_active", true).maybeSingle();
+
+    const templateId = tmpl?.inquiry_template_id
+      ?? Deno.env.get(country === "NG" ? "PERSONA_TEMPLATE_ID_NG" : "PERSONA_TEMPLATE_ID_US")
+      ?? Deno.env.get("PERSONA_TEMPLATE_ID");
+    const envId = tmpl?.environment_id ?? Deno.env.get("PERSONA_ENVIRONMENT_ID");
+    const apiKey = Deno.env.get("PERSONA_API_KEY");
+    if (!apiKey || !templateId) {
+      return new Response(JSON.stringify({ error: "Persona not configured for region" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const res = await fetch(`${PERSONA_BASE}/inquiries`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Persona-Version": PERSONA_VERSION,
+      },
+      body: JSON.stringify({
+        data: { attributes: {
+          "inquiry-template-id": templateId,
+          "reference-id": `admin-reverify:${profile.user_id}`,
+          fields: {
+            "email-address": profile.email,
+            "phone-number": profile.phone,
+          },
+        }},
+      }),
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      return new Response(JSON.stringify({ error: "Persona error", detail: body }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const inquiryId = body?.data?.id as string;
+    const hostedUrl = `https://withpersona.com/verify?inquiry-id=${inquiryId}${envId ? `&environment-id=${envId}` : ""}`;
+
+    await supa.from("persona_inquiries").insert({
+      user_id: profile.user_id,
+      subject_type: "self",
+      region: country,
+      inquiry_id: inquiryId,
+      template_id: templateId,
+      status: "pending",
+      raw_payload: { source: "admin_reverification", reason: parsed.data.reason, response: body },
+    });
+
+    const reason = parsed.data.reason?.trim() ?? "We need to re-verify your identity to keep your account active.";
+    const shortMsg = `${reason}\nComplete verification: ${hostedUrl}`;
+
+    const results: Record<string, unknown> = { inquiry_id: inquiryId, hosted_url: hostedUrl };
+
+    if ((parsed.data.channel === "email" || parsed.data.channel === "both") && profile.email) {
+      const r = await supa.functions.invoke("send-email-notification", {
+        body: {
+          to: profile.email,
+          subject: "Identity re-verification required",
+          html: `<p>Hi ${profile.full_name ?? ""},</p><p>${reason}</p><p><a href="${hostedUrl}">Verify your identity</a></p>`,
+        },
+      }).catch((e) => ({ error: String(e) }));
+      results.email = r;
+    }
+    if ((parsed.data.channel === "sms" || parsed.data.channel === "both") && profile.phone) {
+      const r = await supa.functions.invoke("send-sms-notification", {
+        body: { to: profile.phone, message: shortMsg, region: country },
+      }).catch((e) => ({ error: String(e) }));
+      results.sms = r;
+    }
+
+    await supa.from("admin_audit_log").insert({
+      admin_id: userData.user.id,
+      action: "persona_reverification_requested",
+      target_table: "profiles",
+      target_id: profile.user_id,
+      details: { inquiry_id: inquiryId, reason: parsed.data.reason, channel: parsed.data.channel },
+    }).then(() => {}, () => {});
+
+    return new Response(JSON.stringify({ ok: true, ...results }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: String(e) }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});

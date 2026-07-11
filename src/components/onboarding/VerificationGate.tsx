@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PhoneVerification } from '@/components/phone/PhoneVerification';
+import PersonaVerification from '@/components/verification/PersonaVerification';
 
 interface VerificationGateProps {
   children: React.ReactNode;
@@ -23,6 +24,7 @@ interface VerificationGateProps {
 interface VerificationStatus {
   emailVerified: boolean;
   phoneVerified: boolean;
+  identityVerified: boolean;
   registrationComplete: boolean;
 }
 
@@ -33,6 +35,7 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>({
     emailVerified: false,
     phoneVerified: false,
+    identityVerified: false,
     registrationComplete: false,
   });
   const [isResendingEmail, setIsResendingEmail] = useState(false);
@@ -64,10 +67,10 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
       // Check email verification from auth
       const emailVerified = user.email_confirmed_at !== null;
       
-      // Check phone verification and registration from profile
+      // Check phone + identity verification from profile
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('phone_verified, phone')
+        .select('phone_verified, phone, identity_verified_at, identity_verification_status')
         .eq('user_id', user.id)
         .single();
       
@@ -76,6 +79,7 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
       }
       
       const phoneVerified = profile?.phone_verified || false;
+      const identityVerified = !!profile?.identity_verified_at || profile?.identity_verification_status === 'approved';
       
       // Check if user has submitted an application (registration complete)
       const { data: application } = await supabase
@@ -89,6 +93,7 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
       setVerificationStatus({
         emailVerified,
         phoneVerified,
+        identityVerified,
         registrationComplete,
       });
     } catch (error) {
@@ -181,17 +186,17 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
     );
   }
 
-  const { emailVerified, phoneVerified, registrationComplete } = verificationStatus;
-  const isFullyVerified = emailVerified && phoneVerified;
+  const { emailVerified, phoneVerified, identityVerified, registrationComplete } = verificationStatus;
+  const isFullyVerified = emailVerified && phoneVerified && identityVerified;
 
   // If verified and registration complete, show the actual dashboard
   if (isFullyVerified && registrationComplete) {
     return <>{children}</>;
   }
 
-  // Calculate progress
-  const completedSteps = [emailVerified, phoneVerified, registrationComplete].filter(Boolean).length;
-  const progress = (completedSteps / 3) * 100;
+  // Calculate progress (4 steps now)
+  const completedSteps = [emailVerified, phoneVerified, identityVerified, registrationComplete].filter(Boolean).length;
+  const progress = (completedSteps / 4) * 100;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4 md:p-8">
@@ -212,12 +217,13 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
             <div className="space-y-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Setup Progress</span>
-                <span className="font-medium">{completedSteps} of 3 complete</span>
+                <span className="font-medium">{completedSteps} of 4 complete</span>
               </div>
               <Progress value={progress} className="h-2" />
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span className={emailVerified ? 'text-green-600 font-medium' : ''}>Email</span>
                 <span className={phoneVerified ? 'text-green-600 font-medium' : ''}>Phone</span>
+                <span className={identityVerified ? 'text-green-600 font-medium' : ''}>Identity</span>
                 <span className={registrationComplete ? 'text-green-600 font-medium' : ''}>Registration</span>
               </div>
             </div>
@@ -336,7 +342,43 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
           )}
         </Card>
 
-        {/* Step 3: Complete Registration */}
+        {/* Step 3: Identity Verification (Persona) */}
+        <Card className={identityVerified ? 'border-green-200 bg-green-50/50' : (!emailVerified || !phoneVerified) ? 'opacity-60' : ''}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  identityVerified ? 'bg-green-100 text-green-600' : 'bg-primary/10 text-primary'
+                }`}>
+                  {identityVerified ? <CheckCircle className="h-5 w-5" /> : <Shield className="h-5 w-5" />}
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Step 3: Verify Identity</CardTitle>
+                  <CardDescription>Confirm your government ID and take a quick selfie — powered by Persona</CardDescription>
+                </div>
+              </div>
+              {identityVerified && (
+                <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> Complete</Badge>
+              )}
+            </div>
+          </CardHeader>
+          {!identityVerified && emailVerified && phoneVerified && (
+            <CardContent>
+              <PersonaVerification subject="self" onComplete={() => setTimeout(checkVerificationStatus, 1500)} />
+              <p className="text-xs text-muted-foreground mt-3">You can close and re-open this page after finishing — we'll pick up where you left off.</p>
+            </CardContent>
+          )}
+          {(!emailVerified || !phoneVerified) && !identityVerified && (
+            <CardContent>
+              <Alert>
+                <Shield className="h-4 w-4" />
+                <AlertDescription>Complete email and phone verification first.</AlertDescription>
+              </Alert>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Step 4: Complete Registration */}
         <Card className={registrationComplete ? 'border-green-200 bg-green-50/50' : !isFullyVerified ? 'opacity-60' : ''}>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -347,7 +389,7 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
                   {registrationComplete ? <CheckCircle className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Step 3: Complete Registration</CardTitle>
+                  <CardTitle className="text-lg">Step 4: Complete Registration</CardTitle>
                   <CardDescription>
                     {userType === 'driver' 
                       ? 'Submit your personal details and identification documents' 
