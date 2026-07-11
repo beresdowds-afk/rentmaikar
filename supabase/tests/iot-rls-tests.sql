@@ -29,12 +29,12 @@ BEGIN;
 
 DO $seed$
 DECLARE
-  admin_id       uuid := '00000000-0000-0000-0000-00000000ad11';
-  iot_install_id uuid := '00000000-0000-0000-0000-0000000010ce';
-  iot_maint_id   uuid := '00000000-0000-0000-0000-000000001a1e';
-  legal_id       uuid := '00000000-0000-0000-0000-0000000001e6';
-  vehicle_id     uuid := '00000000-0000-0000-0000-000000005ehe';
-  driver_id      uuid := '00000000-0000-0000-0000-000000000d12';
+  admin_id       uuid := '00000000-0000-0000-0000-00000000adad';
+  iot_install_id uuid := '00000000-0000-0000-0000-000000001abc';
+  iot_maint_id   uuid := '00000000-0000-0000-0000-000000001a1a';
+  legal_id       uuid := '00000000-0000-0000-0000-000000001ea1';
+  vehicle_id     uuid := '00000000-0000-0000-0000-00000000ceec';
+  driver_id      uuid := '00000000-0000-0000-0000-000000000dd1';
 BEGIN
   INSERT INTO public.user_roles(user_id, role) VALUES
     (admin_id,       'admin'),
@@ -78,12 +78,12 @@ $$ LANGUAGE plpgsql;
 
 DO $tests$
 DECLARE
-  admin_id       uuid := '00000000-0000-0000-0000-00000000ad11';
-  iot_install_id uuid := '00000000-0000-0000-0000-0000000010ce';
-  iot_maint_id   uuid := '00000000-0000-0000-0000-000000001a1e';
-  legal_id       uuid := '00000000-0000-0000-0000-0000000001e6';
-  vehicle_id     uuid := '00000000-0000-0000-0000-000000005ehe';
-  driver_id      uuid := '00000000-0000-0000-0000-000000000d12';
+  admin_id       uuid := '00000000-0000-0000-0000-00000000adad';
+  iot_install_id uuid := '00000000-0000-0000-0000-000000001abc';
+  iot_maint_id   uuid := '00000000-0000-0000-0000-000000001a1a';
+  legal_id       uuid := '00000000-0000-0000-0000-000000001ea1';
+  vehicle_id     uuid := '00000000-0000-0000-0000-00000000ceec';
+  driver_id      uuid := '00000000-0000-0000-0000-000000000dd1';
   cnt            integer;
   txt            text;
   ok             boolean;
