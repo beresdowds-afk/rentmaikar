@@ -186,17 +186,17 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
     );
   }
 
-  const { emailVerified, phoneVerified, registrationComplete } = verificationStatus;
-  const isFullyVerified = emailVerified && phoneVerified;
+  const { emailVerified, phoneVerified, identityVerified, registrationComplete } = verificationStatus;
+  const isFullyVerified = emailVerified && phoneVerified && identityVerified;
 
   // If verified and registration complete, show the actual dashboard
   if (isFullyVerified && registrationComplete) {
     return <>{children}</>;
   }
 
-  // Calculate progress
-  const completedSteps = [emailVerified, phoneVerified, registrationComplete].filter(Boolean).length;
-  const progress = (completedSteps / 3) * 100;
+  // Calculate progress (4 steps now)
+  const completedSteps = [emailVerified, phoneVerified, identityVerified, registrationComplete].filter(Boolean).length;
+  const progress = (completedSteps / 4) * 100;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4 md:p-8">
@@ -217,12 +217,13 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
             <div className="space-y-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Setup Progress</span>
-                <span className="font-medium">{completedSteps} of 3 complete</span>
+                <span className="font-medium">{completedSteps} of 4 complete</span>
               </div>
               <Progress value={progress} className="h-2" />
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span className={emailVerified ? 'text-green-600 font-medium' : ''}>Email</span>
                 <span className={phoneVerified ? 'text-green-600 font-medium' : ''}>Phone</span>
+                <span className={identityVerified ? 'text-green-600 font-medium' : ''}>Identity</span>
                 <span className={registrationComplete ? 'text-green-600 font-medium' : ''}>Registration</span>
               </div>
             </div>
