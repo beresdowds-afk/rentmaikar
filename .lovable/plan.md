@@ -1,59 +1,89 @@
+## Current state (already built)
 
-## Scope
+- Table `persona_inquiries` with RLS.
+- Edge fns `persona-create-inquiry` (region-aware) and `persona-webhook` (HMAC-verified, cascades to referees).
+- Component `PersonaVerification` (opens hosted URL in new tab).
+- Templates today are picked from env vars `PERSONA_TEMPLATE_ID_US` / `PERSONA_TEMPLATE_ID_NG`.
 
-Four integrations, each behind secrets so nothing breaks until credentials are added.
+## What we'll add
 
----
+### 1. Per-region template mapping in DB
 
-### 1. Traccar — parallel with EMQX + admin flip switch
+- New table `persona_region_templates` (region_code, country, inquiry_template_id, env_id, is_active, auto_generated, source_template_id, provisioned_at). Admin-managed.
+- Edge fn reads DB first, falls back to env vars if empty.
+- Admin UI card on **Regional Operations** page to view/edit template mappings and trigger provisioning.
 
-- `telemetry_providers` already supports multiple rows with `is_active` + `priority`. Add UI in **Admin → Telemetry Providers** with a single "Active provider" radio (EMQX / Traccar) that flips `is_active` atomically (a DB transaction so only one row is active at a time).
-- Keep both adapters registered. Every telemetry-consuming edge function routes through `getTelemetryAdapter()` (already exists in `_shared/telemetry-client.ts`). Migrate the direct EMQX callers (`emqx-monitoring`, `telemetry-health-monitor`, `iot-accident-detection`, `enforce-call-in-geofence`, `vehicle-shutdown-warning`, `process-payment-unlock`) to the adapter so the flip actually takes effect.
-- Add a "shadow read" mode: when Traccar is inactive, still hit its `getDeviceState` in `telemetry-health-monitor` and log divergence to a new `telemetry_shadow_log` table. Lets us validate Traccar with real vehicles before flipping.
-- Secrets needed (request via `add_secret`): `TRACCAR_BASE_URL`, `TRACCAR_API_TOKEN`.
+### 2. Auto-provisioning worker for new regions
 
-### 2. Hologram — stubbed behind secrets
+- Trigger on `region_definitions` insert queues a row in `persona_region_templates` (status: `pending`).
+- Edge fn `persona-provision-template` clones a master template via Persona's `template-versions` endpoint, saves the new template_id, marks `active`. Idempotent; can be invoked from admin UI too.
+- Requires new secret: `PERSONA_MASTER_TEMPLATE_ID` (source template to clone).
 
-- New file `supabase/functions/_shared/hologram-client.ts` with `activateSim`, `suspendSim`, `getSimUsage`, `listSims`. All methods check `HOLOGRAM_API_KEY` / `HOLOGRAM_ORG_ID`; if missing, return `{ ok: false, reason: "not_configured" }` — no throws.
-- New table `iot_sim_cards` (iccid, msisdn, device_id FK, status, data_usage_mb, activated_at, provider defaults to `'hologram'`).
-- New edge function `hologram-sync` (cron-authenticated) that walks `iot_sim_cards` and refreshes usage/status. No-op when unconfigured.
-- Admin panel section "SIM Cards" showing the table read-only for now, with a "Configure Hologram" banner when secrets are absent.
-- Secrets (requested only when user confirms rollout): `HOLOGRAM_API_KEY`, `HOLOGRAM_ORG_ID`.
+### 3. Embedded inquiry flow (drivers, owners, referees)
 
-### 3. Whatchimp — third WhatsApp provider (global)
+- Rewrite `PersonaVerification.tsx` to load `withpersona.com/dist/persona-*.js` and open the `Persona.Client` modal in-app instead of a new tab.
+- Edge fn returns `inquiry_id` + short-lived `session_token` (`/inquiries/:id/resume`). Component uses `inquiryId` + `sessionToken` to launch the modal, subscribes to `onComplete`/`onCancel`/`onError`, refetches inquiry status.
+- Referee mode: passes `subject_ref` (referee_verifications.id) + `fields` (name, phone) so Persona cross-references what the applicant declared.
 
-- Extend `communication_providers` rows with a `whatchimp` entry alongside `twilio` and `termii`.
-- New `_shared/whatchimp-client.ts` with `sendMessage({ to, body, templateName?, mediaUrl? })` calling the Whatchimp/Meta Business Cloud API. Auth via `WHATCHIMP_API_KEY` + `WHATCHIMP_PHONE_NUMBER_ID`.
-- Update `send-inbox-reply` and `send-sms-notification` region router: if the destination region's `communication_providers.preferred_whatsapp_provider = 'whatchimp'`, route WhatsApp through Whatchimp; otherwise keep current Twilio(US)/Termii(NG) behavior. Global fallback for regions with no local provider = Whatchimp.
-- New webhook `supabase/functions/whatchimp-webhook/index.ts` (verify_jwt=false, HMAC signature check with `WHATCHIMP_WEBHOOK_SECRET`) that normalizes inbound messages into `inbox_conversations` / `inbox_messages` — same shape as Twilio/Termii webhooks.
-- Admin Communication Providers UI: add per-region WhatsApp provider dropdown (Twilio / Termii / Whatchimp).
-- Secrets: `WHATCHIMP_API_KEY`, `WHATCHIMP_PHONE_NUMBER_ID`, `WHATCHIMP_WEBHOOK_SECRET`.
+### 4. Onboarding triggers
 
-### 4. ManyChat — Instagram/Facebook DMs + campaign automation
+- **Driver onboarding**: add Persona step to `VerificationGate` between phone verify and registration form; blocks progression until `persona_inquiries.status = 'approved'` for that user.
+- **Owner onboarding**: same gate on `/owner/registration`.
+- **Referee**: existing referee capture already links to `persona_inquiry_id` — surface embedded launch in referee capture UI (RefereeCapture component if present).
 
-- New `_shared/manychat-client.ts`: `sendContent(subscriberId, flowNs)`, `sendMessage(subscriberId, text)`, `tagSubscriber`, `triggerFlow`. Auth via `MANYCHAT_API_TOKEN`.
-- New webhook `supabase/functions/manychat-webhook/index.ts` receives Instagram/FB DM events → writes to `inbox_conversations` with `channel='instagram'` / `'facebook_messenger'` (values already reserved in the social messaging channels doc).
-- `send-inbox-reply` gains IG/FB routing: when conversation channel is Instagram/Facebook, dispatch via ManyChat.
-- Outbound campaigns: extend `social_media_campaigns` execution to call `manychat.triggerFlow` for `platform in ('instagram','facebook_messenger')`. Existing campaigns table already has the columns.
-- Admin "Social Messaging" tab: connection status + flow ID mapping (`social_messaging_configs`).
-- Secrets: `MANYCHAT_API_TOKEN`, `MANYCHAT_WEBHOOK_SECRET`.
+### 5. Admin re-verification (hosted link via email/SMS)
 
----
+- New edge fn `persona-send-reverification`:
+  - Admin-only (`is_admin()`).
+  - Creates fresh inquiry, generates hosted URL (`/verify?inquiry-id=…&environment-id=…`).
+  - Sends unified message (Resend email + Termii/Twilio SMS) with the link via existing `send-inbox-reply` pattern.
+  - Logs to `admin_audit_log`.
+- Admin UI action button on user profile: "Request identity re-verification".
 
-## Rollout order
+### 6. Document expiry re-verification (cron)
 
-1. Traccar parallel + flip switch (adapter already exists, biggest safety upside).
-2. Whatchimp WhatsApp router + webhook (unblocks global rollout).
-3. ManyChat webhook + inbox routing.
-4. Hologram stub + `iot_sim_cards` table.
+- New edge fn `persona-expiry-scan` runs daily via pg_cron; for `user_documents` expiring in ≤14 days (DL, NIN, VIN, etc.), sends re-verification email via the same send fn.
 
-Each phase ships behind secrets so nothing activates until you provide credentials. I'll request secrets with `add_secret` only when we reach each phase and you confirm.
+### 7. Webhook hardening
 
-## Technical notes
+- Persist `mismatch_fields` from Persona payload (name/DOB/id_number diffs) so admins can review.
+- Also cascade approved `self` inquiries → set `profiles.identity_verified_at`.
+  8. Store and update per user verification results on admin dashboards
 
-- No changes to existing EMQX behavior — Traccar runs alongside, and the flip is an admin action.
-- All new webhooks: `verify_jwt = false` + HMAC signature check in code (same pattern as `termii-webhook`).
-- RLS + GRANTs added for `iot_sim_cards` (admin-only), `telemetry_shadow_log` (admin-only).
-- Frontend admin UI additions kept minimal: one radio switch (Traccar flip), one dropdown per region (WhatsApp provider), one read-only table (SIM cards), one status card (ManyChat).
+## Technical details
 
-Confirm and I'll start with Phase 1 (Traccar).
+**Migrations**
+
+- Create `persona_region_templates` with GRANTs, RLS (admins manage; authenticated read `is_active`), updated_at trigger.
+- Trigger `on_region_definition_created` → insert placeholder row.
+- Add `profiles.identity_verified_at TIMESTAMPTZ` and `profiles.identity_verified_inquiry_id TEXT`.
+
+**Secrets to request** (via `add_secret`, not generated):
+
+- `PERSONA_API_KEY` (already listed? — will confirm)
+- `PERSONA_WEBHOOK_SECRET`
+- `PERSONA_MASTER_TEMPLATE_ID` (source for regional clones)
+- `PERSONA_ENVIRONMENT_ID` (sandbox/prod)
+
+**Edge functions**
+
+- Update `persona-create-inquiry`: DB-first template lookup; also mint session token for embedded.
+- New: `persona-provision-template`, `persona-send-reverification`, `persona-expiry-scan`.
+- Keep `persona-webhook`, extend it.
+
+**Frontend**
+
+- Rewrite `PersonaVerification.tsx` for embedded modal (with hosted URL fallback if SDK blocked).
+- Add gate step in `VerificationGate` + owner registration.
+- Admin action button + template management card.
+
+**Cron**
+
+- Schedule `persona-expiry-scan` daily at 07:00 UTC via `cron.schedule` (using insert tool, per instructions).
+
+## Out of scope
+
+- Actual Persona template design work in the Persona dashboard (user creates the master template once; worker clones it per region).
+- Face-match against selfies stored in-app — Persona handles it and returns the verdict.
+
+Confirm and I'll ship the migration first, then functions + UI in parallel.
