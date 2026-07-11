@@ -342,7 +342,43 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
           )}
         </Card>
 
-        {/* Step 3: Complete Registration */}
+        {/* Step 3: Identity Verification (Persona) */}
+        <Card className={identityVerified ? 'border-green-200 bg-green-50/50' : (!emailVerified || !phoneVerified) ? 'opacity-60' : ''}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  identityVerified ? 'bg-green-100 text-green-600' : 'bg-primary/10 text-primary'
+                }`}>
+                  {identityVerified ? <CheckCircle className="h-5 w-5" /> : <Shield className="h-5 w-5" />}
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Step 3: Verify Identity</CardTitle>
+                  <CardDescription>Confirm your government ID and take a quick selfie — powered by Persona</CardDescription>
+                </div>
+              </div>
+              {identityVerified && (
+                <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> Complete</Badge>
+              )}
+            </div>
+          </CardHeader>
+          {!identityVerified && emailVerified && phoneVerified && (
+            <CardContent>
+              <PersonaVerification subject="self" onComplete={() => setTimeout(checkVerificationStatus, 1500)} />
+              <p className="text-xs text-muted-foreground mt-3">You can close and re-open this page after finishing — we'll pick up where you left off.</p>
+            </CardContent>
+          )}
+          {(!emailVerified || !phoneVerified) && !identityVerified && (
+            <CardContent>
+              <Alert>
+                <Shield className="h-4 w-4" />
+                <AlertDescription>Complete email and phone verification first.</AlertDescription>
+              </Alert>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Step 4: Complete Registration */}
         <Card className={registrationComplete ? 'border-green-200 bg-green-50/50' : !isFullyVerified ? 'opacity-60' : ''}>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -353,7 +389,7 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
                   {registrationComplete ? <CheckCircle className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Step 3: Complete Registration</CardTitle>
+                  <CardTitle className="text-lg">Step 4: Complete Registration</CardTitle>
                   <CardDescription>
                     {userType === 'driver' 
                       ? 'Submit your personal details and identification documents' 
