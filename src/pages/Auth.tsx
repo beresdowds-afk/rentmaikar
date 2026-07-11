@@ -67,26 +67,27 @@ const Auth = () => {
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
   // Redirect authenticated users (only if 2FA is verified or not required)
+  // IMPORTANT: wait until userRole has hydrated before navigating, otherwise
+  // admin_assistant / support users race past the role check and land on `/`.
   useEffect(() => {
-    if (user && !authLoading && twoFactorVerified && !show2FA) {
-      if (userRole === 'admin') {
-        navigate('/admin', { replace: true });
-      } else if (userRole === 'admin_assistant') {
-        navigate('/admin-assistant', { replace: true });
-      } else if (userRole === 'owner') {
-        navigate('/owner/dashboard', { replace: true });
-      } else if (userRole === 'driver') {
-        navigate('/driver/dashboard', { replace: true });
-      } else if (userRole === 'legal_support') {
-        navigate('/support/legal', { replace: true });
-      } else if (userRole === 'iot_support') {
-        navigate('/support/iot', { replace: true });
-      } else if (userRole === 'vehicle_support') {
-        navigate('/support/vehicle', { replace: true });
-      } else {
-        navigate(from, { replace: true });
-      }
-    }
+    if (!user || authLoading || !twoFactorVerified || show2FA) return;
+    if (userRole === null) return; // still hydrating role
+
+    const roleHome: Record<string, string> = {
+      admin: '/admin',
+      admin_assistant: '/admin-assistant',
+      owner: '/owner/dashboard',
+      driver: '/driver/dashboard',
+      legal_support: '/support/legal',
+      iot_support: '/support/iot',
+      vehicle_support: '/support/vehicle',
+    };
+
+    // If the user was sent here from a protected route they are allowed to view,
+    // honor that; otherwise send them to their role home.
+    const target = roleHome[userRole] ?? from ?? '/';
+    const isRoleHomeRoute = Object.values(roleHome).includes(from);
+    navigate(isRoleHomeRoute && from !== '/' ? from : target, { replace: true });
   }, [user, authLoading, userRole, navigate, from, twoFactorVerified, show2FA]);
 
   const loginForm = useForm<LoginFormData>({
