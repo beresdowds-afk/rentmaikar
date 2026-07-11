@@ -24,6 +24,7 @@ interface VerificationGateProps {
 interface VerificationStatus {
   emailVerified: boolean;
   phoneVerified: boolean;
+  identityVerified: boolean;
   registrationComplete: boolean;
 }
 
