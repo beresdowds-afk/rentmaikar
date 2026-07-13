@@ -1,89 +1,63 @@
-## Current state (already built)
+Set up a PayPal payment integration for US-region transactions, leaving the live credentials as placeholders to be filled in later.
 
-- Table `persona_inquiries` with RLS.
-- Edge fns `persona-create-inquiry` (region-aware) and `persona-webhook` (HMAC-verified, cascades to referees).
-- Component `PersonaVerification` (opens hosted URL in new tab).
-- Templates today are picked from env vars `PERSONA_TEMPLATE_ID_US` / `PERSONA_TEMPLATE_ID_NG`.
+## Background
+- The project already supports region-aware payments (US: PayPal, NG: Paystack, Bank transfers).
+- Currently no PayPal secrets exist and no PayPal code is in the codebase.
+- The build should follow the existing `RegionContext` pattern and the admin-mediated payment flow.
 
-## What we'll add
+## What will be built
 
-### 1. Per-region template mapping in DB
+1. **Secrets scaffolding**
+   - Create `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` entries (empty/placeholder values) so the project knows they are required.
+   - You will fill them in later via the secrets form.
 
-- New table `persona_region_templates` (region_code, country, inquiry_template_id, env_id, is_active, auto_generated, source_template_id, provisioned_at). Admin-managed.
-- Edge fn reads DB first, falls back to env vars if empty.
-- Admin UI card on **Regional Operations** page to view/edit template mappings and trigger provisioning.
+2. **Backend edge function**
+   - `supabase/functions/paypal-create-order/index.ts`:
+     - Validates the request, creates a PayPal order via the PayPal API, and returns the order ID to the client.
+     - Uses `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` to generate an access token.
+     - Supports both PayPal sandbox (`sb-`) and live modes based on a `PAYPAL_ENV` secret or inferred from credentials.
+     - CORS headers included.
+   - `supabase/functions/paypal-capture-order/index.ts`:
+     - Captures an approved order and records the payment in the existing `payments` table.
 
-### 2. Auto-provisioning worker for new regions
+3. **Frontend PayPal integration**
+   - Add `@paypal/react-paypal-js` to the project.
+   - Create `src/components/payments/PayPalCheckout.tsx`:
+     - Renders PayPal buttons inside the existing rental/agreement checkout flow.
+     - Consumes `RegionContext` and only renders for US/USD region.
+     - Calls the edge functions to create/capture orders.
+   - Create `src/hooks/usePayPalConfig.ts`:
+     - Returns the correct PayPal client ID and environment based on region.
 
-- Trigger on `region_definitions` insert queues a row in `persona_region_templates` (status: `pending`).
-- Edge fn `persona-provision-template` clones a master template via Persona's `template-versions` endpoint, saves the new template_id, marks `active`. Idempotent; can be invoked from admin UI too.
-- Requires new secret: `PERSONA_MASTER_TEMPLATE_ID` (source template to clone).
+4. **Database schema additions**
+   - Add `payment_provider` enum value or column support for `paypal`.
+   - Add a migration to record PayPal order IDs and capture status in the `payments` table, or use a dedicated `paypal_transactions` table with RLS.
+   - Include proper `GRANT` statements and RLS policies.
 
-### 3. Embedded inquiry flow (drivers, owners, referees)
+5. **Admin UI updates**
+   - Add a "PayPal" option in the payment provider selector in admin rental/agreement management.
+   - Add a read-only status badge for PayPal transactions.
 
-- Rewrite `PersonaVerification.tsx` to load `withpersona.com/dist/persona-*.js` and open the `Persona.Client` modal in-app instead of a new tab.
-- Edge fn returns `inquiry_id` + short-lived `session_token` (`/inquiries/:id/resume`). Component uses `inquiryId` + `sessionToken` to launch the modal, subscribes to `onComplete`/`onCancel`/`onError`, refetches inquiry status.
-- Referee mode: passes `subject_ref` (referee_verifications.id) + `fields` (name, phone) so Persona cross-references what the applicant declared.
-
-### 4. Onboarding triggers
-
-- **Driver onboarding**: add Persona step to `VerificationGate` between phone verify and registration form; blocks progression until `persona_inquiries.status = 'approved'` for that user.
-- **Owner onboarding**: same gate on `/owner/registration`.
-- **Referee**: existing referee capture already links to `persona_inquiry_id` — surface embedded launch in referee capture UI (RefereeCapture component if present).
-
-### 5. Admin re-verification (hosted link via email/SMS)
-
-- New edge fn `persona-send-reverification`:
-  - Admin-only (`is_admin()`).
-  - Creates fresh inquiry, generates hosted URL (`/verify?inquiry-id=…&environment-id=…`).
-  - Sends unified message (Resend email + Termii/Twilio SMS) with the link via existing `send-inbox-reply` pattern.
-  - Logs to `admin_audit_log`.
-- Admin UI action button on user profile: "Request identity re-verification".
-
-### 6. Document expiry re-verification (cron)
-
-- New edge fn `persona-expiry-scan` runs daily via pg_cron; for `user_documents` expiring in ≤14 days (DL, NIN, VIN, etc.), sends re-verification email via the same send fn.
-
-### 7. Webhook hardening
-
-- Persist `mismatch_fields` from Persona payload (name/DOB/id_number diffs) so admins can review.
-- Also cascade approved `self` inquiries → set `profiles.identity_verified_at`.
-  8. Store and update per user verification results on admin dashboards
-
-## Technical details
-
-**Migrations**
-
-- Create `persona_region_templates` with GRANTs, RLS (admins manage; authenticated read `is_active`), updated_at trigger.
-- Trigger `on_region_definition_created` → insert placeholder row.
-- Add `profiles.identity_verified_at TIMESTAMPTZ` and `profiles.identity_verified_inquiry_id TEXT`.
-
-**Secrets to request** (via `add_secret`, not generated):
-
-- `PERSONA_API_KEY` (already listed? — will confirm)
-- `PERSONA_WEBHOOK_SECRET`
-- `PERSONA_MASTER_TEMPLATE_ID` (source for regional clones)
-- `PERSONA_ENVIRONMENT_ID` (sandbox/prod)
-
-**Edge functions**
-
-- Update `persona-create-inquiry`: DB-first template lookup; also mint session token for embedded.
-- New: `persona-provision-template`, `persona-send-reverification`, `persona-expiry-scan`.
-- Keep `persona-webhook`, extend it.
-
-**Frontend**
-
-- Rewrite `PersonaVerification.tsx` for embedded modal (with hosted URL fallback if SDK blocked).
-- Add gate step in `VerificationGate` + owner registration.
-- Admin action button + template management card.
-
-**Cron**
-
-- Schedule `persona-expiry-scan` daily at 07:00 UTC via `cron.schedule` (using insert tool, per instructions).
+6. **Validation / safe guards**
+   - PayPal buttons only show for US region with USD currency.
+   - Edge functions return clear errors if secrets are not set.
+   - No secrets are hardcoded; the client ID may be passed from the backend but not stored in code.
 
 ## Out of scope
+- Live PayPal account claim/verification (you will do that later).
+- Webhook handling for PayPal events (can be added in a follow-up).
+- Refund/ dispute flows (to be designed after the basic checkout works).
 
-- Actual Persona template design work in the Persona dashboard (user creates the master template once; worker clones it per region).
-- Face-match against selfies stored in-app — Persona handles it and returns the verdict.
+## Next steps after this build
+- You will fill in `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` with your PayPal app credentials.
+- I will test the order creation flow end-to-end and verify the payment is recorded in the database.
 
-Confirm and I'll ship the migration first, then functions + UI in parallel.
+## Files to create / edit
+- New: `supabase/functions/paypal-create-order/index.ts`
+- New: `supabase/functions/paypal-capture-order/index.ts`
+- New: `src/components/payments/PayPalCheckout.tsx`
+- New: `src/hooks/usePayPalConfig.ts`
+- New: `supabase/migrations/20260713_add_paypal_transactions.sql`
+- Edit: `src/integrations/supabase/types.ts` (if needed)
+- Edit: relevant admin/payment provider UIs
+- Edit: `package.json` / `bun.lock` for `@paypal/react-paypal-js`
