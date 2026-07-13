@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { resolveRecipients } from "./index.ts";
+import { resolveRecipients } from "./recipients.ts";
 
 /**
  * In-memory Supabase client stub. Only implements the query surface used

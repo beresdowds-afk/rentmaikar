@@ -38,62 +38,8 @@ interface Body {
   reference?: string;
 }
 
-/**
- * Compute the notification recipient set. Exported for unit testing.
- *
- * Steps:
- *   1. Seed with the rental's driver_id and every admin user_id.
- *   2. Fetch ALL roles for those candidates from user_roles.
- *   3. Drop any candidate that holds the 'owner' role (owners are excluded
- *      even if they're also the assigned driver or an admin).
- *   4. Drop the seeded driver_id if they don't actually have the 'driver' role.
- */
-export async function resolveRecipients(
-  admin: Pick<SupabaseClient, "from">,
-  rentalId: string | undefined,
-): Promise<string[]> {
-  const candidates = new Set<string>();
-  let rentalDriverId: string | null = null;
 
-  if (rentalId) {
-    const { data: rental } = await (admin.from("rentals") as any)
-      .select("driver_id").eq("id", rentalId).maybeSingle();
-    if (rental?.driver_id) {
-      rentalDriverId = rental.driver_id;
-      candidates.add(rental.driver_id);
-    }
-  }
 
-  const { data: admins } = await (admin.from("user_roles") as any)
-    .select("user_id").eq("role", "admin");
-  (admins ?? []).forEach((a: { user_id: string }) => candidates.add(a.user_id));
-
-  if (candidates.size === 0) return [];
-
-  const { data: allRoles } = await (admin.from("user_roles") as any)
-    .select("user_id, role").in("user_id", Array.from(candidates));
-
-  const rolesByUser = new Map<string, Set<string>>();
-  (allRoles ?? []).forEach((r: { user_id: string; role: string }) => {
-    if (!rolesByUser.has(r.user_id)) rolesByUser.set(r.user_id, new Set());
-    rolesByUser.get(r.user_id)!.add(r.role);
-  });
-
-  const allowed: string[] = [];
-  for (const userId of candidates) {
-    const roles = rolesByUser.get(userId) ?? new Set<string>();
-    // Hard exclusion: never send to anyone with the owner role.
-    if (roles.has("owner")) continue;
-    if (userId === rentalDriverId) {
-      // Only include the rental driver if they truly have the driver role.
-      if (roles.has("driver")) allowed.push(userId);
-      continue;
-    }
-    // Otherwise this is an admin (seeded from the admin query).
-    if (roles.has("admin")) allowed.push(userId);
-  }
-  return allowed;
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
