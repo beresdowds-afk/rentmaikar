@@ -44,11 +44,12 @@ Deno.serve(async (req) => {
     }).eq("reference", reference);
 
     const { data: tx } = await supabase.from("paystack_transactions")
-      .select("payment_id").eq("reference", reference).maybeSingle();
+      .select("payment_id, amount, currency, rental_id").eq("reference", reference).maybeSingle();
     if (tx?.payment_id) {
       await supabase.from("payments").update({
         status: "completed", processed_at: new Date().toISOString(), failure_reason: null,
       }).eq("id", tx.payment_id);
+      await notifyPush(tx.payment_id, tx.rental_id ?? null, "completed", tx.amount ? Number(tx.amount) / 100 : undefined, tx.currency ?? undefined, reference);
     }
   } else if (evt.event === "charge.failed" && reference) {
     await supabase.from("paystack_transactions").update({
@@ -57,11 +58,12 @@ Deno.serve(async (req) => {
       raw_payload: evt.data,
     }).eq("reference", reference);
     const { data: tx } = await supabase.from("paystack_transactions")
-      .select("payment_id").eq("reference", reference).maybeSingle();
+      .select("payment_id, amount, currency, rental_id").eq("reference", reference).maybeSingle();
     if (tx?.payment_id) {
       await supabase.from("payments").update({
         status: "failed", failure_reason: evt.data.gateway_response ?? "failed",
       }).eq("id", tx.payment_id);
+      await notifyPush(tx.payment_id, tx.rental_id ?? null, "failed", tx.amount ? Number(tx.amount) / 100 : undefined, tx.currency ?? undefined, reference);
     }
   } else if (evt.event === "transfer.success" || evt.event === "transfer.failed") {
     const ref = evt?.data?.reference ?? evt?.data?.transfer_code;
