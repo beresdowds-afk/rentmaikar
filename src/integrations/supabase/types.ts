@@ -2017,6 +2017,84 @@ export type Database = {
           },
         ]
       }
+      paypal_transactions: {
+        Row: {
+          amount: number
+          capture_id: string | null
+          created_at: string
+          currency: string
+          driver_id: string
+          failure_reason: string | null
+          id: string
+          order_id: string
+          owner_id: string
+          payer_email: string | null
+          payer_id: string | null
+          payment_id: string | null
+          raw_capture_response: Json | null
+          raw_order_response: Json | null
+          rental_id: string | null
+          status: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          amount: number
+          capture_id?: string | null
+          created_at?: string
+          currency?: string
+          driver_id: string
+          failure_reason?: string | null
+          id?: string
+          order_id: string
+          owner_id: string
+          payer_email?: string | null
+          payer_id?: string | null
+          payment_id?: string | null
+          raw_capture_response?: Json | null
+          raw_order_response?: Json | null
+          rental_id?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          amount?: number
+          capture_id?: string | null
+          created_at?: string
+          currency?: string
+          driver_id?: string
+          failure_reason?: string | null
+          id?: string
+          order_id?: string
+          owner_id?: string
+          payer_email?: string | null
+          payer_id?: string | null
+          payment_id?: string | null
+          raw_capture_response?: Json | null
+          raw_order_response?: Json | null
+          rental_id?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paypal_transactions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paypal_transactions_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       persona_inquiries: {
         Row: {
           created_at: string

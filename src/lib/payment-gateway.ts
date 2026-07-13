@@ -91,40 +91,23 @@ export class PaymentGateway {
     metadata?: Record<string, unknown>
   ): Promise<PaymentResult> {
     try {
-      // In production, this would call the PayPal API via edge function
-      console.log('[PayPal] Initializing payment:', {
+      const { createPayPalOrder } = await import('./paypal-client');
+      const result = await createPayPalOrder({
         amount: breakdown.driverTotal,
         currency: 'USD',
         driverId,
         vehicleId,
         rentalId,
-        breakdown,
+        paymentFrequency: breakdown.frequency,
+        description: `Vehicle Rental - ${formatCurrency(breakdown.baseAmount, 'USD')} + ${formatCurrency(breakdown.adminFee, 'USD')} admin fee`,
+        metadata,
       });
 
-      // Mock PayPal order creation
-      const mockOrderId = `PAYPAL-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
       return {
         success: true,
-        transactionId: mockOrderId,
-        redirectUrl: `https://www.sandbox.paypal.com/checkoutnow?token=${mockOrderId}`,
-        gatewayResponse: {
-          id: mockOrderId,
-          status: 'CREATED',
-          intent: 'CAPTURE',
-          purchase_units: [{
-            amount: {
-              currency_code: 'USD',
-              value: breakdown.driverTotal.toFixed(2),
-              breakdown: {
-                item_total: { value: breakdown.baseAmount.toFixed(2), currency_code: 'USD' },
-                tax_total: { value: breakdown.adminFee.toFixed(2), currency_code: 'USD' },
-              },
-            },
-            description: `Vehicle Rental - ${formatCurrency(breakdown.baseAmount, 'USD')} + ${formatCurrency(breakdown.adminFee, 'USD')} admin fee`,
-            custom_id: rentalId,
-          }],
-        },
+        transactionId: result.orderId,
+        redirectUrl: result.approveUrl ?? null,
+        gatewayResponse: result,
       };
     } catch (error) {
       console.error('[PayPal] Payment initialization failed:', error);
@@ -195,22 +178,17 @@ export class PaymentGateway {
   }
 
   /**
-   * Verify PayPal payment
+   * Verify / capture PayPal payment
    */
   private async verifyPayPalPayment(orderId: string): Promise<PaymentResult> {
     try {
-      // In production, this would call PayPal's capture/verify API
-      console.log('[PayPal] Verifying payment:', orderId);
+      const { capturePayPalOrder } = await import('./paypal-client');
+      const result = await capturePayPalOrder({ orderId });
 
-      // Mock verification
       return {
-        success: true,
-        transactionId: orderId,
-        gatewayResponse: {
-          id: orderId,
-          status: 'COMPLETED',
-          payer: { email_address: 'driver@example.com' },
-        },
+        success: result.status === 'COMPLETED',
+        transactionId: result.orderId,
+        gatewayResponse: result,
       };
     } catch (error) {
       console.error('[PayPal] Payment verification failed:', error);
