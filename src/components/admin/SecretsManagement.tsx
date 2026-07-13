@@ -122,6 +122,15 @@ const secrets: SecretConfig[] = [
     docsUrl: "https://developer.paypal.com/api/rest/",
     region: "USA",
   },
+  {
+    name: "PAYPAL_MODE",
+    displayName: "PayPal Mode",
+    description: "Set to 'live' for production PayPal transactions or 'sandbox' for testing",
+    category: "payment",
+    testable: false,
+    docsUrl: "https://developer.paypal.com/api/rest/",
+    region: "USA",
+  },
   // Payment - Paystack (Nigeria)
   {
     name: "PAYSTACK_SECRET_KEY",
