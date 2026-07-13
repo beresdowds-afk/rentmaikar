@@ -3148,6 +3148,116 @@ export type Database = {
         }
         Relationships: []
       }
+      reconciliation_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string
+          details: Json
+          id: string
+          message: string
+          psp: string | null
+          run_id: string | null
+          severity: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string
+          details?: Json
+          id?: string
+          message: string
+          psp?: string | null
+          run_id?: string | null
+          severity?: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          message?: string
+          psp?: string | null
+          run_id?: string | null
+          severity?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliation_alerts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "reconciliation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reconciliation_runs: {
+        Row: {
+          backfilled_payment_ids: string[]
+          created_at: string
+          duration_ms: number | null
+          errors: Json
+          fatal_error: string | null
+          finished_at: string | null
+          id: string
+          per_psp: Json
+          since: string
+          started_at: string
+          status: string
+          total_backfilled: number
+          total_checked: number
+          total_errors: number
+          total_updated: number
+          triggered_by: string
+          updated_at: string
+        }
+        Insert: {
+          backfilled_payment_ids?: string[]
+          created_at?: string
+          duration_ms?: number | null
+          errors?: Json
+          fatal_error?: string | null
+          finished_at?: string | null
+          id?: string
+          per_psp?: Json
+          since: string
+          started_at?: string
+          status?: string
+          total_backfilled?: number
+          total_checked?: number
+          total_errors?: number
+          total_updated?: number
+          triggered_by?: string
+          updated_at?: string
+        }
+        Update: {
+          backfilled_payment_ids?: string[]
+          created_at?: string
+          duration_ms?: number | null
+          errors?: Json
+          fatal_error?: string | null
+          finished_at?: string | null
+          id?: string
+          per_psp?: Json
+          since?: string
+          started_at?: string
+          status?: string
+          total_backfilled?: number
+          total_checked?: number
+          total_errors?: number
+          total_updated?: number
+          triggered_by?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       referee_verifications: {
         Row: {
           application_id: string
