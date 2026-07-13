@@ -24,16 +24,21 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { DocumentExportButton } from './DocumentExportButton';
 
-type DocumentType = 
-  | 'driver_license' 
-  | 'national_id' 
-  | 'police_report' 
-  | 'nin' 
-  | 'bvn' 
+type DocumentType =
+  | 'driver_license'
+  | 'national_id'
+  | 'police_report'
+  | 'nin'
+  | 'bvn'
   | 'passport'
-  | 'vehicle_registration' 
+  | 'vehicle_registration'
   | 'vehicle_insurance'
+  | 'vin_inspection'
+  | 'roadworthiness'
+  | 'hackney_permit'
+  | 'vehicle_license'
   | 'rideshare_approval';
 
 type DocumentCategory = 'identification' | 'vehicle';
@@ -87,8 +92,14 @@ const OWNER_IDENTIFICATION_DOCUMENTS: DocumentConfig[] = [
 ];
 
 const VEHICLE_DOCUMENTS: DocumentConfig[] = [
-  { type: 'vehicle_registration', label: 'Vehicle Registration', description: 'Current vehicle registration document', required: true, category: 'vehicle', vehicleSpecific: true },
-  { type: 'vehicle_insurance', label: 'Vehicle Insurance', description: 'Insurance with rideshare coverage', required: true, category: 'vehicle', vehicleSpecific: true },
+  { type: 'vehicle_registration', label: 'Vehicle Registration', description: 'Current vehicle registration document', required: true, category: 'vehicle', vehicleSpecific: true, regionRequired: 'all' },
+  { type: 'vehicle_insurance', label: 'Vehicle Insurance', description: 'Insurance with rideshare coverage', required: true, category: 'vehicle', vehicleSpecific: true, regionRequired: 'all' },
+  // USA-only
+  { type: 'vin_inspection', label: 'VIN Inspection Report', description: 'State-issued VIN verification', required: true, category: 'vehicle', vehicleSpecific: true, regionRequired: 'usa' },
+  // Nigeria-only (FRSC/LASRRA/VIO)
+  { type: 'roadworthiness', label: 'Roadworthiness Certificate', description: 'Valid FRSC roadworthiness certificate', required: true, category: 'vehicle', vehicleSpecific: true, regionRequired: 'nigeria' },
+  { type: 'hackney_permit', label: 'Hackney Permit', description: 'Commercial (hackney) permit for rideshare use', required: true, category: 'vehicle', vehicleSpecific: true, regionRequired: 'nigeria' },
+  { type: 'vehicle_license', label: 'Vehicle License', description: 'Current vehicle license / proof of ownership', required: true, category: 'vehicle', vehicleSpecific: true, regionRequired: 'nigeria' },
 ];
 
 const statusConfig = {
@@ -116,11 +127,12 @@ export const DocumentUpload = ({ userType, vehicleId, vehicleName }: DocumentUpl
       docs = vehicleId ? VEHICLE_DOCUMENTS : OWNER_IDENTIFICATION_DOCUMENTS;
     }
     
-    // Filter by region
+    // Filter by region — treat missing regionRequired as 'all' so future entries fail open, not closed.
     return docs.filter(doc => {
-      if (doc.regionRequired === 'all') return true;
-      if (doc.regionRequired === 'nigeria' && isNigeria) return true;
-      if (doc.regionRequired === 'usa' && !isNigeria) return true;
+      const scope = doc.regionRequired ?? 'all';
+      if (scope === 'all') return true;
+      if (scope === 'nigeria' && isNigeria) return true;
+      if (scope === 'usa' && !isNigeria) return true;
       return false;
     });
   };
@@ -425,6 +437,17 @@ export const DocumentUpload = ({ userType, vehicleId, vehicleName }: DocumentUpl
             Accepted formats: JPG, PNG, WebP, PDF • Max size: 10MB • Documents are reviewed within 24-48 hours
           </AlertDescription>
         </Alert>
+
+        {user && documents.length > 0 && (
+          <div className="flex justify-end pt-2">
+            <DocumentExportButton
+              userId={user.id}
+              vehicleId={vehicleId}
+              label={vehicleId ? `vehicle-${vehicleId.slice(0, 8)}` : `${userType}-${user.id.slice(0, 8)}`}
+              docs={documents as any}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
