@@ -55,7 +55,7 @@ export function PaymentMethodPicker({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue={psps[0]} className="w-full">
+        <Tabs value={defaultPSP} defaultValue={defaultPSP} key={defaultPSP} className="w-full" data-testid="payment-method-picker">
           <TabsList className="w-full" style={{ display: "grid", gridTemplateColumns: `repeat(${psps.length}, minmax(0,1fr))` }}>
             {psps.map((p) => (
               <TabsTrigger key={p} value={p}>{psplabels[p]}</TabsTrigger>
