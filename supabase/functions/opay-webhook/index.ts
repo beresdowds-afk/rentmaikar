@@ -44,12 +44,13 @@ Deno.serve(async (req) => {
   }).eq("reference", reference);
 
   const { data: tx } = await supabase.from("opay_transactions")
-    .select("payment_id").eq("reference", reference).maybeSingle();
+    .select("payment_id, amount, currency, rental_id").eq("reference", reference).maybeSingle();
   if (tx?.payment_id) {
     await supabase.from("payments").update({
       status, failure_reason: failure,
       processed_at: status === "completed" ? new Date().toISOString() : null,
     }).eq("id", tx.payment_id);
+    await notifyPush(tx.payment_id, tx.rental_id ?? null, status, tx.amount ? Number(tx.amount) : undefined, tx.currency ?? undefined, reference);
   }
 
   return new Response(JSON.stringify({ received: true }), {
