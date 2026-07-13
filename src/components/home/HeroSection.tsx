@@ -147,66 +147,69 @@ const HeroSection = () => {
         </div>
       )}
 
-      {/* ── Main Hero Content ── */}
-      <div className="relative z-10 flex-1 flex flex-col justify-center px-5 py-8 gap-8">
+      {/* ── Main Hero Content (kept in upper half so it never overlaps the cars) ── */}
+      <div className="relative z-10 flex flex-col items-center px-5 pt-4 pb-4 gap-4 sm:gap-5">
 
         {/* DRIVERS & OWNERS CTAs */}
-        <div className="flex flex-row gap-4 justify-center">
+        <div className="flex flex-row gap-3 sm:gap-4 justify-center w-full max-w-2xl">
           {/* DRIVERS */}
           <Link to="/driver/register" className="flex-1 max-w-[220px]">
-            <div className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-[hsl(142_72%_38%)] hover:bg-[hsl(142_72%_32%)] transition-colors shadow-xl cursor-pointer py-5 px-4 text-white">
-              <span className="font-black text-4xl md:text-5xl uppercase tracking-wide leading-none">
+            <div className="flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-[hsl(142_72%_38%)] hover:bg-[hsl(142_72%_32%)] active:scale-[0.98] transition-all shadow-xl cursor-pointer py-3 sm:py-4 px-3 text-white">
+              <span className="font-black text-2xl sm:text-3xl md:text-4xl uppercase tracking-wide leading-none">
                 DRIVERS
               </span>
-              <span className="text-sm font-medium opacity-90 mt-1">Register here</span>
+              <span className="text-xs sm:text-sm font-medium opacity-90">Register here</span>
             </div>
           </Link>
 
           {/* OWNERS */}
           <Link to="/owner/register" className="flex-1 max-w-[220px]">
-            <div className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-[hsl(217_71%_18%)] hover:bg-[hsl(217_71%_14%)] transition-colors shadow-xl cursor-pointer py-5 px-4 text-white border border-white/10">
-              <span className="font-black text-4xl md:text-5xl uppercase tracking-wide leading-none">
+            <div className="flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-[hsl(217_71%_18%)] hover:bg-[hsl(217_71%_14%)] active:scale-[0.98] transition-all shadow-xl cursor-pointer py-3 sm:py-4 px-3 text-white border border-white/10">
+              <span className="font-black text-2xl sm:text-3xl md:text-4xl uppercase tracking-wide leading-none">
                 OWNERS
               </span>
-              <span className="text-sm font-medium opacity-90 mt-1">List your cars here</span>
+              <span className="text-xs sm:text-sm font-medium opacity-90">List your cars here</span>
             </div>
           </Link>
         </div>
 
         {/* Tagline */}
-        <div className="text-center px-4">
-          <p className="text-xl md:text-2xl font-bold text-gray-900 leading-snug drop-shadow-sm">
+        <div className="text-center max-w-2xl">
+          <p className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 leading-snug drop-shadow-sm">
             "Your Journey, Our Wheels –{" "}
             <span className="text-black">Rent or List</span> with Confidence on Rentmaikar."
           </p>
         </div>
 
         {/* Contact Buttons */}
-        <div className="flex flex-row gap-4 justify-center">
+        <div className="flex flex-row gap-3 justify-center w-full max-w-md">
           <a
             href={`https://wa.me/${whatsappNumber}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 max-w-[200px]"
+            className="flex-1 max-w-[180px]"
           >
-            <Button variant="whatsapp" size="lg" className="w-full gap-2">
-              <MessageCircle className="w-5 h-5" />
+            <Button variant="whatsapp" size="sm" className="w-full gap-2">
+              <MessageCircle className="w-4 h-4" />
               WhatsApp
             </Button>
           </a>
-          <a href={`sms:${smsNumber}`} className="flex-1 max-w-[200px]">
-            <Button variant="sms" size="lg" className="w-full gap-2">
-              <Phone className="w-5 h-5" />
+          <a href={`sms:${smsNumber}`} className="flex-1 max-w-[180px]">
+            <Button variant="sms" size="sm" className="w-full gap-2">
+              <Phone className="w-4 h-4" />
               Text us
             </Button>
           </a>
         </div>
       </div>
 
+      {/* Spacer so cars stay visible below the CTAs */}
+      <div className="relative z-0 flex-1 min-h-[40vh]" aria-hidden="true" />
+
       {/* Scroll Indicator */}
-      <div className="relative z-10 flex justify-center pb-6 animate-bounce">
-        <div className="w-8 h-12 rounded-full border-2 border-gray-400/60 flex items-start justify-center pt-2">
-          <div className="w-1.5 h-3 bg-gray-500/60 rounded-full" />
+      <div className="relative z-10 flex justify-center pb-4 animate-bounce">
+        <div className="w-7 h-11 rounded-full border-2 border-gray-500/70 bg-white/40 backdrop-blur-sm flex items-start justify-center pt-2">
+          <div className="w-1.5 h-3 bg-gray-600/80 rounded-full" />
         </div>
       </div>
     </section>
