@@ -15,6 +15,8 @@ interface PaymentMethodPickerProps {
   description?: string;
   onSuccess?: () => void;
   onError?: () => void;
+  /** Optional preselected PSP tab (e.g. after a Retry from the status panel). */
+  preferredPSP?: "paystack" | "opay" | "paypal";
 }
 
 const psplabels: Record<string, string> = {
@@ -25,11 +27,12 @@ const psplabels: Record<string, string> = {
 
 export function PaymentMethodPicker({
   country, amount, rentalId, vehicleId, driverId, paymentFrequency, description,
-  onSuccess, onError,
+  onSuccess, onError, preferredPSP,
 }: PaymentMethodPickerProps) {
   const psps = getCheckoutPSPs(country);
   const currency = getRegionCurrency(country);
   const cc = resolveCountryCode(country);
+  const defaultPSP = preferredPSP && psps.includes(preferredPSP) ? preferredPSP : psps[0];
 
   if (psps.length === 0) {
     return (
