@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { user, isLoading, userRole, twoFactorVerified } = useAuth();
+  const { user, isLoading, userRole, isRoleLoading, twoFactorVerified } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -36,9 +36,8 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
 
   // If roles are specified, check if user has one of the allowed roles
   if (allowedRoles && allowedRoles.length > 0) {
-    // Wait for role to hydrate before deciding — avoids a bogus redirect
-    // when the session is present but the role fetch has not resolved yet.
-    if (userRole === null) {
+    // Wait for role fetch to complete — but only while actually loading.
+    if (isRoleLoading) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-background">
           <div className="flex flex-col items-center gap-4">
@@ -47,6 +46,10 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
           </div>
         </div>
       );
+    }
+    // No role assigned — send home rather than trapping the user.
+    if (userRole === null) {
+      return <Navigate to="/" replace />;
     }
     if (!allowedRoles.includes(userRole)) {
       // Send user to their own home dashboard rather than the landing page
