@@ -41,6 +41,11 @@ Deno.serve(async (req) => {
     }
     if (!driverId) return json({ error: "Unauthenticated" }, 401);
 
+    const ctx = await resolvePaymentContext({
+      supabase, rentalId: b.rentalId, vehicleId: b.vehicleId,
+    });
+    if ("error" in ctx) return json({ error: ctx.error }, 400);
+
     const reference = `rmk_${crypto.randomUUID().replace(/-/g, "")}`;
     const amountMinor = Math.round(b.amount * 100);
     const baseUrl = env === "live" ? "https://liveapi.opaycheckout.com" : "https://sandboxapi.opaycheckout.com";
