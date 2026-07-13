@@ -67,6 +67,7 @@ export default function DriverDashboard() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [paymentRefreshKey, setPaymentRefreshKey] = useState(0);
   const { callHistory, isLoading: callsLoading, refreshHistory } = useVoiceCall('driver');
   const {
     activeRental,
@@ -373,7 +374,7 @@ export default function DriverDashboard() {
 
             {/* Payments Tab */}
             <TabsContent value="payments" className="space-y-6">
-              {rental && <RentalPaymentStatusPanel rentalId={rental.id} />}
+              {rental && <RentalPaymentStatusPanel rentalId={rental.id} refreshKey={paymentRefreshKey} />}
 
               {isUSA && rental && (
                 <Card>
@@ -391,6 +392,8 @@ export default function DriverDashboard() {
                       driverId={user?.id}
                       paymentFrequency={rental.paymentFrequency}
                       description={`Rental ${rental.id.slice(0, 8)} ${rental.paymentFrequency} payment`}
+                      onSuccess={() => setPaymentRefreshKey((k) => k + 1)}
+                      onError={() => setPaymentRefreshKey((k) => k + 1)}
                     />
                   </CardContent>
                 </Card>

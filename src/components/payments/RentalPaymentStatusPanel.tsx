@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,8 @@ import { CheckCircle2, Clock, XCircle, AlertTriangle, Loader2 } from "lucide-rea
 
 interface RentalPaymentStatusPanelProps {
   rentalId: string;
+  /** Bump to force an immediate refetch (e.g. after a checkout attempt completes). */
+  refreshKey?: number | string;
 }
 
 type PaymentRow = {
@@ -67,7 +70,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function RentalPaymentStatusPanel({ rentalId }: RentalPaymentStatusPanelProps) {
+export function RentalPaymentStatusPanel({ rentalId, refreshKey }: RentalPaymentStatusPanelProps) {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["rental-payment-status", rentalId],
     queryFn: async () => {
@@ -91,7 +94,34 @@ export function RentalPaymentStatusPanel({ rentalId }: RentalPaymentStatusPanelP
       };
     },
     refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
   });
+
+  // Immediate refetch when parent signals a checkout attempt just completed.
+  useEffect(() => {
+    if (refreshKey === undefined) return;
+    refetch();
+  }, [refreshKey, refetch]);
+
+  // Realtime: refetch as soon as payments/paypal rows for this rental change.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`rental-payments-${rentalId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "payments", filter: `rental_id=eq.${rentalId}` },
+        () => refetch(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "paypal_transactions", filter: `rental_id=eq.${rentalId}` },
+        () => refetch(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [rentalId, refetch]);
 
   const payments = data?.payments ?? [];
   const txByPayment = new Map<string, PayPalTxRow>();
