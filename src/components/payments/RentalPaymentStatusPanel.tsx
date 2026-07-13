@@ -1,16 +1,20 @@
 import { useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { formatCurrency } from "@/lib/payment-config";
-import { CheckCircle2, Clock, XCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { CheckCircle2, Clock, XCircle, AlertTriangle, Loader2, RotateCcw, Receipt } from "lucide-react";
 
 interface RentalPaymentStatusPanelProps {
   rentalId: string;
   /** Bump to force an immediate refetch (e.g. after a checkout attempt completes). */
   refreshKey?: number | string;
+  /** Called when the user clicks "Retry" on a failed payment. */
+  onRetry?: (payment: { id: string; payment_method: string | null; amount: number }) => void;
 }
 
 type PaymentRow = {
@@ -70,7 +74,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function RentalPaymentStatusPanel({ rentalId, refreshKey }: RentalPaymentStatusPanelProps) {
+export function RentalPaymentStatusPanel({ rentalId, refreshKey, onRetry }: RentalPaymentStatusPanelProps) {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["rental-payment-status", rentalId],
     queryFn: async () => {
