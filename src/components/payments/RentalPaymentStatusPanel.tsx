@@ -71,7 +71,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function RentalPaymentStatusPanel({ rentalId, refreshKey }: RentalPaymentStatusPanelProps) {
-  const { data, isLoading, refetch, isFetching } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["rental-payment-status", rentalId],
     queryFn: async () => {
       const [{ data: payments, error: payErr }, { data: txs, error: txErr }] = await Promise.all([
