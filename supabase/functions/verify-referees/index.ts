@@ -89,9 +89,20 @@ Deno.serve(async (req) => {
       }
     }
     const region = (app.country ?? app.region ?? "USA") as string;
-    const templateId = region.toUpperCase().startsWith("NG") || region === "Nigeria"
-      ? Deno.env.get("PERSONA_TEMPLATE_ID_NG")
-      : (Deno.env.get("PERSONA_TEMPLATE_ID_US") ?? Deno.env.get("PERSONA_TEMPLATE_ID"));
+    const isNG = region.toUpperCase().startsWith("NG") || region === "Nigeria";
+    // Try region template from DB first, then env-specific, then master fallback
+    const supaAdmin = supa;
+    const countryCode = isNG ? "NG" : "US";
+    const { data: regionTpl } = await supaAdmin
+      .from("persona_region_templates")
+      .select("inquiry_template_id, is_active")
+      .eq("country_code", countryCode)
+      .eq("is_active", true)
+      .maybeSingle();
+    const templateId = regionTpl?.inquiry_template_id
+      ?? (isNG ? Deno.env.get("PERSONA_TEMPLATE_ID_NG") : Deno.env.get("PERSONA_TEMPLATE_ID_US"))
+      ?? Deno.env.get("PERSONA_TEMPLATE_ID")
+      ?? Deno.env.get("PERSONA_MASTER_TEMPLATE_ID");
     const apiKey = Deno.env.get("PERSONA_API_KEY");
 
     const referees = normaliseReferees(app);

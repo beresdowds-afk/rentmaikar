@@ -39,9 +39,13 @@ async function resolveTemplate(supa: any, country: string): Promise<{ template_i
     return { template_id: data.inquiry_template_id, env_id: data.environment_id ?? Deno.env.get("PERSONA_ENVIRONMENT_ID") ?? null };
   }
   // Env fallback
+  // Env fallback: region-specific, generic, then master template
   const envKey = country === "NG" ? "PERSONA_TEMPLATE_ID_NG" : "PERSONA_TEMPLATE_ID_US";
   return {
-    template_id: Deno.env.get(envKey) ?? Deno.env.get("PERSONA_TEMPLATE_ID") ?? null,
+    template_id: Deno.env.get(envKey)
+      ?? Deno.env.get("PERSONA_TEMPLATE_ID")
+      ?? Deno.env.get("PERSONA_MASTER_TEMPLATE_ID")
+      ?? null,
     env_id: Deno.env.get("PERSONA_ENVIRONMENT_ID") ?? null,
   };
 }

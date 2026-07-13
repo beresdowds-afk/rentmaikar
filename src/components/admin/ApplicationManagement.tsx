@@ -19,6 +19,7 @@ import {
   Mail, Phone, MapPin, Calendar, RefreshCw, UserPlus, ClipboardList
 } from 'lucide-react';
 import { format } from 'date-fns';
+import RefereeVerificationPanel from '@/components/verification/RefereeVerificationPanel';
 
 type ApplicationType = 'driver' | 'owner';
 type ApplicationStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'needs_info';
@@ -714,6 +715,11 @@ const ApplicationCard = ({
               <div className="md:col-span-2 p-3 bg-red-50 rounded-lg">
                 <span className="font-medium text-red-700">Rejection Reason:</span>
                 <p className="text-red-600 mt-1">{application.rejection_reason}</p>
+              </div>
+            )}
+            {isDriver && (
+              <div className="md:col-span-2">
+                <RefereeVerificationPanel applicationId={application.id} />
               </div>
             )}
           </div>

@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: app } = await supa.from("applications").select("id,user_id,full_name,first_name,last_name")
+    const { data: app } = await supa.from("applications").select("id,user_id,first_name,last_name")
       .eq("id", parsed.data.application_id).maybeSingle();
     if (!app) return new Response(JSON.stringify({ error: "application not found" }),
       { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -188,9 +188,8 @@ Deno.serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const driverName = (app as any).full_name
-      ?? [(app as any).first_name, (app as any).last_name].filter(Boolean).join(" ")
-      ?? "A Rentmaikar driver";
+    const composedName = [(app as any).first_name, (app as any).last_name].filter(Boolean).join(" ").trim();
+    const driverName = composedName || "A Rentmaikar driver";
 
     const { data: refs } = await supa.from("referee_verifications").select("*")
       .eq("application_id", app.id).order("referee_index");

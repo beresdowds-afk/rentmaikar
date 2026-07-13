@@ -514,7 +514,7 @@ export default function DriverDashboard() {
                 driverName={user?.user_metadata?.full_name || 'Driver'}
                 amountDue={isUSA ? totalDue : totalDue}
                 currency={currency}
-                paymentFrequency={rental.paymentFrequency}
+                paymentFrequency={rental?.paymentFrequency ?? 'weekly'}
               />
             </TabsContent>
 
