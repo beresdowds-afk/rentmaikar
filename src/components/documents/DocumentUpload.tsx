@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -294,6 +294,32 @@ export const DocumentUpload = ({ userType, vehicleId, vehicleName }: DocumentUpl
   const completionPercent = requiredDocs.length > 0 
     ? Math.round((completedDocs.length / requiredDocs.length) * 100) 
     : 0;
+
+  // Auto-submit for admin review when all required identification docs are uploaded.
+  // Only fires for drivers, on the identification tab (no vehicleId), and only once per session.
+  const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const autoSubmittedRef = useRef(false);
+  useEffect(() => {
+    if (userType !== 'driver' || vehicleId) return;
+    if (completionPercent !== 100) return;
+    if (autoSubmittedRef.current) return;
+    autoSubmittedRef.current = true;
+    setSubmitState('submitting');
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('auto-submit-for-review', { body: {} });
+        if (error) throw error;
+        setSubmitState('submitted');
+        if (!data?.already_submitted) {
+          toast.success('Application submitted for admin review');
+        }
+      } catch (e: any) {
+        setSubmitState('error');
+        setSubmitError(e?.message ?? 'Could not submit for review');
+      }
+    })();
+  }, [completionPercent, userType, vehicleId]);
 
   if (isLoading) {
     return (
