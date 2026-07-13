@@ -3,6 +3,18 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHmac } from "node:crypto";
 
+async function notifyPush(paymentId: string, rentalId: string | null, status: string, amount?: number, currency?: string, reference?: string) {
+  const secret = Deno.env.get("CRON_SECRET");
+  if (!secret) return;
+  try {
+    await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-payment-notification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-internal-secret": secret },
+      body: JSON.stringify({ paymentId, rentalId, status, provider: "paystack", amount, currency, reference }),
+    });
+  } catch { /* best-effort */ }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -32,11 +44,12 @@ Deno.serve(async (req) => {
     }).eq("reference", reference);
 
     const { data: tx } = await supabase.from("paystack_transactions")
-      .select("payment_id").eq("reference", reference).maybeSingle();
+      .select("payment_id, amount, currency, rental_id").eq("reference", reference).maybeSingle();
     if (tx?.payment_id) {
       await supabase.from("payments").update({
         status: "completed", processed_at: new Date().toISOString(), failure_reason: null,
       }).eq("id", tx.payment_id);
+      await notifyPush(tx.payment_id, tx.rental_id ?? null, "completed", tx.amount ? Number(tx.amount) / 100 : undefined, tx.currency ?? undefined, reference);
     }
   } else if (evt.event === "charge.failed" && reference) {
     await supabase.from("paystack_transactions").update({
@@ -45,11 +58,12 @@ Deno.serve(async (req) => {
       raw_payload: evt.data,
     }).eq("reference", reference);
     const { data: tx } = await supabase.from("paystack_transactions")
-      .select("payment_id").eq("reference", reference).maybeSingle();
+      .select("payment_id, amount, currency, rental_id").eq("reference", reference).maybeSingle();
     if (tx?.payment_id) {
       await supabase.from("payments").update({
         status: "failed", failure_reason: evt.data.gateway_response ?? "failed",
       }).eq("id", tx.payment_id);
+      await notifyPush(tx.payment_id, tx.rental_id ?? null, "failed", tx.amount ? Number(tx.amount) / 100 : undefined, tx.currency ?? undefined, reference);
     }
   } else if (evt.event === "transfer.success" || evt.event === "transfer.failed") {
     const ref = evt?.data?.reference ?? evt?.data?.transfer_code;

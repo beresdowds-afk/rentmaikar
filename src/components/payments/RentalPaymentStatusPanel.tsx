@@ -1,16 +1,20 @@
 import { useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { formatCurrency } from "@/lib/payment-config";
-import { CheckCircle2, Clock, XCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { CheckCircle2, Clock, XCircle, AlertTriangle, Loader2, RotateCcw, Receipt } from "lucide-react";
 
 interface RentalPaymentStatusPanelProps {
   rentalId: string;
   /** Bump to force an immediate refetch (e.g. after a checkout attempt completes). */
   refreshKey?: number | string;
+  /** Called when the user clicks "Retry" on a failed payment. */
+  onRetry?: (payment: { id: string; payment_method: string | null; amount: number }) => void;
 }
 
 type PaymentRow = {
@@ -70,7 +74,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function RentalPaymentStatusPanel({ rentalId, refreshKey }: RentalPaymentStatusPanelProps) {
+export function RentalPaymentStatusPanel({ rentalId, refreshKey, onRetry }: RentalPaymentStatusPanelProps) {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["rental-payment-status", rentalId],
     queryFn: async () => {
@@ -227,11 +231,32 @@ export function RentalPaymentStatusPanel({ rentalId, refreshKey }: RentalPayment
                       <p className="text-xs text-muted-foreground font-mono">Ref: {p.transaction_id}</p>
                     )}
                   </div>
-                  {failure && (
-                    <Alert variant="destructive" className="sm:max-w-xs py-2">
-                      <AlertDescription className="text-xs">{failure}</AlertDescription>
-                    </Alert>
-                  )}
+                  <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                    {failure && (
+                      <Alert variant="destructive" className="sm:max-w-xs py-2" data-testid={`payment-failure-${p.id}`}>
+                        <AlertDescription className="text-xs">{failure}</AlertDescription>
+                      </Alert>
+                    )}
+                    <div className="flex gap-2">
+                      {p.status === "completed" && (
+                        <Button asChild size="sm" variant="outline" data-testid={`view-receipt-${p.id}`}>
+                          <Link to={`/rentals/${rentalId}/payments/${p.id}`}>
+                            <Receipt className="h-3 w-3 mr-1" />Receipt
+                          </Link>
+                        </Button>
+                      )}
+                      {p.status === "failed" && onRetry && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          data-testid={`retry-payment-${p.id}`}
+                          onClick={() => onRetry({ id: p.id, payment_method: p.payment_method, amount: Number(p.amount) })}
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />Retry
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}

@@ -91,7 +91,7 @@ export function PaystackCheckout({
   }
 
   return (
-    <Button onClick={pay} disabled={loading} className="w-full">
+    <Button onClick={pay} disabled={loading} className="w-full" data-testid="paystack-pay-button">
       {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
       Pay with Paystack
     </Button>

@@ -81,7 +81,7 @@ export function OpayCheckout({
     return <Button disabled variant="outline" className="w-full">Opay not configured</Button>;
   }
   return (
-    <Button onClick={pay} disabled={loading} variant="secondary" className="w-full">
+    <Button onClick={pay} disabled={loading} variant="secondary" className="w-full" data-testid="opay-pay-button">
       {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
       Pay with Opay
     </Button>

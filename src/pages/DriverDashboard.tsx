@@ -38,6 +38,9 @@ import { CallInPanel } from '@/components/driver/CallInPanel';
 import { PayPalCheckout } from '@/components/payments/PayPalCheckout';
 import { PaymentMethodPicker } from '@/components/payments/PaymentMethodPicker';
 import { RentalPaymentStatusPanel } from '@/components/payments/RentalPaymentStatusPanel';
+import { EnablePushButton } from '@/components/notifications/EnablePushButton';
+import { installDeepLinkListener } from '@/lib/push';
+import { useNavigate } from 'react-router-dom';
 import {
   Car,
   Activity,
@@ -69,6 +72,9 @@ export default function DriverDashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [paymentRefreshKey, setPaymentRefreshKey] = useState(0);
+  const [preferredPSP, setPreferredPSP] = useState<"paystack" | "opay" | "paypal" | undefined>();
+  const navigate = useNavigate();
+  useEffect(() => installDeepLinkListener(navigate), [navigate]);
   const { callHistory, isLoading: callsLoading, refreshHistory } = useVoiceCall('driver');
   const {
     activeRental,
@@ -375,7 +381,24 @@ export default function DriverDashboard() {
 
             {/* Payments Tab */}
             <TabsContent value="payments" className="space-y-6">
-              {rental && <RentalPaymentStatusPanel rentalId={rental.id} refreshKey={paymentRefreshKey} />}
+              {rental && (
+                <RentalPaymentStatusPanel
+                  rentalId={rental.id}
+                  refreshKey={paymentRefreshKey}
+                  onRetry={(p) => {
+                    const method = (p.payment_method ?? "").toLowerCase();
+                    if (method === "paystack" || method === "opay" || method === "paypal") {
+                      setPreferredPSP(method);
+                    }
+                    toast.message("Retry the failed payment below");
+                    setTimeout(() => document.getElementById("payment-picker")?.scrollIntoView({ behavior: "smooth" }), 50);
+                  }}
+                />
+              )}
+
+              <div id="payment-picker" className="flex justify-end">
+                <EnablePushButton />
+              </div>
 
               {rental && (
                 <PaymentMethodPicker
@@ -386,6 +409,7 @@ export default function DriverDashboard() {
                   driverId={user?.id}
                   paymentFrequency={rental.paymentFrequency}
                   description={`Rental ${rental.id.slice(0, 8)} ${rental.paymentFrequency} payment`}
+                  preferredPSP={preferredPSP}
                   onSuccess={() => setPaymentRefreshKey((k) => k + 1)}
                   onError={() => setPaymentRefreshKey((k) => k + 1)}
                 />
