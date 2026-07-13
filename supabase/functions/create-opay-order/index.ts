@@ -85,22 +85,29 @@ Deno.serve(async (req) => {
       return json({ error: pay?.message ?? "Opay create failed", raw: pay }, 502);
     }
 
-    const { data: payment } = await supabase.from("payments").insert({
-      rental_id: b.rentalId, driver_id: driverId, amount: b.amount, currency: "NGN",
+    const { data: payment, error: paymentError } = await supabase.from("payments").insert({
+      rental_id: ctx.rentalId, driver_id: driverId,
+      owner_id: ctx.ownerId, vehicle_id: ctx.vehicleId,
+      amount: b.amount, currency: "NGN",
       status: "pending", payment_method: "opay",
-      payment_frequency: b.paymentFrequency, transaction_id: reference,
-    }).select("id").maybeSingle();
+      payment_frequency: b.paymentFrequency ?? "weekly", transaction_id: reference,
+    }).select("id").single();
+
+    if (paymentError || !payment?.id) {
+      console.error("[create-opay-order] payment insert failed:", paymentError);
+      return json({ error: "Failed to record payment" }, 500);
+    }
 
     await supabase.from("opay_transactions").insert({
       reference, order_no: pay.data?.orderNo, cashier_url: pay.data?.cashierUrl,
       currency: "NGN", amount: b.amount, status: "pending",
-      rental_id: b.rentalId, driver_id: driverId, vehicle_id: b.vehicleId,
-      payment_id: payment?.id, raw_payload: pay.data,
+      rental_id: ctx.rentalId, driver_id: driverId, vehicle_id: ctx.vehicleId,
+      payment_id: payment.id, raw_payload: pay.data,
     });
 
     return json({
       reference, order_no: pay.data?.orderNo, cashier_url: pay.data?.cashierUrl,
-      payment_id: payment?.id,
+      payment_id: payment.id,
     });
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : "unknown" }, 500);
