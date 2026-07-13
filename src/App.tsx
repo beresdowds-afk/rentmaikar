@@ -180,6 +180,14 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/admin/export-audit"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminDocumentExportAuditPage />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route path="*" element={<NotFound />} />
                   </Routes>
                   </main>
