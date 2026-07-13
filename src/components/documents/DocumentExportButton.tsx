@@ -336,9 +336,10 @@ export const DocumentExportButton = ({
     else toast.warning(`${failed} file(s) failed — retry or download partial ZIP.`);
   }
 
-  function saveClientZip() {
+  async function saveClientZip() {
     if (!zipReady) return;
-    saveAs(zipReady.blob, zipReady.filename);
+    const res = await saveZipBlob(zipReady.blob, zipReady.filename);
+    if (res.platform !== "web") toast.success("Saved to Documents");
   }
 
   async function runServer() {
