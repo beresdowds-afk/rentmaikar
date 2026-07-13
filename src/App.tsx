@@ -38,6 +38,7 @@ const VehicleSupportDashboard = lazy(() => import("./pages/VehicleSupportDashboa
 const DriverTraining = lazy(() => import("./pages/DriverTraining"));
 const RefereeAttestation = lazy(() => import("./pages/RefereeAttestation"));
 const MobileCallIn = lazy(() => import("./pages/MobileCallIn"));
+const PaymentReceipt = lazy(() => import("./pages/PaymentReceipt"));
 
 const queryClient = new QueryClient();
 
@@ -160,6 +161,14 @@ const App = () => (
                         <DriverTraining />
                       </ProtectedRoute>
                     } 
+                  />
+                  <Route
+                    path="/rentals/:rentalId/payments/:paymentId"
+                    element={
+                      <ProtectedRoute allowedRoles={['driver', 'admin']}>
+                        <PaymentReceipt />
+                      </ProtectedRoute>
+                    }
                   />
                   <Route path="*" element={<NotFound />} />
                   </Routes>
