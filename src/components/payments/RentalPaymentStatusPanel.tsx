@@ -128,6 +128,16 @@ export function RentalPaymentStatusPanel({ rentalId, refreshKey }: RentalPayment
         { event: "*", schema: "public", table: "paypal_transactions", filter: `rental_id=eq.${rentalId}` },
         () => refetch(),
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "paystack_transactions", filter: `rental_id=eq.${rentalId}` },
+        () => refetch(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "opay_transactions", filter: `rental_id=eq.${rentalId}` },
+        () => refetch(),
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
