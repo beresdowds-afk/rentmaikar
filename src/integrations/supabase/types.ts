@@ -420,6 +420,39 @@ export type Database = {
         }
         Relationships: []
       }
+      application_pipeline_events: {
+        Row: {
+          actor_id: string | null
+          application_id: string
+          created_at: string
+          details: Json
+          event_type: string
+          id: string
+          message: string | null
+          status: string
+        }
+        Insert: {
+          actor_id?: string | null
+          application_id: string
+          created_at?: string
+          details?: Json
+          event_type: string
+          id?: string
+          message?: string | null
+          status: string
+        }
+        Update: {
+          actor_id?: string | null
+          application_id?: string
+          created_at?: string
+          details?: Json
+          event_type?: string
+          id?: string
+          message?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       applications: {
         Row: {
           agreed_fees: boolean | null
@@ -6605,7 +6638,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      latest_application_pipeline_status: {
+        Row: {
+          actor_id: string | null
+          application_id: string | null
+          created_at: string | null
+          details: Json | null
+          event_type: string | null
+          message: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
