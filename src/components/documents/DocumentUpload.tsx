@@ -520,11 +520,17 @@ export const DocumentUpload = ({ userType, vehicleId, vehicleName }: DocumentUpl
               {submitState === 'submitted' && 'All required documents received. Your verification report has been submitted for admin review.'}
               {submitState === 'error' && (
                 <span className="flex items-center justify-between gap-2">
-                  <span>Auto-submit failed: {submitError}</span>
+                  <span data-testid="auto-submit-error">Auto-submit failed: {submitError}</span>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => { autoSubmittedRef.current = false; setSubmitState('idle'); setSubmitError(null); }}
+                    data-testid="auto-submit-retry"
+                    onClick={() => {
+                      autoSubmittedRef.current = false;
+                      setSubmitState('idle');
+                      setSubmitError(null);
+                      setRetryToken((n) => n + 1);
+                    }}
                   >
                     Retry
                   </Button>
