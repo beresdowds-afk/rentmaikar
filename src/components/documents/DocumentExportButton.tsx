@@ -138,14 +138,38 @@ export function toCsv(rows: Record<string, unknown>[]): string {
   return [cols.join(","), ...rows.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
 }
 
-/** Fetch one file into a Blob using a signed URL. Exported for tests. */
+/** Fetch one file into a Blob using a signed URL.
+ *  Auto-refreshes the signed URL once on 400/403 (expired signature) and retries. */
 export async function fetchSignedFile(
   path: string,
   createSigned: (p: string) => Promise<{ url: string | null; error?: string | null }>,
 ): Promise<Blob> {
-  const { url, error } = await createSigned(path);
-  if (!url) throw new Error(error || "no signed url");
-  const res = await fetch(url);
+  async function once(): Promise<Response> {
+    const { url, error } = await createSigned(path);
+    if (!url) throw new Error(error || "no signed url");
+    return await fetch(url);
+  }
+  let res = await once();
+  if (!res.ok && (res.status === 400 || res.status === 401 || res.status === 403)) {
+    // Signed URL likely expired — mint a fresh one and try once more.
+    res = await once();
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.blob();
+}
+
+/** Fetch the server-generated ZIP with automatic signed-URL refresh + one retry.
+ *  Called by the "Download ZIP" button after a server export completes. */
+export async function fetchServerZipWithRefresh(opts: {
+  initialUrl: string;
+  storagePath: string;
+  refresh: (path: string) => Promise<string>;
+}): Promise<Blob> {
+  let res = await fetch(opts.initialUrl);
+  if (!res.ok && (res.status === 400 || res.status === 401 || res.status === 403)) {
+    const fresh = await opts.refresh(opts.storagePath);
+    res = await fetch(fresh);
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.blob();
 }
