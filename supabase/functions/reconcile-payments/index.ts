@@ -4,8 +4,12 @@
 // receipts render and balances update even when a webhook/callback was missed.
 //
 // Auth: pg_cron passes x-cron-secret matching CRON_SECRET.
-// Scope: transactions created in the last 7 days that are pending, mismatched,
-// or missing a payment_id link.
+// Idempotency: relies on the partial unique index
+//   payments_method_txn_unique (payment_method, transaction_id) — a duplicate
+//   insert is treated as "already backfilled", never counted as a new backfill.
+// Logging: every run writes a row to public.reconciliation_runs (per-PSP
+//   summary, backfilled payment ids, errors). Threshold breaches invoke
+//   send-reconciliation-alert (email + SMS + in-app banner).
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -15,14 +19,20 @@ import { resolvePaymentContext } from "../_shared/resolve-payment-context.ts";
 const LOOKBACK_HOURS = 24 * 7;
 const MAX_PER_PSP = 200;
 
+// Alert thresholds (see mem: user chose ">25 in one run OR >50 in rolling 1h").
+const SPIKE_PER_RUN = 25;
+const SPIKE_PER_HOUR = 50;
+const ERROR_SPIKE_PER_RUN = 5;
+
 type Supa = ReturnType<typeof createClient>;
 
-interface ReconcileResult {
-  psp: string;
+interface PspResult {
+  psp: "paystack" | "opay" | "paypal";
   checked: number;
   updated: number;
   backfilled_payments: number;
   errors: Array<{ reference?: string; order_id?: string; error: string }>;
+  backfilled_payment_ids: string[];
 }
 
 Deno.serve(async (req) => {
@@ -30,6 +40,7 @@ Deno.serve(async (req) => {
 
   const cronSecret = Deno.env.get("CRON_SECRET");
   const provided = req.headers.get("x-cron-secret") ?? new URL(req.url).searchParams.get("secret");
+  const triggeredBy = req.headers.get("x-trigger-source") ?? "cron";
   if (cronSecret && provided !== cronSecret) {
     return json({ error: "Unauthorized" }, 401);
   }
@@ -40,23 +51,82 @@ Deno.serve(async (req) => {
   );
 
   const sinceIso = new Date(Date.now() - LOOKBACK_HOURS * 60 * 60 * 1000).toISOString();
-  const results: ReconcileResult[] = [];
+  const startedAt = Date.now();
 
-  try { results.push(await reconcilePaystack(supabase, sinceIso)); }
-  catch (e) { results.push({ psp: "paystack", checked: 0, updated: 0, backfilled_payments: 0, errors: [{ error: String(e) }] }); }
+  // Open a run row up-front so partial failures still leave a trace.
+  const { data: runRow, error: runErr } = await supabase
+    .from("reconciliation_runs")
+    .insert({ since: sinceIso, status: "running", triggered_by: triggeredBy })
+    .select("id")
+    .single();
+  const runId = runRow?.id as string | undefined;
+  if (runErr) console.error("[reconcile-payments] failed to open run row:", runErr);
 
-  try { results.push(await reconcileOpay(supabase, sinceIso)); }
-  catch (e) { results.push({ psp: "opay", checked: 0, updated: 0, backfilled_payments: 0, errors: [{ error: String(e) }] }); }
+  const results: PspResult[] = [];
+  let fatalError: string | null = null;
 
-  try { results.push(await reconcilePaypal(supabase, sinceIso)); }
-  catch (e) { results.push({ psp: "paypal", checked: 0, updated: 0, backfilled_payments: 0, errors: [{ error: String(e) }] }); }
+  for (const runner of [reconcilePaystack, reconcileOpay, reconcilePaypal] as const) {
+    try {
+      results.push(await runner(supabase, sinceIso));
+    } catch (e) {
+      const psp = runner.name.replace("reconcile", "").toLowerCase() as PspResult["psp"];
+      results.push({ psp, checked: 0, updated: 0, backfilled_payments: 0,
+        errors: [{ error: String(e) }], backfilled_payment_ids: [] });
+    }
+  }
 
-  return json({ success: true, since: sinceIso, results });
+  const totals = results.reduce((acc, r) => ({
+    checked: acc.checked + r.checked,
+    updated: acc.updated + r.updated,
+    backfilled: acc.backfilled + r.backfilled_payments,
+    errors: acc.errors + r.errors.length,
+  }), { checked: 0, updated: 0, backfilled: 0, errors: 0 });
+
+  const allBackfilledIds = results.flatMap((r) => r.backfilled_payment_ids);
+  const allErrors = results.flatMap((r) => r.errors.map((e) => ({ psp: r.psp, ...e })));
+  const perPsp = Object.fromEntries(results.map((r) => [r.psp, {
+    checked: r.checked, updated: r.updated,
+    backfilled: r.backfilled_payments, errors: r.errors.length,
+  }]));
+
+  const runStatus = fatalError ? "error" : totals.errors > 0 ? "partial" : "success";
+
+  if (runId) {
+    await supabase.from("reconciliation_runs").update({
+      finished_at: new Date().toISOString(),
+      duration_ms: Date.now() - startedAt,
+      status: runStatus,
+      total_checked: totals.checked,
+      total_updated: totals.updated,
+      total_backfilled: totals.backfilled,
+      total_errors: totals.errors,
+      per_psp: perPsp,
+      errors: allErrors,
+      backfilled_payment_ids: allBackfilledIds,
+      fatal_error: fatalError,
+    }).eq("id", runId);
+  }
+
+  // Threshold-based alerting.
+  await maybeAlert(supabase, {
+    runId, results, totals, perPsp,
+  });
+
+  return json({
+    success: true,
+    run_id: runId,
+    since: sinceIso,
+    status: runStatus,
+    totals,
+    per_psp: perPsp,
+    results,
+  });
 });
 
 // ---------- Paystack ----------
-async function reconcilePaystack(supa: Supa, sinceIso: string): Promise<ReconcileResult> {
-  const out: ReconcileResult = { psp: "paystack", checked: 0, updated: 0, backfilled_payments: 0, errors: [] };
+async function reconcilePaystack(supa: Supa, sinceIso: string): Promise<PspResult> {
+  const out: PspResult = { psp: "paystack", checked: 0, updated: 0,
+    backfilled_payments: 0, errors: [], backfilled_payment_ids: [] };
   const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
   if (!secret) return out;
 
@@ -83,35 +153,27 @@ async function reconcilePaystack(supa: Supa, sinceIso: string): Promise<Reconcil
       const status = success ? "completed" : data.status === "failed" ? "failed" : "pending";
       const failure = success ? null : data.gateway_response ?? null;
 
-      const paymentId = await ensurePayment(supa, {
-        existingPaymentId: tx.payment_id,
-        rentalId: tx.rental_id,
-        driverId: tx.driver_id,
-        vehicleId: tx.vehicle_id,
-        amount: Number(tx.amount),
-        currency: tx.currency,
-        method: "paystack",
-        transactionRef: tx.reference,
-        status,
-        failure,
+      const ensured = await ensurePayment(supa, {
+        existingPaymentId: tx.payment_id, rentalId: tx.rental_id, driverId: tx.driver_id,
+        vehicleId: tx.vehicle_id, amount: Number(tx.amount), currency: tx.currency,
+        method: "paystack", transactionRef: tx.reference, status, failure,
       });
-      if (paymentId && !tx.payment_id) out.backfilled_payments++;
+      if (ensured.backfilled && ensured.paymentId) {
+        out.backfilled_payments++;
+        out.backfilled_payment_ids.push(ensured.paymentId);
+      }
 
       await supa.from("paystack_transactions").update({
-        status,
-        channel: data.channel,
-        gateway_response: data.gateway_response,
-        failure_reason: failure,
-        raw_payload: data,
-        payment_id: paymentId ?? tx.payment_id,
+        status, channel: data.channel, gateway_response: data.gateway_response,
+        failure_reason: failure, raw_payload: data,
+        payment_id: ensured.paymentId ?? tx.payment_id,
       }).eq("id", tx.id);
 
-      if (paymentId) {
+      if (ensured.paymentId) {
         await supa.from("payments").update({
-          status,
-          failure_reason: failure,
+          status, failure_reason: failure,
           processed_at: status === "completed" ? new Date().toISOString() : null,
-        }).eq("id", paymentId);
+        }).eq("id", ensured.paymentId);
       }
       out.updated++;
     } catch (e) {
@@ -122,8 +184,9 @@ async function reconcilePaystack(supa: Supa, sinceIso: string): Promise<Reconcil
 }
 
 // ---------- Opay ----------
-async function reconcileOpay(supa: Supa, sinceIso: string): Promise<ReconcileResult> {
-  const out: ReconcileResult = { psp: "opay", checked: 0, updated: 0, backfilled_payments: 0, errors: [] };
+async function reconcileOpay(supa: Supa, sinceIso: string): Promise<PspResult> {
+  const out: PspResult = { psp: "opay", checked: 0, updated: 0,
+    backfilled_payments: 0, errors: [], backfilled_payment_ids: [] };
   const merchantId = Deno.env.get("OPAY_MERCHANT_ID");
   const secretKey = Deno.env.get("OPAY_SECRET_KEY");
   const publicKey = Deno.env.get("OPAY_PUBLIC_KEY");
@@ -149,8 +212,7 @@ async function reconcileOpay(supa: Supa, sinceIso: string): Promise<ReconcileRes
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${publicKey}`,
-          MerchantId: merchantId,
-          Signature: sig,
+          MerchantId: merchantId, Signature: sig,
         },
         body: payload,
       });
@@ -164,30 +226,26 @@ async function reconcileOpay(supa: Supa, sinceIso: string): Promise<ReconcileRes
         : opayStatus === "FAIL" || opayStatus === "CLOSE" ? "failed" : "pending";
       const failure = status === "failed" ? body?.data?.failureReason ?? opayStatus : null;
 
-      const paymentId = await ensurePayment(supa, {
-        existingPaymentId: tx.payment_id,
-        rentalId: tx.rental_id,
-        driverId: tx.driver_id,
-        vehicleId: tx.vehicle_id,
-        amount: Number(tx.amount),
-        currency: tx.currency,
-        method: "opay",
-        transactionRef: tx.reference,
-        status,
-        failure,
+      const ensured = await ensurePayment(supa, {
+        existingPaymentId: tx.payment_id, rentalId: tx.rental_id, driverId: tx.driver_id,
+        vehicleId: tx.vehicle_id, amount: Number(tx.amount), currency: tx.currency,
+        method: "opay", transactionRef: tx.reference, status, failure,
       });
-      if (paymentId && !tx.payment_id) out.backfilled_payments++;
+      if (ensured.backfilled && ensured.paymentId) {
+        out.backfilled_payments++;
+        out.backfilled_payment_ids.push(ensured.paymentId);
+      }
 
       await supa.from("opay_transactions").update({
         status, failure_reason: failure, raw_payload: body?.data,
-        payment_id: paymentId ?? tx.payment_id,
+        payment_id: ensured.paymentId ?? tx.payment_id,
       }).eq("id", tx.id);
 
-      if (paymentId) {
+      if (ensured.paymentId) {
         await supa.from("payments").update({
           status, failure_reason: failure,
           processed_at: status === "completed" ? new Date().toISOString() : null,
-        }).eq("id", paymentId);
+        }).eq("id", ensured.paymentId);
       }
       out.updated++;
     } catch (e) {
@@ -198,8 +256,9 @@ async function reconcileOpay(supa: Supa, sinceIso: string): Promise<ReconcileRes
 }
 
 // ---------- PayPal ----------
-async function reconcilePaypal(supa: Supa, sinceIso: string): Promise<ReconcileResult> {
-  const out: ReconcileResult = { psp: "paypal", checked: 0, updated: 0, backfilled_payments: 0, errors: [] };
+async function reconcilePaypal(supa: Supa, sinceIso: string): Promise<PspResult> {
+  const out: PspResult = { psp: "paypal", checked: 0, updated: 0,
+    backfilled_payments: 0, errors: [], backfilled_payment_ids: [] };
   const clientId = Deno.env.get("PAYPAL_CLIENT_ID");
   const clientSecret = Deno.env.get("PAYPAL_CLIENT_SECRET");
   const mode = (Deno.env.get("PAYPAL_MODE") ?? "sandbox").toLowerCase();
@@ -243,7 +302,6 @@ async function reconcilePaypal(supa: Supa, sinceIso: string): Promise<ReconcileR
       let captureId: string | null = null;
       let captureRecord: any = order.purchase_units?.[0]?.payments?.captures?.[0] ?? null;
 
-      // If APPROVED but not yet captured, capture it now.
       if (order.status === "APPROVED") {
         const capRes = await fetch(`${base}/v2/checkout/orders/${tx.order_id}/capture`, {
           method: "POST",
@@ -266,20 +324,16 @@ async function reconcilePaypal(supa: Supa, sinceIso: string): Promise<ReconcileR
       const status = captureStatus === "COMPLETED" ? "completed"
         : captureStatus === "VOIDED" || captureStatus === "DECLINED" ? "failed" : "pending";
 
-      const paymentId = await ensurePayment(supa, {
-        existingPaymentId: tx.payment_id,
-        rentalId: tx.rental_id,
-        driverId: tx.driver_id,
-        vehicleId: tx.vehicle_id,
-        ownerId: tx.owner_id,
-        amount: Number(tx.amount),
-        currency: tx.currency,
-        method: "paypal",
-        transactionRef: tx.order_id,
-        status,
-        failure: status === "failed" ? captureStatus : null,
+      const ensured = await ensurePayment(supa, {
+        existingPaymentId: tx.payment_id, rentalId: tx.rental_id, driverId: tx.driver_id,
+        vehicleId: tx.vehicle_id, ownerId: tx.owner_id, amount: Number(tx.amount),
+        currency: tx.currency, method: "paypal", transactionRef: tx.order_id,
+        status, failure: status === "failed" ? captureStatus : null,
       });
-      if (paymentId && !tx.payment_id) out.backfilled_payments++;
+      if (ensured.backfilled && ensured.paymentId) {
+        out.backfilled_payments++;
+        out.backfilled_payment_ids.push(ensured.paymentId);
+      }
 
       await supa.from("paypal_transactions").update({
         capture_id: captureId,
@@ -287,14 +341,14 @@ async function reconcilePaypal(supa: Supa, sinceIso: string): Promise<ReconcileR
           : captureStatus === "VOIDED" || captureStatus === "DECLINED" ? "failed"
           : "capture_pending",
         raw_capture_response: order,
-        payment_id: paymentId ?? tx.payment_id,
+        payment_id: ensured.paymentId ?? tx.payment_id,
       }).eq("id", tx.id);
 
-      if (paymentId) {
+      if (ensured.paymentId) {
         await supa.from("payments").update({
           status,
           processed_at: status === "completed" ? new Date().toISOString() : null,
-        }).eq("id", paymentId);
+        }).eq("id", ensured.paymentId);
       }
       out.updated++;
     } catch (e) {
@@ -319,18 +373,27 @@ interface EnsurePaymentArgs {
   failure?: string | null;
 }
 
-/** Returns a payment_id (existing or newly created), or null when context can't be resolved. */
-async function ensurePayment(supa: Supa, a: EnsurePaymentArgs): Promise<string | null> {
-  if (a.existingPaymentId) return a.existingPaymentId;
-  if (!a.driverId) return null;
+/** True idempotency: try to insert; on unique-violation, look up the existing row.
+ *  Returns paymentId + whether this call actually created the row. */
+export async function ensurePayment(
+  supa: Supa, a: EnsurePaymentArgs,
+): Promise<{ paymentId: string | null; backfilled: boolean }> {
+  if (a.existingPaymentId) return { paymentId: a.existingPaymentId, backfilled: false };
+  if (!a.driverId) return { paymentId: null, backfilled: false };
+
+  // Pre-check: another concurrent process (webhook) may have inserted it already.
+  const { data: existing } = await supa
+    .from("payments")
+    .select("id")
+    .eq("payment_method", a.method)
+    .eq("transaction_id", a.transactionRef)
+    .maybeSingle();
+  if (existing?.id) return { paymentId: existing.id as string, backfilled: false };
 
   const ctx = await resolvePaymentContext({
-    supabase: supa,
-    rentalId: a.rentalId,
-    vehicleId: a.vehicleId,
-    ownerId: a.ownerId,
+    supabase: supa, rentalId: a.rentalId, vehicleId: a.vehicleId, ownerId: a.ownerId,
   });
-  if ("error" in ctx) return null;
+  if ("error" in ctx) return { paymentId: null, backfilled: false };
 
   const { data, error } = await supa.from("payments").insert({
     rental_id: ctx.rentalId,
@@ -348,10 +411,86 @@ async function ensurePayment(supa: Supa, a: EnsurePaymentArgs): Promise<string |
   }).select("id").single();
 
   if (error) {
-    console.error("[reconcile-payments] backfill payment insert failed:", error);
-    return null;
+    // 23505 = unique_violation → someone else won the race; fetch that row.
+    if ((error as any).code === "23505") {
+      const { data: raced } = await supa
+        .from("payments").select("id")
+        .eq("payment_method", a.method).eq("transaction_id", a.transactionRef)
+        .maybeSingle();
+      return { paymentId: (raced?.id as string) ?? null, backfilled: false };
+    }
+    console.error("[reconcile-payments] backfill insert failed:", error);
+    return { paymentId: null, backfilled: false };
   }
-  return data.id as string;
+  return { paymentId: data.id as string, backfilled: true };
+}
+
+// ---------- alerting ----------
+interface MaybeAlertArgs {
+  runId?: string;
+  results: PspResult[];
+  totals: { checked: number; updated: number; backfilled: number; errors: number };
+  perPsp: Record<string, unknown>;
+}
+
+async function maybeAlert(supa: Supa, args: MaybeAlertArgs) {
+  const alerts: Array<{
+    alert_type: string; severity: string; psp: string | null;
+    message: string; details: Record<string, unknown>;
+  }> = [];
+
+  if (args.totals.backfilled > SPIKE_PER_RUN) {
+    alerts.push({
+      alert_type: "backfill_spike", severity: "warning", psp: null,
+      message: `Reconciler backfilled ${args.totals.backfilled} payments in one run (> ${SPIKE_PER_RUN}).`,
+      details: { totals: args.totals, per_psp: args.perPsp },
+    });
+  }
+
+  // Rolling 1h backfill count
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { data: recent } = await supa
+    .from("reconciliation_runs")
+    .select("total_backfilled")
+    .gte("started_at", oneHourAgo);
+  const rolling = (recent ?? []).reduce((s: number, r: any) => s + (r.total_backfilled ?? 0), 0);
+  if (rolling > SPIKE_PER_HOUR) {
+    alerts.push({
+      alert_type: "rolling_backfill_spike", severity: "warning", psp: null,
+      message: `Reconciler backfilled ${rolling} payments in the last 1h (> ${SPIKE_PER_HOUR}).`,
+      details: { rolling_1h: rolling, threshold: SPIKE_PER_HOUR },
+    });
+  }
+
+  for (const r of args.results) {
+    if (r.errors.length > ERROR_SPIKE_PER_RUN) {
+      alerts.push({
+        alert_type: "errors_spike", severity: "critical", psp: r.psp,
+        message: `${r.psp} reconciliation had ${r.errors.length} errors in one run.`,
+        details: { errors: r.errors.slice(0, 10), checked: r.checked },
+      });
+    }
+  }
+
+  if (alerts.length === 0) return;
+
+  for (const a of alerts) {
+    await supa.from("reconciliation_alerts").insert({ ...a, run_id: args.runId });
+  }
+
+  // Fan-out via edge function (email + SMS + banner already inserted above).
+  try {
+    await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-reconciliation-alert`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+      },
+      body: JSON.stringify({ run_id: args.runId, alerts }),
+    });
+  } catch (e) {
+    console.error("[reconcile-payments] alert fan-out failed:", e);
+  }
 }
 
 function json(body: unknown, status = 200) {
