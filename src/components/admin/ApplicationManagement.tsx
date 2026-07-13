@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import RefereeVerificationPanel from '@/components/verification/RefereeVerificationPanel';
+import ApplicationPipelineStatusPanel from '@/components/admin/ApplicationPipelineStatusPanel';
 
 type ApplicationType = 'driver' | 'owner';
 type ApplicationStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'needs_info';
@@ -720,6 +721,7 @@ const ApplicationCard = ({
             {isDriver && (
               <div className="md:col-span-2">
                 <RefereeVerificationPanel applicationId={application.id} />
+                <ApplicationPipelineStatusPanel applicationId={application.id} />
               </div>
             )}
           </div>

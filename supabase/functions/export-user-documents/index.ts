@@ -11,6 +11,12 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import JSZip from "https://esm.sh/jszip@3.10.1";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { checkRateLimit, tryAcquireConcurrency, releaseConcurrency, tooMany } from "../_shared/rate-limit.ts";
+
+// Per-user quotas — tight enough to protect Storage + edge-function budget,
+// loose enough for normal admin batch exports.
+const RATE_LIMIT_PER_MINUTE = 6;
+const MAX_CONCURRENT_PER_USER = 2;
 
 const Body = z.object({
   target_user_id: z.string().uuid(),
@@ -65,15 +71,27 @@ Deno.serve(async (req) => {
     if (!userData?.user) return json(401, { error: "unauthorized" });
     const exporterId = userData.user.id;
 
-    // AuthZ: self OR admin/admin_assistant
-    let allowed = exporterId === target_user_id;
-    if (!allowed) {
-      const { data: roles } = await supa.from("user_roles")
-        .select("role").eq("user_id", exporterId)
-        .in("role", ["admin", "admin_assistant"] as any);
-      allowed = !!(roles && roles.length > 0);
+    // Rate limit + concurrency: prevent runaway calls from a single exporter.
+    const rl = await checkRateLimit(exporterId, "export-user-documents", RATE_LIMIT_PER_MINUTE);
+    if (!rl.allowed) {
+      return tooMany(rl.retry_after_seconds, {
+        message: `Please wait ${rl.retry_after_seconds}s before requesting another export.`,
+      });
     }
-    if (!allowed) return json(403, { error: "forbidden" });
+    if (!tryAcquireConcurrency(exporterId, MAX_CONCURRENT_PER_USER)) {
+      return tooMany(15, { message: "You already have an export in progress. Please wait for it to finish." });
+    }
+
+    try {
+      // AuthZ: self OR admin/admin_assistant
+      let allowed = exporterId === target_user_id;
+      if (!allowed) {
+        const { data: roles } = await supa.from("user_roles")
+          .select("role").eq("user_id", exporterId)
+          .in("role", ["admin", "admin_assistant"] as any);
+        allowed = !!(roles && roles.length > 0);
+      }
+      if (!allowed) return json(403, { error: "forbidden" });
 
     // Load rows
     let q = supa.from("user_documents").select("*").eq("user_id", target_user_id);
@@ -171,15 +189,18 @@ Deno.serve(async (req) => {
       metadata: { downloaded, failed, per_file: perFile },
     });
 
-    return json(200, {
-      ok: true,
-      download_url: signed?.signedUrl,
-      storage_path: storagePath,
-      filename: `rentmaikar-documents-${labelPart}-${region ?? "ALL"}-${stamp}.zip`,
-      totals: { documents: rows.length, downloaded, failed },
-      per_file: perFile,
-      expires_in: 3600,
-    });
+      return json(200, {
+        ok: true,
+        download_url: signed?.signedUrl,
+        storage_path: storagePath,
+        filename: `rentmaikar-documents-${labelPart}-${region ?? "ALL"}-${stamp}.zip`,
+        totals: { documents: rows.length, downloaded, failed },
+        per_file: perFile,
+        expires_in: 3600,
+      });
+    } finally {
+      releaseConcurrency(exporterId);
+    }
   } catch (e) {
     return json(500, { error: String(e) });
   }

@@ -28,7 +28,7 @@ import { useRegion } from "@/contexts/RegionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import JSZip from "jszip";
-import { saveAs } from "file-saver";
+import { saveZipBlob } from "@/lib/native-save";
 
 export interface DocRow {
   id: string;
@@ -138,14 +138,38 @@ export function toCsv(rows: Record<string, unknown>[]): string {
   return [cols.join(","), ...rows.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
 }
 
-/** Fetch one file into a Blob using a signed URL. Exported for tests. */
+/** Fetch one file into a Blob using a signed URL.
+ *  Auto-refreshes the signed URL once on 400/403 (expired signature) and retries. */
 export async function fetchSignedFile(
   path: string,
   createSigned: (p: string) => Promise<{ url: string | null; error?: string | null }>,
 ): Promise<Blob> {
-  const { url, error } = await createSigned(path);
-  if (!url) throw new Error(error || "no signed url");
-  const res = await fetch(url);
+  async function once(): Promise<Response> {
+    const { url, error } = await createSigned(path);
+    if (!url) throw new Error(error || "no signed url");
+    return await fetch(url);
+  }
+  let res = await once();
+  if (!res.ok && (res.status === 400 || res.status === 401 || res.status === 403)) {
+    // Signed URL likely expired — mint a fresh one and try once more.
+    res = await once();
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.blob();
+}
+
+/** Fetch the server-generated ZIP with automatic signed-URL refresh + one retry.
+ *  Called by the "Download ZIP" button after a server export completes. */
+export async function fetchServerZipWithRefresh(opts: {
+  initialUrl: string;
+  storagePath: string;
+  refresh: (path: string) => Promise<string>;
+}): Promise<Blob> {
+  let res = await fetch(opts.initialUrl);
+  if (!res.ok && (res.status === 400 || res.status === 401 || res.status === 403)) {
+    const fresh = await opts.refresh(opts.storagePath);
+    res = await fetch(fresh);
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.blob();
 }
@@ -161,7 +185,7 @@ export const DocumentExportButton = ({
   const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState<DocRow[]>([]);
   const [files, setFiles] = useState<FileProgress[]>([]);
-  const [serverResult, setServerResult] = useState<{ url: string; filename: string } | null>(null);
+  const [serverResult, setServerResult] = useState<{ url: string; filename: string; storagePath?: string } | null>(null);
   const [zipReady, setZipReady] = useState<{ blob: Blob; filename: string } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -312,9 +336,10 @@ export const DocumentExportButton = ({
     else toast.warning(`${failed} file(s) failed — retry or download partial ZIP.`);
   }
 
-  function saveClientZip() {
+  async function saveClientZip() {
     if (!zipReady) return;
-    saveAs(zipReady.blob, zipReady.filename);
+    const res = await saveZipBlob(zipReady.blob, zipReady.filename);
+    if (res.platform !== "web") toast.success("Saved to Documents");
   }
 
   async function runServer() {
@@ -342,7 +367,7 @@ export const DocumentExportButton = ({
       }));
 
       if (data?.download_url) {
-        setServerResult({ url: data.download_url, filename: data.filename });
+        setServerResult({ url: data.download_url, filename: data.filename, storagePath: data.storage_path });
         const failed = data?.totals?.failed ?? 0;
         if (failed === 0) toast.success(`Server export ready (${data?.totals?.downloaded} doc(s)).`);
         else toast.warning(`Server export ready — ${failed} file(s) failed (see manifest).`);
@@ -450,10 +475,28 @@ export const DocumentExportButton = ({
                 </Button>
               )}
               {serverResult && (
-                <Button size="sm" asChild>
-                  <a href={serverResult.url} download={serverResult.filename} target="_blank" rel="noreferrer">
-                    <Download className="h-4 w-4 mr-2" /> Download ZIP
-                  </a>
+                <Button size="sm" onClick={async () => {
+                  try {
+                    const blob = await fetchServerZipWithRefresh({
+                      initialUrl: serverResult.url,
+                      storagePath: serverResult.storagePath ?? "",
+                      refresh: async (path) => {
+                        const { data, error } = await supabase.functions.invoke("refresh-export-download-url", {
+                          body: { storage_path: path },
+                        });
+                        if (error) throw error;
+                        // Keep local state in sync so subsequent clicks reuse the fresh URL.
+                        setServerResult((s) => s ? { ...s, url: data.download_url } : s);
+                        return data.download_url as string;
+                      },
+                    });
+                    const res = await saveZipBlob(blob, serverResult.filename);
+                    if (res.platform !== "web") toast.success("Saved to Documents");
+                  } catch (e) {
+                    toast.error("Download failed: " + (e as Error).message);
+                  }
+                }}>
+                  <Download className="h-4 w-4 mr-2" /> Download ZIP
                 </Button>
               )}
             </div>

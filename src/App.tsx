@@ -40,6 +40,7 @@ const RefereeAttestation = lazy(() => import("./pages/RefereeAttestation"));
 const MobileCallIn = lazy(() => import("./pages/MobileCallIn"));
 const PaymentReceipt = lazy(() => import("./pages/PaymentReceipt"));
 const ReconciliationLogsPage = lazy(() => import("./pages/admin/ReconciliationLogsPage"));
+const AdminDocumentExportAuditPage = lazy(() => import("./pages/admin/AdminDocumentExportAuditPage"));
 
 const queryClient = new QueryClient();
 
@@ -176,6 +177,14 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <ReconciliationLogsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/export-audit"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminDocumentExportAuditPage />
                       </ProtectedRoute>
                     }
                   />

@@ -10,6 +10,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { logPipelineEvent } from "../_shared/pipeline-events.ts";
 
 const Body = z.object({
   application_id: z.string().uuid(),
@@ -160,32 +161,44 @@ async function logEvent(supa: any, refereeId: string, applicationId: string, r: 
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  let appId: string | null = null;
+  let actorId: string | null = null;
   try {
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) {
       return new Response(JSON.stringify({ error: parsed.error.flatten() }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    appId = parsed.data.application_id;
     const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const auth = req.headers.get("authorization") ?? "";
     const jwt = auth.replace(/^Bearer\s+/i, "");
     const { data: userData } = jwt ? await supa.auth.getUser(jwt) : { data: { user: null } as any };
     if (!userData?.user) {
+      await logPipelineEvent({ application_id: appId, event_type: "notify_referees", status: "error", message: "unauthorized" });
       return new Response(JSON.stringify({ error: "unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    actorId = userData.user.id;
+    await logPipelineEvent({ application_id: appId, event_type: "notify_referees", status: "started", actor_id: actorId });
 
     const { data: app } = await supa.from("applications").select("id,user_id,first_name,last_name")
       .eq("id", parsed.data.application_id).maybeSingle();
-    if (!app) return new Response(JSON.stringify({ error: "application not found" }),
-      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!app) {
+      await logPipelineEvent({ application_id: appId, event_type: "notify_referees", status: "error", message: "application not found", actor_id: actorId });
+      return new Response(JSON.stringify({ error: "application not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const isOwner = app.user_id === userData.user.id;
     if (!isOwner) {
       const { data: role } = await supa.from("user_roles").select("role")
         .eq("user_id", userData.user.id).in("role", ["admin", "admin_assistant"] as any).maybeSingle();
-      if (!role) return new Response(JSON.stringify({ error: "forbidden" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!role) {
+        await logPipelineEvent({ application_id: appId, event_type: "notify_referees", status: "error", message: "forbidden", actor_id: actorId });
+        return new Response(JSON.stringify({ error: "forbidden" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
     const composedName = [(app as any).first_name, (app as any).last_name].filter(Boolean).join(" ").trim();
@@ -193,8 +206,11 @@ Deno.serve(async (req) => {
 
     const { data: refs } = await supa.from("referee_verifications").select("*")
       .eq("application_id", app.id).order("referee_index");
-    if (!refs || refs.length === 0) return new Response(JSON.stringify({ ok: true, sent: 0, message: "no referees" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!refs || refs.length === 0) {
+      await logPipelineEvent({ application_id: appId, event_type: "notify_referees", status: "success", message: "no referees", actor_id: actorId, details: { sent: 0 } });
+      return new Response(JSON.stringify({ ok: true, sent: 0, message: "no referees" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const cutoff = Date.now() - IDEMPOTENCY_WINDOW_MIN * 60 * 1000;
     const results: any[] = [];
@@ -252,10 +268,17 @@ Deno.serve(async (req) => {
       reused: results.filter(r => r.reused).length,
       any_failures: results.some(r => r.failures > 0),
     };
+    await logPipelineEvent({
+      application_id: appId, event_type: "notify_referees",
+      status: summary.any_failures ? "error" : "success",
+      message: summary.any_failures ? `${results.filter(r=>r.failures>0).length} referee(s) had channel failures` : `Sent to ${results.length} referee(s)`,
+      actor_id: actorId, details: summary,
+    });
 
     return new Response(JSON.stringify({ ok: true, application_id: app.id, sent: results.length, summary, results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
+    await logPipelineEvent({ application_id: appId, event_type: "notify_referees", status: "error", message: String(e).slice(0, 500), actor_id: actorId });
     return new Response(JSON.stringify({ error: String(e) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
