@@ -2,6 +2,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
+import { resolvePaymentContext } from "../_shared/resolve-payment-context.ts";
 
 const BodySchema = z.object({
   amount: z.number().positive(),
