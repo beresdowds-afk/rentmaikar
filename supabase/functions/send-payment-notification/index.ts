@@ -10,8 +10,10 @@
 //     match the driver_id or admin lists. Owners never receive payment push
 //     notifications for any PSP.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
+import { resolveRecipients } from "./recipients.ts";
+export { resolveRecipients };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
