@@ -46,12 +46,10 @@ Deno.serve(async (req) => {
   // Find recipients: driver, owner (via rental->vehicle), all admins.
   const recipients = new Set<string>();
   if (body.rentalId) {
-    const { data: rental } = await admin.from("rentals").select("driver_id, vehicle_id").eq("id", body.rentalId).maybeSingle();
+    // Recipients: driver + admins only. Owners are intentionally excluded
+    // from payment push notifications.
+    const { data: rental } = await admin.from("rentals").select("driver_id").eq("id", body.rentalId).maybeSingle();
     if (rental?.driver_id) recipients.add(rental.driver_id);
-    if (rental?.vehicle_id) {
-      const { data: veh } = await admin.from("vehicles").select("owner_id").eq("id", rental.vehicle_id).maybeSingle();
-      if (veh?.owner_id) recipients.add(veh.owner_id);
-    }
   }
   const { data: admins } = await admin.from("user_roles").select("user_id").eq("role", "admin");
   admins?.forEach((a) => recipients.add(a.user_id));
