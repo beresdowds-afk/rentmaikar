@@ -16,23 +16,27 @@ interface Context {
 export default function RefereeAttestation() {
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
-  const [loading, setLoading] = useState(true);
+  const tokenLooksValid = /^[a-f0-9]{40,}$/i.test(token);
+  const [loading, setLoading] = useState(tokenLooksValid);
   const [ctx, setCtx] = useState<Context | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    !token ? "This attestation link is missing its token." :
+    !tokenLooksValid ? "This attestation link is invalid or has expired." : null
+  );
   const [comments, setComments] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<"positive" | "negative" | null>(null);
 
   useEffect(() => {
+    if (!tokenLooksValid) return;
     (async () => {
-      if (!token) { setError("Missing link token"); setLoading(false); return; }
       try {
         const base = import.meta.env.VITE_SUPABASE_URL as string;
         const res = await fetch(`${base}/functions/v1/referee-attestation?token=${encodeURIComponent(token)}`, {
           headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string },
         });
         const body = await res.json();
-        if (!res.ok) throw new Error(body?.error ?? "Invalid link");
+        if (!res.ok) throw new Error(body?.error ?? "This attestation link is invalid or has expired.");
         setCtx(body);
       } catch (e: any) {
         setError(e?.message ?? "Could not load attestation");
@@ -40,7 +44,7 @@ export default function RefereeAttestation() {
         setLoading(false);
       }
     })();
-  }, [token]);
+  }, [token, tokenLooksValid]);
 
   async function submit(response: "positive" | "negative") {
     setSubmitting(true);
