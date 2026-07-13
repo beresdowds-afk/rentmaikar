@@ -2,6 +2,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
+import { resolvePaymentContext } from "../_shared/resolve-payment-context.ts";
 
 const BodySchema = z.object({
   amount: z.number().positive(),
@@ -65,6 +66,15 @@ Deno.serve(async (req) => {
     const reference = `rmk_${crypto.randomUUID().replace(/-/g, "")}`;
     const amountMinor = Math.round(body.amount * 100);
 
+    const ctx = await resolvePaymentContext({
+      supabase, rentalId: body.rentalId, vehicleId: body.vehicleId, ownerId: undefined,
+    });
+    if ("error" in ctx) {
+      return new Response(JSON.stringify({ error: ctx.error }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const resp = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",
       headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
@@ -76,8 +86,9 @@ Deno.serve(async (req) => {
         channels: body.channels,
         callback_url: body.callbackUrl,
         metadata: {
-          rental_id: body.rentalId,
-          vehicle_id: body.vehicleId,
+          rental_id: ctx.rentalId,
+          vehicle_id: ctx.vehicleId,
+          owner_id: ctx.ownerId,
           driver_id: driverId,
           payment_frequency: body.paymentFrequency,
           description: body.description,
@@ -92,16 +103,25 @@ Deno.serve(async (req) => {
     }
 
     // Create pending payment + paystack row
-    const { data: payment } = await supabase.from("payments").insert({
-      rental_id: body.rentalId,
+    const { data: payment, error: paymentError } = await supabase.from("payments").insert({
+      rental_id: ctx.rentalId,
       driver_id: driverId,
+      owner_id: ctx.ownerId,
+      vehicle_id: ctx.vehicleId,
       amount: body.amount,
       currency: body.currency,
       status: "pending",
       payment_method: "paystack",
-      payment_frequency: body.paymentFrequency,
+      payment_frequency: body.paymentFrequency ?? "weekly",
       transaction_id: reference,
-    }).select("id").maybeSingle();
+    }).select("id").single();
+
+    if (paymentError || !payment?.id) {
+      console.error("[create-paystack-transaction] payment insert failed:", paymentError);
+      return new Response(JSON.stringify({ error: "Failed to record payment" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     await supabase.from("paystack_transactions").insert({
       reference,
@@ -110,10 +130,10 @@ Deno.serve(async (req) => {
       currency: body.currency,
       amount: body.amount,
       status: "pending",
-      rental_id: body.rentalId,
+      rental_id: ctx.rentalId,
       driver_id: driverId,
-      vehicle_id: body.vehicleId,
-      payment_id: payment?.id,
+      vehicle_id: ctx.vehicleId,
+      payment_id: payment.id,
       raw_payload: pay.data,
     });
 

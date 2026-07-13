@@ -32,59 +32,77 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const { data: fences } = await admin
-    .from("vehicle_geofences")
-    .select("id, vehicle_id, call_in_id, center_lat, center_lng, radius_m")
-    .eq("active", true);
+  try {
+    const { data: fences, error: fencesErr } = await admin
+      .from("vehicle_geofences")
+      .select("id, vehicle_id, call_in_id, center_lat, center_lng, radius_m")
+      .eq("active", true)
+      .limit(500);
 
-  const results: any[] = [];
-
-  for (const fence of fences ?? []) {
-    // Try mqtt_telemetry_logs (latest for vehicle)
-    const { data: tele } = await admin
-      .from("mqtt_telemetry_logs")
-      .select("payload, created_at")
-      .contains("payload", { vehicle_id: fence.vehicle_id })
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    let lat: number | null = null, lng: number | null = null;
-    if (tele?.payload) {
-      const p: any = tele.payload;
-      lat = typeof p.lat === "number" ? p.lat : (typeof p.latitude === "number" ? p.latitude : null);
-      lng = typeof p.lng === "number" ? p.lng : (typeof p.longitude === "number" ? p.longitude : null);
-    }
-    if (lat === null || lng === null) {
-      // No telemetry — skip
-      await admin.from("vehicle_geofences").update({ last_checked_at: new Date().toISOString() }).eq("id", fence.id);
-      continue;
+    if (fencesErr) {
+      console.error("[enforce-call-in-geofence] fences fetch error:", fencesErr);
+      return new Response(JSON.stringify({ error: "Failed to load geofences" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
-    const dist = haversineMeters(fence.center_lat, fence.center_lng, lat, lng);
-    await admin.from("vehicle_geofences").update({
-      last_checked_at: new Date().toISOString(),
-      last_distance_m: dist,
-    }).eq("id", fence.id);
+    const results: any[] = [];
 
-    if (dist > fence.radius_m) {
-      // Breach → mark geofence + close call-in, which trigger-clears the suspension
-      await admin.from("vehicle_geofences").update({
-        active: false,
-        breached_at: new Date().toISOString(),
-      }).eq("id", fence.id);
+    for (const fence of fences ?? []) {
+      try {
+        const { data: tele } = await admin
+          .from("mqtt_telemetry_logs")
+          .select("payload, received_at")
+          .eq("vehicle_id", String(fence.vehicle_id))
+          .eq("data_type", "location")
+          .order("received_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      await admin.from("driver_call_ins").update({
-        status: "breached",
-        ended_at: new Date().toISOString(),
-        end_reason: `Geofence breach: ${Math.round(dist)}m from center (limit ${fence.radius_m}m)`,
-      }).eq("id", fence.call_in_id);
+        let lat: number | null = null, lng: number | null = null;
+        if (tele?.payload) {
+          const p: any = tele.payload;
+          lat = typeof p.lat === "number" ? p.lat : (typeof p.latitude === "number" ? p.latitude : null);
+          lng = typeof p.lng === "number" ? p.lng : (typeof p.longitude === "number" ? p.longitude : null);
+        }
+        if (lat === null || lng === null) {
+          await admin.from("vehicle_geofences").update({ last_checked_at: new Date().toISOString() }).eq("id", fence.id);
+          continue;
+        }
 
-      results.push({ call_in_id: fence.call_in_id, breached: true, distance_m: Math.round(dist) });
+        const dist = haversineMeters(fence.center_lat, fence.center_lng, lat, lng);
+        await admin.from("vehicle_geofences").update({
+          last_checked_at: new Date().toISOString(),
+          last_distance_m: dist,
+        }).eq("id", fence.id);
+
+        if (dist > fence.radius_m) {
+          await admin.from("vehicle_geofences").update({
+            active: false,
+            breached_at: new Date().toISOString(),
+          }).eq("id", fence.id);
+
+          await admin.from("driver_call_ins").update({
+            status: "breached",
+            ended_at: new Date().toISOString(),
+            end_reason: `Geofence breach: ${Math.round(dist)}m from center (limit ${fence.radius_m}m)`,
+          }).eq("id", fence.call_in_id);
+
+          results.push({ call_in_id: fence.call_in_id, breached: true, distance_m: Math.round(dist) });
+        }
+      } catch (fenceErr) {
+        console.error("[enforce-call-in-geofence] fence error:", fence.id, fenceErr);
+        results.push({ call_in_id: fence.call_in_id, error: String(fenceErr) });
+      }
     }
+
+    return new Response(JSON.stringify({ success: true, checked: fences?.length ?? 0, results }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  } catch (err) {
+    console.error("[enforce-call-in-geofence] fatal:", err);
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
   }
-
-  return new Response(JSON.stringify({ success: true, checked: fences?.length ?? 0, results }), {
-    status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" }
-  });
 });
