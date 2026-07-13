@@ -189,15 +189,18 @@ Deno.serve(async (req) => {
       metadata: { downloaded, failed, per_file: perFile },
     });
 
-    return json(200, {
-      ok: true,
-      download_url: signed?.signedUrl,
-      storage_path: storagePath,
-      filename: `rentmaikar-documents-${labelPart}-${region ?? "ALL"}-${stamp}.zip`,
-      totals: { documents: rows.length, downloaded, failed },
-      per_file: perFile,
-      expires_in: 3600,
-    });
+      return json(200, {
+        ok: true,
+        download_url: signed?.signedUrl,
+        storage_path: storagePath,
+        filename: `rentmaikar-documents-${labelPart}-${region ?? "ALL"}-${stamp}.zip`,
+        totals: { documents: rows.length, downloaded, failed },
+        per_file: perFile,
+        expires_in: 3600,
+      });
+    } finally {
+      releaseConcurrency(exporterId);
+    }
   } catch (e) {
     return json(500, { error: String(e) });
   }
