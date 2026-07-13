@@ -2,6 +2,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { requireAuthenticatedUser } from "../_shared/auth-guards.ts";
+import { resolvePaymentContext } from "../_shared/resolve-payment-context.ts";
 
 const Body = z.object({
   amount: z.number().positive().max(1_000_000),
