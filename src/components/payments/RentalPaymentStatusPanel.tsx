@@ -74,23 +74,34 @@ export function RentalPaymentStatusPanel({ rentalId, refreshKey }: RentalPayment
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["rental-payment-status", rentalId],
     queryFn: async () => {
-      const [{ data: payments, error: payErr }, { data: txs, error: txErr }] = await Promise.all([
+      const [
+        { data: payments, error: payErr },
+        { data: pptxs, error: ppErr },
+        { data: pstxs, error: psErr },
+        { data: optxs, error: opErr },
+      ] = await Promise.all([
         supabase
           .from("payments")
           .select("id, amount, currency, status, payment_method, payment_frequency, transaction_id, failure_reason, created_at, processed_at")
           .eq("rental_id", rentalId)
           .order("created_at", { ascending: false })
           .limit(25),
-        supabase
-          .from("paypal_transactions")
-          .select("order_id, status, failure_reason, payment_id")
-          .eq("rental_id", rentalId),
+        supabase.from("paypal_transactions")
+          .select("order_id, status, failure_reason, payment_id").eq("rental_id", rentalId),
+        supabase.from("paystack_transactions")
+          .select("reference, status, failure_reason, payment_id, channel").eq("rental_id", rentalId),
+        supabase.from("opay_transactions")
+          .select("reference, status, failure_reason, payment_id").eq("rental_id", rentalId),
       ]);
       if (payErr) throw payErr;
-      if (txErr) throw txErr;
+      if (ppErr) throw ppErr;
+      if (psErr) throw psErr;
+      if (opErr) throw opErr;
       return {
         payments: (payments ?? []) as PaymentRow[],
-        txs: (txs ?? []) as PayPalTxRow[],
+        txs: (pptxs ?? []) as PayPalTxRow[],
+        paystack: (pstxs ?? []) as Array<{ reference: string; status: string; failure_reason: string | null; payment_id: string | null; channel: string | null }>,
+        opay: (optxs ?? []) as Array<{ reference: string; status: string; failure_reason: string | null; payment_id: string | null }>,
       };
     },
     refetchInterval: 15_000,
