@@ -1,9 +1,19 @@
-// Sends a Web Push notification to relevant users (driver, owner, admins)
-// when a Paystack/Opay/PayPal payment status changes. Called from webhooks
-// and verify functions using CRON_SECRET as an internal auth header.
+// deno-lint-ignore-file no-explicit-any
+// Sends a Web Push notification to relevant users when a Paystack/Opay/PayPal
+// payment status changes. Called from webhooks and verify functions using
+// CRON_SECRET as an internal auth header.
+//
+// Recipient policy (hardened, defense in depth):
+//   - INCLUDE: the driver on the rental (if they hold the 'driver' role)
+//   - INCLUDE: every user with the 'admin' role
+//   - EXCLUDE: any user with the 'owner' role — even if they somehow also
+//     match the driver_id or admin lists. Owners never receive payment push
+//     notifications for any PSP.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
+import { resolveRecipients } from "./recipients.ts";
+export { resolveRecipients };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -28,6 +38,9 @@ interface Body {
   reference?: string;
 }
 
+
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const auth = req.headers.get("x-internal-secret");
@@ -43,24 +56,16 @@ Deno.serve(async (req) => {
   const body = (await req.json()) as Body;
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-  // Find recipients: driver, owner (via rental->vehicle), all admins.
-  const recipients = new Set<string>();
-  if (body.rentalId) {
-    // Recipients: driver + admins only. Owners are intentionally excluded
-    // from payment push notifications.
-    const { data: rental } = await admin.from("rentals").select("driver_id").eq("id", body.rentalId).maybeSingle();
-    if (rental?.driver_id) recipients.add(rental.driver_id);
-  }
-  const { data: admins } = await admin.from("user_roles").select("user_id").eq("role", "admin");
-  admins?.forEach((a) => recipients.add(a.user_id));
-
-  if (recipients.size === 0) {
-    return new Response(JSON.stringify({ sent: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  const recipientIds = await resolveRecipients(admin, body.rentalId);
+  if (recipientIds.length === 0) {
+    return new Response(JSON.stringify({ sent: 0, recipient_user_ids: [] }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const { data: subs } = await admin.from("push_subscriptions")
     .select("id, endpoint, p256dh, auth, user_id")
-    .in("user_id", Array.from(recipients));
+    .in("user_id", recipientIds);
 
   const statusLabel = body.status === "completed" ? "successful" : body.status === "failed" ? "failed" : body.status;
   const amountText = body.amount != null && body.currency
@@ -101,7 +106,11 @@ Deno.serve(async (req) => {
 
   const sent = results.filter((r) => r.status === "fulfilled").length;
   const failed = results.length - sent;
-  return new Response(JSON.stringify({ sent, failed, recipients: recipients.size }), {
+  return new Response(JSON.stringify({
+    sent, failed,
+    recipients: recipientIds.length,
+    recipient_user_ids: recipientIds,
+  }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
