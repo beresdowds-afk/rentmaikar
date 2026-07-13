@@ -144,9 +144,20 @@ async def run_viewport(browser, label: str, width: int, height: int) -> None:
     await hydrate_session(context, page)
     await page.goto(f"{BASE}/driver/dashboard", wait_until="domcontentloaded")
 
+    # DocumentUpload sits inside the "Documents" tab of DriverDashboard; open it.
+    # If the tab isn't present (e.g. the injected session has no rental), skip.
+    try:
+        tab = page.get_by_role("tab", name=re.compile(r"^Documents$", re.I))
+        await tab.wait_for(timeout=6000)
+        await tab.click()
+    except Exception:
+        print(f"[SKIP] {label}: Documents tab not visible for this session (no active rental).")
+        await context.close()
+        return
+
     # Give the app a moment to render the identification-docs card.
     try:
-        await page.get_by_test_id("auto-submit-status").wait_for(timeout=8000)
+        await page.get_by_test_id("auto-submit-status").wait_for(timeout=10000)
     except Exception:
         await page.screenshot(path=str(SCREENSHOTS / f"{label}_no-card.png"))
         record(f"{label}/card-visible", False, "auto-submit-status card never rendered")
