@@ -695,6 +695,57 @@ export type Database = {
           },
         ]
       }
+      document_export_audit: {
+        Row: {
+          created_at: string
+          document_count: number
+          document_ids: string[]
+          error: string | null
+          exporter_id: string
+          id: string
+          metadata: Json
+          region: string | null
+          source: string
+          status: string
+          storage_path: string | null
+          target_user_id: string
+          vehicle_id: string | null
+          zip_size_bytes: number | null
+        }
+        Insert: {
+          created_at?: string
+          document_count?: number
+          document_ids?: string[]
+          error?: string | null
+          exporter_id: string
+          id?: string
+          metadata?: Json
+          region?: string | null
+          source?: string
+          status?: string
+          storage_path?: string | null
+          target_user_id: string
+          vehicle_id?: string | null
+          zip_size_bytes?: number | null
+        }
+        Update: {
+          created_at?: string
+          document_count?: number
+          document_ids?: string[]
+          error?: string | null
+          exporter_id?: string
+          id?: string
+          metadata?: Json
+          region?: string | null
+          source?: string
+          status?: string
+          storage_path?: string | null
+          target_user_id?: string
+          vehicle_id?: string | null
+          zip_size_bytes?: number | null
+        }
+        Relationships: []
+      }
       driver_behavior_logs: {
         Row: {
           accel_x: number | null

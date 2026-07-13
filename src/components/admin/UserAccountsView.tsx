@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { OwnerDashboardPreview } from './previews/OwnerDashboardPreview';
 import { DriverDashboardPreview } from './previews/DriverDashboardPreview';
 import { CreateAgreementDialog } from './CreateAgreementDialog';
+import { AdminDocumentExportButton } from './AdminDocumentExportButton';
 
 interface UserWithRole {
   id: string;
@@ -316,6 +317,14 @@ export function UserAccountsView() {
                 {selectedUser?.role === 'owner' ? 'Owner' : 'Driver'} Dashboard - {selectedUser?.full_name || 'User'}
               </span>
               <Badge variant="outline" className="ml-2">View Only</Badge>
+              {selectedUser && (
+                <div className="ml-auto">
+                  <AdminDocumentExportButton
+                    targetUserId={selectedUser.user_id}
+                    label={`${selectedUser.role ?? 'user'}-${(selectedUser.full_name || selectedUser.user_id).toString().toLowerCase().replace(/\s+/g, '-').slice(0, 40)}`}
+                  />
+                </div>
+              )}
             </DialogTitle>
           </DialogHeader>
           <ScrollArea className="h-[calc(90vh-100px)]">
