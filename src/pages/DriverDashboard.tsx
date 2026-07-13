@@ -67,6 +67,7 @@ export default function DriverDashboard() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [paymentRefreshKey, setPaymentRefreshKey] = useState(0);
   const { callHistory, isLoading: callsLoading, refreshHistory } = useVoiceCall('driver');
   const {
     activeRental,
