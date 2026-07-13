@@ -18,6 +18,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   userRole: AppRole | null;
+  isRoleLoading: boolean;
   twoFactorStatus: TwoFactorStatus | null;
   twoFactorVerified: boolean;
   setTwoFactorVerified: (verified: boolean) => void;
