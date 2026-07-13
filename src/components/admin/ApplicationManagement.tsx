@@ -716,6 +716,10 @@ const ApplicationCard = ({
                 <span className="font-medium text-red-700">Rejection Reason:</span>
                 <p className="text-red-600 mt-1">{application.rejection_reason}</p>
               </div>
+            {isDriver && (
+              <div className="md:col-span-2">
+                <RefereeVerificationPanel applicationId={application.id} />
+              </div>
             )}
           </div>
         )}
