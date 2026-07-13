@@ -376,27 +376,18 @@ export default function DriverDashboard() {
             <TabsContent value="payments" className="space-y-6">
               {rental && <RentalPaymentStatusPanel rentalId={rental.id} refreshKey={paymentRefreshKey} />}
 
-              {isUSA && rental && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Pay with PayPal</CardTitle>
-                    <CardDescription>
-                      Secure US checkout (sandbox mode when unclaimed). Total due {formatCurrency(totalDue, currency)}.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <PayPalCheckout
-                      amount={Number(totalDue.toFixed(2))}
-                      rentalId={rental.id}
-                      vehicleId={vehicle?.id}
-                      driverId={user?.id}
-                      paymentFrequency={rental.paymentFrequency}
-                      description={`Rental ${rental.id.slice(0, 8)} ${rental.paymentFrequency} payment`}
-                      onSuccess={() => setPaymentRefreshKey((k) => k + 1)}
-                      onError={() => setPaymentRefreshKey((k) => k + 1)}
-                    />
-                  </CardContent>
-                </Card>
+              {rental && (
+                <PaymentMethodPicker
+                  country={country}
+                  amount={Number(totalDue.toFixed(2))}
+                  rentalId={rental.id}
+                  vehicleId={vehicle?.id}
+                  driverId={user?.id}
+                  paymentFrequency={rental.paymentFrequency}
+                  description={`Rental ${rental.id.slice(0, 8)} ${rental.paymentFrequency} payment`}
+                  onSuccess={() => setPaymentRefreshKey((k) => k + 1)}
+                  onError={() => setPaymentRefreshKey((k) => k + 1)}
+                />
               )}
 
               {showPaymentModal ? (
