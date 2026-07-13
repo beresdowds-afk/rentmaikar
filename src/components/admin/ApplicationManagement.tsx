@@ -19,6 +19,7 @@ import {
   Mail, Phone, MapPin, Calendar, RefreshCw, UserPlus, ClipboardList
 } from 'lucide-react';
 import { format } from 'date-fns';
+import RefereeVerificationPanel from '@/components/verification/RefereeVerificationPanel';
 
 type ApplicationType = 'driver' | 'owner';
 type ApplicationStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'needs_info';
