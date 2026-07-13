@@ -215,6 +215,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         session,
         isLoading,
         userRole,
+        isRoleLoading,
         twoFactorStatus,
         twoFactorVerified,
         setTwoFactorVerified,
