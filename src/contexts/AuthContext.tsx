@@ -36,6 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState<AppRole | null>(null);
+  const [isRoleLoading, setIsRoleLoading] = useState(true);
   const [twoFactorStatus, setTwoFactorStatus] = useState<TwoFactorStatus | null>(null);
   const [twoFactorVerified, setTwoFactorVerified] = useState(false);
 
