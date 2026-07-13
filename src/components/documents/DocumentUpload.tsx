@@ -299,6 +299,7 @@ export const DocumentUpload = ({ userType, vehicleId, vehicleName }: DocumentUpl
   // Only fires for drivers, on the identification tab (no vehicleId), and only once per session.
   const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
   const autoSubmittedRef = useRef(false);
   useEffect(() => {
     if (userType !== 'driver' || vehicleId) return;
@@ -306,10 +307,20 @@ export const DocumentUpload = ({ userType, vehicleId, vehicleName }: DocumentUpl
     if (autoSubmittedRef.current) return;
     autoSubmittedRef.current = true;
     setSubmitState('submitting');
+    setSubmitError(null);
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke('auto-submit-for-review', { body: {} });
         if (error) throw error;
+        // Server-side validation failures (e.g. missing docs) surface as { error, missing }
+        if (data && (data as any).error) {
+          const missing = (data as any).missing;
+          throw new Error(
+            missing?.length
+              ? `${(data as any).error}: ${missing.join(', ')}`
+              : (data as any).error
+          );
+        }
         setSubmitState('submitted');
         if (!data?.already_submitted) {
           toast.success('Application submitted for admin review');
@@ -319,7 +330,33 @@ export const DocumentUpload = ({ userType, vehicleId, vehicleName }: DocumentUpl
         setSubmitError(e?.message ?? 'Could not submit for review');
       }
     })();
-  }, [completionPercent, userType, vehicleId]);
+  }, [completionPercent, userType, vehicleId, retryToken]);
+
+  // In-app notification: when an admin marks any of this user's documents as
+  // rejected, surface a toast + refetch so the rejection reason renders inline.
+  // The DB trigger `trg_log_document_rejection` also writes to admin_audit_log.
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`user-documents-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'user_documents', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const next = payload.new as UserDocument;
+          const prev = payload.old as UserDocument;
+          if (next.status === 'rejected' && prev?.status !== 'rejected') {
+            toast.error(
+              `Document rejected: ${next.document_type.replace(/_/g, ' ')}`,
+              { description: next.rejection_reason ?? 'Please re-upload a valid document.' }
+            );
+            queryClient.invalidateQueries({ queryKey: ['user-documents'] });
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id, queryClient]);
 
   if (isLoading) {
     return (
