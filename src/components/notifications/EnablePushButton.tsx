@@ -34,7 +34,7 @@ export function EnablePushButton({ className }: { className?: string }) {
           setEnabled(true);
           toast.success("Payment alerts enabled");
         } else {
-          toast.error(res.reason);
+          toast.error("reason" in res ? res.reason : "Could not enable alerts");
         }
       }
     } finally {

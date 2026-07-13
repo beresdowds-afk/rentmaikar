@@ -87,7 +87,7 @@ export default function PaymentReceipt() {
     const skip = new Set(["raw_payload"]);
     for (const [k, v] of Object.entries(providerTx)) {
       if (skip.has(k) || v == null) continue;
-      rows.push([k.replaceAll("_", " "), String(v)]);
+      rows.push([k.replace(/_/g, " "), String(v)]);
     }
     return rows;
   }, [providerTx]);
