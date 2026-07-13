@@ -98,11 +98,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         // Defer role fetching to avoid deadlock
         if (session?.user) {
+          setIsRoleLoading(true);
           setTimeout(() => {
-            fetchUserRole(session.user.id).then(setUserRole);
+            fetchUserRole(session.user.id).then((role) => {
+              setUserRole(role);
+              setIsRoleLoading(false);
+            });
           }, 0);
         } else {
           setUserRole(null);
+          setIsRoleLoading(false);
           setTwoFactorStatus(null);
           setTwoFactorVerified(false);
         }
@@ -117,9 +122,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchUserRole(session.user.id).then(setUserRole);
+        setIsRoleLoading(true);
+        fetchUserRole(session.user.id).then((role) => {
+          setUserRole(role);
+          setIsRoleLoading(false);
+        });
         // For existing sessions, assume 2FA was previously verified
         setTwoFactorVerified(true);
+      } else {
+        setIsRoleLoading(false);
       }
       
       setIsLoading(false);
