@@ -120,6 +120,13 @@ export function PayPalCheckout({
 
   return (
     <div className="space-y-4">
+      {isLoading && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading PayPal...
+        </div>
+      )}
+
       {isProcessing && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -133,32 +140,34 @@ export function PayPalCheckout({
         </Alert>
       )}
 
-      <PayPalScriptProvider
-        options={{
-          clientId,
-          components: "buttons",
-          currency: "USD",
-          intent: "capture",
-          environment: env === "live" ? "production" : "sandbox",
-        }}
-      >
-        <PayPalButtons
-          disabled={!isEnabled || isProcessing}
-          style={{ layout: "vertical", color: "gold", shape: "rect", label: "paypal" }}
-          createOrder={createOrder}
-          onApprove={onApprove}
-          onError={(err) => {
-            const message = typeof err === "string" ? err : "PayPal checkout error";
-            setConfigError(message);
-            onError?.(message);
+      {clientId && (
+        <PayPalScriptProvider
+          options={{
+            clientId,
+            components: "buttons",
+            currency: "USD",
+            intent: "capture",
+            environment: environment,
           }}
-          onCancel={() => {
-            toast.info("PayPal payment cancelled");
-          }}
-        />
-      </PayPalScriptProvider>
+        >
+          <PayPalButtons
+            disabled={!isEnabled || isProcessing}
+            style={{ layout: "vertical", color: "gold", shape: "rect", label: "paypal" }}
+            createOrder={createOrder}
+            onApprove={onApprove}
+            onError={(err) => {
+              const message = typeof err === "string" ? err : "PayPal checkout error";
+              setConfigError(message);
+              onError?.(message);
+            }}
+            onCancel={() => {
+              toast.info("PayPal payment cancelled");
+            }}
+          />
+        </PayPalScriptProvider>
+      )}
 
-      {!isEnabled && (
+      {!isEnabled && !isLoading && (
         <Button disabled className="w-full">
           PayPal unavailable for this region
         </Button>
