@@ -52,12 +52,18 @@ Set up a PayPal payment integration for US-region transactions, leaving the live
 - You will fill in `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` with your PayPal app credentials.
 - I will test the order creation flow end-to-end and verify the payment is recorded in the database.
 
-## Files to create / edit
-- New: `supabase/functions/paypal-create-order/index.ts`
-- New: `supabase/functions/paypal-capture-order/index.ts`
+## Files created / edited
+- New: `supabase/functions/create-paypal-order/index.ts` (updated existing stub)
+- New: `supabase/functions/capture-paypal-order/index.ts`
+- New: `supabase/functions/get-paypal-config/index.ts`
 - New: `src/components/payments/PayPalCheckout.tsx`
 - New: `src/hooks/usePayPalConfig.ts`
+- New: `src/lib/paypal-client.ts`
 - New: `supabase/migrations/20260713_add_paypal_transactions.sql`
-- Edit: `src/integrations/supabase/types.ts` (if needed)
-- Edit: relevant admin/payment provider UIs
+- Edit: `src/lib/payment-gateway.ts` (PayPal path now uses real edge functions)
+- Edit: `src/components/admin/SecretsManagement.tsx` (added `PAYPAL_MODE`)
+- Edit: `src/integrations/supabase/types.ts` (auto-regenerated)
 - Edit: `package.json` / `bun.lock` for `@paypal/react-paypal-js`
+
+## Implementation complete
+Build passes. The PayPal integration is ready for the user to provide the three backend secrets.
