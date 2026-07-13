@@ -35,6 +35,8 @@ import { DriverBehaviorLogs } from '@/components/admin/DriverBehaviorLogs';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 import { useDriverDashboard } from '@/hooks/useDriverDashboard';
 import { CallInPanel } from '@/components/driver/CallInPanel';
+import { PayPalCheckout } from '@/components/payments/PayPalCheckout';
+import { RentalPaymentStatusPanel } from '@/components/payments/RentalPaymentStatusPanel';
 import {
   Car,
   Activity,
@@ -371,6 +373,29 @@ export default function DriverDashboard() {
 
             {/* Payments Tab */}
             <TabsContent value="payments" className="space-y-6">
+              {rental && <RentalPaymentStatusPanel rentalId={rental.id} />}
+
+              {isUSA && rental && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Pay with PayPal</CardTitle>
+                    <CardDescription>
+                      Secure US checkout (sandbox mode when unclaimed). Total due {formatCurrency(totalDue, currency)}.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <PayPalCheckout
+                      amount={Number(totalDue.toFixed(2))}
+                      rentalId={rental.id}
+                      vehicleId={vehicle?.id}
+                      driverId={user?.id}
+                      paymentFrequency={rental.paymentFrequency}
+                      description={`Rental ${rental.id.slice(0, 8)} ${rental.paymentFrequency} payment`}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
               {showPaymentModal ? (
                 <PaymentOptionsSelector
                   baseAmount={weeklyRate}
