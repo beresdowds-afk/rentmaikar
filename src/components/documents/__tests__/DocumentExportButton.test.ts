@@ -127,7 +127,7 @@ describe("zip bundling", () => {
     }];
     const zip = new JSZip();
     const filesDir = zip.folder("files")!;
-    filesDir.file(archiveName(rows[0]), new Blob([new Uint8Array([1, 2, 3, 4])]));
+    filesDir.file(archiveName(rows[0]), new Uint8Array([1, 2, 3, 4]));
     const manifest = buildManifest({
       userId: "user-1", region: "US", exportedAt: "2026-07-13T10:00:00.000Z",
       files, docs: rows,
@@ -136,10 +136,10 @@ describe("zip bundling", () => {
     zip.file("manifest.csv", toCsv(manifest.documents as any));
     zip.file("README.txt", "hello");
 
-    const blob = await zip.generateAsync({ type: "blob" });
-    expect(blob.size).toBeGreaterThan(0);
+    const bytes = await zip.generateAsync({ type: "uint8array" });
+    expect(bytes.byteLength).toBeGreaterThan(0);
 
-    const round = await JSZip.loadAsync(await blob.arrayBuffer());
+    const round = await JSZip.loadAsync(bytes);
     const names = Object.keys(round.files).sort();
     expect(names).toContain("manifest.json");
     expect(names).toContain("manifest.csv");
