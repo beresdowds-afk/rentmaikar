@@ -4,6 +4,7 @@
 // - Triggers notify-referees + verify-referees + persona-create-inquiry as best-effort.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { logPipelineEvent } from "../_shared/pipeline-events.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -67,6 +68,11 @@ Deno.serve(async (req) => {
     });
   }
 
+  await logPipelineEvent({
+    application_id: app.id, event_type: "auto_submit_for_review",
+    status: "started", actor_id: user.id,
+  });
+
   const region: Region = (app.country_code ?? "").toString().toUpperCase() === "NG" ? "nigeria" : "usa";
   const required = DRIVER_REQUIRED[region];
 
@@ -79,6 +85,11 @@ Deno.serve(async (req) => {
   const uploaded = new Set((docs ?? []).filter((d: any) => d.status !== "rejected").map((d: any) => d.document_type));
   const missing = required.filter((t) => !uploaded.has(t));
   if (missing.length > 0) {
+    await logPipelineEvent({
+      application_id: app.id, event_type: "auto_submit_for_review", status: "error",
+      message: `Missing required documents: ${missing.join(", ")}`,
+      actor_id: user.id, details: { missing },
+    });
     return new Response(JSON.stringify({ error: "Missing required documents", missing }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -91,20 +102,39 @@ Deno.serve(async (req) => {
       .from("applications")
       .update({ status: "under_review", updated_at: new Date().toISOString() })
       .eq("id", app.id)
-      .eq("status", "pending"); // guard against races
+      .eq("status", "pending");
     if (upErr) {
+      await logPipelineEvent({
+        application_id: app.id, event_type: "auto_submit_for_review", status: "error",
+        message: upErr.message, actor_id: user.id,
+      });
       return new Response(JSON.stringify({ error: upErr.message }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
   }
 
-  // Best-effort: kick off the downstream verification pipeline
   const [notify, verify, persona] = await Promise.all([
     callFn("notify-referees", { application_id: app.id }, authHeader),
     callFn("verify-referees", { application_id: app.id }, authHeader),
     callFn("persona-create-inquiry", { application_id: app.id }, authHeader),
   ]);
+
+  const downstreamErrors = [notify, verify, persona].filter(x => !x.ok).length;
+  await logPipelineEvent({
+    application_id: app.id, event_type: "auto_submit_for_review",
+    status: downstreamErrors ? "error" : "success",
+    message: alreadySubmitted
+      ? `Re-triggered (${downstreamErrors} downstream error(s))`
+      : `Submitted for admin review (${downstreamErrors} downstream error(s))`,
+    actor_id: user.id,
+    details: {
+      already_submitted: alreadySubmitted,
+      notify_referees: { ok: notify.ok, status: notify.status },
+      verify_referees: { ok: verify.ok, status: verify.status },
+      persona_create_inquiry: { ok: persona.ok, status: persona.status },
+    },
+  });
 
   return new Response(JSON.stringify({
     ok: true,
