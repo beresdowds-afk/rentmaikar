@@ -178,22 +178,17 @@ export class PaymentGateway {
   }
 
   /**
-   * Verify PayPal payment
+   * Verify / capture PayPal payment
    */
   private async verifyPayPalPayment(orderId: string): Promise<PaymentResult> {
     try {
-      // In production, this would call PayPal's capture/verify API
-      console.log('[PayPal] Verifying payment:', orderId);
+      const { capturePayPalOrder } = await import('./paypal-client');
+      const result = await capturePayPalOrder({ orderId });
 
-      // Mock verification
       return {
-        success: true,
-        transactionId: orderId,
-        gatewayResponse: {
-          id: orderId,
-          status: 'COMPLETED',
-          payer: { email_address: 'driver@example.com' },
-        },
+        success: result.status === 'COMPLETED',
+        transactionId: result.orderId,
+        gatewayResponse: result,
       };
     } catch (error) {
       console.error('[PayPal] Payment verification failed:', error);
