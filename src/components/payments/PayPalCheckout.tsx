@@ -3,6 +3,7 @@ import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
+import { usePayPalConfig } from "@/hooks/usePayPalConfig";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -31,13 +32,9 @@ export function PayPalCheckout({
   onError,
 }: PayPalCheckoutProps) {
   const { country, currency } = useRegion();
+  const { clientId, environment, enabled: isEnabled, isLoading, error: configErrorRaw } = usePayPalConfig();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [configError, setConfigError] = useState<string | null>(null);
-
-  const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID ?? "";
-  const env = (import.meta.env.VITE_PAYPAL_MODE ?? "sandbox") as "sandbox" | "live";
-
-  const isEnabled = country === "USA" && currency === "USD" && clientId.length > 0;
+  const [configError, setConfigError] = useState<string | null>(configErrorRaw);
 
   const createOrder = useCallback(async () => {
     setIsProcessing(true);
