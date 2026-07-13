@@ -6,6 +6,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { logPipelineEvent } from "../_shared/pipeline-events.ts";
 
 const Body = z.object({
   application_id: z.string().uuid(),
@@ -56,6 +57,8 @@ async function createPersonaInquiry(apiKey: string | undefined, templateId: stri
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  let appId: string | null = null;
+  let actorId: string | null = null;
   try {
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) {
@@ -63,17 +66,23 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    appId = parsed.data.application_id;
     const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const auth = req.headers.get("authorization") ?? "";
     const jwt = auth.replace(/^Bearer\s+/i, "");
     const { data: userData } = jwt ? await supa.auth.getUser(jwt) : { data: { user: null } as any };
     if (!userData?.user) {
+      await logPipelineEvent({ application_id: appId, event_type: "verify_referees", status: "error", message: "unauthorized" });
       return new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    actorId = userData.user.id;
+    await logPipelineEvent({ application_id: appId, event_type: "verify_referees", status: "started", actor_id: actorId });
+
     const { data: app, error } = await supa.from("applications").select("*").eq("id", parsed.data.application_id).maybeSingle();
     if (error || !app) {
+      await logPipelineEvent({ application_id: appId, event_type: "verify_referees", status: "error", message: "application not found", actor_id: actorId });
       return new Response(JSON.stringify({ error: "application not found" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -83,6 +92,7 @@ Deno.serve(async (req) => {
     if (!isOwner) {
       const { data: role } = await supa.from("user_roles").select("role").eq("user_id", userData.user.id).eq("role", "admin").maybeSingle();
       if (!role) {
+        await logPipelineEvent({ application_id: appId, event_type: "verify_referees", status: "error", message: "forbidden", actor_id: actorId });
         return new Response(JSON.stringify({ error: "forbidden" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -90,7 +100,6 @@ Deno.serve(async (req) => {
     }
     const region = (app.country ?? app.region ?? "USA") as string;
     const isNG = region.toUpperCase().startsWith("NG") || region === "Nigeria";
-    // Try region template from DB first, then env-specific, then master fallback
     const supaAdmin = supa;
     const countryCode = isNG ? "NG" : "US";
     const { data: regionTpl } = await supaAdmin
@@ -107,6 +116,7 @@ Deno.serve(async (req) => {
 
     const referees = normaliseReferees(app);
     if (referees.length === 0) {
+      await logPipelineEvent({ application_id: appId, event_type: "verify_referees", status: "success", message: "no referees on application", actor_id: actorId, details: { referees: 0 } });
       return new Response(JSON.stringify({ ok: true, referees: 0, message: "no referees on application" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -118,7 +128,6 @@ Deno.serve(async (req) => {
     for (let i = 0; i < referees.length; i++) {
       const r = referees[i];
       const fullName = r.full_name ?? r.name ?? "";
-      // upsert referee_verifications row
       const { data: refRow, error: refErr } = await supa.from("referee_verifications").upsert({
         application_id: app.id,
         user_id: app.user_id,
@@ -157,10 +166,20 @@ Deno.serve(async (req) => {
       }
     }
 
+    const errors = results.filter(r => r.error).length;
+    await logPipelineEvent({
+      application_id: appId, event_type: "verify_referees",
+      status: errors ? "error" : "success",
+      message: errors ? `${errors} referee(s) failed to enqueue` : `Enqueued ${referees.length} referee inquiry/inquiries`,
+      actor_id: actorId,
+      details: { referees: referees.length, results },
+    });
+
     return new Response(JSON.stringify({ ok: true, application_id: app.id, referees: referees.length, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
+    await logPipelineEvent({ application_id: appId, event_type: "verify_referees", status: "error", message: String(e).slice(0, 500), actor_id: actorId });
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
