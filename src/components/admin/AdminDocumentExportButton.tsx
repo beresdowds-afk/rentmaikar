@@ -3,7 +3,7 @@
 // admin never has to stream possibly hundreds of files through their browser.
 // The audit trail is written server-side with source='server'.
 
-import { DocumentExportButton } from "./DocumentExportButton";
+import { DocumentExportButton } from "@/components/documents/DocumentExportButton";
 
 interface Props {
   /** Driver or owner whose documents to bundle. */
