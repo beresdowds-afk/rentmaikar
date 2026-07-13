@@ -774,7 +774,12 @@ const AdminDashboard = () => {
                   </div>
                 </Card>
               )}
-              {activeTab === 'secrets' && <SecretsManagement />}
+              {activeTab === 'secrets' && (
+                <div className="space-y-6">
+                  <PSPConfigChecklist />
+                  <SecretsManagement />
+                </div>
+              )}
               {activeTab === 'api-keys' && <ApiKeyManagement />}
               {activeTab === 'webhooks' && <WebhookManagement />}
               {activeTab === 'api-endpoints' && <ApiEndpointManagement />}
