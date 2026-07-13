@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { DocumentExportButton } from './DocumentExportButton';
 
 type DocumentType =
   | 'driver_license'
@@ -436,6 +437,17 @@ export const DocumentUpload = ({ userType, vehicleId, vehicleName }: DocumentUpl
             Accepted formats: JPG, PNG, WebP, PDF • Max size: 10MB • Documents are reviewed within 24-48 hours
           </AlertDescription>
         </Alert>
+
+        {user && documents.length > 0 && (
+          <div className="flex justify-end pt-2">
+            <DocumentExportButton
+              userId={user.id}
+              vehicleId={vehicleId}
+              label={vehicleId ? `vehicle-${vehicleId.slice(0, 8)}` : `${userType}-${user.id.slice(0, 8)}`}
+              docs={documents as any}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
