@@ -35,6 +35,8 @@ import { DriverBehaviorLogs } from '@/components/admin/DriverBehaviorLogs';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 import { useDriverDashboard } from '@/hooks/useDriverDashboard';
 import { CallInPanel } from '@/components/driver/CallInPanel';
+import { PayPalCheckout } from '@/components/payments/PayPalCheckout';
+import { RentalPaymentStatusPanel } from '@/components/payments/RentalPaymentStatusPanel';
 import {
   Car,
   Activity,
