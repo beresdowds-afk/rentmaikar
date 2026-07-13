@@ -8,6 +8,7 @@ import { CategoryPricing } from "@/components/admin/CategoryPricing";
 import { VehicleCategoryYearSpecs } from "@/components/admin/VehicleCategoryYearSpecs";
 
 import { SecretsManagement } from "@/components/admin/SecretsManagement";
+import { PSPConfigChecklist } from "@/components/admin/PSPConfigChecklist";
 import { ApiKeyManagement } from "@/components/admin/ApiKeyManagement";
 import { WebhookManagement } from "@/components/admin/WebhookManagement";
 import { ApiEndpointManagement } from "@/components/admin/ApiEndpointManagement";
@@ -774,7 +775,12 @@ const AdminDashboard = () => {
                   </div>
                 </Card>
               )}
-              {activeTab === 'secrets' && <SecretsManagement />}
+              {activeTab === 'secrets' && (
+                <div className="space-y-6">
+                  <PSPConfigChecklist />
+                  <SecretsManagement />
+                </div>
+              )}
               {activeTab === 'api-keys' && <ApiKeyManagement />}
               {activeTab === 'webhooks' && <WebhookManagement />}
               {activeTab === 'api-endpoints' && <ApiEndpointManagement />}
