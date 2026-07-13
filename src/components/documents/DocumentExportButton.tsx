@@ -193,7 +193,7 @@ export const DocumentExportButton = ({
   }) {
     if (!user) return;
     try {
-      await supabase.from("document_export_audit").insert({
+      await supabase.from("document_export_audit").insert([{
         exporter_id: user.id,
         target_user_id: userId,
         vehicle_id: vehicleId ?? null,
@@ -205,8 +205,8 @@ export const DocumentExportButton = ({
         zip_size_bytes: opts.zipBytes ?? null,
         storage_path: opts.storagePath ?? null,
         error: opts.error ?? null,
-        metadata: opts.meta ?? {},
-      });
+        metadata: (opts.meta ?? {}) as any,
+      }] as any);
     } catch { /* audit is best-effort */ }
   }
 
