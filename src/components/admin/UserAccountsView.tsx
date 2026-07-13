@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { OwnerDashboardPreview } from './previews/OwnerDashboardPreview';
 import { DriverDashboardPreview } from './previews/DriverDashboardPreview';
 import { CreateAgreementDialog } from './CreateAgreementDialog';
+import { AdminDocumentExportButton } from './AdminDocumentExportButton';
 
 interface UserWithRole {
   id: string;
