@@ -231,11 +231,32 @@ export function RentalPaymentStatusPanel({ rentalId, refreshKey, onRetry }: Rent
                       <p className="text-xs text-muted-foreground font-mono">Ref: {p.transaction_id}</p>
                     )}
                   </div>
-                  {failure && (
-                    <Alert variant="destructive" className="sm:max-w-xs py-2">
-                      <AlertDescription className="text-xs">{failure}</AlertDescription>
-                    </Alert>
-                  )}
+                  <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                    {failure && (
+                      <Alert variant="destructive" className="sm:max-w-xs py-2" data-testid={`payment-failure-${p.id}`}>
+                        <AlertDescription className="text-xs">{failure}</AlertDescription>
+                      </Alert>
+                    )}
+                    <div className="flex gap-2">
+                      {p.status === "completed" && (
+                        <Button asChild size="sm" variant="outline" data-testid={`view-receipt-${p.id}`}>
+                          <Link to={`/rentals/${rentalId}/payments/${p.id}`}>
+                            <Receipt className="h-3 w-3 mr-1" />Receipt
+                          </Link>
+                        </Button>
+                      )}
+                      {p.status === "failed" && onRetry && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          data-testid={`retry-payment-${p.id}`}
+                          onClick={() => onRetry({ id: p.id, payment_method: p.payment_method, amount: Number(p.amount) })}
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />Retry
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}
