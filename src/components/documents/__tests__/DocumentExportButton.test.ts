@@ -110,8 +110,11 @@ describe("toCsv", () => {
     ]);
     const lines = csv.split("\n");
     expect(lines[0]).toBe("a,b");
-    expect(lines[1]).toBe('has "quote","has, comma"'.replace('has "quote"', '"has ""quote"""'));
-    expect(lines[2]).toBe('"line\nbreak",');
+    expect(lines[1]).toBe("x,safe");
+    expect(lines[2]).toBe('"has ""quote""","has, comma"');
+    // embedded newline splits row 3 across two lines when we split on \n
+    expect(lines[3]).toBe('"line');
+    expect(lines[4]).toBe('break",');
   });
 });
 
