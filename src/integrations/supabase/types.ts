@@ -1836,6 +1836,82 @@ export type Database = {
         }
         Relationships: []
       }
+      opay_transactions: {
+        Row: {
+          amount: number
+          cashier_url: string | null
+          created_at: string
+          currency: string
+          driver_id: string | null
+          failure_reason: string | null
+          id: string
+          order_no: string | null
+          payment_id: string | null
+          raw_payload: Json | null
+          reference: string
+          rental_id: string | null
+          status: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          amount: number
+          cashier_url?: string | null
+          created_at?: string
+          currency?: string
+          driver_id?: string | null
+          failure_reason?: string | null
+          id?: string
+          order_no?: string | null
+          payment_id?: string | null
+          raw_payload?: Json | null
+          reference: string
+          rental_id?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          amount?: number
+          cashier_url?: string | null
+          created_at?: string
+          currency?: string
+          driver_id?: string | null
+          failure_reason?: string | null
+          id?: string
+          order_no?: string | null
+          payment_id?: string | null
+          raw_payload?: Json | null
+          reference?: string
+          rental_id?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opay_transactions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opay_transactions_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opay_transactions_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       owner_earnings: {
         Row: {
           amount: number
@@ -1894,6 +1970,125 @@ export type Database = {
             columns: ["rental_id"]
             isOneToOne: false
             referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      owner_payout_accounts: {
+        Row: {
+          account_name: string | null
+          account_number: string | null
+          bank_code: string | null
+          bank_name: string | null
+          country_code: string
+          created_at: string
+          currency: string
+          id: string
+          is_default: boolean
+          is_verified: boolean
+          owner_id: string
+          paypal_email: string | null
+          provider: string
+          recipient_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_name?: string | null
+          account_number?: string | null
+          bank_code?: string | null
+          bank_name?: string | null
+          country_code: string
+          created_at?: string
+          currency: string
+          id?: string
+          is_default?: boolean
+          is_verified?: boolean
+          owner_id: string
+          paypal_email?: string | null
+          provider: string
+          recipient_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string | null
+          account_number?: string | null
+          bank_code?: string | null
+          bank_name?: string | null
+          country_code?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          is_default?: boolean
+          is_verified?: boolean
+          owner_id?: string
+          paypal_email?: string | null
+          provider?: string
+          recipient_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      owner_payouts: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          failure_reason: string | null
+          id: string
+          initiated_by: string
+          owner_id: string
+          payout_account_id: string | null
+          processed_at: string | null
+          provider: string
+          raw_payload: Json | null
+          scheduled_for: string | null
+          status: string
+          transfer_code: string | null
+          transfer_reference: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          failure_reason?: string | null
+          id?: string
+          initiated_by?: string
+          owner_id: string
+          payout_account_id?: string | null
+          processed_at?: string | null
+          provider: string
+          raw_payload?: Json | null
+          scheduled_for?: string | null
+          status?: string
+          transfer_code?: string | null
+          transfer_reference?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          failure_reason?: string | null
+          id?: string
+          initiated_by?: string
+          owner_id?: string
+          payout_account_id?: string | null
+          processed_at?: string | null
+          provider?: string
+          raw_payload?: Json | null
+          scheduled_for?: string | null
+          status?: string
+          transfer_code?: string | null
+          transfer_reference?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "owner_payouts_payout_account_id_fkey"
+            columns: ["payout_account_id"]
+            isOneToOne: false
+            referencedRelation: "owner_payout_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -2091,6 +2286,88 @@ export type Database = {
             columns: ["rental_id"]
             isOneToOne: false
             referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      paystack_transactions: {
+        Row: {
+          access_code: string | null
+          amount: number
+          authorization_url: string | null
+          channel: string | null
+          created_at: string
+          currency: string
+          driver_id: string | null
+          failure_reason: string | null
+          gateway_response: string | null
+          id: string
+          payment_id: string | null
+          raw_payload: Json | null
+          reference: string
+          rental_id: string | null
+          status: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          access_code?: string | null
+          amount: number
+          authorization_url?: string | null
+          channel?: string | null
+          created_at?: string
+          currency: string
+          driver_id?: string | null
+          failure_reason?: string | null
+          gateway_response?: string | null
+          id?: string
+          payment_id?: string | null
+          raw_payload?: Json | null
+          reference: string
+          rental_id?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          access_code?: string | null
+          amount?: number
+          authorization_url?: string | null
+          channel?: string | null
+          created_at?: string
+          currency?: string
+          driver_id?: string | null
+          failure_reason?: string | null
+          gateway_response?: string | null
+          id?: string
+          payment_id?: string | null
+          raw_payload?: Json | null
+          reference?: string
+          rental_id?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paystack_transactions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paystack_transactions_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paystack_transactions_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
