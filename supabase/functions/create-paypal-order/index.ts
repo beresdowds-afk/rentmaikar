@@ -105,11 +105,24 @@ Deno.serve(async (req) => {
     const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const driverId = data.driver_id ?? userId;
 
+    const ctx = await resolvePaymentContext({
+      supabase: supa,
+      rentalId: data.rental_id,
+      vehicleId: data.vehicle_id,
+      ownerId: data.owner_id,
+    });
+    if ("error" in ctx) {
+      return new Response(JSON.stringify({ error: ctx.error }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const paymentInsert: Record<string, unknown> = {
       driver_id: driverId,
-      owner_id: data.owner_id ?? null,
-      vehicle_id: data.vehicle_id ?? null,
-      rental_id: data.rental_id ?? null,
+      owner_id: ctx.ownerId,
+      vehicle_id: ctx.vehicleId,
+      rental_id: ctx.rentalId,
       amount: data.amount,
       currency: data.currency.toUpperCase(),
       payment_frequency: data.payment_frequency,
@@ -124,16 +137,20 @@ Deno.serve(async (req) => {
       .select("id")
       .single();
 
-    if (paymentError) {
+    if (paymentError || !payment?.id) {
       console.error("[create-paypal-order] payment insert error:", paymentError);
+      return new Response(JSON.stringify({ error: "Failed to record payment" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const txInsert: Record<string, unknown> = {
-      payment_id: payment?.id ?? null,
-      rental_id: data.rental_id ?? null,
+      payment_id: payment.id,
+      rental_id: ctx.rentalId,
       driver_id: driverId,
-      owner_id: data.owner_id ?? null,
-      vehicle_id: data.vehicle_id ?? null,
+      owner_id: ctx.ownerId,
+      vehicle_id: ctx.vehicleId,
       order_id: order.id,
       status: "created",
       amount: data.amount,
