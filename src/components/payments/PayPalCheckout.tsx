@@ -142,7 +142,7 @@ export function PayPalCheckout({
           components: "buttons",
           currency: "USD",
           intent: "capture",
-          environment: env,
+          environment: env === "live" ? "production" : "sandbox",
         }}
       >
         <PayPalButtons
