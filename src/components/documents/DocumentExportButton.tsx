@@ -28,7 +28,7 @@ import { useRegion } from "@/contexts/RegionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import JSZip from "jszip";
-import { saveAs } from "file-saver";
+import { saveZipBlob } from "@/lib/native-save";
 
 export interface DocRow {
   id: string;
