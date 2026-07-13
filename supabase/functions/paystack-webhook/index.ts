@@ -3,6 +3,18 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHmac } from "node:crypto";
 
+async function notifyPush(paymentId: string, rentalId: string | null, status: string, amount?: number, currency?: string, reference?: string) {
+  const secret = Deno.env.get("CRON_SECRET");
+  if (!secret) return;
+  try {
+    await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-payment-notification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-internal-secret": secret },
+      body: JSON.stringify({ paymentId, rentalId, status, provider: "paystack", amount, currency, reference }),
+    });
+  } catch { /* best-effort */ }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
