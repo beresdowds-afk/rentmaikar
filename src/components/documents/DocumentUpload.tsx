@@ -464,6 +464,39 @@ export const DocumentUpload = ({ userType, vehicleId, vehicleName }: DocumentUpl
           </AlertDescription>
         </Alert>
 
+        {userType === 'driver' && !vehicleId && completionPercent === 100 && (
+          <Alert
+            data-testid="auto-submit-status"
+            className={
+              submitState === 'error'
+                ? 'border-red-200 bg-red-50'
+                : submitState === 'submitted'
+                ? 'border-green-200 bg-green-50'
+                : 'border-blue-200 bg-blue-50'
+            }
+          >
+            {submitState === 'submitting' && <Loader2 className="h-4 w-4 animate-spin" />}
+            {submitState === 'submitted' && <CheckCircle className="h-4 w-4 text-green-600" />}
+            {submitState === 'error' && <AlertTriangle className="h-4 w-4 text-red-600" />}
+            <AlertDescription>
+              {submitState === 'submitting' && 'Submitting your application for admin review…'}
+              {submitState === 'submitted' && 'All required documents received. Your verification report has been submitted for admin review.'}
+              {submitState === 'error' && (
+                <span className="flex items-center justify-between gap-2">
+                  <span>Auto-submit failed: {submitError}</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { autoSubmittedRef.current = false; setSubmitState('idle'); setSubmitError(null); }}
+                  >
+                    Retry
+                  </Button>
+                </span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {user && documents.length > 0 && (
           <div className="flex justify-end pt-2">
             <DocumentExportButton
