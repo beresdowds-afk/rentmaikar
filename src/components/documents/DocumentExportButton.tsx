@@ -185,7 +185,7 @@ export const DocumentExportButton = ({
   const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState<DocRow[]>([]);
   const [files, setFiles] = useState<FileProgress[]>([]);
-  const [serverResult, setServerResult] = useState<{ url: string; filename: string } | null>(null);
+  const [serverResult, setServerResult] = useState<{ url: string; filename: string; storagePath?: string } | null>(null);
   const [zipReady, setZipReady] = useState<{ blob: Blob; filename: string } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -367,7 +367,7 @@ export const DocumentExportButton = ({
       }));
 
       if (data?.download_url) {
-        setServerResult({ url: data.download_url, filename: data.filename });
+        setServerResult({ url: data.download_url, filename: data.filename, storagePath: data.storage_path });
         const failed = data?.totals?.failed ?? 0;
         if (failed === 0) toast.success(`Server export ready (${data?.totals?.downloaded} doc(s)).`);
         else toast.warning(`Server export ready — ${failed} file(s) failed (see manifest).`);
@@ -475,10 +475,28 @@ export const DocumentExportButton = ({
                 </Button>
               )}
               {serverResult && (
-                <Button size="sm" asChild>
-                  <a href={serverResult.url} download={serverResult.filename} target="_blank" rel="noreferrer">
-                    <Download className="h-4 w-4 mr-2" /> Download ZIP
-                  </a>
+                <Button size="sm" onClick={async () => {
+                  try {
+                    const blob = await fetchServerZipWithRefresh({
+                      initialUrl: serverResult.url,
+                      storagePath: serverResult.storagePath ?? "",
+                      refresh: async (path) => {
+                        const { data, error } = await supabase.functions.invoke("refresh-export-download-url", {
+                          body: { storage_path: path },
+                        });
+                        if (error) throw error;
+                        // Keep local state in sync so subsequent clicks reuse the fresh URL.
+                        setServerResult((s) => s ? { ...s, url: data.download_url } : s);
+                        return data.download_url as string;
+                      },
+                    });
+                    const res = await saveZipBlob(blob, serverResult.filename);
+                    if (res.platform !== "web") toast.success("Saved to Documents");
+                  } catch (e) {
+                    toast.error("Download failed: " + (e as Error).message);
+                  }
+                }}>
+                  <Download className="h-4 w-4 mr-2" /> Download ZIP
                 </Button>
               )}
             </div>
