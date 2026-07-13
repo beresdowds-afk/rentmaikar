@@ -108,11 +108,20 @@ export function PayPalCheckout({
     );
   }
 
-  if (!clientId) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading PayPal...
+      </div>
+    );
+  }
+
+  if (!clientId || configError) {
     return (
       <Alert variant="destructive">
         <AlertDescription>
-          PayPal is not configured. Add PAYPAL_CLIENT_ID in your environment to enable PayPal checkout.
+          {configError ?? "PayPal is not configured. Add PAYPAL_CLIENT_ID in your backend secrets to enable PayPal checkout."}
         </AlertDescription>
       </Alert>
     );
