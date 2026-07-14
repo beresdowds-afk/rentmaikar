@@ -28,6 +28,7 @@ import { VoiceCallButton } from '@/components/voice/VoiceCallButton';
 import { VoiceCallHistory } from '@/components/voice/VoiceCallHistory';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { VerificationGate } from '@/components/onboarding/VerificationGate';
+import { ProfileEditor } from '@/components/profile/ProfileEditor';
 import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -573,6 +574,9 @@ export default function DriverDashboard() {
 
             {/* Settings Tab */}
             <TabsContent value="settings" className="space-y-6">
+              {/* Editable personal info (email/phone changes trigger re-verification) */}
+              <ProfileEditor subjectRole="driver" />
+
               {/* Email Verification */}
               <EmailVerification />
               
