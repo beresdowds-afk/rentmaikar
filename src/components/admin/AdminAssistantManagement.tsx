@@ -97,6 +97,9 @@ export function AdminAssistantManagement() {
   const [perms, setPerms] = useState<Record<PermissionKey, boolean>>(EMPTY_PERMS);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newUser, setNewUser] = useState({ email: '', full_name: '', phone: '' });
 
   const load = async () => {
     setLoading(true);
