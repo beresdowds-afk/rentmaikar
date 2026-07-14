@@ -136,8 +136,8 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
           .select('user_id')
           .eq('email', email.trim().toLowerCase())
           .neq('user_id', user.id)
-          .maybeSingle()
-          .abortSignal(ctrl.signal);
+          .abortSignal(ctrl.signal)
+          .maybeSingle();
         if (data) next.email = 'That email is already in use by another account.';
       }
       if (phoneChanged && phone.trim()) {
@@ -147,8 +147,8 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
           .select('user_id')
           .eq('phone', norm)
           .neq('user_id', user.id)
-          .maybeSingle()
-          .abortSignal(ctrl.signal);
+          .abortSignal(ctrl.signal)
+          .maybeSingle();
         if (data) next.phone = 'That phone number is already in use by another account.';
       }
     } catch {
