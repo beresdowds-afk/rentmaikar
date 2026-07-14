@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { z } from 'zod';
+import { Capacitor } from '@capacitor/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Save, ShieldAlert, Mail, Phone, User, CheckCircle2 } from 'lucide-react';
+import { Loader2, Save, ShieldAlert, Mail, Phone, User, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,10 +17,41 @@ interface ProfileEditorProps {
   subjectRole: 'driver' | 'owner' | 'support_staff' | 'admin_assistant';
 }
 
+/** International E.164: '+' then 8–15 digits. */
+const PHONE_RE = /^\+\d{8,15}$/;
+/** Normalise phone: strip non-digits, prepend '+' when missing. */
+const normalizePhone = (raw: string) => {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  const digits = trimmed.replace(/[^\d]/g, '');
+  if (!digits) return '';
+  return trimmed.startsWith('+') ? `+${digits}` : `+${digits}`;
+};
+
+const profileSchema = z.object({
+  fullName: z.string()
+    .trim()
+    .min(2, 'Name must be at least 2 characters')
+    .max(80, 'Name must be under 80 characters')
+    .regex(/^[\p{L}][\p{L}\s'.\-]*$/u, "Name may only contain letters, spaces, apostrophes, dots or hyphens"),
+  email: z.string()
+    .trim()
+    .toLowerCase()
+    .max(254, 'Email is too long')
+    .email('Enter a valid email address'),
+  phone: z.string()
+    .trim()
+    .refine((v) => v === '' || PHONE_RE.test(v), 'Use international format, e.g. +15551234567'),
+});
+
+type FieldErrors = Partial<Record<'fullName' | 'email' | 'phone', string>>;
+
 export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
   const { user } = useAuth();
+  const isNative = Capacitor.isNativePlatform();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [checkingUnique, setCheckingUnique] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -27,6 +60,8 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [identityStatus, setIdentityStatus] = useState<string | null>(null);
   const [needsReverify, setNeedsReverify] = useState(false);
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const uniqueAbort = useRef<AbortController | null>(null);
 
   const load = async () => {
     if (!user) return;
@@ -54,28 +89,120 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
   useEffect(() => { load(); }, [user?.id]);
 
   const emailChanged = email.trim().toLowerCase() !== initial.email.trim().toLowerCase();
-  const phoneChanged = phone.trim() !== initial.phone.trim();
+  const phoneChanged = normalizePhone(phone) !== normalizePhone(initial.phone);
   const nameChanged = fullName.trim() !== initial.fullName.trim();
   const anyChange = emailChanged || phoneChanged || nameChanged;
 
+  /** Warn if the user is trying to blank out a value that's already verified. */
+  const stateWarnings = useMemo<string[]>(() => {
+    const w: string[] = [];
+    if (emailChanged && email.trim() === '') w.push('Email cannot be empty.');
+    if (phoneChanged && phone.trim() === '' && phoneVerified) {
+      w.push('Removing a verified phone will disable SMS/WhatsApp notifications.');
+    }
+    if (emailChanged && !emailVerified) {
+      w.push('Your current email is not yet verified — changing it will restart email verification.');
+    }
+    return w;
+  }, [emailChanged, phoneChanged, email, phone, emailVerified, phoneVerified]);
+
+  const validateShape = (): FieldErrors => {
+    const parsed = profileSchema.safeParse({
+      fullName,
+      email,
+      phone: normalizePhone(phone),
+    });
+    const next: FieldErrors = {};
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0] as keyof FieldErrors;
+        if (key && !next[key]) next[key] = issue.message;
+      }
+    }
+    return next;
+  };
+
+  const checkUniqueness = async (): Promise<FieldErrors> => {
+    if (!user) return {};
+    const next: FieldErrors = {};
+    uniqueAbort.current?.abort();
+    const ctrl = new AbortController();
+    uniqueAbort.current = ctrl;
+    setCheckingUnique(true);
+    try {
+      if (emailChanged && email.trim()) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('email', email.trim().toLowerCase())
+          .neq('user_id', user.id)
+          .abortSignal(ctrl.signal)
+          .maybeSingle();
+        if (data) next.email = 'That email is already in use by another account.';
+      }
+      if (phoneChanged && phone.trim()) {
+        const norm = normalizePhone(phone);
+        const { data } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('phone', norm)
+          .neq('user_id', user.id)
+          .abortSignal(ctrl.signal)
+          .maybeSingle();
+        if (data) next.phone = 'That phone number is already in use by another account.';
+      }
+    } catch {
+      /* aborted or network — ignore, server will re-validate */
+    } finally {
+      setCheckingUnique(false);
+    }
+    return next;
+  };
+
   const handleSave = async () => {
     if (!user || !anyChange) return;
+
+    // 1. Client-side shape validation
+    const shapeErrs = validateShape();
+    if (Object.keys(shapeErrs).length) {
+      setErrors(shapeErrs);
+      toast.error('Please fix the highlighted fields.');
+      return;
+    }
+
+    // 2. Uniqueness check for email/phone
+    const uniqErrs = await checkUniqueness();
+    if (Object.keys(uniqErrs).length) {
+      setErrors(uniqErrs);
+      toast.error('Please fix the highlighted fields.');
+      return;
+    }
+
+    setErrors({});
     setSaving(true);
     try {
-      // 1. Update auth email (triggers Supabase confirmation email)
+      const trimmedEmail = email.trim().toLowerCase();
+      const normPhone = normalizePhone(phone);
+
+      // 3. Update auth email (Supabase sends the confirmation email)
       if (emailChanged) {
-        const { error } = await supabase.auth.updateUser({ email: email.trim() });
-        if (error) throw error;
+        const { error } = await supabase.auth.updateUser({ email: trimmedEmail });
+        if (error) {
+          if (/registered|exists|taken/i.test(error.message)) {
+            setErrors({ email: 'That email is already registered.' });
+          }
+          throw error;
+        }
       }
 
-      // 2. Update profile row
+      // 4. Update profile row
       const updates: Record<string, any> = { full_name: fullName.trim() };
       if (emailChanged) {
-        updates.email = email.trim();
+        updates.email = trimmedEmail;
         updates.email_verified = false;
       }
       if (phoneChanged) {
-        updates.phone = phone.trim();
+        updates.phone = normPhone;
         updates.phone_verified = false;
       }
 
@@ -88,7 +215,7 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
       const { error: pErr } = await supabase.from('profiles').update(updates).eq('user_id', user.id);
       if (pErr) throw pErr;
 
-      // 3. Audit trail
+      // 5. Audit trail
       if (requiresReverification) {
         await supabase.from('admin_audit_log').insert({
           admin_id: user.id,
@@ -96,17 +223,20 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
           target_table: 'profiles',
           target_id: user.id,
           details: {
+            platform: isNative ? Capacitor.getPlatform() : 'web',
             email_changed: emailChanged,
             phone_changed: phoneChanged,
             old_email: initial.email,
-            new_email: emailChanged ? email.trim() : undefined,
+            new_email: emailChanged ? trimmedEmail : undefined,
             old_phone: initial.phone,
-            new_phone: phoneChanged ? phone.trim() : undefined,
+            new_phone: phoneChanged ? normPhone : undefined,
           },
         }).then(() => {}, () => {});
       }
 
-      setInitial({ fullName: fullName.trim(), email: email.trim(), phone: phone.trim() });
+      setInitial({ fullName: fullName.trim(), email: trimmedEmail, phone: normPhone });
+      setEmail(trimmedEmail);
+      setPhone(normPhone);
 
       if (requiresReverification) {
         setEmailVerified(!emailChanged && emailVerified);
@@ -114,7 +244,7 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
         setIdentityStatus('pending_reverification');
         setNeedsReverify(true);
 
-        // 4. Kick off Persona re-verification (email + SMS with a hosted link).
+        // 6. Kick off Persona re-verification (email + SMS with a hosted link).
         supabase.functions.invoke('persona-send-reverification', {
           body: {
             user_id: user.id,
@@ -129,9 +259,7 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
         }).catch(() => {});
 
         toast.success('Profile updated. Please re-verify your identity below.');
-        if (emailChanged) {
-          toast.info('Check your new email inbox to confirm the change.');
-        }
+        if (emailChanged) toast.info('Check your new email inbox to confirm the change.');
       } else {
         toast.success('Profile saved.');
       }
@@ -152,6 +280,9 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
     );
   }
 
+  const fieldClass = (key: keyof FieldErrors) =>
+    errors[key] ? 'border-destructive focus-visible:ring-destructive' : '';
+
   return (
     <div className="space-y-4">
       <Card>
@@ -167,7 +298,18 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="pe-name">Full Name</Label>
-              <Input id="pe-name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your name" />
+              <Input
+                id="pe-name"
+                value={fullName}
+                onChange={(e) => { setFullName(e.target.value); if (errors.fullName) setErrors(x => ({ ...x, fullName: undefined })); }}
+                placeholder="Your name"
+                autoComplete="name"
+                autoCapitalize="words"
+                maxLength={80}
+                aria-invalid={!!errors.fullName}
+                className={fieldClass('fullName')}
+              />
+              {errors.fullName && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.fullName}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="pe-email" className="flex items-center gap-2">
@@ -178,7 +320,20 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
                   <Badge variant="outline" className="text-xs">Unverified</Badge>
                 )}
               </Label>
-              <Input id="pe-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input
+                id="pe-email"
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors(x => ({ ...x, email: undefined })); }}
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                inputMode="email"
+                maxLength={254}
+                aria-invalid={!!errors.email}
+                className={fieldClass('email')}
+              />
+              {errors.email && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.email}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="pe-phone" className="flex items-center gap-2">
@@ -189,9 +344,32 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
                   <Badge variant="outline" className="text-xs">Unverified</Badge>
                 )}
               </Label>
-              <Input id="pe-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 555 000 0000" />
+              <Input
+                id="pe-phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => { setPhone(e.target.value); if (errors.phone) setErrors(x => ({ ...x, phone: undefined })); }}
+                placeholder="+15551234567"
+                autoComplete="tel"
+                inputMode="tel"
+                maxLength={20}
+                aria-invalid={!!errors.phone}
+                className={fieldClass('phone')}
+              />
+              {errors.phone
+                ? <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.phone}</p>
+                : <p className="text-xs text-muted-foreground">International format required (e.g. +15551234567).</p>}
             </div>
           </div>
+
+          {stateWarnings.length > 0 && (
+            <Alert variant="default" className="border-blue-300 bg-blue-50 dark:bg-blue-950/20">
+              <AlertCircle className="h-4 w-4 text-blue-700" />
+              <AlertDescription className="text-blue-900 dark:text-blue-200 space-y-1">
+                {stateWarnings.map((w) => <div key={w}>{w}</div>)}
+              </AlertDescription>
+            </Alert>
+          )}
 
           {(emailChanged || phoneChanged) && (
             <Alert variant="default" className="border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20">
@@ -203,10 +381,10 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
             </Alert>
           )}
 
-          <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={!anyChange || saving}>
-              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-              Save Changes
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <Button onClick={handleSave} disabled={!anyChange || saving || checkingUnique} className="w-full sm:w-auto">
+              {(saving || checkingUnique) ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              {checkingUnique ? 'Checking…' : saving ? 'Saving…' : 'Save Changes'}
             </Button>
           </div>
         </CardContent>
