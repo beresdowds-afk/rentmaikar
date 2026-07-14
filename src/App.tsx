@@ -15,6 +15,7 @@ import PageSkeleton from "@/components/PageSkeleton";
 import SkipToContent from "@/components/SkipToContent";
 import LiveAnnouncer from "@/components/LiveAnnouncer";
 import MetaPixelRouteTracker from "@/components/MetaPixelRouteTracker";
+import DocumentExpiryInAppNotifier from "@/components/notifications/DocumentExpiryInAppNotifier";
 
 // Lazy-loaded pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
