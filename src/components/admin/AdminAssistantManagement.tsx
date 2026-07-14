@@ -378,6 +378,66 @@ export function AdminAssistantManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create new admin assistant</DialogTitle>
+            <DialogDescription>
+              Creates an auth account, assigns the "admin_assistant" role, and emails a password-reset link so
+              they can set their password. You can then grant scoped permissions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="cu-name">Full name</Label>
+              <Input id="cu-name" value={newUser.full_name} onChange={e => setNewUser(u => ({ ...u, full_name: e.target.value }))} placeholder="Jane Doe" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cu-email">Email</Label>
+              <Input id="cu-email" type="email" value={newUser.email} onChange={e => setNewUser(u => ({ ...u, email: e.target.value }))} placeholder="jane@example.com" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cu-phone">Phone (optional, international format)</Label>
+              <Input id="cu-phone" value={newUser.phone} onChange={e => setNewUser(u => ({ ...u, phone: e.target.value }))} placeholder="+15551234567" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button
+              disabled={creating || !newUser.email || !newUser.full_name}
+              onClick={async () => {
+                setCreating(true);
+                try {
+                  const { data, error } = await supabase.functions.invoke('admin-create-user', {
+                    body: {
+                      email: newUser.email.trim(),
+                      full_name: newUser.full_name.trim(),
+                      role: 'admin_assistant',
+                      phone: newUser.phone.trim() || undefined,
+                    },
+                  });
+                  if (error) throw error;
+                  if ((data as any)?.error) throw new Error((data as any).error);
+                  toast.success('Admin assistant created', {
+                    description: (data as any)?.message ?? 'Password-reset email sent.',
+                  });
+                  setCreateOpen(false);
+                  setNewUser({ email: '', full_name: '', phone: '' });
+                  await load();
+                } catch (e: any) {
+                  toast.error('Failed to create user', { description: e.message });
+                } finally {
+                  setCreating(false);
+                }
+              }}
+            >
+              {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
+              Create user
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
