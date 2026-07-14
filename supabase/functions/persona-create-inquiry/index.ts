@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
       });
     }
     const country = normalizeCountry(parsed.data.region);
-    const { template_id, env_id } = await resolveTemplate(supa, country);
+    const { template_id, env_id } = await resolveTemplate(supa, country, parsed.data.subject_role);
 
     if (!apiKey || !template_id) {
       const { data, error } = await supa.from("persona_inquiries").insert({
