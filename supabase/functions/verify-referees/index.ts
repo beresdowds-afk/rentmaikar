@@ -102,13 +102,17 @@ Deno.serve(async (req) => {
     const isNG = region.toUpperCase().startsWith("NG") || region === "Nigeria";
     const supaAdmin = supa;
     const countryCode = isNG ? "NG" : "US";
+    // Universal referee template takes priority over region/env overrides.
+    const { templateForRole } = await import("../_shared/persona-templates.ts");
+    const universalRefereeTpl = templateForRole("referee");
     const { data: regionTpl } = await supaAdmin
       .from("persona_region_templates")
       .select("inquiry_template_id, is_active")
       .eq("country_code", countryCode)
       .eq("is_active", true)
       .maybeSingle();
-    const templateId = regionTpl?.inquiry_template_id
+    const templateId = universalRefereeTpl
+      ?? regionTpl?.inquiry_template_id
       ?? (isNG ? Deno.env.get("PERSONA_TEMPLATE_ID_NG") : Deno.env.get("PERSONA_TEMPLATE_ID_US"))
       ?? Deno.env.get("PERSONA_TEMPLATE_ID")
       ?? Deno.env.get("PERSONA_MASTER_TEMPLATE_ID");
