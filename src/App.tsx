@@ -58,6 +58,7 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <MetaPixelRouteTracker />
+              <DocumentExpiryInAppNotifier />
               <SkipToContent />
               <LiveAnnouncer />
               <CookieConsent />
