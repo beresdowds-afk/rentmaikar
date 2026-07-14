@@ -573,6 +573,9 @@ export default function DriverDashboard() {
 
             {/* Settings Tab */}
             <TabsContent value="settings" className="space-y-6">
+              {/* Editable personal info (email/phone changes trigger re-verification) */}
+              <ProfileEditor subjectRole="driver" />
+
               {/* Email Verification */}
               <EmailVerification />
               
