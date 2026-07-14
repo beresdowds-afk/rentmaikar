@@ -113,6 +113,21 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
         setPhoneVerified(!phoneChanged && phoneVerified);
         setIdentityStatus('pending_reverification');
         setNeedsReverify(true);
+
+        // 4. Kick off Persona re-verification (email + SMS with a hosted link).
+        supabase.functions.invoke('persona-send-reverification', {
+          body: {
+            user_id: user.id,
+            subject_role: subjectRole,
+            channel: 'both',
+            reason: emailChanged && phoneChanged
+              ? 'Your email and phone changed — please re-verify your identity.'
+              : emailChanged
+                ? 'Your email address changed — please re-verify your identity.'
+                : 'Your phone number changed — please re-verify your identity.',
+          },
+        }).catch(() => {});
+
         toast.success('Profile updated. Please re-verify your identity below.');
         if (emailChanged) {
           toast.info('Check your new email inbox to confirm the change.');
