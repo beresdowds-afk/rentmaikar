@@ -59,7 +59,8 @@ Deno.serve(async (req) => {
       .select("inquiry_template_id, environment_id")
       .eq("country_code", country).eq("is_active", true).maybeSingle();
 
-    const templateId = tmpl?.inquiry_template_id
+    const templateId = templateForRole(parsed.data.subject_role as PersonaSubjectRole | undefined)
+      ?? tmpl?.inquiry_template_id
       ?? Deno.env.get(country === "NG" ? "PERSONA_TEMPLATE_ID_NG" : "PERSONA_TEMPLATE_ID_US")
       ?? Deno.env.get("PERSONA_TEMPLATE_ID");
     const envId = tmpl?.environment_id ?? Deno.env.get("PERSONA_ENVIRONMENT_ID");
