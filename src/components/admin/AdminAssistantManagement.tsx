@@ -240,6 +240,10 @@ export function AdminAssistantManagement() {
             onChange={e => setSearch(e.target.value)}
             className="w-full md:w-64"
           />
+          <Button variant="outline" onClick={() => setCreateOpen(true)} className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            Create New User
+          </Button>
           <Button onClick={openCreate} className="gap-2">
             <UserPlus className="h-4 w-4" />
             Add Assistant
