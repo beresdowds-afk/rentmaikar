@@ -1,9 +1,11 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { templateForRole, type PersonaSubjectRole } from "../_shared/persona-templates.ts";
 
 const Body = z.object({
   subject_type: z.enum(["self", "referee"]),
+  subject_role: z.enum(["driver", "referee", "owner", "support_staff", "admin_assistant"]).optional(),
   subject_ref: z.string().max(200).optional(),
   region: z.string().max(40).optional(),
   fields: z.object({
@@ -27,8 +29,17 @@ function normalizeCountry(r?: string): string {
   return rr || "US";
 }
 
-async function resolveTemplate(supa: any, country: string): Promise<{ template_id: string | null; env_id: string | null }> {
-  // DB first
+async function resolveTemplate(
+  supa: any,
+  country: string,
+  subjectRole?: PersonaSubjectRole,
+): Promise<{ template_id: string | null; env_id: string | null }> {
+  // 1. Universal per-role template (highest priority, region-agnostic)
+  const roleTpl = templateForRole(subjectRole ?? null);
+  const envId = Deno.env.get("PERSONA_ENVIRONMENT_ID") ?? null;
+  if (roleTpl) return { template_id: roleTpl, env_id: envId };
+
+  // 2. DB region template
   const { data } = await supa
     .from("persona_region_templates")
     .select("inquiry_template_id, environment_id, is_active")
@@ -36,17 +47,16 @@ async function resolveTemplate(supa: any, country: string): Promise<{ template_i
     .eq("is_active", true)
     .maybeSingle();
   if (data?.inquiry_template_id) {
-    return { template_id: data.inquiry_template_id, env_id: data.environment_id ?? Deno.env.get("PERSONA_ENVIRONMENT_ID") ?? null };
+    return { template_id: data.inquiry_template_id, env_id: data.environment_id ?? envId };
   }
-  // Env fallback
-  // Env fallback: region-specific, generic, then master template
+  // 3. Env fallbacks
   const envKey = country === "NG" ? "PERSONA_TEMPLATE_ID_NG" : "PERSONA_TEMPLATE_ID_US";
   return {
     template_id: Deno.env.get(envKey)
       ?? Deno.env.get("PERSONA_TEMPLATE_ID")
       ?? Deno.env.get("PERSONA_MASTER_TEMPLATE_ID")
       ?? null,
-    env_id: Deno.env.get("PERSONA_ENVIRONMENT_ID") ?? null,
+    env_id: envId,
   };
 }
 
@@ -70,7 +80,7 @@ Deno.serve(async (req) => {
       });
     }
     const country = normalizeCountry(parsed.data.region);
-    const { template_id, env_id } = await resolveTemplate(supa, country);
+    const { template_id, env_id } = await resolveTemplate(supa, country, parsed.data.subject_role);
 
     if (!apiKey || !template_id) {
       const { data, error } = await supa.from("persona_inquiries").insert({

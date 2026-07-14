@@ -3,10 +3,13 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 
+import { templateForRole, type PersonaSubjectRole } from "../_shared/persona-templates.ts";
+
 const Body = z.object({
   user_id: z.string().uuid(),
   reason: z.string().max(500).optional(),
   channel: z.enum(["email", "sms", "both"]).default("both"),
+  subject_role: z.enum(["driver", "referee", "owner", "support_staff", "admin_assistant"]).optional(),
 });
 
 const PERSONA_BASE = "https://withpersona.com/api/v1";
@@ -56,7 +59,8 @@ Deno.serve(async (req) => {
       .select("inquiry_template_id, environment_id")
       .eq("country_code", country).eq("is_active", true).maybeSingle();
 
-    const templateId = tmpl?.inquiry_template_id
+    const templateId = templateForRole(parsed.data.subject_role as PersonaSubjectRole | undefined)
+      ?? tmpl?.inquiry_template_id
       ?? Deno.env.get(country === "NG" ? "PERSONA_TEMPLATE_ID_NG" : "PERSONA_TEMPLATE_ID_US")
       ?? Deno.env.get("PERSONA_TEMPLATE_ID");
     const envId = tmpl?.environment_id ?? Deno.env.get("PERSONA_ENVIRONMENT_ID");

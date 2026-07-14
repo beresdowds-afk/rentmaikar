@@ -353,8 +353,8 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
                   {identityVerified ? <CheckCircle className="h-5 w-5" /> : <Shield className="h-5 w-5" />}
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Step 3: Verify Identity</CardTitle>
-                  <CardDescription>Confirm your government ID and take a quick selfie — powered by Persona</CardDescription>
+                  <CardTitle className="text-lg">Step 3: Verify Identity &amp; Proof of Address</CardTitle>
+                  <CardDescription>Confirm your government ID, a selfie, and your address — powered by Persona</CardDescription>
                 </div>
               </div>
               {identityVerified && (
@@ -364,7 +364,7 @@ export const VerificationGate = ({ children, userType, bypassForAdmin = false }:
           </CardHeader>
           {!identityVerified && emailVerified && phoneVerified && (
             <CardContent>
-              <PersonaVerification subject="self" onComplete={() => setTimeout(checkVerificationStatus, 1500)} />
+              <PersonaVerification subject="self" subjectRole={userType} onComplete={() => setTimeout(checkVerificationStatus, 1500)} />
               <p className="text-xs text-muted-foreground mt-3">You can close and re-open this page after finishing — we'll pick up where you left off.</p>
             </CardContent>
           )}

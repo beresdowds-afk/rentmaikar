@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 interface Props {
   subject?: "self" | "referee";
+  subjectRole?: "driver" | "referee" | "owner" | "support_staff" | "admin_assistant";
   subjectRef?: string;
   fields?: Record<string, string>;
   onComplete?: (inquiryId: string | null) => void;
@@ -36,6 +37,7 @@ function loadPersonaSdk(): Promise<any> {
 /** Launches an embedded Persona identity verification session. Region-aware. */
 export default function PersonaVerification({
   subject = "self",
+  subjectRole,
   subjectRef,
   fields,
   onComplete,
@@ -51,7 +53,7 @@ export default function PersonaVerification({
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("persona-create-inquiry", {
-        body: { subject_type: subject, subject_ref: subjectRef, region: country, fields },
+        body: { subject_type: subject, subject_role: subjectRole, subject_ref: subjectRef, region: country, fields },
       });
       if (error) throw error;
 
