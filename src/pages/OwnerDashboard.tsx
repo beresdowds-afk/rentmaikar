@@ -700,28 +700,8 @@ export default function OwnerDashboard() {
 
             {/* Settings Tab */}
             <TabsContent value="settings" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Account Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Full Name</Label>
-                      <Input placeholder="John Doe" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input type="email" placeholder="john@example.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Region</Label>
-                      <Input value={country} disabled />
-                    </div>
-                  </div>
-                  <Button>Save Changes</Button>
-                </CardContent>
-              </Card>
+              {/* Editable personal info (email/phone changes trigger re-verification) */}
+              <ProfileEditor subjectRole="owner" />
 
               {/* Email Verification */}
               <EmailVerification />
