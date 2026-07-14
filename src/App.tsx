@@ -15,6 +15,7 @@ import PageSkeleton from "@/components/PageSkeleton";
 import SkipToContent from "@/components/SkipToContent";
 import LiveAnnouncer from "@/components/LiveAnnouncer";
 import MetaPixelRouteTracker from "@/components/MetaPixelRouteTracker";
+import DocumentExpiryInAppNotifier from "@/components/notifications/DocumentExpiryInAppNotifier";
 
 // Lazy-loaded pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -41,6 +42,7 @@ const MobileCallIn = lazy(() => import("./pages/MobileCallIn"));
 const PaymentReceipt = lazy(() => import("./pages/PaymentReceipt"));
 const ReconciliationLogsPage = lazy(() => import("./pages/admin/ReconciliationLogsPage"));
 const AdminDocumentExportAuditPage = lazy(() => import("./pages/admin/AdminDocumentExportAuditPage"));
+const AdminDocumentFailuresPage = lazy(() => import("./pages/admin/AdminDocumentFailuresPage"));
 
 const queryClient = new QueryClient();
 
@@ -56,6 +58,7 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <MetaPixelRouteTracker />
+              <DocumentExpiryInAppNotifier />
               <SkipToContent />
               <LiveAnnouncer />
               <CookieConsent />
@@ -185,6 +188,14 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <AdminDocumentExportAuditPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/document-failures"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminDocumentFailuresPage />
                       </ProtectedRoute>
                     }
                   />
