@@ -19,6 +19,7 @@ import { OwnerPriceNegotiation } from '@/components/negotiation/OwnerPriceNegoti
 import { PhoneVerification } from '@/components/phone/PhoneVerification';
 import { EmailVerification } from '@/components/auth/EmailVerification';
 import { NotificationPreferences } from '@/components/phone/NotificationPreferences';
+import { ProfileEditor } from '@/components/profile/ProfileEditor';
 import { IoTDevicePurchase } from '@/components/owner/IoTDevicePurchase';
 import { OwnerWeeklyReportReview } from '@/components/inspection/OwnerWeeklyReportReview';
 import UserAgreementsList from '@/components/legal/UserAgreementsList';
