@@ -191,6 +191,14 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/admin/document-failures"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminDocumentFailuresPage />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route path="*" element={<NotFound />} />
                   </Routes>
                   </main>
