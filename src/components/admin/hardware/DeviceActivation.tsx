@@ -1,383 +1,162 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Power, PowerOff, RefreshCw, Shield, AlertTriangle, CheckCircle, XCircle, Wifi } from 'lucide-react';
+import { Loader2, Power, Shield, Wifi, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Device {
   id: string;
   serial_number: string;
-  device_model: string;
-  vehicle_plate: string | null;
-  status: 'inactive' | 'active' | 'offline' | 'maintenance';
+  imei: string;
+  device_model: string | null;
+  status: string;
   is_linked: boolean;
-  last_ping: string | null;
+  vehicle_id: string | null;
   activated_at: string | null;
+  last_ping: string | null;
+  sim_provider?: string | null;
+  sim_number?: string | null;
 }
 
-// Mock data
-const mockDevices: Device[] = [
-  {
-    id: '1',
-    serial_number: 'GPS-2024-001',
-    device_model: 'GPS-01 Pro',
-    vehicle_plate: 'ABC-1234',
-    status: 'active',
-    is_linked: true,
-    last_ping: '2024-01-20T14:30:00Z',
-    activated_at: '2024-01-15T10:00:00Z',
-  },
-  {
-    id: '2',
-    serial_number: 'GPS-2024-002',
-    device_model: 'GPS-01',
-    vehicle_plate: null,
-    status: 'inactive',
-    is_linked: false,
-    last_ping: null,
-    activated_at: null,
-  },
-  {
-    id: '3',
-    serial_number: 'GPS-2024-003',
-    device_model: 'GPS-01 Pro',
-    vehicle_plate: 'XYZ-5678',
-    status: 'offline',
-    is_linked: true,
-    last_ping: '2024-01-18T09:15:00Z',
-    activated_at: '2024-01-16T11:30:00Z',
-  },
-  {
-    id: '4',
-    serial_number: 'GPS-2024-004',
-    device_model: 'GPS-02',
-    vehicle_plate: 'LAG-1234AB',
-    status: 'maintenance',
-    is_linked: true,
-    last_ping: '2024-01-19T16:45:00Z',
-    activated_at: '2024-01-17T08:00:00Z',
-  },
-];
-
 export const DeviceActivation = () => {
-  const [devices, setDevices] = useState<Device[]>(mockDevices);
-  const [isActivating, setIsActivating] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    device: Device | null;
-    action: 'activate' | 'deactivate';
-  }>({ open: false, device: null, action: 'activate' });
-  const [adminPin, setAdminPin] = useState('');
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<{ open: boolean; device: Device | null; action: 'activate' | 'deactivate' }>({ open: false, device: null, action: 'activate' });
 
-  const activeCount = devices.filter((d) => d.status === 'active').length;
-  const inactiveCount = devices.filter((d) => d.status === 'inactive').length;
-  const offlineCount = devices.filter((d) => d.status === 'offline').length;
-  const maintenanceCount = devices.filter((d) => d.status === 'maintenance').length;
-
-  const handleToggleStatus = (device: Device) => {
-    const newAction = device.status === 'active' ? 'deactivate' : 'activate';
-    setConfirmDialog({ open: true, device, action: newAction });
-  };
-
-  const confirmAction = async () => {
-    if (!confirmDialog.device) return;
-    if (adminPin !== '1234') {
-      toast.error('Invalid admin PIN');
-      return;
-    }
-
-    setIsActivating(confirmDialog.device.id);
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    const newStatus = confirmDialog.action === 'activate' ? 'active' : 'inactive';
-    setDevices(
-      devices.map((d) =>
-        d.id === confirmDialog.device!.id
-          ? {
-              ...d,
-              status: newStatus,
-              activated_at: newStatus === 'active' ? new Date().toISOString() : d.activated_at,
-            }
-          : d
-      )
-    );
-
-    toast.success(
-      `Device ${confirmDialog.device.serial_number} ${confirmDialog.action}d successfully`
-    );
-
-    setIsActivating(null);
-    setConfirmDialog({ open: false, device: null, action: 'activate' });
-    setAdminPin('');
-  };
-
-  const handlePingDevice = async (device: Device) => {
-    toast.info(`Pinging device ${device.serial_number}...`);
-    
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    if (device.status === 'offline') {
-      toast.error(`Device ${device.serial_number} is not responding`);
-    } else {
-      setDevices(
-        devices.map((d) =>
-          d.id === device.id ? { ...d, last_ping: new Date().toISOString() } : d
-        )
-      );
-      toast.success(`Device ${device.serial_number} responded successfully`);
+  const load = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('iot-admin', { body: { action: 'list_devices' } });
+      if (error) throw error;
+      setDevices((data as any).devices || []);
+    } catch (err: any) {
+      toast.error('Failed to load devices', { description: err.message });
+    } finally {
+      setLoading(false);
     }
   };
+  useEffect(() => { load(); }, []);
 
-  const getStatusIcon = (status: Device['status']) => {
-    switch (status) {
-      case 'active':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'inactive':
-        return <XCircle className="h-4 w-4 text-gray-400" />;
-      case 'offline':
-        return <Wifi className="h-4 w-4 text-red-500" />;
-      case 'maintenance':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-    }
-  };
+  const active = devices.filter(d => d.status === 'active').length;
+  const inactive = devices.filter(d => d.status === 'inactive').length;
+  const offline = devices.filter(d => d.status === 'offline').length;
 
-  const getStatusBadge = (status: Device['status']) => {
-    const variants: Record<Device['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
-      active: 'default',
-      inactive: 'secondary',
-      offline: 'destructive',
-      maintenance: 'outline',
-    };
-    return (
-      <Badge variant={variants[status]} className="flex items-center gap-1">
-        {getStatusIcon(status)}
-        {status}
-      </Badge>
-    );
-  };
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleString();
+  const runToggle = async () => {
+    if (!confirm.device) return;
+    setWorking(confirm.device.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('iot-admin', {
+        body: {
+          action: confirm.action === 'activate' ? 'activate_pair' : 'suspend_pair',
+          device_id: confirm.device.id,
+        },
+      });
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
+      toast.success(`Device ${confirm.action === 'activate' ? 'activated for live telemetry' : 'suspended'}`, {
+        description: confirm.action === 'activate'
+          ? 'The eSIM is live on Hologram. Link it to a vehicle to see it on the map.'
+          : 'The eSIM has been paused.',
+      });
+      setConfirm({ open: false, device: null, action: 'activate' });
+      load();
+    } catch (err: any) {
+      toast.error('Action failed', { description: err.message });
+    } finally { setWorking(null); }
   };
 
   return (
     <div className="space-y-6">
-      {/* Status Summary */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="border-l-4 border-l-green-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Power className="h-4 w-4" />
-              Active
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{activeCount}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-gray-400">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <PowerOff className="h-4 w-4" />
-              Inactive
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-500">{inactiveCount}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-red-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Wifi className="h-4 w-4" />
-              Offline
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{offlineCount}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-yellow-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              Maintenance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{maintenanceCount}</div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Active</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-600">{active}</div></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><XCircle className="h-4 w-4 text-gray-400" /> Inactive</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-gray-500">{inactive}</div></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Wifi className="h-4 w-4 text-red-500" /> Offline</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600">{offline}</div></CardContent></Card>
       </div>
 
-      {/* Safety Notice */}
       <Alert>
         <Shield className="h-4 w-4" />
-        <AlertTitle>Safety Protocol Active</AlertTitle>
+        <AlertTitle>Activation goes live</AlertTitle>
         <AlertDescription>
-          Device activation/deactivation requires admin PIN verification. Remote vehicle controls follow safety guidelines: deactivation only when vehicle is stationary (&lt;2 mph).
+          Activating a device tells Hologram to bring the eSIM to <strong>live</strong> state and marks the device ready for physical installation. Telemetry starts flowing to MQTT / Traccar as soon as the device powers on.
         </AlertDescription>
       </Alert>
 
-      {/* Devices Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Device Activation Control</CardTitle>
-          <CardDescription>
-            Activate or deactivate IoT tracking devices
-          </CardDescription>
+          <CardTitle>Device activation control</CardTitle>
+          <CardDescription>Only devices with a SIM linked can be activated.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Device</TableHead>
-                  <TableHead>Vehicle</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Ping</TableHead>
-                  <TableHead>Activated At</TableHead>
-                  <TableHead>Toggle</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {devices.map((device) => (
-                  <TableRow key={device.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{device.serial_number}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {device.device_model}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {device.vehicle_plate ? (
-                        <Badge variant="outline">{device.vehicle_plate}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">Not linked</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(device.status)}</TableCell>
-                    <TableCell className="text-sm">
-                      {formatDate(device.last_ping)}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {formatDate(device.activated_at)}
-                    </TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={device.status === 'active'}
-                        onCheckedChange={() => handleToggleStatus(device)}
-                        disabled={
-                          isActivating === device.id ||
-                          device.status === 'maintenance' ||
-                          !device.is_linked
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handlePingDevice(device)}
-                        disabled={device.status === 'inactive'}
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+          {loading ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Device</TableHead>
+                    <TableHead>IMEI</TableHead>
+                    <TableHead>SIM</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Activated</TableHead>
+                    <TableHead>Last ping</TableHead>
+                    <TableHead>Live</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {devices.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No devices to activate.</TableCell></TableRow>
+                  ) : devices.map(d => {
+                    const hasSim = !!d.sim_provider;
+                    return (
+                      <TableRow key={d.id}>
+                        <TableCell><div className="font-medium">{d.serial_number}</div><div className="text-xs text-muted-foreground">{d.device_model}</div></TableCell>
+                        <TableCell className="font-mono text-xs">{d.imei}</TableCell>
+                        <TableCell>{hasSim ? <Badge>{d.sim_provider}</Badge> : <Badge variant="secondary">no SIM</Badge>}</TableCell>
+                        <TableCell><Badge variant={d.status === 'active' ? 'default' : 'secondary'}>{d.status}</Badge></TableCell>
+                        <TableCell className="text-xs">{d.activated_at ? new Date(d.activated_at).toLocaleString() : '—'}</TableCell>
+                        <TableCell className="text-xs">{d.last_ping ? new Date(d.last_ping).toLocaleString() : '—'}</TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={d.status === 'active'}
+                            disabled={!hasSim || working === d.id}
+                            onCheckedChange={() => setConfirm({
+                              open: true, device: d,
+                              action: d.status === 'active' ? 'deactivate' : 'activate',
+                            })}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Confirmation Dialog */}
-      <Dialog
-        open={confirmDialog.open}
-        onOpenChange={(open) => {
-          if (!open) {
-            setConfirmDialog({ open: false, device: null, action: 'activate' });
-            setAdminPin('');
-          }
-        }}
-      >
+      <Dialog open={confirm.open} onOpenChange={o => !o && setConfirm({ open: false, device: null, action: 'activate' })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {confirmDialog.action === 'activate' ? 'Activate' : 'Deactivate'} Device
-            </DialogTitle>
+            <DialogTitle>{confirm.action === 'activate' ? 'Activate telemetry?' : 'Suspend telemetry?'}</DialogTitle>
             <DialogDescription>
-              You are about to {confirmDialog.action} device{' '}
-              <strong>{confirmDialog.device?.serial_number}</strong>
-              {confirmDialog.device?.vehicle_plate && (
-                <> linked to vehicle <strong>{confirmDialog.device.vehicle_plate}</strong></>
-              )}
+              {confirm.action === 'activate'
+                ? <>This will activate the eSIM on Hologram and mark the paired device <strong>ready for install</strong>. Once mounted on the vehicle, it will report live to the map.</>
+                : <>This suspends the eSIM on Hologram and marks the device inactive. Telemetry will stop.</>}
             </DialogDescription>
           </DialogHeader>
-
-          {confirmDialog.action === 'deactivate' && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                Deactivating this device will stop all tracking and remote control capabilities for the associated vehicle.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="pin">Admin PIN</Label>
-              <Input
-                id="pin"
-                type="password"
-                placeholder="Enter admin PIN"
-                value={adminPin}
-                onChange={(e) => setAdminPin(e.target.value)}
-                maxLength={4}
-              />
-              <p className="text-xs text-muted-foreground">
-                For demo purposes, use PIN: 1234
-              </p>
-            </div>
-          </div>
-
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setConfirmDialog({ open: false, device: null, action: 'activate' });
-                setAdminPin('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant={confirmDialog.action === 'deactivate' ? 'destructive' : 'default'}
-              onClick={confirmAction}
-              disabled={!adminPin || isActivating === confirmDialog.device?.id}
-            >
-              {isActivating === confirmDialog.device?.id ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                `Confirm ${confirmDialog.action === 'activate' ? 'Activation' : 'Deactivation'}`
-              )}
+            <Button variant="outline" onClick={() => setConfirm({ open: false, device: null, action: 'activate' })}>Cancel</Button>
+            <Button variant={confirm.action === 'deactivate' ? 'destructive' : 'default'} onClick={runToggle} disabled={!!working}>
+              {working ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Power className="h-4 w-4 mr-1" />}
+              {confirm.action === 'activate' ? 'Activate' : 'Suspend'}
             </Button>
           </DialogFooter>
         </DialogContent>
