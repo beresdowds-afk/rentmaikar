@@ -2565,6 +2565,42 @@ export type Database = {
           },
         ]
       }
+      permission_denied_log: {
+        Row: {
+          attempted_at: string
+          attempted_fields: string[]
+          attempted_values: Json | null
+          id: string
+          reason: string
+          session_role: string | null
+          target_row_id: string | null
+          target_table: string
+          user_id: string | null
+        }
+        Insert: {
+          attempted_at?: string
+          attempted_fields?: string[]
+          attempted_values?: Json | null
+          id?: string
+          reason: string
+          session_role?: string | null
+          target_row_id?: string | null
+          target_table: string
+          user_id?: string | null
+        }
+        Update: {
+          attempted_at?: string
+          attempted_fields?: string[]
+          attempted_values?: Json | null
+          id?: string
+          reason?: string
+          session_role?: string | null
+          target_row_id?: string | null
+          target_table?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       persona_inquiries: {
         Row: {
           created_at: string
@@ -6803,6 +6839,16 @@ export type Database = {
           _target_table?: string
         }
         Returns: string
+      }
+      log_permission_denied: {
+        Args: {
+          _fields?: string[]
+          _reason: string
+          _table: string
+          _target_id: string
+          _values?: Json
+        }
+        Returns: undefined
       }
       no_pending_application_for_email: {
         Args: { _email: string }
