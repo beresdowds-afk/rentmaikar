@@ -1,153 +1,148 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Link, Unlink, Car, Cpu, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Link as LinkIcon, Unlink, Car, Loader2, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Device {
   id: string;
   serial_number: string;
-  device_model: string;
+  imei: string;
+  device_model: string | null;
   status: string;
+  is_linked: boolean;
   vehicle_id: string | null;
 }
-
-interface Vehicle {
-  id: string;
-  license_plate: string;
-  make: string;
-  model: string;
-  year: number;
-  owner_name: string;
-  has_device: boolean;
-}
-
-// Mock data
-const mockDevices: Device[] = [
-  { id: '1', serial_number: 'GPS-2024-001', device_model: 'GPS-01 Pro', status: 'active', vehicle_id: 'v1' },
-  { id: '2', serial_number: 'GPS-2024-002', device_model: 'GPS-01', status: 'inactive', vehicle_id: null },
-  { id: '3', serial_number: 'GPS-2024-003', device_model: 'GPS-01 Pro', status: 'active', vehicle_id: 'v2' },
-  { id: '4', serial_number: 'GPS-2024-004', device_model: 'GPS-02', status: 'inactive', vehicle_id: null },
-];
-
-const mockVehicles: Vehicle[] = [
-  { id: 'v1', license_plate: 'ABC-1234', make: 'Toyota', model: 'Camry', year: 2022, owner_name: 'John Doe', has_device: true },
-  { id: 'v2', license_plate: 'XYZ-5678', make: 'Honda', model: 'Accord', year: 2023, owner_name: 'Jane Smith', has_device: true },
-  { id: 'v3', license_plate: 'DEF-9012', make: 'Ford', model: 'Fusion', year: 2021, owner_name: 'Bob Johnson', has_device: false },
-  { id: 'v4', license_plate: 'LAG-1234AB', make: 'Toyota', model: 'Corolla', year: 2020, owner_name: 'Chidi Okonkwo', has_device: false },
-];
+interface Sim { id: string; iccid: string; msisdn: string | null; status: string; device_id: string | null; }
+interface Vehicle { id: string; license_plate: string | null; make: string | null; model: string | null; year: number | null; owner_id: string | null; }
 
 export const DeviceLinking = () => {
-  const [devices, setDevices] = useState<Device[]>(mockDevices);
-  const [vehicles] = useState<Vehicle[]>(mockVehicles);
-  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-  const [selectedVehicle, setSelectedVehicle] = useState<string>('');
-  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
-  const [isUnlinkDialogOpen, setIsUnlinkDialogOpen] = useState(false);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [sims, setSims] = useState<Sim[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const unlinkedDevices = devices.filter((d) => !d.vehicle_id);
-  const linkedDevices = devices.filter((d) => d.vehicle_id);
-  const availableVehicles = vehicles.filter((v) => !v.has_device);
+  // Link SIM dialog
+  const [linkSimFor, setLinkSimFor] = useState<Device | null>(null);
+  const [pickedSim, setPickedSim] = useState<string>('');
+  const [imeiConfirm, setImeiConfirm] = useState<string>('');
+  const [linking, setLinking] = useState(false);
 
-  const getVehicleInfo = (vehicleId: string) => {
-    return vehicles.find((v) => v.id === vehicleId);
+  // Link vehicle dialog
+  const [linkVehicleFor, setLinkVehicleFor] = useState<Device | null>(null);
+  const [pickedVehicle, setPickedVehicle] = useState<string>('');
+  const [vehLinking, setVehLinking] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [devRes, simRes, vehRes] = await Promise.all([
+        supabase.functions.invoke('iot-admin', { body: { action: 'list_devices' } }),
+        supabase.functions.invoke('iot-admin', { body: { action: 'list_available_sims' } }),
+        supabase.from('vehicles').select('id, license_plate, make, model, year, owner_id').order('created_at', { ascending: false }),
+      ]);
+      if (devRes.error) throw devRes.error;
+      if (simRes.error) throw simRes.error;
+      if (vehRes.error) throw vehRes.error;
+      setDevices((devRes.data as any).devices || []);
+      setSims((simRes.data as any).sims || []);
+      setVehicles((vehRes.data as Vehicle[]) || []);
+    } catch (err: any) {
+      toast.error('Failed to load', { description: err.message });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleLink = () => {
-    if (!selectedDevice || !selectedVehicle) {
-      toast.error('Please select both a device and a vehicle');
+  useEffect(() => { load(); }, []);
+
+  const simsByDevice = useMemo(() => {
+    // sims returned by list_available_sims are unlinked; we still show device→sim relationship from device.sim_provider etc.
+    return new Map<string, Sim>();
+  }, [sims]);
+
+  const availableSims = sims;
+  const vehiclesWithDevice = new Set(devices.filter(d => d.vehicle_id).map(d => d.vehicle_id));
+  const availableVehicles = vehicles.filter(v => !vehiclesWithDevice.has(v.id));
+
+  const openLinkSim = (d: Device) => {
+    setLinkSimFor(d);
+    setPickedSim('');
+    setImeiConfirm('');
+  };
+
+  const submitLinkSim = async () => {
+    if (!linkSimFor || !pickedSim) return;
+    if (imeiConfirm.trim() !== linkSimFor.imei) {
+      toast.error('IMEI does not match — type it exactly to confirm.');
       return;
     }
-
-    setDevices(
-      devices.map((d) =>
-        d.id === selectedDevice.id ? { ...d, vehicle_id: selectedVehicle } : d
-      )
-    );
-
-    toast.success(
-      `Device ${selectedDevice.serial_number} linked to vehicle successfully`
-    );
-    setIsLinkDialogOpen(false);
-    setSelectedDevice(null);
-    setSelectedVehicle('');
+    setLinking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('iot-admin', {
+        body: { action: 'link_sim_to_device', device_imei: linkSimFor.imei, sim_id: pickedSim },
+      });
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
+      toast.success('SIM linked to device', { description: 'You can now activate the pair.' });
+      setLinkSimFor(null);
+      load();
+    } catch (err: any) {
+      toast.error('Link failed', { description: err.message });
+    } finally { setLinking(false); }
   };
 
-  const handleUnlink = () => {
-    if (!selectedDevice) return;
-
-    setDevices(
-      devices.map((d) =>
-        d.id === selectedDevice.id ? { ...d, vehicle_id: null } : d
-      )
-    );
-
-    toast.success(`Device ${selectedDevice.serial_number} unlinked from vehicle`);
-    setIsUnlinkDialogOpen(false);
-    setSelectedDevice(null);
+  const submitLinkVehicle = async () => {
+    if (!linkVehicleFor || !pickedVehicle) return;
+    setVehLinking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('iot-admin', {
+        body: { action: 'link_to_vehicle', device_id: linkVehicleFor.id, vehicle_id: pickedVehicle },
+      });
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
+      toast.success('Device linked to vehicle', { description: 'It will appear on the live tracking map once telemetry arrives.' });
+      setLinkVehicleFor(null); setPickedVehicle('');
+      load();
+    } catch (err: any) {
+      toast.error('Link failed', { description: err.message });
+    } finally { setVehLinking(false); }
   };
 
-  const openLinkDialog = (device: Device) => {
-    setSelectedDevice(device);
-    setIsLinkDialogOpen(true);
+  const unlinkVehicle = async (d: Device) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('iot-admin', {
+        body: { action: 'unlink_from_vehicle', device_id: d.id },
+      });
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
+      toast.success('Device unlinked from vehicle');
+      load();
+    } catch (err: any) {
+      toast.error('Unlink failed', { description: err.message });
+    }
   };
 
-  const openUnlinkDialog = (device: Device) => {
-    setSelectedDevice(device);
-    setIsUnlinkDialogOpen(true);
-  };
+  if (loading) return <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>;
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Linked Devices</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{linkedDevices.length}</div>
-            <p className="text-xs text-muted-foreground">Devices paired with vehicles</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unlinked Devices</CardTitle>
-            <Cpu className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{unlinkedDevices.length}</div>
-            <p className="text-xs text-muted-foreground">Ready to be assigned</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vehicles Without Device</CardTitle>
-            <Car className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{availableVehicles.length}</div>
-            <p className="text-xs text-muted-foreground">Awaiting device installation</p>
-          </CardContent>
-        </Card>
-      </div>
+      <Alert>
+        <MapPin className="h-4 w-4" />
+        <AlertDescription>
+          <strong>Workflow:</strong> Register device → link eSIM by IMEI → activate the pair → link to vehicle. Only then will it appear live on maps.
+        </AlertDescription>
+      </Alert>
 
-      {/* Linked Devices Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Link className="h-5 w-5" />
-            Linked Devices
-          </CardTitle>
-          <CardDescription>
-            Devices currently paired with vehicles in the fleet
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2"><LinkIcon className="h-5 w-5" /> Devices & their SIM / Vehicle</CardTitle>
+          <CardDescription>Pair a SIM to each device using its IMEI, then attach the device to a vehicle.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -155,191 +150,112 @@ export const DeviceLinking = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Device</TableHead>
+                  <TableHead>IMEI</TableHead>
+                  <TableHead>SIM</TableHead>
                   <TableHead>Vehicle</TableHead>
-                  <TableHead>Owner</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {linkedDevices.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      No linked devices
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  linkedDevices.map((device) => {
-                    const vehicle = getVehicleInfo(device.vehicle_id!);
-                    return (
-                      <TableRow key={device.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{device.serial_number}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {device.device_model}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {vehicle ? (
-                            <div>
-                              <div className="font-medium">{vehicle.license_plate}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {vehicle.year} {vehicle.make} {vehicle.model}
-                              </div>
-                            </div>
-                          ) : (
-                            '-'
-                          )}
-                        </TableCell>
-                        <TableCell>{vehicle?.owner_name || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant={device.status === 'active' ? 'default' : 'secondary'}>
-                            {device.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openUnlinkDialog(device)}
-                          >
-                            <Unlink className="mr-2 h-4 w-4" />
-                            Unlink
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Unlinked Devices Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Cpu className="h-5 w-5" />
-            Unlinked Devices
-          </CardTitle>
-          <CardDescription>
-            Devices available for pairing with vehicles
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Serial Number</TableHead>
-                  <TableHead>Model</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {unlinkedDevices.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
-                      All devices are linked
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  unlinkedDevices.map((device) => (
-                    <TableRow key={device.id}>
-                      <TableCell className="font-medium">{device.serial_number}</TableCell>
-                      <TableCell>{device.device_model}</TableCell>
+                {devices.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Register devices in the Device Registry tab first.</TableCell></TableRow>
+                ) : devices.map(d => {
+                  const vehicle = vehicles.find(v => v.id === d.vehicle_id);
+                  return (
+                    <TableRow key={d.id}>
+                      <TableCell><div className="font-medium">{d.serial_number}</div><div className="text-xs text-muted-foreground">{d.device_model}</div></TableCell>
+                      <TableCell className="font-mono text-xs">{d.imei}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{device.status}</Badge>
+                        <Badge variant={d.is_linked ? 'default' : 'secondary'}>
+                          {/* Whether SIM is linked is denormalized on device.sim_provider */}
+                          {(d as any).sim_provider ? 'SIM linked' : 'No SIM'}
+                        </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => openLinkDialog(device)}
-                          disabled={availableVehicles.length === 0}
-                        >
-                          <Link className="mr-2 h-4 w-4" />
-                          Link to Vehicle
+                      <TableCell>
+                        {vehicle
+                          ? <div><div className="font-medium">{vehicle.license_plate}</div><div className="text-xs text-muted-foreground">{vehicle.year} {vehicle.make} {vehicle.model}</div></div>
+                          : <span className="text-muted-foreground text-sm">—</span>}
+                      </TableCell>
+                      <TableCell><Badge variant={d.status === 'active' ? 'default' : 'secondary'}>{d.status}</Badge></TableCell>
+                      <TableCell className="text-right space-x-2 whitespace-nowrap">
+                        <Button size="sm" variant="outline" onClick={() => openLinkSim(d)} disabled={!!(d as any).sim_provider}>
+                          <LinkIcon className="h-4 w-4 mr-1" /> Link SIM
                         </Button>
+                        {d.vehicle_id
+                          ? <Button size="sm" variant="outline" onClick={() => unlinkVehicle(d)}><Unlink className="h-4 w-4 mr-1" /> Unlink vehicle</Button>
+                          : <Button size="sm" onClick={() => { setLinkVehicleFor(d); setPickedVehicle(''); }} disabled={d.status !== 'active'}>
+                              <Car className="h-4 w-4 mr-1" /> Link vehicle
+                            </Button>}
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
 
-      {/* Link Dialog */}
-      <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+      {/* Link SIM dialog */}
+      <Dialog open={!!linkSimFor} onOpenChange={o => !o && setLinkSimFor(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Link Device to Vehicle</DialogTitle>
+            <DialogTitle>Link eSIM to device by IMEI</DialogTitle>
             <DialogDescription>
-              Select a vehicle to pair with device {selectedDevice?.serial_number}
+              Device IMEI: <span className="font-mono">{linkSimFor?.imei}</span>. Type it again to confirm you're pairing the right hardware.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            {availableVehicles.length === 0 ? (
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  No vehicles available for linking. All vehicles already have devices installed.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <Select value={selectedVehicle} onValueChange={setSelectedVehicle}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a vehicle" />
-                </SelectTrigger>
+          <div className="space-y-3">
+            <div>
+              <Label>Available eSIM</Label>
+              <Select value={pickedSim} onValueChange={setPickedSim}>
+                <SelectTrigger><SelectValue placeholder={availableSims.length ? 'Choose SIM…' : 'No available SIMs — buy one first'} /></SelectTrigger>
                 <SelectContent>
-                  {availableVehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.license_plate} - {vehicle.year} {vehicle.make} {vehicle.model} ({vehicle.owner_name})
-                    </SelectItem>
+                  {availableSims.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.iccid} {s.msisdn ? `• ${s.msisdn}` : ''}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            )}
+            </div>
+            <div>
+              <Label>Confirm IMEI</Label>
+              <Input value={imeiConfirm} onChange={e => setImeiConfirm(e.target.value.replace(/\D/g, ''))} maxLength={15} placeholder="Retype the 15-digit IMEI" />
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsLinkDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleLink} disabled={!selectedVehicle}>
-              Link Device
+            <Button variant="outline" onClick={() => setLinkSimFor(null)}>Cancel</Button>
+            <Button onClick={submitLinkSim} disabled={linking || !pickedSim || imeiConfirm !== linkSimFor?.imei}>
+              {linking ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <LinkIcon className="h-4 w-4 mr-1" />} Link
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Unlink Dialog */}
-      <Dialog open={isUnlinkDialogOpen} onOpenChange={setIsUnlinkDialogOpen}>
+      {/* Link vehicle dialog */}
+      <Dialog open={!!linkVehicleFor} onOpenChange={o => !o && setLinkVehicleFor(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Unlink Device</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to unlink device {selectedDevice?.serial_number} from its vehicle?
-            </DialogDescription>
+            <DialogTitle>Link device to vehicle</DialogTitle>
+            <DialogDescription>Once linked and the device sends telemetry, the vehicle will appear on the live map.</DialogDescription>
           </DialogHeader>
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              This will remove the tracking capability from the associated vehicle. The device will need to be physically removed and can be reassigned later.
-            </AlertDescription>
-          </Alert>
+          <div>
+            <Label>Vehicle without a device</Label>
+            <Select value={pickedVehicle} onValueChange={setPickedVehicle}>
+              <SelectTrigger><SelectValue placeholder={availableVehicles.length ? 'Choose vehicle…' : 'All vehicles already have a device'} /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {availableVehicles.map(v => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.license_plate || v.id.slice(0, 8)} — {v.year} {v.make} {v.model}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsUnlinkDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleUnlink}>
-              Unlink Device
+            <Button variant="outline" onClick={() => setLinkVehicleFor(null)}>Cancel</Button>
+            <Button onClick={submitLinkVehicle} disabled={vehLinking || !pickedVehicle}>
+              {vehLinking ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Car className="h-4 w-4 mr-1" />} Link vehicle
             </Button>
           </DialogFooter>
         </DialogContent>
