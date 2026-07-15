@@ -26,6 +26,7 @@ interface UserWithRole {
   email: string | null;
   role: AppRole;
   created_at: string;
+  is_active: boolean;
 }
 
 interface AuditLogEntry {
