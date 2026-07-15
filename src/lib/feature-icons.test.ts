@@ -21,6 +21,7 @@ describe("feature-icons registry", () => {
         typeof Icon === "function" ||
         (typeof Icon === "object" && Icon !== null);
       expect(renderable, `Icon for "${key}" must be renderable`).toBe(true);
+    }
   });
 
   it("has no map entries outside the declared key set", () => {
