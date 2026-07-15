@@ -39,6 +39,7 @@ export function DriversOwnersManagement() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'all' | 'driver' | 'owner'>('all');
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   // Activation dialog
   const [actTarget, setActTarget] = useState<UserRow | null>(null);
@@ -51,6 +52,27 @@ export function DriversOwnersManagement() {
   const [linkType, setLinkType] = useState<string>('couple');
   const [linkNotes, setLinkNotes] = useState<string>('');
   const [linkLoading, setLinkLoading] = useState(false);
+
+  // Client-side gate. The edge function is the source of truth, but hiding the
+  // UI keeps unauthorized users from even seeing the controls.
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setAuthorized(false); return; }
+      const { data: roleRows } = await supabase
+        .from('user_roles').select('role').eq('user_id', user.id);
+      const roles = (roleRows || []).map((r: any) => r.role);
+      if (roles.includes('admin')) { setAuthorized(true); return; }
+      if (roles.includes('admin_assistant')) {
+        const { data: perm } = await supabase
+          .from('admin_assistant_permissions')
+          .select('can_manage_users').eq('user_id', user.id).maybeSingle();
+        setAuthorized(!!perm?.can_manage_users);
+        return;
+      }
+      setAuthorized(false);
+    })();
+  }, []);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -197,6 +219,17 @@ export function DriversOwnersManagement() {
 
   return (
     <>
+      {authorized === false && (
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle className="text-destructive">Access restricted</CardTitle>
+            <CardDescription>
+              Only admins or admin assistants with the “Manage users” permission can open this portal.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
+      {authorized !== false && (<>
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -309,10 +342,33 @@ export function DriversOwnersManagement() {
                 : `Reactivating ${actTarget?.full_name || actTarget?.email} restores their sign-in and dashboard. Any linked/couple accounts will also be reactivated.`}
             </DialogDescription>
           </DialogHeader>
-          {actTarget && actTarget.linked_user_ids.length > 0 && (
-            <div className="text-xs text-muted-foreground border rounded p-2">
-              <strong>Cascade will affect:</strong>{' '}
-              {actTarget.linked_user_ids.map(nameById).join(', ')}
+          {actTarget && (
+            <div className="border rounded-md p-3 space-y-2 bg-muted/30">
+              <div className="text-sm font-medium">
+                {actTarget.is_active ? 'Will be deactivated' : 'Will be activated'} ({1 + actTarget.linked_user_ids.length} account{actTarget.linked_user_ids.length ? 's' : ''}):
+              </div>
+              <ul className="text-sm space-y-1">
+                <li className="flex items-center gap-2">
+                  <Badge variant="outline">Primary</Badge>
+                  <span>{actTarget.full_name || actTarget.email}</span>
+                  <RoleBadge role={actTarget.role} />
+                </li>
+                {actTarget.linked_user_ids.map(uid => {
+                  const partner = rows.find(x => x.user_id === uid);
+                  return (
+                    <li key={uid} className="flex items-center gap-2">
+                      <Badge variant="secondary">Linked</Badge>
+                      <span>{nameById(uid)}</span>
+                      {partner && <RoleBadge role={partner.role} />}
+                    </li>
+                  );
+                })}
+              </ul>
+              {actTarget.linked_user_ids.length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Linked accounts stay in sync — the same status will apply on their dashboard.
+                </div>
+              )}
             </div>
           )}
           <div className="space-y-2">
@@ -396,6 +452,7 @@ export function DriversOwnersManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>)}
     </>
   );
 }
