@@ -47,10 +47,14 @@ export const DeviceRegistry = () => {
   const [hologramConfigured, setHologramConfigured] = useState<boolean | null>(null);
 
   const [buyOpen, setBuyOpen] = useState(false);
+  const [buySource, setBuySource] = useState<'hologram' | 'manual'>('hologram');
+  const [buyProvider, setBuyProvider] = useState('hologram');
   const [buyPlan, setBuyPlan] = useState<string>('128');
   const [buyNotes, setBuyNotes] = useState('');
   const [buyIccid, setBuyIccid] = useState('');
   const [buyMsisdn, setBuyMsisdn] = useState('');
+  const [buyImsi, setBuyImsi] = useState('');
+  const [buyPlanName, setBuyPlanName] = useState('');
   const [buying, setBuying] = useState(false);
 
   const [addOpen, setAddOpen] = useState(false);
