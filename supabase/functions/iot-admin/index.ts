@@ -1,17 +1,25 @@
 // Unified IoT admin edge function.
 // Actions (POST { action, ... }):
-//  - list_plans                              → Hologram plans (best-effort)
-//  - purchase_sim { plan_id?, notes? }       → provision a new eSIM (Hologram)
-//                                              and store row in iot_sim_cards as status='available'
-//  - list_available_sims                     → SIMs not linked to a device
-//  - list_devices                            → all iot_devices with joined sim/vehicle
+//  - list_plans
+//  - purchase_sim { plan_id?, notes? }
+//  - list_available_sims
+//  - list_devices
 //  - register_device { serial_number, imei, device_model, firmware_version?, notes? }
 //  - link_sim_to_device { device_imei, sim_id }
-//  - activate_pair { device_id }             → activates SIM on Hologram + marks device 'active'
+//  - activate_pair { device_id }
 //  - suspend_pair  { device_id }
-//  - link_to_vehicle   { device_id, vehicle_id }
+//  - readiness_check { device_id }               → verifies SIM is live on Hologram + device healthy
+//  - link_to_vehicle { device_id, vehicle_id, force? }
+//                                                 → requires readiness pass unless force=true; sets
+//                                                   installation_status='pending', telemetry_enabled=false
+//  - confirm_installation { device_id, notes? }  → marks installation_status='confirmed' and
+//                                                   enables telemetry_enabled=true so the device goes
+//                                                   live on maps and starts ingesting telemetry.
 //  - unlink_from_vehicle { device_id }
-//  - sync_sim { sim_id }                     → refresh state/usage from Hologram
+//  - deactivate_device { device_id, reason }     → pauses SIM on Hologram, unlinks vehicle, marks
+//                                                   device inactive, telemetry off. Full audit trail.
+//  - sync_sim { sim_id }
+//  - list_audit { limit? }                       → returns recent iot_audit_log rows
 //
 // Auth: caller must be admin (public.user_roles.role = 'admin').
 
@@ -48,6 +56,59 @@ async function requireAdmin(req: Request, admin: any) {
   return isAdmin ? userRes.user : null;
 }
 
+async function audit(
+  admin: any,
+  performedBy: string,
+  action: string,
+  fields: {
+    device_id?: string | null;
+    sim_id?: string | null;
+    vehicle_id?: string | null;
+    details?: Record<string, unknown>;
+  } = {},
+) {
+  try {
+    await admin.from("iot_audit_log").insert({
+      action,
+      performed_by: performedBy,
+      device_id: fields.device_id ?? null,
+      sim_id: fields.sim_id ?? null,
+      vehicle_id: fields.vehicle_id ?? null,
+      details: fields.details ?? {},
+    });
+  } catch (e) {
+    console.error("iot_audit_log insert failed", e);
+  }
+}
+
+// Assess device health from local telemetry state.
+// Healthy = last_ping within 15 minutes AND (battery null OR >= 20) AND signal null OR >= 20.
+function assessHealth(device: any): {
+  status: "healthy" | "degraded" | "offline" | "unknown";
+  reasons: string[];
+  last_ping_minutes_ago: number | null;
+} {
+  const reasons: string[] = [];
+  const last = device?.last_ping ? new Date(device.last_ping).getTime() : null;
+  const mins = last ? Math.round((Date.now() - last) / 60000) : null;
+  if (mins == null) reasons.push("Device has never reported a ping");
+  else if (mins > 60) reasons.push(`Last ping ${mins} min ago (>60m)`);
+  else if (mins > 15) reasons.push(`Last ping ${mins} min ago (>15m)`);
+
+  if (typeof device?.battery_level === "number" && device.battery_level < 20)
+    reasons.push(`Battery at ${device.battery_level}%`);
+  if (typeof device?.signal_strength === "number" && device.signal_strength < 20)
+    reasons.push(`Signal at ${device.signal_strength}%`);
+
+  let status: "healthy" | "degraded" | "offline" | "unknown" = "unknown";
+  if (mins == null) status = "unknown";
+  else if (mins > 60) status = "offline";
+  else if (reasons.length > 0) status = "degraded";
+  else status = "healthy";
+
+  return { status, reasons, last_ping_minutes_ago: mins };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -71,8 +132,6 @@ serve(async (req) => {
         if (!hologram.isConfigured()) {
           return json(200, { configured: false, plans: [] });
         }
-        // Hologram doesn't expose /plans in the public v1 the same way, so
-        // we surface a curated set. Admins can override via body.plan_id.
         const plans = [
           { id: 73, name: "Global Flexible 1 MB", monthly_mb: 1 },
           { id: 128, name: "Global Flexible 10 MB", monthly_mb: 10 },
@@ -85,11 +144,10 @@ serve(async (req) => {
         const planId = Number(body?.plan_id) || 128;
         const notes = body?.notes ? String(body.notes) : null;
 
-        // If Hologram is configured, provision a SIM from the pool.
         let providerSimId: string | null = null;
         let iccid = String(body?.iccid || "").trim();
         let msisdn: string | null = body?.msisdn ? String(body.msisdn) : null;
-        let providerState: string = "pending";
+        let providerState = "pending";
 
         if (hologram.isConfigured()) {
           const list = await hologram.listSims(1);
@@ -101,7 +159,6 @@ serve(async (req) => {
             providerState = String(sim.state || "pending");
           }
         }
-
         if (!iccid) iccid = `MOCK-${crypto.randomUUID().slice(0, 12)}`;
 
         const { data: inserted, error } = await admin
@@ -118,6 +175,11 @@ serve(async (req) => {
           .select()
           .single();
         if (error) return json(400, { error: error.message });
+
+        await audit(admin, user.id, "sim_purchased", {
+          sim_id: inserted.id,
+          details: { plan_id: planId, provider_sim_id: providerSimId, iccid, notes },
+        });
 
         return json(200, {
           success: true,
@@ -190,10 +252,16 @@ serve(async (req) => {
             status: "inactive",
             is_linked: false,
             provider: "traccar",
+            installation_status: "pending",
+            telemetry_enabled: false,
           })
           .select()
           .single();
         if (error) return json(400, { error: error.message });
+        await audit(admin, user.id, "device_registered", {
+          device_id: data.id,
+          details: { serial_number, imei, device_model, firmware_version },
+        });
         return json(200, { success: true, device: data });
       }
 
@@ -202,20 +270,18 @@ serve(async (req) => {
         if (!device_imei || !sim_id) {
           return json(400, { error: "device_imei and sim_id are required" });
         }
-        const { data: device, error: dErr } = await admin
+        const { data: device } = await admin
           .from("iot_devices")
           .select("*")
           .eq("imei", String(device_imei))
           .maybeSingle();
-        if (dErr) return json(400, { error: dErr.message });
         if (!device) return json(404, { error: "No device with that IMEI" });
 
-        const { data: sim, error: sErr } = await admin
+        const { data: sim } = await admin
           .from("iot_sim_cards")
           .select("*")
           .eq("id", sim_id)
           .maybeSingle();
-        if (sErr) return json(400, { error: sErr.message });
         if (!sim) return json(404, { error: "SIM not found" });
         if (sim.device_id && sim.device_id !== device.id) {
           return json(409, { error: "SIM is already linked to another device" });
@@ -225,145 +291,314 @@ serve(async (req) => {
           .from("iot_sim_cards")
           .update({ device_id: device.id })
           .eq("id", sim_id);
-
-        // Mirror SIM details onto the device row for quick display.
         await admin
           .from("iot_devices")
-          .update({
-            sim_number: sim.msisdn,
-            sim_provider: sim.provider,
-          })
+          .update({ sim_number: sim.msisdn, sim_provider: sim.provider })
           .eq("id", device.id);
 
+        await audit(admin, user.id, "sim_linked_to_device", {
+          device_id: device.id,
+          sim_id: sim.id,
+          details: { device_imei, iccid: sim.iccid },
+        });
         return json(200, { success: true });
       }
 
       case "activate_pair": {
         const { device_id } = body || {};
         if (!device_id) return json(400, { error: "device_id is required" });
-
         const { data: device } = await admin
-          .from("iot_devices")
-          .select("*")
-          .eq("id", device_id)
-          .maybeSingle();
+          .from("iot_devices").select("*").eq("id", device_id).maybeSingle();
         if (!device) return json(404, { error: "Device not found" });
-
         const { data: sim } = await admin
-          .from("iot_sim_cards")
-          .select("*")
-          .eq("device_id", device_id)
-          .maybeSingle();
-        if (!sim) {
-          return json(409, {
-            error: "Device has no SIM linked. Link a SIM by IMEI first.",
-          });
-        }
+          .from("iot_sim_cards").select("*").eq("device_id", device_id).maybeSingle();
+        if (!sim) return json(409, { error: "Device has no SIM linked. Link a SIM by IMEI first." });
 
-        // Activate on Hologram when configured.
         let providerResult: any = { skipped: true };
         if (hologram.isConfigured() && sim.provider_sim_id) {
           const planId = Number(sim.metadata?.plan_id) || 128;
           const r = await hologram.activateSim(sim.provider_sim_id, planId);
           providerResult = r;
           if (!r.ok) {
-            return json(502, {
-              error: "Hologram activation failed",
-              provider: r,
-            });
+            return json(502, { error: "Hologram activation failed", provider: r });
           }
         }
-
         const now = new Date().toISOString();
-        await admin
-          .from("iot_sim_cards")
-          .update({ status: "active", activated_at: now })
-          .eq("id", sim.id);
-        await admin
-          .from("iot_devices")
-          .update({ status: "active", activated_at: now })
-          .eq("id", device.id);
+        await admin.from("iot_sim_cards")
+          .update({ status: "active", activated_at: now }).eq("id", sim.id);
+        await admin.from("iot_devices")
+          .update({ status: "active", activated_at: now }).eq("id", device.id);
 
+        await audit(admin, user.id, "pair_activated", {
+          device_id: device.id, sim_id: sim.id,
+          details: { provider: providerResult },
+        });
         return json(200, { success: true, provider: providerResult });
       }
 
       case "suspend_pair": {
         const { device_id } = body || {};
         if (!device_id) return json(400, { error: "device_id is required" });
-
         const { data: sim } = await admin
-          .from("iot_sim_cards")
-          .select("*")
-          .eq("device_id", device_id)
-          .maybeSingle();
-        if (sim && hologram.isConfigured() && sim.provider_sim_id) {
+          .from("iot_sim_cards").select("*").eq("device_id", device_id).maybeSingle();
+        if (hologram.isConfigured() && sim?.provider_sim_id) {
           await hologram.suspendSim(sim.provider_sim_id);
         }
         const now = new Date().toISOString();
         if (sim) {
-          await admin
-            .from("iot_sim_cards")
-            .update({ status: "suspended", suspended_at: now })
-            .eq("id", sim.id);
+          await admin.from("iot_sim_cards")
+            .update({ status: "suspended", suspended_at: now }).eq("id", sim.id);
         }
-        await admin
-          .from("iot_devices")
-          .update({ status: "inactive" })
-          .eq("id", device_id);
+        await admin.from("iot_devices")
+          .update({ status: "inactive" }).eq("id", device_id);
+        await audit(admin, user.id, "pair_suspended", {
+          device_id, sim_id: sim?.id ?? null,
+        });
         return json(200, { success: true });
       }
 
+      case "readiness_check": {
+        const { device_id } = body || {};
+        if (!device_id) return json(400, { error: "device_id is required" });
+        const { data: device } = await admin
+          .from("iot_devices").select("*").eq("id", device_id).maybeSingle();
+        if (!device) return json(404, { error: "Device not found" });
+        const { data: sim } = await admin
+          .from("iot_sim_cards").select("*").eq("device_id", device_id).maybeSingle();
+
+        const checks: { name: string; ok: boolean; detail?: string }[] = [];
+        checks.push({
+          name: "SIM linked",
+          ok: !!sim,
+          detail: sim ? `ICCID ${sim.iccid}` : "No SIM linked to device",
+        });
+
+        // Verify SIM state on Hologram in real time.
+        let simState: string | null = sim?.status ?? null;
+        if (sim && hologram.isConfigured() && sim.provider_sim_id) {
+          const info = await hologram.getSim(sim.provider_sim_id);
+          if (info.ok) {
+            simState = String(info.body?.data?.state || sim.status);
+            checks.push({
+              name: "SIM live on Hologram",
+              ok: simState === "live" || simState === "active",
+              detail: `Hologram state: ${simState}`,
+            });
+          } else {
+            checks.push({
+              name: "SIM live on Hologram",
+              ok: false,
+              detail: `Hologram lookup failed (${(info as any).status ?? "n/a"})`,
+            });
+          }
+        } else if (sim) {
+          checks.push({
+            name: "SIM active (local status)",
+            ok: sim.status === "active",
+            detail: `Local status: ${sim.status}`,
+          });
+        }
+
+        const health = assessHealth(device);
+        checks.push({
+          name: "Device health",
+          ok: health.status === "healthy" || health.status === "degraded",
+          detail: health.reasons.length ? health.reasons.join("; ") : `${health.status}`,
+        });
+        checks.push({
+          name: "Device activated",
+          ok: device.status === "active",
+          detail: `status=${device.status}`,
+        });
+
+        // Persist assessment for the dashboard.
+        await admin.from("iot_devices").update({
+          health_status: health.status,
+          last_health_check_at: new Date().toISOString(),
+          health_details: { checks, sim_state: simState, ...health },
+        }).eq("id", device.id);
+
+        const ready = checks.every((c) => c.ok);
+        await audit(admin, user.id, "readiness_check", {
+          device_id, sim_id: sim?.id ?? null,
+          details: { ready, checks, sim_state: simState, health },
+        });
+
+        return json(200, { ready, checks, sim_state: simState, health });
+      }
+
       case "link_to_vehicle": {
-        const { device_id, vehicle_id } = body || {};
+        const { device_id, vehicle_id, force } = body || {};
         if (!device_id || !vehicle_id) {
           return json(400, { error: "device_id and vehicle_id are required" });
         }
-        // Vehicle can only host one device.
         const { data: existing } = await admin
-          .from("iot_devices")
-          .select("id")
-          .eq("vehicle_id", vehicle_id)
-          .neq("id", device_id)
-          .maybeSingle();
+          .from("iot_devices").select("id")
+          .eq("vehicle_id", vehicle_id).neq("id", device_id).maybeSingle();
         if (existing) {
           return json(409, {
             error: "This vehicle already has a linked tracking device.",
           });
         }
-        const { error } = await admin
-          .from("iot_devices")
-          .update({ vehicle_id, is_linked: true })
-          .eq("id", device_id);
+
+        // Enforce readiness unless explicitly forced.
+        if (!force) {
+          const { data: device } = await admin
+            .from("iot_devices").select("*").eq("id", device_id).maybeSingle();
+          const { data: sim } = await admin
+            .from("iot_sim_cards").select("*").eq("device_id", device_id).maybeSingle();
+          if (!sim) {
+            return json(412, {
+              error: "Cannot link to vehicle: no SIM is attached to this device.",
+            });
+          }
+          let simLive = sim.status === "active";
+          if (hologram.isConfigured() && sim.provider_sim_id) {
+            const info = await hologram.getSim(sim.provider_sim_id);
+            if (info.ok) {
+              const state = String(info.body?.data?.state || "");
+              simLive = state === "live" || state === "active";
+            }
+          }
+          if (!simLive) {
+            return json(412, {
+              error: "Cannot link to vehicle: SIM is not active on Hologram.",
+            });
+          }
+          const health = assessHealth(device);
+          if (health.status === "offline" || health.status === "unknown") {
+            return json(412, {
+              error:
+                "Cannot link to vehicle: device is not reporting healthy telemetry. Run a readiness check first.",
+              health,
+            });
+          }
+        }
+
+        const { error } = await admin.from("iot_devices").update({
+          vehicle_id,
+          is_linked: true,
+          installation_status: "pending",
+          telemetry_enabled: false,
+        }).eq("id", device_id);
         if (error) return json(400, { error: error.message });
-        await admin
-          .from("iot_sim_cards")
-          .update({ vehicle_id })
-          .eq("device_id", device_id);
-        return json(200, { success: true });
+        await admin.from("iot_sim_cards")
+          .update({ vehicle_id }).eq("device_id", device_id);
+
+        await audit(admin, user.id, "device_linked_to_vehicle", {
+          device_id, vehicle_id,
+          details: { forced: !!force, installation_status: "pending" },
+        });
+        return json(200, {
+          success: true,
+          installation_status: "pending",
+          message: "Device linked to vehicle. Mark installation confirmed once installed to enable live telemetry.",
+        });
+      }
+
+      case "confirm_installation": {
+        const { device_id, notes } = body || {};
+        if (!device_id) return json(400, { error: "device_id is required" });
+        const { data: device } = await admin
+          .from("iot_devices").select("*").eq("id", device_id).maybeSingle();
+        if (!device) return json(404, { error: "Device not found" });
+        if (!device.vehicle_id) {
+          return json(412, { error: "Device is not linked to a vehicle." });
+        }
+        const now = new Date().toISOString();
+        const { error } = await admin.from("iot_devices").update({
+          installation_status: "confirmed",
+          installation_confirmed_at: now,
+          installation_confirmed_by: user.id,
+          telemetry_enabled: true,
+        }).eq("id", device_id);
+        if (error) return json(400, { error: error.message });
+        await audit(admin, user.id, "installation_confirmed", {
+          device_id, vehicle_id: device.vehicle_id,
+          details: { notes: notes ?? null },
+        });
+        return json(200, {
+          success: true,
+          telemetry_enabled: true,
+          message: "Installation confirmed. Device is now live on the map and ingesting telemetry.",
+        });
       }
 
       case "unlink_from_vehicle": {
         const { device_id } = body || {};
         if (!device_id) return json(400, { error: "device_id is required" });
-        await admin
-          .from("iot_devices")
-          .update({ vehicle_id: null, is_linked: false })
-          .eq("id", device_id);
-        await admin
-          .from("iot_sim_cards")
-          .update({ vehicle_id: null })
-          .eq("device_id", device_id);
+        const { data: device } = await admin
+          .from("iot_devices").select("vehicle_id").eq("id", device_id).maybeSingle();
+        await admin.from("iot_devices").update({
+          vehicle_id: null,
+          is_linked: false,
+          installation_status: "pending",
+          installation_confirmed_at: null,
+          installation_confirmed_by: null,
+          telemetry_enabled: false,
+        }).eq("id", device_id);
+        await admin.from("iot_sim_cards")
+          .update({ vehicle_id: null }).eq("device_id", device_id);
+        await audit(admin, user.id, "device_unlinked_from_vehicle", {
+          device_id, vehicle_id: device?.vehicle_id ?? null,
+        });
         return json(200, { success: true });
+      }
+
+      case "deactivate_device": {
+        const { device_id, reason } = body || {};
+        if (!device_id) return json(400, { error: "device_id is required" });
+        if (!reason || String(reason).trim().length < 5) {
+          return json(400, { error: "A reason (≥ 5 chars) is required" });
+        }
+        const { data: device } = await admin
+          .from("iot_devices").select("*").eq("id", device_id).maybeSingle();
+        if (!device) return json(404, { error: "Device not found" });
+        const { data: sim } = await admin
+          .from("iot_sim_cards").select("*").eq("device_id", device_id).maybeSingle();
+
+        // 1) Suspend on Hologram
+        let hologramResult: any = { skipped: true };
+        if (sim && hologram.isConfigured() && sim.provider_sim_id) {
+          hologramResult = await hologram.suspendSim(sim.provider_sim_id);
+        }
+        const now = new Date().toISOString();
+        // 2) Update SIM
+        if (sim) {
+          await admin.from("iot_sim_cards").update({
+            status: "suspended",
+            suspended_at: now,
+            vehicle_id: null,
+          }).eq("id", sim.id);
+        }
+        // 3) Unlink vehicle + device off
+        const previousVehicle = device.vehicle_id;
+        await admin.from("iot_devices").update({
+          status: "inactive",
+          vehicle_id: null,
+          is_linked: false,
+          installation_status: "pending",
+          installation_confirmed_at: null,
+          installation_confirmed_by: null,
+          telemetry_enabled: false,
+        }).eq("id", device_id);
+
+        await audit(admin, user.id, "device_deactivated", {
+          device_id, sim_id: sim?.id ?? null, vehicle_id: previousVehicle,
+          details: { reason, hologram: hologramResult },
+        });
+        return json(200, {
+          success: true,
+          message: "Device deactivated. SIM paused on Hologram; vehicle unlinked.",
+          hologram: hologramResult,
+        });
       }
 
       case "sync_sim": {
         const { sim_id } = body || {};
         if (!sim_id) return json(400, { error: "sim_id is required" });
         const { data: sim } = await admin
-          .from("iot_sim_cards")
-          .select("*")
-          .eq("id", sim_id)
-          .maybeSingle();
+          .from("iot_sim_cards").select("*").eq("id", sim_id).maybeSingle();
         if (!sim) return json(404, { error: "SIM not found" });
         if (!hologram.isConfigured() || !sim.provider_sim_id) {
           return json(200, { skipped: true, reason: "not_configured" });
@@ -372,15 +607,23 @@ serve(async (req) => {
         const usage = await hologram.getSimUsage(sim.provider_sim_id);
         const state = info.ok ? (info.body?.data?.state as string) : null;
         const dataMb = usage.ok ? Number(usage.body?.data?.usage_mb || 0) : null;
-        await admin
-          .from("iot_sim_cards")
-          .update({
-            status: state || sim.status,
-            data_usage_mb: dataMb ?? sim.data_usage_mb,
-            last_session_at: new Date().toISOString(),
-          })
-          .eq("id", sim.id);
+        await admin.from("iot_sim_cards").update({
+          status: state || sim.status,
+          data_usage_mb: dataMb ?? sim.data_usage_mb,
+          last_session_at: new Date().toISOString(),
+        }).eq("id", sim.id);
         return json(200, { success: true, state, data_usage_mb: dataMb });
+      }
+
+      case "list_audit": {
+        const limit = Math.min(Number(body?.limit) || 100, 500);
+        const { data, error } = await admin
+          .from("iot_audit_log")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(limit);
+        if (error) return json(400, { error: error.message });
+        return json(200, { entries: data });
       }
 
       default:
