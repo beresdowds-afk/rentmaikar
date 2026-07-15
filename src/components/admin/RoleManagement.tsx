@@ -68,6 +68,8 @@ const actionLabels: Record<string, string> = {
   role_assigned: 'Role Assigned',
   role_changed: 'Role Changed',
   role_removed: 'Role Removed',
+  user_activated: 'User Activated',
+  user_deactivated: 'User Deactivated',
 };
 
 export function RoleManagement() {
