@@ -19,6 +19,7 @@ interface RegionConfig {
   phonePrefix: string;
   whatsappNumber: string;
   smsNumber: string;
+  supportEmail: string;
 }
 
 interface RegionContextType {
@@ -32,26 +33,35 @@ interface RegionContextType {
   phonePrefix: string;
   whatsappNumber: string;
   smsNumber: string;
+  supportEmail: string;
   getCurrencyIcon: (className?: string) => React.ReactNode;
   config: RegionConfig;
 }
 
+// Base config (currency + phone prefix only). Contact channels — WhatsApp, SMS,
+// and support email — are loaded from the admin-managed Regional Contact
+// Channels table (public.contact_settings). Empty strings here mean
+// "not yet loaded"; consumers should render conditionally.
 const regionConfig: Record<Country, RegionConfig> = {
   USA: {
     currency: "USD",
     currencySymbol: "$",
     phonePrefix: "+1",
-    whatsappNumber: "124078589931",
-    smsNumber: "124078589931",
+    whatsappNumber: "",
+    smsNumber: "",
+    supportEmail: "",
   },
   Nigeria: {
     currency: "NGN",
     currencySymbol: "₦",
     phonePrefix: "+234",
-    whatsappNumber: "12403930081",
-    smsNumber: "12403930081",
+    whatsappNumber: "",
+    smsNumber: "",
+    supportEmail: "",
   },
 };
+
+const stripPhone = (v: string) => (v || "").replace(/[^\d]/g, "");
 
 const NairaIcon = ({ className }: { className?: string }) => (
   <span className={className} aria-hidden>₦</span>
@@ -164,7 +174,55 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [country, regionMode]);
 
-  const config = regionConfig[country];
+  // Load region-specific WhatsApp / SMS / email from the admin-managed
+  // "Regional Contact Channels" table. Falls back to base regionConfig when
+  // no active row exists for a channel.
+  const [contactOverrides, setContactOverrides] = useState<
+    Record<Country, Partial<Pick<RegionConfig, "whatsappNumber" | "smsNumber" | "supportEmail">>>
+  >({ USA: {}, Nigeria: {} });
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("contact_settings")
+        .select("region, contact_type, contact_value, is_active")
+        .eq("is_active", true);
+      if (cancelled || error || !data) return;
+      const next: typeof contactOverrides = { USA: {}, Nigeria: {} };
+      for (const row of data as Array<{ region: string; contact_type: string; contact_value: string }>) {
+        const region = row.region === "Nigeria" ? "Nigeria" : "USA";
+        const value = row.contact_value?.trim() || "";
+        if (!value) continue;
+        if (row.contact_type === "whatsapp") next[region].whatsappNumber = stripPhone(value);
+        else if (row.contact_type === "sms") next[region].smsNumber = stripPhone(value);
+        else if (row.contact_type === "email") next[region].supportEmail = value;
+      }
+      setContactOverrides(next);
+    };
+    load();
+    const channel = supabase
+      .channel("contact_settings_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "contact_settings" },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const baseConfig = regionConfig[country];
+  const overrides = contactOverrides[country];
+  const config: RegionConfig = {
+    ...baseConfig,
+    whatsappNumber: overrides.whatsappNumber || baseConfig.whatsappNumber,
+    smsNumber: overrides.smsNumber || baseConfig.smsNumber,
+    supportEmail: overrides.supportEmail || baseConfig.supportEmail,
+  };
 
   const getCurrencyIcon = (className = "h-4 w-4") =>
     config.currency === "NGN" ? (

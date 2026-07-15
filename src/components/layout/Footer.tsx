@@ -4,7 +4,7 @@ import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRegion } from "@/contexts/RegionContext";
 import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
-import { EMAIL_CONFIG, COMPANY_INFO } from "@/lib/email-config";
+import { COMPANY_INFO } from "@/lib/email-config";
 import { openCookiePreferences } from "@/hooks/useCookieConsent";
 
 const FALLBACK_YEARS: Record<string, string> = {
@@ -15,7 +15,7 @@ const FALLBACK_YEARS: Record<string, string> = {
 
 const Footer = () => {
   const { userRole } = useAuth();
-  const { country } = useRegion();
+  const { country, supportEmail } = useRegion();
   const { getForCategory, formatRange, visible: yearsVisible } = useCategoryYearSpecs(country);
   const yearsFor = (key: "budget" | "standard" | "premium") => {
     if (!yearsVisible) return "";
@@ -149,12 +149,14 @@ const Footer = () => {
                   {companyInfo.phone}
                 </a>
               </li>
-              <li className="flex items-center gap-2">
-                <Mail className="w-4 h-4 shrink-0" />
-                <a href={`mailto:${EMAIL_CONFIG.support}`} className="hover:text-accent transition-colors">
-                  {EMAIL_CONFIG.support}
-                </a>
-              </li>
+              {supportEmail && (
+                <li className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 shrink-0" />
+                  <a href={`mailto:${supportEmail}`} className="hover:text-accent transition-colors">
+                    {supportEmail}
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
         </div>

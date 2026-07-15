@@ -12,7 +12,7 @@ import rentmaikarHeroBanner from "@/assets/rentmaikar-hero-banner.jpg";
 import heroCarsBg from "@/assets/hero-cars-bg.png";
 
 const HeroSection = () => {
-  const { whatsappNumber, smsNumber } = useRegion();
+  const { whatsappNumber, smsNumber, supportEmail } = useRegion();
   const { user, userRole, signOut, isLoading } = useAuth();
   const { userType } = useUserType();
   const navigate = useNavigate();
@@ -181,26 +181,40 @@ const HeroSection = () => {
           </p>
         </div>
 
-        {/* Contact Buttons */}
-        <div className="flex flex-row gap-3 justify-center w-full max-w-md">
-          <a
-            href={`https://wa.me/${whatsappNumber}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 max-w-[180px]"
-          >
-            <Button variant="whatsapp" size="sm" className="w-full gap-2">
-              <MessageCircle className="w-4 h-4" />
-              WhatsApp
-            </Button>
-          </a>
-          <a href={`sms:${smsNumber}`} className="flex-1 max-w-[180px]">
-            <Button variant="sms" size="sm" className="w-full gap-2">
-              <Phone className="w-4 h-4" />
-              Text us
-            </Button>
-          </a>
-        </div>
+        {/* Contact Buttons — sourced from admin Regional Contact Channels */}
+        {(whatsappNumber || smsNumber || supportEmail) && (
+          <div className="flex flex-row flex-wrap gap-3 justify-center w-full max-w-xl">
+            {whatsappNumber && (
+              <a
+                href={`https://wa.me/${whatsappNumber}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 min-w-[140px] max-w-[180px]"
+              >
+                <Button variant="whatsapp" size="sm" className="w-full gap-2">
+                  <MessageCircle className="w-4 h-4" />
+                  WhatsApp
+                </Button>
+              </a>
+            )}
+            {smsNumber && (
+              <a href={`sms:+${smsNumber}`} className="flex-1 min-w-[140px] max-w-[180px]">
+                <Button variant="sms" size="sm" className="w-full gap-2">
+                  <Phone className="w-4 h-4" />
+                  Text us
+                </Button>
+              </a>
+            )}
+            {supportEmail && (
+              <a href={`mailto:${supportEmail}`} className="flex-1 min-w-[140px] max-w-[180px]">
+                <Button variant="outline" size="sm" className="w-full gap-2">
+                  <Phone className="w-4 h-4" />
+                  Email us
+                </Button>
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Spacer so cars stay visible below the CTAs */}

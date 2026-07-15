@@ -141,15 +141,20 @@ serve(async (req) => {
       }
 
       case "purchase_sim": {
+        const source = String(body?.source || "hologram") === "manual" ? "manual" : "hologram";
+        const providerInput = body?.provider ? String(body.provider).trim().toLowerCase() : "";
+        const provider = source === "manual" ? (providerInput || "manual") : "hologram";
         const planId = Number(body?.plan_id) || 128;
         const notes = body?.notes ? String(body.notes) : null;
 
         let providerSimId: string | null = null;
         let iccid = String(body?.iccid || "").trim();
-        let msisdn: string | null = body?.msisdn ? String(body.msisdn) : null;
-        let providerState = "pending";
+        let msisdn: string | null = body?.msisdn ? String(body.msisdn).trim() : null;
+        const imsi: string | null = body?.imsi ? String(body.imsi).trim() : null;
+        const planNameInput: string | null = body?.plan_name ? String(body.plan_name).trim() : null;
+        let providerState = source === "manual" ? "manual" : "pending";
 
-        if (hologram.isConfigured()) {
+        if (source === "hologram" && hologram.isConfigured()) {
           const list = await hologram.listSims(1);
           if (list.ok && list.body?.data?.length > 0) {
             const sim = list.body.data[0];
@@ -159,32 +164,57 @@ serve(async (req) => {
             providerState = String(sim.state || "pending");
           }
         }
+
+        if (source === "manual" && !iccid) {
+          return json(400, { error: "ICCID is required when adding a SIM manually" });
+        }
         if (!iccid) iccid = `MOCK-${crypto.randomUUID().slice(0, 12)}`;
+
+        // Prevent duplicate ICCID (also enforced by unique index at the DB level).
+        const { data: existing } = await admin
+          .from("iot_sim_cards")
+          .select("id")
+          .eq("iccid", iccid)
+          .maybeSingle();
+        if (existing) {
+          return json(409, { error: "A SIM with this ICCID already exists in the registry" });
+        }
+
+        const planName = planNameInput || (source === "hologram" ? `Plan #${planId}` : null);
+
+        const insertPayload: Record<string, unknown> = {
+          iccid,
+          msisdn,
+          imsi,
+          provider,
+          provider_sim_id: providerSimId,
+          status: "available",
+          plan_name: planName,
+          metadata: {
+            source,
+            plan_id: source === "hologram" ? planId : null,
+            notes,
+            provider_state: providerState,
+          },
+        };
 
         const { data: inserted, error } = await admin
           .from("iot_sim_cards")
-          .insert({
-            iccid,
-            msisdn,
-            provider: "hologram",
-            provider_sim_id: providerSimId,
-            status: "available",
-            plan_name: `Plan #${planId}`,
-            metadata: { plan_id: planId, notes, provider_state: providerState },
-          })
+          .insert(insertPayload)
           .select()
           .single();
         if (error) return json(400, { error: error.message });
 
-        await audit(admin, user.id, "sim_purchased", {
+        await audit(admin, user.id, source === "manual" ? "sim_added_manually" : "sim_purchased", {
           sim_id: inserted.id,
-          details: { plan_id: planId, provider_sim_id: providerSimId, iccid, notes },
+          details: { source, provider, plan_id: planId, provider_sim_id: providerSimId, iccid, notes },
         });
 
         return json(200, {
           success: true,
           sim: inserted,
           hologram_configured: hologram.isConfigured(),
+          source,
         });
       }
 
