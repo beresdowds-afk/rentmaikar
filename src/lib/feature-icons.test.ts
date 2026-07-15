@@ -16,12 +16,11 @@ describe("feature-icons registry", () => {
     for (const key of FEATURE_ICON_KEYS) {
       const Icon = FEATURE_ICON_MAP[key];
       expect(Icon, `Missing icon for FeatureIconKey "${key}"`).toBeDefined();
-      expect(typeof Icon, `Icon for "${key}" must be a component`).toBe(
-        "object" in (Icon as object) || typeof Icon === "function"
-          ? typeof Icon
-          : "function",
-      );
-    }
+      // lucide-react icons are forwardRef objects, i.e. callable/renderable.
+      const renderable =
+        typeof Icon === "function" ||
+        (typeof Icon === "object" && Icon !== null);
+      expect(renderable, `Icon for "${key}" must be renderable`).toBe(true);
   });
 
   it("has no map entries outside the declared key set", () => {
