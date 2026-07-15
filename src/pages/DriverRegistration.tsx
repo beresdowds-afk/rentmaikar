@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import PricingHintBanner from "@/components/home/PricingHintBanner";
 import { supabase } from "@/integrations/supabase/client";
 
 const driverSchema = z.object({
@@ -155,7 +156,8 @@ const DriverRegistration = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-24 pb-16">
+      <PricingHintBanner />
+      <main className="pt-8 pb-16">
         <div className="container mx-auto px-4 max-w-2xl">
           <Button
             variant="ghost"
