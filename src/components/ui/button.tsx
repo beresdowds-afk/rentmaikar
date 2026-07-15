@@ -29,9 +29,9 @@ const buttonVariants = cva(
         heroCTAGreen:
           "bg-[hsl(142_72%_38%)] text-white shadow-lg hover:bg-[hsl(142_72%_32%)] active:scale-[0.98] font-bold border-0",
         whatsapp:
-          "bg-[hsl(142_70%_45%)] text-white shadow-md hover:bg-[hsl(142_70%_40%)] hover:shadow-lg",
+          "bg-[hsl(142_70%_45%)] text-white shadow-md hover:bg-[hsl(142_70%_38%)] hover:shadow-lg active:bg-[hsl(142_70%_32%)] active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-[hsl(142_70%_45%)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         sms:
-          "bg-primary text-primary-foreground shadow-md hover:bg-primary/90 hover:shadow-lg",
+          "bg-primary text-primary-foreground shadow-md hover:bg-primary/90 hover:shadow-lg active:bg-primary/80 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         category:
           "bg-card text-card-foreground shadow-card hover:shadow-card-hover hover:-translate-y-1 border border-border",
       },
