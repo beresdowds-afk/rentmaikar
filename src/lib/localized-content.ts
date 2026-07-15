@@ -150,28 +150,36 @@ const usaFeaturesContent: FeaturesContent = {
   sectionDescription: "We've eliminated the friction so you can focus on what matters: maximizing your earnings.",
   features: [
     {
-      title: "Verified & Rideshare-Ready",
-      description: "Every vehicle meets Uber and Lyft requirements. No surprises, just approvals.",
+      title: "Bring or Get Your Rideshare Approval",
+      description: "Already approved by Uber, Lyft or a delivery app? Plug in and drive. New to rideshare? Our team helps you get approved during onboarding.",
+    },
+    {
+      title: "Verified Drivers, Owners & Vehicles",
+      description: "Government-ID checks, background screening for drivers, title and inspection checks for every vehicle — before anything hits the road.",
     },
     {
       title: "Flexible Weekly Terms",
-      description: "No long-term contracts. Upgrade, switch, or pause whenever life changes.",
+      description: "No long-term contracts. Drivers pay weekly; owners set the weekly rate. Upgrade, switch, or pause when life changes.",
     },
     {
-      title: "Real-Time GPS Tracking",
-      description: "Advanced tracking for safety, plus valuable insights to optimize your routes.",
+      title: "24-Hour Vehicle Tracking & Monitoring",
+      description: "Every rental vehicle is tracked around the clock — location, speed, ignition, geofence alerts and remote lockdown on defaults.",
     },
     {
-      title: "24/7 Premium Support",
-      description: "Round-the-clock assistance via WhatsApp, phone, or email. We're always here.",
+      title: "24/7 Support via WhatsApp, Phone & Email",
+      description: "Real people, real fast. No direct owner-to-driver contact — every issue is mediated by Rentmaikar Support.",
     },
     {
-      title: "Secure PayPal Payments",
-      description: "Automated weekly billing through PayPal. Predictable, simple, protected.",
+      title: "Secure PayPal Weekly Billing",
+      description: "Automated weekly debits through PayPal. Transparent split, receipts on every payment.",
     },
     {
-      title: "Full Insurance Coverage",
-      description: "Comprehensive rideshare insurance included. Drive with complete peace of mind.",
+      title: "Rideshare-Grade Insurance Included",
+      description: "Comprehensive coverage covering third-party liability, collision and theft during rideshare use. Full policy shared before you sign.",
+    },
+    {
+      title: "Optional Roadside Support",
+      description: "Add 24/7 roadside assistance for a low monthly fee — jump-starts, towing, flat tires, lockouts.",
     },
   ],
 };
@@ -257,55 +265,59 @@ const nigeriaCategoryContent: CategoryContent = {
 const nigeriaHowItWorksContent: HowItWorksContent = {
   sectionBadge: "Your Roadmap",
   sectionTitle: "Simple, Fast & Secure",
-  sectionDescription: "We understand the hustle. Our process is designed to get you earning quickly and safely.",
+  sectionDescription: "We keep it clear and straightforward. Here is exactly how a driver goes from sign-up to earning.",
   steps: [
     {
-      title: "Sign Up in Minutes",
-      description: "Register with your valid ID and ride-hailing platform approval. Quick verification.",
+      title: "Sign Up & Get Verified",
+      description: "Register with your valid ID (NIN/BVN) and driver's licence. We verify your identity, driving record and referees.",
     },
     {
-      title: "Choose Your Perfect Match",
-      description: "Browse verified cars from trusted owners in Lagos, Abuja, or Port Harcourt.",
+      title: "Bring or Get Your Ride-Hailing Approval",
+      description: "Already approved on Bolt, Uber or InDrive? Great. New to it? Our onboarding team helps you get approved.",
     },
     {
-      title: "Secure Your Ride",
-      description: "Easy weekly payments via Paystack. Secure, transparent, no wahala.",
+      title: "Pick Your Car & Pay Deposit",
+      description: "Browse verified cars in Lagos, Abuja or Port Harcourt. Sign the weekly rental agreement and pay the refundable security deposit.",
     },
     {
       title: "Pick Up & Start Earning",
-      description: "Get your keys and join the community of successful drivers on our platform.",
+      description: "Collect the keys, complete the handover inspection and hit the road. Weekly rent is auto-debited via Paystack.",
     },
   ],
 };
 
 const nigeriaFeaturesContent: FeaturesContent = {
-  sectionBadge: "Why Drivers Trust Us",
+  sectionBadge: "Why Drivers & Owners Trust Us",
   sectionTitle: "Built for Your Success",
-  sectionDescription: "We understand the Nigerian driver's journey. Every feature is designed with your growth in mind.",
+  sectionDescription: "Every feature is designed for the Nigerian rideshare driver and vehicle owner — with clear rules and no direct wahala.",
   features: [
     {
-      title: "Verified Owners & Vehicles",
-      description: "All owners and vehicles are thoroughly verified. Drive with peace of mind.",
+      title: "Bring or Get Your Ride-Hailing Approval",
+      description: "Already driving on Bolt, Uber or InDrive? Plug in and go. New to it? Our team helps you get approved during onboarding.",
+    },
+    {
+      title: "Verified Drivers, Owners & Vehicles",
+      description: "NIN/BVN ID checks, driver's licence review, referee attestations and vehicle inspection — verified before anyone hits the road.",
     },
     {
       title: "Flexible Weekly Terms",
-      description: "No long wahala. Weekly rentals with the freedom to upgrade or switch anytime.",
+      description: "Weekly rentals with the freedom to upgrade or switch anytime. Owners set the weekly rate; drivers pick the car.",
     },
     {
-      title: "Real-Time GPS Tracking",
-      description: "Advanced tracking for your safety. Navigate Lagos traffic with confidence.",
+      title: "24-Hour Vehicle Tracking & Monitoring",
+      description: "Every rental vehicle is tracked around the clock — location, speed, geofence alerts and remote lockdown on default.",
     },
     {
-      title: "24/7 WhatsApp Support",
-      description: "Our team is always available. Send a message anytime, get help immediately.",
+      title: "24/7 WhatsApp & Phone Support",
+      description: "Rentmaikar mediates every issue between driver and owner. No direct owner-to-driver contact, no off-platform payments.",
     },
     {
-      title: "Secure Paystack Payments",
-      description: "Automated weekly billing through Paystack. Your money is protected.",
+      title: "Secure Paystack Weekly Billing",
+      description: "Automated weekly debits through Paystack. Transparent split and receipts on every payment.",
     },
     {
-      title: "Full Insurance Coverage",
-      description: "Comprehensive coverage included. Focus on earning, we handle the rest.",
+      title: "Ride-Hailing Insurance Included",
+      description: "Comprehensive coverage during ride-hailing use — third-party liability, collision and theft. Full policy shared before you sign.",
     },
   ],
 };
@@ -313,13 +325,13 @@ const nigeriaFeaturesContent: FeaturesContent = {
 const nigeriaCTAContent: CTAContent = {
   driver: {
     title: "Drivers, Ready to Join the Community?",
-    description: "Join thousands of Nigerian drivers who are growing their income with verified vehicles. We're here to support your success.",
-    cta: "Drivers, Get Started Now",
+    description: "Join thousands of Nigerian drivers growing their income with verified vehicles. Clear rules, fair pricing, real support.",
+    cta: "Drivers, Register Now",
   },
   owner: {
     title: "Owners, Let Your Car Work for You",
-    description: "List your vehicle and earn steady income. We handle driver verification, secure payments, and full support.",
-    cta: "Owners, List Your Car",
+    description: "Register your vehicle and earn steady weekly income. We handle driver verification, secure payments and full support.",
+    cta: "Owners, Register Your Vehicle",
   },
 };
 
