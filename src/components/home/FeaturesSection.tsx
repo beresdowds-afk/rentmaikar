@@ -1,8 +1,8 @@
-import { Shield, Clock, MapPin, Headphones, CreditCard, FileCheck } from "lucide-react";
+import { Shield, Clock, MapPin, Headphones, CreditCard, FileCheck, Radar, LifeBuoy, UserCheck } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
 import { getFeaturesContent } from "@/lib/localized-content";
 
-const icons = [Shield, Clock, MapPin, Headphones, CreditCard, FileCheck];
+const icons = [UserCheck, Shield, Clock, Radar, Headphones, CreditCard, FileCheck, LifeBuoy, MapPin];
 
 const FeaturesSection = () => {
   const { country } = useRegion();
@@ -27,7 +27,7 @@ const FeaturesSection = () => {
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {content.features.map((feature, index) => {
-            const Icon = icons[index];
+            const Icon = icons[index] ?? Shield;
             return (
               <div
                 key={feature.title}
