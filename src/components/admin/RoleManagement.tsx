@@ -1219,6 +1219,70 @@ export function RoleManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Activation / Deactivation Dialog */}
+      <Dialog open={activationDialogOpen} onOpenChange={setActivationDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {activationTarget?.is_active ? (
+                <>
+                  <PowerOff className="h-5 w-5 text-amber-600" />
+                  Deactivate user
+                </>
+              ) : (
+                <>
+                  <Power className="h-5 w-5 text-emerald-600" />
+                  Reactivate user
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {activationTarget?.is_active
+                ? `Deactivating ${activationTarget?.full_name || activationTarget?.email} blocks their sign-in and hides their dashboard everywhere on the platform. This is mirrored on the Admin Assistant dashboard.`
+                : `Reactivating ${activationTarget?.full_name || activationTarget?.email} restores their sign-in and dashboard.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="activation-reason">Reason (required)</Label>
+            <Textarea
+              id="activation-reason"
+              value={activationReason}
+              onChange={(e) => setActivationReason(e.target.value)}
+              placeholder={
+                activationTarget?.is_active
+                  ? 'e.g. Repeated payment defaults; suspending pending investigation.'
+                  : 'e.g. Issue resolved with driver; restoring access.'
+              }
+              rows={4}
+            />
+            <p className="text-xs text-muted-foreground">
+              This reason is recorded in the audit log and visible to other admins.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActivationDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant={activationTarget?.is_active ? 'destructive' : 'default'}
+              onClick={handleToggleActivation}
+              disabled={activationLoading || activationReason.trim().length < 5}
+            >
+              {activationLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : activationTarget?.is_active ? (
+                'Deactivate user'
+              ) : (
+                'Reactivate user'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
