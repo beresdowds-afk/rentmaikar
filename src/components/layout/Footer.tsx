@@ -15,7 +15,7 @@ const FALLBACK_YEARS: Record<string, string> = {
 
 const Footer = () => {
   const { userRole } = useAuth();
-  const { country } = useRegion();
+  const { country, supportEmail } = useRegion();
   const { getForCategory, formatRange, visible: yearsVisible } = useCategoryYearSpecs(country);
   const yearsFor = (key: "budget" | "standard" | "premium") => {
     if (!yearsVisible) return "";
