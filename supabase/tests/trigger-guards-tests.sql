@@ -80,8 +80,17 @@ BEGIN
   RAISE NOTICE 'Test users: admin=% driver=% owner=%', admin_id, driver_id, owner_id;
 
   ------------------------------------------------------------------------------
+  -- Seed a test vehicle so FK'd fixture rows can be inserted
+  ------------------------------------------------------------------------------
+  INSERT INTO public.vehicles(owner_id, make, model, year, license_plate)
+  VALUES (owner_id, 'TestMake', 'TestModel', 2024,
+          'TEST-' || substr(gen_random_uuid()::text, 1, 8))
+  RETURNING id INTO vehicle_id;
+
+  ------------------------------------------------------------------------------
   -- Fixture rows for each protected table
   ------------------------------------------------------------------------------
+
   INSERT INTO public.legal_agreements(
     driver_id, owner_id, vehicle_id, agreement_type, agreement_version,
     agreement_content, status, is_compulsory
