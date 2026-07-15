@@ -28,7 +28,7 @@ const Footer = () => {
   };
   
   const isUSA = country === "USA";
-  const companyInfo = isUSA ? COMPANY_INFO.USA : COMPANY_INFO.Nigeria;
+  const companyInfo = isUSA ? COMPANY_INFO.USA : COMPANY_INFO.NIGERIA;
   const locations = isUSA
     ? ["Washington DC, USA", "Maryland, USA", "Virginia, USA"]
     : ["Lagos, Nigeria", "Abuja, Nigeria", "Port Harcourt, Nigeria"];
