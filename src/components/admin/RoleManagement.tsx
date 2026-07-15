@@ -88,6 +88,7 @@ export function RoleManagement() {
   const [newRole, setNewRole] = useState<AppRole>('admin_assistant');
   const [isUpdating, setIsUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState('users');
+  const [auditActionFilter, setAuditActionFilter] = useState<'all' | 'activation' | 'role' | 'created'>('all');
   
   // New user form state
   const [newUserEmail, setNewUserEmail] = useState('');
@@ -822,20 +823,66 @@ export function RoleManagement() {
                   <History className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>No audit logs found</p>
                 </div>
-              ) : (
+              ) : (() => {
+                const filteredLogs = auditLogs.filter(l => {
+                  if (auditActionFilter === 'all') return true;
+                  if (auditActionFilter === 'activation') return l.action === 'user_activated' || l.action === 'user_deactivated';
+                  if (auditActionFilter === 'role') return l.action === 'role_assigned' || l.action === 'role_changed' || l.action === 'role_removed';
+                  if (auditActionFilter === 'created') return l.action === 'created';
+                  return true;
+                });
+                return (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                      <span className="text-sm text-muted-foreground">Filter:</span>
+                      {([
+                        ['all', `All (${auditLogs.length})`],
+                        ['activation', `Activation (${auditLogs.filter(l => l.action === 'user_activated' || l.action === 'user_deactivated').length})`],
+                        ['role', `Role changes (${auditLogs.filter(l => l.action.startsWith('role_')).length})`],
+                        ['created', `User created (${auditLogs.filter(l => l.action === 'created').length})`],
+                      ] as const).map(([val, label]) => (
+                        <Button
+                          key={val}
+                          size="sm"
+                          variant={auditActionFilter === val ? 'default' : 'outline'}
+                          onClick={() => setAuditActionFilter(val as any)}
+                        >
+                          {label}
+                        </Button>
+                      ))}
+                    </div>
+                    {filteredLogs.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <History className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                        <p>No entries match this filter.</p>
+                      </div>
+                    ) : (
                 <ScrollArea className="h-[500px]">
                   <div className="space-y-3 pr-4">
-                    {auditLogs.map(log => (
+                    {filteredLogs.map(log => {
+                      const isActivation = log.action === 'user_activated' || log.action === 'user_deactivated';
+                      return (
                       <Card key={log.id} className="hover:shadow-md transition-shadow">
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex items-start gap-4">
                               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                                <History className="h-5 w-5 text-muted-foreground" />
+                                {log.action === 'user_activated' ? <Power className="h-5 w-5 text-emerald-600" /> :
+                                 log.action === 'user_deactivated' ? <PowerOff className="h-5 w-5 text-amber-600" /> :
+                                 <History className="h-5 w-5 text-muted-foreground" />}
                               </div>
                               <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline">{actionLabels[log.action] || log.action}</Badge>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge
+                                    variant="outline"
+                                    className={
+                                      log.action === 'user_deactivated' ? 'border-amber-500/40 text-amber-700' :
+                                      log.action === 'user_activated' ? 'border-emerald-500/40 text-emerald-700' :
+                                      ''
+                                    }
+                                  >
+                                    {actionLabels[log.action] || log.action}
+                                  </Badge>
                                   <span className="text-sm text-muted-foreground">
                                     {formatDate(log.created_at)}
                                   </span>
@@ -873,7 +920,22 @@ export function RoleManagement() {
                                   return (
                                     <div className="text-sm text-muted-foreground space-y-1">
                                       {parsed.summary && <p className="italic">{parsed.summary}</p>}
+                                      {isActivation && parsed.reason && (
+                                        <div className="rounded-md border border-border/60 bg-muted/40 p-2">
+                                          <p className="text-xs uppercase tracking-wide text-muted-foreground/80 mb-0.5">Reason</p>
+                                          <p className="text-sm text-foreground/90">{parsed.reason}</p>
+                                        </div>
+                                      )}
                                       <div className="flex flex-wrap items-center gap-2 text-xs">
+                                        {isActivation && parsed.actor_kind && (
+                                          <Badge variant="outline" className="gap-1">
+                                            <ShieldCheck className="h-3 w-3" />
+                                            {parsed.actor_kind === 'admin' ? 'By admin' : 'By admin assistant'}
+                                          </Badge>
+                                        )}
+                                        {isActivation && Array.isArray(parsed.target_roles) && parsed.target_roles.length > 0 && (
+                                          <Badge variant="outline">Target: {parsed.target_roles.join(', ')}</Badge>
+                                        )}
                                         {typeof parsed.email_sent === 'boolean' && (
                                           <Badge variant={parsed.email_sent ? 'default' : 'destructive'} className="gap-1">
                                             <Mail className="h-3 w-3" />
@@ -900,10 +962,14 @@ export function RoleManagement() {
                           </div>
                         </CardContent>
                       </Card>
-                    ))}
+                      );
+                    })}
                   </div>
                 </ScrollArea>
-              )}
+                    )}
+                  </>
+                );
+              })()}
             </TabsContent>
           </Tabs>
         </CardContent>
