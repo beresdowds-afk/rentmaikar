@@ -1340,6 +1340,31 @@ export function RoleManagement() {
                 : `Reactivating ${activationTarget?.full_name || activationTarget?.email} restores their sign-in and dashboard.`}
             </DialogDescription>
           </DialogHeader>
+          {(linkedLoading || linkedAccounts.length > 0) && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm space-y-2">
+              <div className="flex items-center gap-2 font-medium text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4" />
+                {linkedLoading
+                  ? 'Checking for linked (couple/partner) accounts…'
+                  : `This change will also ${activationTarget?.is_active ? 'deactivate' : 'reactivate'} ${linkedAccounts.length} linked account${linkedAccounts.length === 1 ? '' : 's'}:`}
+              </div>
+              {!linkedLoading && linkedAccounts.length > 0 && (
+                <ul className="space-y-1 pl-6 list-disc">
+                  {linkedAccounts.map((a) => (
+                    <li key={a.user_id}>
+                      <span className="font-medium">{a.full_name || a.email || a.user_id}</span>
+                      {a.role && <Badge className={`ml-2 ${roleColors[a.role]}`}>{roleLabels[a.role]}</Badge>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!linkedLoading && linkedAccounts.length > 0 && (
+                <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
+                  Linked accounts share activation status. To change only one account, first remove the link from the Drivers &amp; Owners portal.
+                </p>
+              )}
+            </div>
+          )}
           <div className="space-y-2 py-2">
             <Label htmlFor="activation-reason">Reason (required)</Label>
             <Textarea
