@@ -243,12 +243,6 @@ const HeroSection = () => {
       {/* Spacer so cars stay visible below the CTAs */}
       <div className="relative z-0 flex-1 min-h-[10vh] md:min-h-[12vh]" aria-hidden="true" />
 
-      {/* Scroll Indicator */}
-      <div className="relative z-10 flex justify-center pb-4 animate-bounce">
-        <div className="w-7 h-11 rounded-full border-2 border-gray-500/70 bg-white/40 backdrop-blur-sm flex items-start justify-center pt-2">
-          <div className="w-1.5 h-3 bg-gray-600/80 rounded-full" />
-        </div>
-      </div>
     </section>
   );
 };
