@@ -174,7 +174,55 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [country, regionMode]);
 
-  const config = regionConfig[country];
+  // Load region-specific WhatsApp / SMS / email from the admin-managed
+  // "Regional Contact Channels" table. Falls back to base regionConfig when
+  // no active row exists for a channel.
+  const [contactOverrides, setContactOverrides] = useState<
+    Record<Country, Partial<Pick<RegionConfig, "whatsappNumber" | "smsNumber" | "supportEmail">>>
+  >({ USA: {}, Nigeria: {} });
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("contact_settings")
+        .select("region, contact_type, contact_value, is_active")
+        .eq("is_active", true);
+      if (cancelled || error || !data) return;
+      const next: typeof contactOverrides = { USA: {}, Nigeria: {} };
+      for (const row of data as Array<{ region: string; contact_type: string; contact_value: string }>) {
+        const region = row.region === "Nigeria" ? "Nigeria" : "USA";
+        const value = row.contact_value?.trim() || "";
+        if (!value) continue;
+        if (row.contact_type === "whatsapp") next[region].whatsappNumber = stripPhone(value);
+        else if (row.contact_type === "sms") next[region].smsNumber = stripPhone(value);
+        else if (row.contact_type === "email") next[region].supportEmail = value;
+      }
+      setContactOverrides(next);
+    };
+    load();
+    const channel = supabase
+      .channel("contact_settings_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "contact_settings" },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const baseConfig = regionConfig[country];
+  const overrides = contactOverrides[country];
+  const config: RegionConfig = {
+    ...baseConfig,
+    whatsappNumber: overrides.whatsappNumber || baseConfig.whatsappNumber,
+    smsNumber: overrides.smsNumber || baseConfig.smsNumber,
+    supportEmail: overrides.supportEmail || baseConfig.supportEmail,
+  };
 
   const getCurrencyIcon = (className = "h-4 w-4") =>
     config.currency === "NGN" ? (
