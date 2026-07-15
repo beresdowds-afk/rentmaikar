@@ -27,6 +27,15 @@ const Footer = () => {
     return range ? ` (${range})` : "";
   };
   
+  const isUSA = country === "USA";
+  const companyInfo = isUSA ? COMPANY_INFO.USA : COMPANY_INFO.Nigeria;
+  const locations = isUSA
+    ? ["Washington DC, USA", "Maryland, USA", "Virginia, USA"]
+    : ["Lagos, Nigeria", "Abuja, Nigeria", "Port Harcourt, Nigeria"];
+  const tagline = isUSA
+    ? "Connecting rideshare drivers with quality vehicles across the United States."
+    : "Connecting rideshare drivers with quality vehicles across Nigeria.";
+
   return (
     <footer className="bg-primary text-primary-foreground" role="contentinfo">
       <div className="container mx-auto px-4 py-12">
@@ -40,9 +49,7 @@ const Footer = () => {
                 className="h-12 w-auto object-contain bg-white rounded-lg p-1"
               />
             </Link>
-            <p className="text-primary-foreground/70 text-sm">
-              Connecting rideshare drivers with quality vehicles across the USA and Nigeria.
-            </p>
+            <p className="text-primary-foreground/70 text-sm">{tagline}</p>
           </div>
 
           {/* Quick Links */}
@@ -71,7 +78,7 @@ const Footer = () => {
               </li>
               <li>
                 <Link to="/owner/register" className="text-primary-foreground/70 hover:text-accent transition-colors">
-                  List Your Vehicle
+                  {isUSA ? "List Your Vehicle" : "Register Your Vehicle"}
                 </Link>
               </li>
               {userRole === 'admin' && (
@@ -116,32 +123,16 @@ const Footer = () => {
 
           {/* Locations */}
           <div>
-            <h4 className="font-display font-semibold mb-4">Locations</h4>
+            <h4 className="font-display font-semibold mb-4">
+              {isUSA ? "US Locations" : "Nigeria Locations"}
+            </h4>
             <ul className="space-y-2 text-sm text-primary-foreground/70">
-              <li className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                Washington DC, USA
-              </li>
-              <li className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                Maryland, USA
-              </li>
-              <li className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                Virginia, USA
-              </li>
-              <li className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                Lagos, Nigeria
-              </li>
-              <li className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                Abuja, Nigeria
-              </li>
-              <li className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                Port Harcourt, Nigeria
-              </li>
+              {locations.map((loc) => (
+                <li key={loc} className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />
+                  {loc}
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -150,12 +141,12 @@ const Footer = () => {
             <h4 className="font-display font-semibold mb-4">Contact</h4>
             <ul className="space-y-3 text-sm text-primary-foreground/70">
               <li>
-                <p className="font-medium text-primary-foreground">{COMPANY_INFO.USA.companyName}</p>
+                <p className="font-medium text-primary-foreground">{companyInfo.companyName}</p>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4 shrink-0" />
-                <a href={`tel:${COMPANY_INFO.USA.phoneRaw}`} className="hover:text-accent transition-colors">
-                  {COMPANY_INFO.USA.phone}
+                <a href={`tel:${companyInfo.phoneRaw}`} className="hover:text-accent transition-colors">
+                  {companyInfo.phone}
                 </a>
               </li>
               <li className="flex items-center gap-2">
