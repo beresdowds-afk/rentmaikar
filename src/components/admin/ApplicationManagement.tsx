@@ -399,7 +399,10 @@ export const ApplicationManagement = () => {
                   );
                 })()
               ) : filteredApps.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">No applications found</div>
+              ) : (
                 <>
+
                   {(() => {
                     const totalPages = Math.ceil(filteredApps.length / itemsPerPage);
                     const paginatedApps = filteredApps.slice(
