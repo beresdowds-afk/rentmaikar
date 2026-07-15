@@ -46,6 +46,16 @@ export interface HowItWorksContent {
   }[];
 }
 
+export type FeatureIconKey =
+  | "verification"
+  | "rideshare-approval"
+  | "flexible-terms"
+  | "tracking"
+  | "support"
+  | "payments"
+  | "insurance"
+  | "roadside";
+
 export interface FeaturesContent {
   sectionBadge: string;
   sectionTitle: string;
@@ -53,6 +63,7 @@ export interface FeaturesContent {
   features: {
     title: string;
     description: string;
+    icon: FeatureIconKey;
   }[];
 }
 
