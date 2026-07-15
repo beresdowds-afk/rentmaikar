@@ -72,6 +72,11 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
+                <Link to="/how-it-works" className="text-primary-foreground/70 hover:text-accent transition-colors">
+                  How it Works
+                </Link>
+              </li>
+              <li>
                 <Link to="/driver/register" className="text-primary-foreground/70 hover:text-accent transition-colors">
                   Driver Registration
                 </Link>

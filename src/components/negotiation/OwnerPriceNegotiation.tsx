@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CurrencyIcon } from '@/components/ui/Currencyicon';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,7 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
-  DollarSign, 
+
   Send, 
   Clock, 
   CheckCircle, 
@@ -324,7 +325,7 @@ export const OwnerPriceNegotiation = () => {
                   <div className="space-y-2">
                     <Label htmlFor="rate">Requested Weekly Rate ({currency})</Label>
                     <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <CurrencyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="rate"
                         type="number"
@@ -374,7 +375,7 @@ export const OwnerPriceNegotiation = () => {
 
       {/* Price Tiers Info */}
       <Alert>
-        <DollarSign className="h-4 w-4" />
+        <CurrencyIcon className="h-4 w-4" />
         <AlertDescription>
           <strong>Weekly Rate Ceilings by Category:</strong> Smart Start{rangeSuffix('budget')}: {currencySymbol}250 | Earnings Optimizer{rangeSuffix('standard')}: {currencySymbol}300 | Top Earner{rangeSuffix('premium')}: {currencySymbol}350
         </AlertDescription>
@@ -540,7 +541,7 @@ export const OwnerPriceNegotiation = () => {
               <div className="space-y-2">
                 <Label htmlFor="newRate">Requested New Weekly Rate ({currency})</Label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <CurrencyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="newRate"
                     type="number"

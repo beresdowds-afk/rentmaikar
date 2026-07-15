@@ -46,6 +46,16 @@ export interface HowItWorksContent {
   }[];
 }
 
+export type FeatureIconKey =
+  | "verification"
+  | "rideshare-approval"
+  | "flexible-terms"
+  | "tracking"
+  | "support"
+  | "payments"
+  | "insurance"
+  | "roadside";
+
 export interface FeaturesContent {
   sectionBadge: string;
   sectionTitle: string;
@@ -53,6 +63,7 @@ export interface FeaturesContent {
   features: {
     title: string;
     description: string;
+    icon: FeatureIconKey;
   }[];
 }
 
@@ -150,34 +161,42 @@ const usaFeaturesContent: FeaturesContent = {
   sectionDescription: "We've eliminated the friction so you can focus on what matters: maximizing your earnings.",
   features: [
     {
+      icon: "rideshare-approval",
       title: "Bring or Get Your Rideshare Approval",
       description: "Already approved by Uber, Lyft or a delivery app? Plug in and drive. New to rideshare? Our team helps you get approved during onboarding.",
     },
     {
+      icon: "verification",
       title: "Verified Drivers, Owners & Vehicles",
       description: "Government-ID checks, background screening for drivers, title and inspection checks for every vehicle — before anything hits the road.",
     },
     {
+      icon: "flexible-terms",
       title: "Flexible Weekly Terms",
       description: "No long-term contracts. Drivers pay weekly; owners set the weekly rate. Upgrade, switch, or pause when life changes.",
     },
     {
+      icon: "tracking",
       title: "24-Hour Vehicle Tracking & Monitoring",
       description: "Every rental vehicle is tracked around the clock — location, speed, ignition, geofence alerts and remote lockdown on defaults.",
     },
     {
+      icon: "support",
       title: "24/7 Support via WhatsApp, Phone & Email",
       description: "Real people, real fast. No direct owner-to-driver contact — every issue is mediated by Rentmaikar Support.",
     },
     {
+      icon: "payments",
       title: "Secure PayPal Weekly Billing",
       description: "Automated weekly debits through PayPal. Transparent split, receipts on every payment.",
     },
     {
+      icon: "insurance",
       title: "Rideshare-Grade Insurance Included",
       description: "Comprehensive coverage covering third-party liability, collision and theft during rideshare use. Full policy shared before you sign.",
     },
     {
+      icon: "roadside",
       title: "Optional Roadside Support",
       description: "Add 24/7 roadside assistance for a low monthly fee — jump-starts, towing, flat tires, lockouts.",
     },
@@ -292,30 +311,37 @@ const nigeriaFeaturesContent: FeaturesContent = {
   sectionDescription: "Every feature is designed for the Nigerian rideshare driver and vehicle owner — with clear rules and no direct wahala.",
   features: [
     {
+      icon: "rideshare-approval",
       title: "Bring or Get Your Ride-Hailing Approval",
       description: "Already driving on Bolt, Uber or InDrive? Plug in and go. New to it? Our team helps you get approved during onboarding.",
     },
     {
+      icon: "verification",
       title: "Verified Drivers, Owners & Vehicles",
       description: "NIN/BVN ID checks, driver's licence review, referee attestations and vehicle inspection — verified before anyone hits the road.",
     },
     {
+      icon: "flexible-terms",
       title: "Flexible Weekly Terms",
       description: "Weekly rentals with the freedom to upgrade or switch anytime. Owners set the weekly rate; drivers pick the car.",
     },
     {
+      icon: "tracking",
       title: "24-Hour Vehicle Tracking & Monitoring",
       description: "Every rental vehicle is tracked around the clock — location, speed, geofence alerts and remote lockdown on default.",
     },
     {
+      icon: "support",
       title: "24/7 WhatsApp & Phone Support",
       description: "Rentmaikar mediates every issue between driver and owner. No direct owner-to-driver contact, no off-platform payments.",
     },
     {
+      icon: "payments",
       title: "Secure Paystack Weekly Billing",
       description: "Automated weekly debits through Paystack. Transparent split and receipts on every payment.",
     },
     {
+      icon: "insurance",
       title: "Ride-Hailing Insurance Included",
       description: "Comprehensive coverage during ride-hailing use — third-party liability, collision and theft. Full policy shared before you sign.",
     },

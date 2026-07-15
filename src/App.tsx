@@ -32,6 +32,7 @@ const ApiDocs = lazy(() => import("./pages/ApiDocs"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const FAQ = lazy(() => import("./pages/FAQ"));
+const HowItWorksPage = lazy(() => import("./pages/HowItWorksPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const LegalSupportDashboard = lazy(() => import("./pages/LegalSupportDashboard"));
 const IoTSupportDashboard = lazy(() => import("./pages/IoTSupportDashboard"));
@@ -119,6 +120,7 @@ const App = () => (
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/faq" element={<FAQ />} />
+                  <Route path="/how-it-works" element={<HowItWorksPage />} />
                   <Route 
                     path="/admin" 
                     element={

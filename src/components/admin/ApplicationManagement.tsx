@@ -708,7 +708,7 @@ const ApplicationCard = ({
                 </div>
                 <div>
                   <span className="font-medium">Desired Weekly Price:</span>
-                  <span className="ml-2">${application.desired_weekly_price}</span>
+                  <span className="ml-2">{application.country === 'nigeria' ? '₦' : '$'}{application.desired_weekly_price}</span>
                 </div>
                 <div>
                   <span className="font-medium">Documents:</span>

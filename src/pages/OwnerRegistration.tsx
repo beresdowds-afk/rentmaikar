@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Building, Mail, Phone, MapPin, Car, Calendar, DollarSign, Check, ArrowLeft, Upload, ExternalLink, FileText, Shield } from "lucide-react";
+import { Building, Mail, Phone, MapPin, Car, Calendar, Check, ArrowLeft, Upload, ExternalLink, FileText, Shield } from "lucide-react";
+import { CurrencyIcon } from "@/components/ui/Currencyicon";
+import { useRegion } from "@/contexts/RegionContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,6 +82,7 @@ const years = Array.from({ length: 11 }, (_, i) => (currentYear - 10 + i).toStri
 
 const OwnerRegistration = () => {
   const navigate = useNavigate();
+  const { currencySymbol } = useRegion();
   const [currentCountry, setCurrentCountry] = useState<"usa" | "nigeria">("usa");
   
   const {
@@ -116,12 +119,18 @@ const OwnerRegistration = () => {
   const getSuggestedPrice = () => {
     if (!selectedYear) return null;
     const year = parseInt(selectedYear);
-    // Fallback pricing map matches historical hardcoded values
-    const priceByCategory: Record<string, string> = {
-      premium: "$350/week (Premium)",
-      standard: "$300/week (Standard)",
-      budget: "$250/week (Budget)",
-    };
+    const sym = selectedCountry === "nigeria" ? "₦" : "$";
+    const priceByCategory: Record<string, string> = selectedCountry === "nigeria"
+      ? {
+          premium: `${sym}93,000/week (Premium)`,
+          standard: `${sym}73,000/week (Standard)`,
+          budget: `${sym}60,000/week (Budget)`,
+        }
+      : {
+          premium: `${sym}350/week (Premium)`,
+          standard: `${sym}300/week (Standard)`,
+          budget: `${sym}250/week (Budget)`,
+        };
     const match = [...yearSpecs]
       .sort((a, b) => b.sort_order - a.sort_order)
       .find((s) => year >= s.min_year && year <= s.max_year);
@@ -130,9 +139,9 @@ const OwnerRegistration = () => {
         `${match.label} tier (${match.min_year}-${match.max_year})`;
     }
     // Legacy fallback
-    if (year >= 2021) return "$350/week (Premium)";
-    if (year >= 2017) return "$300/week (Standard)";
-    return "$250/week (Budget)";
+    if (year >= 2021) return priceByCategory.premium;
+    if (year >= 2017) return priceByCategory.standard;
+    return priceByCategory.budget;
   };
 
   const onSubmit = async (data: OwnerFormData) => {
@@ -416,9 +425,9 @@ const OwnerRegistration = () => {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="desiredPrice">Desired Weekly Price ($)</Label>
+                  <Label htmlFor="desiredPrice">Desired Weekly Price ({currencySymbol})</Label>
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <CurrencyIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <Input
                       id="desiredPrice"
                       type="number"

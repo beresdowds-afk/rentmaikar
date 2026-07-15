@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CurrencyIcon } from '@/components/ui/Currencyicon';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
-  DollarSign, 
+
   Clock, 
   CheckCircle, 
   XCircle, 
@@ -457,9 +458,9 @@ export const AdminPriceNegotiation = () => {
                               <span className="text-muted-foreground">• {request.negotiation?.vehicle_year} {request.negotiation?.vehicle_make} {request.negotiation?.vehicle_model}</span>
                             </div>
                             <div className="flex items-center gap-4 text-sm">
-                              <span>Current: <strong>${request.current_rate}</strong></span>
+                              <span>Current: <strong>{getCurrencySymbol(request.negotiation?.currency)}{request.current_rate}</strong></span>
                               <span>→</span>
-                              <span className="text-primary">Requested: <strong>${request.requested_rate}</strong></span>
+                              <span className="text-primary">Requested: <strong>{getCurrencySymbol(request.negotiation?.currency)}{request.requested_rate}</strong></span>
                             </div>
                             <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
                               "{request.reason}"
@@ -541,7 +542,7 @@ export const AdminPriceNegotiation = () => {
               <div className="space-y-2">
                 <Label htmlFor="counterOffer">Your Rate ({selectedNegotiation.currency}/day)</Label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <CurrencyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="counterOffer"
                     type="number"
