@@ -82,6 +82,7 @@ const years = Array.from({ length: 11 }, (_, i) => (currentYear - 10 + i).toStri
 
 const OwnerRegistration = () => {
   const navigate = useNavigate();
+  const { currencySymbol } = useRegion();
   const [currentCountry, setCurrentCountry] = useState<"usa" | "nigeria">("usa");
   
   const {
