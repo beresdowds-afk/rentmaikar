@@ -1074,8 +1074,6 @@ export function RoleManagement() {
                         [
                           'admin',
                           'admin_assistant',
-                          'owner',
-                          'driver',
                           'legal_support',
                           'iot_support',
                           'vehicle_support',
@@ -1087,6 +1085,10 @@ export function RoleManagement() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Drivers and vehicle owners must self-register through the public signup so they
+                    complete identity and address verification themselves — they can't be created here.
+                  </p>
                 </div>
                 {newUserRole === 'admin' && (
                   <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
