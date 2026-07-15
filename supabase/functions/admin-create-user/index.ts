@@ -71,11 +71,21 @@ serve(async (req) => {
     }
 
     const admin = createClient(supabaseUrl, serviceKey);
-    const { data: isAdminData } = await admin.rpc("has_role", {
-      _user_id: userData.user.id,
-      _role: "admin",
-    });
-    if (!isAdminData) {
+
+    // Check caller is admin directly (service role bypasses has_role() guard
+    // because auth.uid() is NULL when called with the service key).
+    const { data: callerRoles, error: callerRoleErr } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userData.user.id);
+    if (callerRoleErr) {
+      console.error("caller role lookup failed:", callerRoleErr);
+      return new Response(JSON.stringify({ error: "Role check failed" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!(callerRoles || []).some((r) => r.role === "admin")) {
       return new Response(JSON.stringify({ error: "Admins only" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -87,6 +97,21 @@ serve(async (req) => {
     if (!email || !full_name || !role) {
       return new Response(
         JSON.stringify({ error: "email, full_name and role are required" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Drivers and owners must self-register so they complete their own
+    // identity + address verification. Block admin-side creation.
+    if (role === "driver" || role === "owner") {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Drivers and owners must self-register through the public signup so they complete identity verification themselves.",
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

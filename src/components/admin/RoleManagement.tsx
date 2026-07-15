@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, Search, Users, Loader2, Mail, UserPlus, Trash2, AlertTriangle, History, Plus, ShieldCheck, CheckCircle2, XCircle, Send, MessageSquare } from 'lucide-react';
+import { Shield, Search, Users, Loader2, Mail, UserPlus, Trash2, AlertTriangle, History, Plus, ShieldCheck, CheckCircle2, XCircle, Send, MessageSquare, Power, PowerOff } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +27,7 @@ interface UserWithRole {
   email: string | null;
   role: AppRole;
   created_at: string;
+  is_active: boolean;
 }
 
 interface AuditLogEntry {
@@ -66,6 +68,8 @@ const actionLabels: Record<string, string> = {
   role_assigned: 'Role Assigned',
   role_changed: 'Role Changed',
   role_removed: 'Role Removed',
+  user_activated: 'User Activated',
+  user_deactivated: 'User Deactivated',
 };
 
 export function RoleManagement() {
@@ -81,7 +85,7 @@ export function RoleManagement() {
   const [deleteRoleDialogOpen, setDeleteRoleDialogOpen] = useState(false);
   const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
-  const [newRole, setNewRole] = useState<AppRole>('driver');
+  const [newRole, setNewRole] = useState<AppRole>('admin_assistant');
   const [isUpdating, setIsUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState('users');
   
@@ -90,7 +94,7 @@ export function RoleManagement() {
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserFullName, setNewUserFullName] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
-  const [newUserRole, setNewUserRole] = useState<AppRole>('driver');
+  const [newUserRole, setNewUserRole] = useState<AppRole>('admin_assistant');
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [createResult, setCreateResult] = useState<null | {
     email: string;
@@ -103,6 +107,10 @@ export function RoleManagement() {
     instructions: string;
   }>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [activationDialogOpen, setActivationDialogOpen] = useState(false);
+  const [activationTarget, setActivationTarget] = useState<UserWithRole | null>(null);
+  const [activationReason, setActivationReason] = useState('');
+  const [activationLoading, setActivationLoading] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -134,7 +142,7 @@ export function RoleManagement() {
       
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, user_id, full_name, email, created_at');
+        .select('id, user_id, full_name, email, created_at, is_active');
 
       if (profilesError) throw profilesError;
 
@@ -155,6 +163,7 @@ export function RoleManagement() {
             email: profile.email,
             role: userRole.role as AppRole,
             created_at: profile.created_at || '',
+            is_active: profile.is_active !== false,
           };
         })
         .filter((u): u is UserWithRole => u !== null);
@@ -284,7 +293,7 @@ export function RoleManagement() {
       setNewUserPassword('');
       setNewUserFullName('');
       setNewUserPhone('');
-      setNewUserRole('driver');
+      setNewUserRole('admin_assistant');
 
       fetchUsersWithRoles();
       fetchAuditLogs();
@@ -337,6 +346,45 @@ export function RoleManagement() {
     }
   };
 
+
+
+  const openActivationDialog = (target: UserWithRole) => {
+    setActivationTarget(target);
+    setActivationReason('');
+    setActivationDialogOpen(true);
+  };
+
+  const handleToggleActivation = async () => {
+    if (!activationTarget) return;
+    if (activationReason.trim().length < 5) {
+      toast.error('Please provide a reason (at least 5 characters).');
+      return;
+    }
+    setActivationLoading(true);
+    try {
+      const nextActive = !activationTarget.is_active;
+      const { data, error } = await supabase.functions.invoke('admin-set-user-active', {
+        body: {
+          target_user_id: activationTarget.user_id,
+          active: nextActive,
+          reason: activationReason.trim(),
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(nextActive ? 'User activated' : 'User deactivated', {
+        description: `${activationTarget.full_name || activationTarget.email} — access ${nextActive ? 'restored' : 'blocked'}.`,
+      });
+      setActivationDialogOpen(false);
+      fetchUsersWithRoles();
+      fetchAuditLogs();
+    } catch (err: any) {
+      console.error('Activation toggle failed:', err);
+      toast.error('Could not update activation', { description: err.message });
+    } finally {
+      setActivationLoading(false);
+    }
+  };
 
   const handleChangeRole = async () => {
     if (!selectedUser || !newRole) return;
@@ -660,6 +708,15 @@ export function RoleManagement() {
                         </Badge>
                       </div>
                       <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Status</p>
+                        <Badge
+                          className={`mt-1 gap-1 ${selectedUser.is_active ? 'bg-emerald-600 text-white' : 'bg-muted text-muted-foreground'}`}
+                        >
+                          {selectedUser.is_active ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                          {selectedUser.is_active ? 'Active' : 'Deactivated'}
+                        </Badge>
+                      </div>
+                      <div>
                         <p className="text-xs text-muted-foreground uppercase tracking-wide">Created</p>
                         <p className="mt-1">{formatDate(selectedUser.created_at)}</p>
                       </div>
@@ -689,6 +746,33 @@ export function RoleManagement() {
                         Change role
                       </Button>
                       <Button
+                        variant={selectedUser.is_active ? 'outline' : 'default'}
+                        size="sm"
+                        onClick={() => openActivationDialog(selectedUser)}
+                        className={`gap-1 ${
+                          selectedUser.is_active
+                            ? 'text-amber-600 border-amber-500/40 hover:bg-amber-500/10'
+                            : ''
+                        }`}
+                        title={
+                          selectedUser.is_active
+                            ? 'Block sign-in and hide this user\'s dashboard until reactivated'
+                            : 'Restore sign-in and dashboard access'
+                        }
+                      >
+                        {selectedUser.is_active ? (
+                          <>
+                            <PowerOff className="h-4 w-4" />
+                            Deactivate
+                          </>
+                        ) : (
+                          <>
+                            <Power className="h-4 w-4" />
+                            Activate
+                          </>
+                        )}
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => openDeleteRoleDialog(selectedUser)}
@@ -698,8 +782,14 @@ export function RoleManagement() {
                         Remove role
                       </Button>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Deactivating a user immediately blocks their sign-in, hides their dashboard,
+                      and records the reason in the audit log. Reactivating restores access.
+                      Drivers and owners deactivated here also disappear from the Admin Assistant dashboard.
+                    </p>
                   </div>
                 );
+
 
                 return (
                   <SplitPane
@@ -986,8 +1076,6 @@ export function RoleManagement() {
                         [
                           'admin',
                           'admin_assistant',
-                          'owner',
-                          'driver',
                           'legal_support',
                           'iot_support',
                           'vehicle_support',
@@ -999,6 +1087,10 @@ export function RoleManagement() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Drivers and vehicle owners must self-register through the public signup so they
+                    complete identity and address verification themselves — they can't be created here.
+                  </p>
                 </div>
                 {newUserRole === 'admin' && (
                   <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
@@ -1124,6 +1216,70 @@ export function RoleManagement() {
                 </>
               ) : (
                 'Remove Role'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Activation / Deactivation Dialog */}
+      <Dialog open={activationDialogOpen} onOpenChange={setActivationDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {activationTarget?.is_active ? (
+                <>
+                  <PowerOff className="h-5 w-5 text-amber-600" />
+                  Deactivate user
+                </>
+              ) : (
+                <>
+                  <Power className="h-5 w-5 text-emerald-600" />
+                  Reactivate user
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {activationTarget?.is_active
+                ? `Deactivating ${activationTarget?.full_name || activationTarget?.email} blocks their sign-in and hides their dashboard everywhere on the platform. This is mirrored on the Admin Assistant dashboard.`
+                : `Reactivating ${activationTarget?.full_name || activationTarget?.email} restores their sign-in and dashboard.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="activation-reason">Reason (required)</Label>
+            <Textarea
+              id="activation-reason"
+              value={activationReason}
+              onChange={(e) => setActivationReason(e.target.value)}
+              placeholder={
+                activationTarget?.is_active
+                  ? 'e.g. Repeated payment defaults; suspending pending investigation.'
+                  : 'e.g. Issue resolved with driver; restoring access.'
+              }
+              rows={4}
+            />
+            <p className="text-xs text-muted-foreground">
+              This reason is recorded in the audit log and visible to other admins.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActivationDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant={activationTarget?.is_active ? 'destructive' : 'default'}
+              onClick={handleToggleActivation}
+              disabled={activationLoading || activationReason.trim().length < 5}
+            >
+              {activationLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : activationTarget?.is_active ? (
+                'Deactivate user'
+              ) : (
+                'Reactivate user'
               )}
             </Button>
           </DialogFooter>
