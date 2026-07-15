@@ -39,6 +39,7 @@ export function DriversOwnersManagement() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'all' | 'driver' | 'owner'>('all');
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   // Activation dialog
   const [actTarget, setActTarget] = useState<UserRow | null>(null);
@@ -51,6 +52,27 @@ export function DriversOwnersManagement() {
   const [linkType, setLinkType] = useState<string>('couple');
   const [linkNotes, setLinkNotes] = useState<string>('');
   const [linkLoading, setLinkLoading] = useState(false);
+
+  // Client-side gate. The edge function is the source of truth, but hiding the
+  // UI keeps unauthorized users from even seeing the controls.
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setAuthorized(false); return; }
+      const { data: roleRows } = await supabase
+        .from('user_roles').select('role').eq('user_id', user.id);
+      const roles = (roleRows || []).map((r: any) => r.role);
+      if (roles.includes('admin')) { setAuthorized(true); return; }
+      if (roles.includes('admin_assistant')) {
+        const { data: perm } = await supabase
+          .from('admin_assistant_permissions')
+          .select('can_manage_users').eq('user_id', user.id).maybeSingle();
+        setAuthorized(!!perm?.can_manage_users);
+        return;
+      }
+      setAuthorized(false);
+    })();
+  }, []);
 
   const fetchAll = async () => {
     setLoading(true);
