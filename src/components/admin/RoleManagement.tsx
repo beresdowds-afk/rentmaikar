@@ -136,7 +136,7 @@ export function RoleManagement() {
       
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, user_id, full_name, email, created_at');
+        .select('id, user_id, full_name, email, created_at, is_active');
 
       if (profilesError) throw profilesError;
 
@@ -157,6 +157,7 @@ export function RoleManagement() {
             email: profile.email,
             role: userRole.role as AppRole,
             created_at: profile.created_at || '',
+            is_active: profile.is_active !== false,
           };
         })
         .filter((u): u is UserWithRole => u !== null);
