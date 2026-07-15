@@ -12,7 +12,7 @@ import rentmaikarHeroBanner from "@/assets/rentmaikar-hero-banner.jpg";
 import heroCarsBg from "@/assets/hero-cars-bg.png";
 
 const HeroSection = () => {
-  const { whatsappNumber, smsNumber } = useRegion();
+  const { whatsappNumber, smsNumber, supportEmail } = useRegion();
   const { user, userRole, signOut, isLoading } = useAuth();
   const { userType } = useUserType();
   const navigate = useNavigate();
