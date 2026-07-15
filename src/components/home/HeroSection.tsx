@@ -2,14 +2,19 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MessageCircle, Phone, Menu, X, LayoutDashboard, LogOut, LogIn, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useRegion } from "@/contexts/RegionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserType } from "@/contexts/UserTypeContext";
+import { buildWhatsAppLink, buildSmsLink } from "@/lib/contact-links";
 
 import { toast } from "sonner";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 import rentmaikarHeroBanner from "@/assets/rentmaikar-hero-banner.jpg";
 import heroCarsBg from "@/assets/hero-cars-bg.png";
+
+const WHATSAPP_PREFILL =
+  "Hi Rentmaikar, I'd like to learn more about renting or listing a vehicle.";
 
 const HeroSection = () => {
   const { whatsappNumber, smsNumber, supportEmail } = useRegion();
