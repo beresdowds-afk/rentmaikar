@@ -183,59 +183,59 @@ const HeroSection = () => {
         </div>
 
         {/* Contact Buttons — sourced from admin Regional Contact Channels */}
-        <div className="flex flex-row flex-wrap gap-2 justify-center w-full max-w-xl">
+        <div className="flex flex-row justify-between items-start w-full max-w-3xl">
           {whatsappNumber ? (
             <a
               href={`https://wa.me/${whatsappNumber}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 min-w-[110px] max-w-[150px]"
+              className="shrink-0"
             >
-              <Button variant="whatsapp" size="sm" className="w-full gap-1.5 py-1.5">
-                <MessageCircle className="w-3.5 h-3.5" />
+              <Button variant="whatsapp" size="sm" className="w-auto gap-1.5 px-3 py-1.5 text-xs">
+                <MessageCircle className="w-3 h-3" />
                 WhatsApp
               </Button>
             </a>
           ) : (
-            <div className="flex-1 min-w-[110px] max-w-[150px]">
+            <div className="shrink-0">
               <Button
                 variant="whatsapp"
                 size="sm"
-                className="w-full gap-1.5 py-1.5"
+                className="w-auto gap-1.5 px-3 py-1.5 text-xs"
                 onClick={() => toast.info("WhatsApp not configured for this region yet.")}
               >
-                <MessageCircle className="w-3.5 h-3.5" />
+                <MessageCircle className="w-3 h-3" />
                 WhatsApp
-              </Button>
-            </div>
-          )}
-          {smsNumber ? (
-            <a href={`sms:+${smsNumber}`} className="flex-1 min-w-[110px] max-w-[150px]">
-              <Button variant="sms" size="sm" className="w-full gap-1.5 py-1.5">
-                <Phone className="w-3.5 h-3.5" />
-                Text us
-              </Button>
-            </a>
-          ) : (
-            <div className="flex-1 min-w-[110px] max-w-[150px]">
-              <Button
-                variant="sms"
-                size="sm"
-                className="w-full gap-1.5 py-1.5"
-                onClick={() => toast.info("SMS not configured for this region yet.")}
-              >
-                <Phone className="w-3.5 h-3.5" />
-                Text us
               </Button>
             </div>
           )}
           {supportEmail && (
-            <a href={`mailto:${supportEmail}`} className="flex-1 min-w-[110px] max-w-[150px]">
-              <Button variant="outline" size="sm" className="w-full gap-1.5 py-1.5">
-                <Phone className="w-3.5 h-3.5" />
+            <a href={`mailto:${supportEmail}`} className="shrink-0 hidden sm:inline-flex">
+              <Button variant="outline" size="sm" className="w-auto gap-1.5 px-3 py-1.5 text-xs">
+                <Phone className="w-3 h-3" />
                 Email us
               </Button>
             </a>
+          )}
+          {smsNumber ? (
+            <a href={`sms:+${smsNumber}`} className="shrink-0">
+              <Button variant="sms" size="sm" className="w-auto gap-1.5 px-3 py-1.5 text-xs">
+                <Phone className="w-3 h-3" />
+                Text us
+              </Button>
+            </a>
+          ) : (
+            <div className="shrink-0">
+              <Button
+                variant="sms"
+                size="sm"
+                className="w-auto gap-1.5 px-3 py-1.5 text-xs"
+                onClick={() => toast.info("SMS not configured for this region yet.")}
+              >
+                <Phone className="w-3 h-3" />
+                Text us
+              </Button>
+            </div>
           )}
         </div>
       </div>
