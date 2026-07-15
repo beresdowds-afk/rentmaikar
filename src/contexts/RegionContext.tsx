@@ -19,6 +19,7 @@ interface RegionConfig {
   phonePrefix: string;
   whatsappNumber: string;
   smsNumber: string;
+  supportEmail: string;
 }
 
 interface RegionContextType {
@@ -32,26 +33,35 @@ interface RegionContextType {
   phonePrefix: string;
   whatsappNumber: string;
   smsNumber: string;
+  supportEmail: string;
   getCurrencyIcon: (className?: string) => React.ReactNode;
   config: RegionConfig;
 }
 
+// Base config (currency + phone prefix only). Contact channels — WhatsApp, SMS,
+// and support email — are loaded from the admin-managed Regional Contact
+// Channels table (public.contact_settings). Empty strings here mean
+// "not yet loaded"; consumers should render conditionally.
 const regionConfig: Record<Country, RegionConfig> = {
   USA: {
     currency: "USD",
     currencySymbol: "$",
     phonePrefix: "+1",
-    whatsappNumber: "124078589931",
-    smsNumber: "124078589931",
+    whatsappNumber: "",
+    smsNumber: "",
+    supportEmail: "",
   },
   Nigeria: {
     currency: "NGN",
     currencySymbol: "₦",
     phonePrefix: "+234",
-    whatsappNumber: "12403930081",
-    smsNumber: "12403930081",
+    whatsappNumber: "",
+    smsNumber: "",
+    supportEmail: "",
   },
 };
+
+const stripPhone = (v: string) => (v || "").replace(/[^\d]/g, "");
 
 const NairaIcon = ({ className }: { className?: string }) => (
   <span className={className} aria-hidden>₦</span>
