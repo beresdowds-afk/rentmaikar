@@ -18,6 +18,7 @@ import { SocialMediaManagement } from "@/components/admin/SocialMediaManagement"
 import { IoTDeviceOrders } from "@/components/admin/IoTDeviceOrders";
 import { DeviceOrderRevenue } from "@/components/admin/DeviceOrderRevenue";
 import { UserAccountsView } from "@/components/admin/UserAccountsView";
+import { DriversOwnersManagement } from "@/components/admin/DriversOwnersManagement";
 import { RoleManagement } from "@/components/admin/RoleManagement";
 import { DailyPlanManagement } from "@/components/admin/DailyPlanManagement";
 import { AdminIncidentManagement } from "@/components/admin/AdminIncidentManagement";
