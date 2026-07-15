@@ -2,7 +2,7 @@
 -- BEFORE UPDATE trigger guard regression tests
 -- =============================================================================
 -- Verifies that the column-scope guards on the seven protected tables:
---   - reject/revert forbidden field changes made by non-admins
+--   - revert forbidden field changes made by non-admins
 --   - allow legitimate field changes for the role that owns the field
 --   - never restrict admins
 --   - write a row into public.permission_denied_log for every blocked attempt
@@ -12,7 +12,7 @@
 --   scripts/test-trigger-guards.sh   (convenience wrapper)
 --
 -- Any failing ASSERT aborts and returns non-zero. All test-only rows are
--- rolled back at the end.
+-- rolled back at the end via the outer transaction.
 -- =============================================================================
 
 \set ON_ERROR_STOP on
@@ -31,104 +31,102 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION pg_temp.become_service() RETURNS void AS $$
-BEGIN
-  PERFORM set_config('request.jwt.claims', '', true);
-  PERFORM set_config('role', 'service_role', true);
-END;
-$$ LANGUAGE plpgsql;
-
 DO $tests$
 DECLARE
-  admin_id   uuid;
-  driver_id  uuid;
-  owner_id   uuid;
-  outsider_id uuid;
-  vehicle_id uuid;
+  admin_id      uuid;
+  driver_id     uuid;
+  owner_id      uuid;
+  vehicle_id    uuid := gen_random_uuid();
   denied_before bigint;
   denied_after  bigint;
 
-  la_id uuid;
-  rto_id uuid;
-  pn_id uuid;
+  la_id   uuid;
+  rto_id  uuid;
+  pn_id   uuid;
   rent_id uuid;
-  rs_id uuid;
-  inc_id uuid;
-  wr_id uuid;
+  rs_id   uuid;
+  inc_id  uuid;
+  wr_id   uuid;
 BEGIN
   ------------------------------------------------------------------------------
-  -- 0. Seed test principals as service role (bypasses RLS)
+  -- Reuse existing real users so we don't need to insert into auth.users.
   ------------------------------------------------------------------------------
-  PERFORM set_config('role', 'postgres', true);
+  SELECT ur.user_id INTO admin_id
+    FROM public.user_roles ur
+   WHERE ur.role = 'admin'::app_role
+   LIMIT 1;
+  IF admin_id IS NULL THEN
+    RAISE EXCEPTION 'No admin user found — cannot run trigger-guard tests';
+  END IF;
 
-  admin_id    := gen_random_uuid();
-  driver_id   := gen_random_uuid();
-  owner_id    := gen_random_uuid();
-  outsider_id := gen_random_uuid();
-  vehicle_id  := gen_random_uuid();
+  SELECT p.user_id INTO driver_id
+    FROM public.profiles p
+   WHERE NOT EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = p.user_id AND ur.role = 'admin'::app_role)
+   ORDER BY p.created_at
+   LIMIT 1;
+  SELECT p.user_id INTO owner_id
+    FROM public.profiles p
+   WHERE NOT EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = p.user_id AND ur.role = 'admin'::app_role)
+     AND p.user_id <> driver_id
+   ORDER BY p.created_at
+   LIMIT 1;
+  IF driver_id IS NULL OR owner_id IS NULL THEN
+    RAISE EXCEPTION 'Need at least two non-admin users to run trigger-guard tests';
+  END IF;
 
-  INSERT INTO auth.users(id, email, aud, role, instance_id, created_at, updated_at)
-  VALUES
-    (admin_id,    'admin+guardtest@example.com',    'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', now(), now()),
-    (driver_id,   'driver+guardtest@example.com',   'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', now(), now()),
-    (owner_id,    'owner+guardtest@example.com',    'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', now(), now()),
-    (outsider_id, 'outsider+guardtest@example.com', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', now(), now())
-  ON CONFLICT (id) DO NOTHING;
-
-  INSERT INTO public.user_roles(user_id, role) VALUES (admin_id, 'admin'::app_role)
-  ON CONFLICT DO NOTHING;
+  RAISE NOTICE 'Test users: admin=% driver=% owner=%', admin_id, driver_id, owner_id;
 
   ------------------------------------------------------------------------------
   -- Fixture rows for each protected table
   ------------------------------------------------------------------------------
   INSERT INTO public.legal_agreements(
-    id, driver_id, owner_id, vehicle_id, agreement_type, agreement_version,
+    driver_id, owner_id, vehicle_id, agreement_type, agreement_version,
     agreement_content, status, is_compulsory
   ) VALUES (
-    gen_random_uuid(), driver_id, owner_id, vehicle_id, 'rental', 1,
+    driver_id, owner_id, vehicle_id, 'rental', 1,
     'ORIGINAL CONTENT', 'pending', true
   ) RETURNING id INTO la_id;
 
   INSERT INTO public.rent_to_own_agreements(
-    id, driver_id, owner_id, vehicle_id, total_price, down_payment, monthly_payment,
+    driver_id, owner_id, vehicle_id, total_price, down_payment, monthly_payment,
     duration_months, currency, status
   ) VALUES (
-    gen_random_uuid(), driver_id, owner_id, vehicle_id, 20000, 2000, 500,
+    driver_id, owner_id, vehicle_id, 20000, 2000, 500,
     36, 'USD', 'pending'
   ) RETURNING id INTO rto_id;
 
   INSERT INTO public.price_negotiations(
-    id, driver_id, owner_id, vehicle_id, proposed_daily_rate, status
+    driver_id, owner_id, vehicle_id, proposed_daily_rate, status
   ) VALUES (
-    gen_random_uuid(), driver_id, owner_id, vehicle_id, 55, 'pending'
+    driver_id, owner_id, vehicle_id, 55, 'pending'
   ) RETURNING id INTO pn_id;
 
   INSERT INTO public.rentals(
-    id, driver_id, owner_id, vehicle_id, daily_rate, currency, status,
+    driver_id, owner_id, vehicle_id, daily_rate, currency, status,
     start_date, end_date, payment_frequency, region
   ) VALUES (
-    gen_random_uuid(), driver_id, owner_id, vehicle_id, 75, 'USD', 'active',
+    driver_id, owner_id, vehicle_id, 75, 'USD', 'active',
     now(), now() + interval '7 days', 'daily', 'USA'
   ) RETURNING id INTO rent_id;
 
   INSERT INTO public.rideshare_profile_submissions(
-    id, driver_id, vehicle_id, week_start_date, status
+    driver_id, vehicle_id, week_start_date, status
   ) VALUES (
-    gen_random_uuid(), driver_id, vehicle_id, date_trunc('week', now())::date, 'submitted'
+    driver_id, vehicle_id, date_trunc('week', now())::date, 'submitted'
   ) RETURNING id INTO rs_id;
 
   INSERT INTO public.vehicle_incidents(
-    id, driver_id, owner_id, vehicle_id, incident_type, severity, status,
+    driver_id, owner_id, vehicle_id, incident_type, severity, status,
     reported_at, occurred_at
   ) VALUES (
-    gen_random_uuid(), driver_id, owner_id, vehicle_id, 'minor_damage', 'low', 'reported',
+    driver_id, owner_id, vehicle_id, 'minor_damage', 'low', 'reported',
     now(), now()
   ) RETURNING id INTO inc_id;
 
   INSERT INTO public.weekly_inspection_reports(
-    id, driver_id, owner_id, vehicle_id, week_start_date
+    driver_id, owner_id, vehicle_id, week_start_date
   ) VALUES (
-    gen_random_uuid(), driver_id, owner_id, vehicle_id, date_trunc('week', now())::date
+    driver_id, owner_id, vehicle_id, date_trunc('week', now())::date
   ) RETURNING id INTO wr_id;
 
   ----------------------------------------------------------------------------
@@ -139,8 +137,7 @@ BEGIN
     WHERE target_table = 'legal_agreements' AND target_row_id = la_id::text;
 
   UPDATE public.legal_agreements
-     SET status = 'active',
-         driver_signature = 'signed-by-driver'
+     SET status = 'active', driver_signature = 'signed-by-driver'
    WHERE id = la_id;
 
   ASSERT (SELECT status FROM public.legal_agreements WHERE id = la_id) = 'pending',
@@ -234,7 +231,7 @@ BEGIN
     'rideshare_profile_submissions: one permission_denied_log row expected';
 
   ----------------------------------------------------------------------------
-  -- 6. vehicle_incidents: driver cannot mark resolved
+  -- 6. vehicle_incidents: driver cannot mark resolved / change severity
   ----------------------------------------------------------------------------
   PERFORM pg_temp.become(driver_id);
   SELECT count(*) INTO denied_before FROM public.permission_denied_log
@@ -310,7 +307,7 @@ BEGIN
   ASSERT denied_after = denied_before,
     'admin updates must NOT write any permission_denied_log rows';
 
-  RAISE NOTICE 'All 7 trigger-guard tests + admin-bypass test PASSED';
+  RAISE NOTICE '✅ All 7 trigger-guard tests + admin-bypass test PASSED';
 END $tests$;
 
 ROLLBACK;
