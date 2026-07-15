@@ -4,7 +4,7 @@ import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRegion } from "@/contexts/RegionContext";
 import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
-import { EMAIL_CONFIG, COMPANY_INFO } from "@/lib/email-config";
+import { COMPANY_INFO } from "@/lib/email-config";
 import { openCookiePreferences } from "@/hooks/useCookieConsent";
 
 const FALLBACK_YEARS: Record<string, string> = {
