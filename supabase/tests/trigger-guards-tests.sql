@@ -36,7 +36,8 @@ DECLARE
   admin_id      uuid;
   driver_id     uuid;
   owner_id      uuid;
-  vehicle_id    uuid := gen_random_uuid();
+  vehicle_id    uuid;
+
   denied_before bigint;
   denied_after  bigint;
 
