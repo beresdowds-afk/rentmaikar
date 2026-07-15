@@ -297,8 +297,8 @@ const HeroSection = () => {
             </TooltipContent>
           </Tooltip>
         </div>
-        </div>
       </div>
+
 
       {/* Spacer so cars stay visible below the CTAs */}
       <div className="relative z-0 flex-1 min-h-[22vh] md:min-h-[28vh]" aria-hidden="true" />
