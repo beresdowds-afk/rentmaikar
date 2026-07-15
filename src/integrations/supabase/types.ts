@@ -6797,6 +6797,10 @@ export type Database = {
       }
     }
     Functions: {
+      _testkit_run_trigger_guard_tests: {
+        Args: { _confirm: string }
+        Returns: string
+      }
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
       get_linked_user_ids: {
         Args: { _user_id: string }
