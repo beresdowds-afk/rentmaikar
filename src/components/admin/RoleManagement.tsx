@@ -112,6 +112,8 @@ export function RoleManagement() {
   const [activationTarget, setActivationTarget] = useState<UserWithRole | null>(null);
   const [activationReason, setActivationReason] = useState('');
   const [activationLoading, setActivationLoading] = useState(false);
+  const [linkedAccounts, setLinkedAccounts] = useState<Array<{ user_id: string; full_name: string | null; email: string | null; role: AppRole | null }>>([]);
+  const [linkedLoading, setLinkedLoading] = useState(false);
 
   const queryClient = useQueryClient();
 
