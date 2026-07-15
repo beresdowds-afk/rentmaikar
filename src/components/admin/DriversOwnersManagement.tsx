@@ -219,6 +219,17 @@ export function DriversOwnersManagement() {
 
   return (
     <>
+      {authorized === false && (
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle className="text-destructive">Access restricted</CardTitle>
+            <CardDescription>
+              Only admins or admin assistants with the “Manage users” permission can open this portal.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
+      {authorized !== false && (<>
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
