@@ -88,7 +88,7 @@ export const ApplicationManagement = () => {
   const [selectedListAppId, setSelectedListAppId] = useState<string | null>(null);
 
   // Fetch applications
-  const { data: applications = [], isLoading, refetch } = useQuery({
+  const { data: applications = [], isLoading, isError, error: queryError, refetch } = useQuery({
     queryKey: ['applications', activeTab, statusFilter],
     queryFn: async () => {
       let query = supabase
@@ -106,6 +106,14 @@ export const ApplicationManagement = () => {
       const { data, error } = await query;
       if (error) throw error;
       return data as Application[];
+    },
+    retry: (count, err: any) => {
+      const msg = String(err?.message || '').toLowerCase();
+      // Don't retry on permission / auth errors — retrying won't help.
+      if (msg.includes('permission denied') || msg.includes('rls') || msg.includes('not authorized')) {
+        return false;
+      }
+      return count < 2;
     },
   });
 
