@@ -90,25 +90,39 @@ serve(async (req) => {
     }
 
     const now = new Date().toISOString();
+
+    // Cascade to linked accounts (couple/linked accounts stored in account_links).
+    const { data: linkedRows } = await admin
+      .rpc("get_linked_user_ids", { _user_id: target_user_id });
+    const linkedIds: string[] = Array.isArray(linkedRows)
+      ? (linkedRows as any[])
+          .map((r: any) => (typeof r === "string" ? r : r.linked_user_id))
+          .filter((id: string) => id && id !== target_user_id)
+      : [];
+
+    const allTargets = Array.from(new Set([target_user_id, ...linkedIds]));
+
     const { error: updateErr } = await admin
       .from("profiles")
       .update({ is_active: active, updated_at: now })
-      .eq("user_id", target_user_id);
+      .in("user_id", allTargets);
     if (updateErr) return json(400, { error: updateErr.message });
 
     // Best-effort: block auth login when deactivated, restore when reactivated.
-    try {
-      await admin.auth.admin.updateUserById(target_user_id, {
-        ban_duration: active ? "none" : "876000h", // ~100 years
-      });
-    } catch (e) {
-      console.error("auth ban toggle failed:", e);
+    for (const uid of allTargets) {
+      try {
+        await admin.auth.admin.updateUserById(uid, {
+          ban_duration: active ? "none" : "876000h", // ~100 years
+        });
+      } catch (e) {
+        console.error("auth ban toggle failed for", uid, e);
+      }
     }
 
-    // Audit log
-    await admin.from("role_audit_log").insert({
+    // Audit log — one row per affected user so both sides are traceable.
+    const auditRows = allTargets.map((uid) => ({
       actor_id: userData.user.id,
-      target_user_id,
+      target_user_id: uid,
       action: active ? "user_activated" : "user_deactivated",
       old_role: null,
       new_role: null,
@@ -117,17 +131,24 @@ serve(async (req) => {
           ? "Account reactivated by administrator"
           : "Account deactivated by administrator",
         actor_kind: isAdmin ? "admin" : "admin_assistant",
-        target_roles: targetRoleList,
+        target_roles: uid === target_user_id ? targetRoleList : ["linked_account"],
         reason,
+        primary_target: target_user_id,
+        cascaded: uid !== target_user_id,
+        linked_group: allTargets,
         at: now,
       }),
-    });
+    }));
+    await admin.from("role_audit_log").insert(auditRows);
 
     return json(200, {
       success: true,
       target_user_id,
       active,
-      message: `User ${active ? "activated" : "deactivated"}.`,
+      cascaded_user_ids: linkedIds,
+      message: linkedIds.length
+        ? `User and ${linkedIds.length} linked account(s) ${active ? "activated" : "deactivated"}.`
+        : `User ${active ? "activated" : "deactivated"}.`,
     });
   } catch (err: any) {
     console.error("admin-set-user-active error:", err);
