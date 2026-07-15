@@ -64,11 +64,6 @@ export const DeviceLinking = () => {
 
   useEffect(() => { load(); }, []);
 
-  const simsByDevice = useMemo(() => {
-    // sims returned by list_available_sims are unlinked; we still show device→sim relationship from device.sim_provider etc.
-    return new Map<string, Sim>();
-  }, [sims]);
-
   const availableSims = sims;
   const vehiclesWithDevice = new Set(devices.filter(d => d.vehicle_id).map(d => d.vehicle_id));
   const availableVehicles = vehicles.filter(v => !vehiclesWithDevice.has(v.id));
