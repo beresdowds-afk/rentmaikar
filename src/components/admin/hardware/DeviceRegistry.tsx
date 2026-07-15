@@ -185,42 +185,73 @@ export const DeviceRegistry = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2"><SimCard className="h-5 w-5" /> Hologram eSIM Inventory</CardTitle>
-              <CardDescription>Purchase eSIMs from Hologram, list them as available, then link them to devices by IMEI.</CardDescription>
+              <CardTitle className="flex items-center gap-2"><SimCard className="h-5 w-5" /> SIM / eSIM Inventory</CardTitle>
+              <CardDescription>Buy eSIMs from Hologram <strong>or</strong> add SIMs manually from another provider. Each SIM tracks its provider so you know how it was sourced.</CardDescription>
             </div>
             <Dialog open={buyOpen} onOpenChange={setBuyOpen}>
               <DialogTrigger asChild>
-                <Button><ShoppingCart className="mr-2 h-4 w-4" /> Buy eSIM</Button>
+                <Button><ShoppingCart className="mr-2 h-4 w-4" /> Add SIM</Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Buy Hologram eSIM</DialogTitle>
-                  <DialogDescription>Adds the eSIM to your available inventory. It will start as <strong>available</strong> until linked to a device and activated.</DialogDescription>
+                  <DialogTitle>Add SIM to inventory</DialogTitle>
+                  <DialogDescription>Buy a new eSIM from Hologram, or record a SIM you already own from any provider.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
                   <div>
-                    <Label>Data plan</Label>
-                    <Select value={buyPlan} onValueChange={setBuyPlan}>
+                    <Label>Source</Label>
+                    <Select value={buySource} onValueChange={(v) => setBuySource(v as 'hologram' | 'manual')}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {plans.length === 0 ? (
-                          <SelectItem value="128">Global Flexible 10 MB</SelectItem>
-                        ) : plans.map(p => (
-                          <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
-                        ))}
+                        <SelectItem value="hologram">Buy from Hologram</SelectItem>
+                        <SelectItem value="manual">Manual entry (other provider)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {buySource === 'hologram' ? (
+                    <div>
+                      <Label>Data plan</Label>
+                      <Select value={buyPlan} onValueChange={setBuyPlan}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {plans.length === 0 ? (
+                            <SelectItem value="128">Global Flexible 10 MB</SelectItem>
+                          ) : plans.map(p => (
+                            <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>Provider *</Label>
+                        <Input value={buyProvider} onChange={e => setBuyProvider(e.target.value)} placeholder="e.g. MTN, Airtel, Twilio" />
+                      </div>
+                      <div>
+                        <Label>Plan name</Label>
+                        <Input value={buyPlanName} onChange={e => setBuyPlanName(e.target.value)} placeholder="e.g. 5GB Monthly" />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label>ICCID (optional)</Label>
-                      <Input value={buyIccid} onChange={e => setBuyIccid(e.target.value)} placeholder="Auto if provisioned" />
+                      <Label>ICCID {buySource === 'manual' ? '*' : '(optional)'}</Label>
+                      <Input value={buyIccid} onChange={e => setBuyIccid(e.target.value)} placeholder={buySource === 'manual' ? '19-20 digit ICCID' : 'Auto if provisioned'} />
                     </div>
                     <div>
-                      <Label>MSISDN (optional)</Label>
+                      <Label>MSISDN {buySource === 'manual' ? '' : '(optional)'}</Label>
                       <Input value={buyMsisdn} onChange={e => setBuyMsisdn(e.target.value)} placeholder="+1234…" />
                     </div>
                   </div>
+                  {buySource === 'manual' && (
+                    <div>
+                      <Label>IMSI (optional)</Label>
+                      <Input value={buyImsi} onChange={e => setBuyImsi(e.target.value)} placeholder="15-digit IMSI" />
+                    </div>
+                  )}
                   <div>
                     <Label>Notes</Label>
                     <Textarea value={buyNotes} onChange={e => setBuyNotes(e.target.value)} rows={2} />
@@ -230,7 +261,7 @@ export const DeviceRegistry = () => {
                   <Button variant="outline" onClick={() => setBuyOpen(false)}>Cancel</Button>
                   <Button onClick={buySim} disabled={buying}>
                     {buying ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ShoppingCart className="h-4 w-4 mr-1" />}
-                    Buy &amp; add to inventory
+                    {buySource === 'manual' ? 'Add to inventory' : 'Buy & add to inventory'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
