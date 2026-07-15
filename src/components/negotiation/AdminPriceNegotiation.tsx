@@ -457,9 +457,9 @@ export const AdminPriceNegotiation = () => {
                               <span className="text-muted-foreground">• {request.negotiation?.vehicle_year} {request.negotiation?.vehicle_make} {request.negotiation?.vehicle_model}</span>
                             </div>
                             <div className="flex items-center gap-4 text-sm">
-                              <span>Current: <strong>${request.current_rate}</strong></span>
+                              <span>Current: <strong>{getCurrencySymbol(request.negotiation?.currency)}{request.current_rate}</strong></span>
                               <span>→</span>
-                              <span className="text-primary">Requested: <strong>${request.requested_rate}</strong></span>
+                              <span className="text-primary">Requested: <strong>{getCurrencySymbol(request.negotiation?.currency)}{request.requested_rate}</strong></span>
                             </div>
                             <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
                               "{request.reason}"
