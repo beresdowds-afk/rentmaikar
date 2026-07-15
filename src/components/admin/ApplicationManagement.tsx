@@ -379,9 +379,26 @@ export const ApplicationManagement = () => {
             <TabsContent value={activeTab} className="mt-0">
               {isLoading ? (
                 <div className="text-center py-8 text-muted-foreground">Loading applications...</div>
+              ) : isError ? (
+                (() => {
+                  const raw = String((queryError as any)?.message || 'Unknown error');
+                  const permission = /permission denied|rls|not authorized|jwt|forbidden/i.test(raw);
+                  return (
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center space-y-3">
+                      <p className="font-semibold text-destructive">
+                        {permission ? 'Access denied loading applications' : 'Could not load applications'}
+                      </p>
+                      <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+                        {permission
+                          ? 'Your account does not currently have permission to read the applications list. Ask an administrator to grant you the "View / Manage Users" capability (Admin Assistants portal) or to check the applications table row-level security policies.'
+                          : 'The applications query failed. This is usually temporary. Please retry or refresh the page.'}
+                      </p>
+                      <p className="text-xs text-muted-foreground/80 font-mono break-all">{raw}</p>
+                      <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button>
+                    </div>
+                  );
+                })()
               ) : filteredApps.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">No applications found</div>
-              ) : (
                 <>
                   {(() => {
                     const totalPages = Math.ceil(filteredApps.length / itemsPerPage);
