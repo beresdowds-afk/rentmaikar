@@ -345,6 +345,45 @@ export function RoleManagement() {
   };
 
 
+
+  const openActivationDialog = (target: UserWithRole) => {
+    setActivationTarget(target);
+    setActivationReason('');
+    setActivationDialogOpen(true);
+  };
+
+  const handleToggleActivation = async () => {
+    if (!activationTarget) return;
+    if (activationReason.trim().length < 5) {
+      toast.error('Please provide a reason (at least 5 characters).');
+      return;
+    }
+    setActivationLoading(true);
+    try {
+      const nextActive = !activationTarget.is_active;
+      const { data, error } = await supabase.functions.invoke('admin-set-user-active', {
+        body: {
+          target_user_id: activationTarget.user_id,
+          active: nextActive,
+          reason: activationReason.trim(),
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(nextActive ? 'User activated' : 'User deactivated', {
+        description: `${activationTarget.full_name || activationTarget.email} — access ${nextActive ? 'restored' : 'blocked'}.`,
+      });
+      setActivationDialogOpen(false);
+      fetchUsersWithRoles();
+      fetchAuditLogs();
+    } catch (err: any) {
+      console.error('Activation toggle failed:', err);
+      toast.error('Could not update activation', { description: err.message });
+    } finally {
+      setActivationLoading(false);
+    }
+  };
+
   const handleChangeRole = async () => {
     if (!selectedUser || !newRole) return;
 
