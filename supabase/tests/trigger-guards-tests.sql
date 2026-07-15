@@ -115,7 +115,7 @@ BEGIN
   ) VALUES (
     driver_id, owner_id, vehicle_id, listing_id, 'ORIGINAL RTO CONTRACT',
     20000, 2000, 500,
-    36, 'USD', 'pending'
+    36, 'USD', 'pending_signatures'
   ) RETURNING id INTO rto_id;
 
 
