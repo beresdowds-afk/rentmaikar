@@ -342,10 +342,33 @@ export function DriversOwnersManagement() {
                 : `Reactivating ${actTarget?.full_name || actTarget?.email} restores their sign-in and dashboard. Any linked/couple accounts will also be reactivated.`}
             </DialogDescription>
           </DialogHeader>
-          {actTarget && actTarget.linked_user_ids.length > 0 && (
-            <div className="text-xs text-muted-foreground border rounded p-2">
-              <strong>Cascade will affect:</strong>{' '}
-              {actTarget.linked_user_ids.map(nameById).join(', ')}
+          {actTarget && (
+            <div className="border rounded-md p-3 space-y-2 bg-muted/30">
+              <div className="text-sm font-medium">
+                {actTarget.is_active ? 'Will be deactivated' : 'Will be activated'} ({1 + actTarget.linked_user_ids.length} account{actTarget.linked_user_ids.length ? 's' : ''}):
+              </div>
+              <ul className="text-sm space-y-1">
+                <li className="flex items-center gap-2">
+                  <Badge variant="outline">Primary</Badge>
+                  <span>{actTarget.full_name || actTarget.email}</span>
+                  <RoleBadge role={actTarget.role} />
+                </li>
+                {actTarget.linked_user_ids.map(uid => {
+                  const partner = rows.find(x => x.user_id === uid);
+                  return (
+                    <li key={uid} className="flex items-center gap-2">
+                      <Badge variant="secondary">Linked</Badge>
+                      <span>{nameById(uid)}</span>
+                      {partner && <RoleBadge role={partner.role} />}
+                    </li>
+                  );
+                })}
+              </ul>
+              {actTarget.linked_user_ids.length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Linked accounts stay in sync — the same status will apply on their dashboard.
+                </div>
+              )}
             </div>
           )}
           <div className="space-y-2">
