@@ -4,7 +4,7 @@
 //
 // Called by reconcile-payments; also callable manually by an admin.
 
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 interface AlertPayload {

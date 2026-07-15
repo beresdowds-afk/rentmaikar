@@ -9,7 +9,7 @@
 //   - EXCLUDE: any user with the 'owner' role — even if they somehow also
 //     match the driver_id or admin lists. Owners never receive payment push
 //     notifications for any PSP.
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
 import { resolveRecipients } from "./recipients.ts";

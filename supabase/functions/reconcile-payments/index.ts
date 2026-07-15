@@ -11,7 +11,7 @@
 //   summary, backfilled payment ids, errors). Threshold breaches invoke
 //   send-reconciliation-alert (email + SMS + in-app banner).
 
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHmac } from "node:crypto";
 import { resolvePaymentContext } from "../_shared/resolve-payment-context.ts";

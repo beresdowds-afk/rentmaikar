@@ -112,6 +112,8 @@ export function RoleManagement() {
   const [activationTarget, setActivationTarget] = useState<UserWithRole | null>(null);
   const [activationReason, setActivationReason] = useState('');
   const [activationLoading, setActivationLoading] = useState(false);
+  const [linkedAccounts, setLinkedAccounts] = useState<Array<{ user_id: string; full_name: string | null; email: string | null; role: AppRole | null }>>([]);
+  const [linkedLoading, setLinkedLoading] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -349,11 +351,38 @@ export function RoleManagement() {
 
 
 
-  const openActivationDialog = (target: UserWithRole) => {
+  const openActivationDialog = async (target: UserWithRole) => {
     setActivationTarget(target);
     setActivationReason('');
+    setLinkedAccounts([]);
     setActivationDialogOpen(true);
+    setLinkedLoading(true);
+    try {
+      const { data: links, error } = await supabase.rpc('get_linked_user_ids', { _user_id: target.user_id });
+      if (error) throw error;
+      const ids = (links || []).map((r: any) => r.linked_user_id).filter(Boolean);
+      if (ids.length === 0) {
+        setLinkedAccounts([]);
+      } else {
+        const [{ data: profs }, { data: rolesData }] = await Promise.all([
+          supabase.from('profiles').select('user_id, full_name, email').in('user_id', ids),
+          supabase.from('user_roles').select('user_id, role').in('user_id', ids),
+        ]);
+        const roleMap = new Map<string, AppRole>((rolesData || []).map((r: any) => [r.user_id, r.role]));
+        setLinkedAccounts((profs || []).map((p: any) => ({
+          user_id: p.user_id,
+          full_name: p.full_name,
+          email: p.email,
+          role: roleMap.get(p.user_id) ?? null,
+        })));
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch linked accounts:', err);
+    } finally {
+      setLinkedLoading(false);
+    }
   };
+
 
   const handleToggleActivation = async () => {
     if (!activationTarget) return;
@@ -1311,6 +1340,31 @@ export function RoleManagement() {
                 : `Reactivating ${activationTarget?.full_name || activationTarget?.email} restores their sign-in and dashboard.`}
             </DialogDescription>
           </DialogHeader>
+          {(linkedLoading || linkedAccounts.length > 0) && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm space-y-2">
+              <div className="flex items-center gap-2 font-medium text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4" />
+                {linkedLoading
+                  ? 'Checking for linked (couple/partner) accounts…'
+                  : `This change will also ${activationTarget?.is_active ? 'deactivate' : 'reactivate'} ${linkedAccounts.length} linked account${linkedAccounts.length === 1 ? '' : 's'}:`}
+              </div>
+              {!linkedLoading && linkedAccounts.length > 0 && (
+                <ul className="space-y-1 pl-6 list-disc">
+                  {linkedAccounts.map((a) => (
+                    <li key={a.user_id}>
+                      <span className="font-medium">{a.full_name || a.email || a.user_id}</span>
+                      {a.role && <Badge className={`ml-2 ${roleColors[a.role]}`}>{roleLabels[a.role]}</Badge>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!linkedLoading && linkedAccounts.length > 0 && (
+                <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
+                  Linked accounts share activation status. To change only one account, first remove the link from the Drivers &amp; Owners portal.
+                </p>
+              )}
+            </div>
+          )}
           <div className="space-y-2 py-2">
             <Label htmlFor="activation-reason">Reason (required)</Label>
             <Textarea

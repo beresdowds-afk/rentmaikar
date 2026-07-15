@@ -3,7 +3,7 @@
 // inquiry per referee and stores the linkage in referee_verifications.
 // Called on application submit and from the admin re-run action.
 
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { logPipelineEvent } from "../_shared/pipeline-events.ts";

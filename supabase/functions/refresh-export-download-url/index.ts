@@ -1,7 +1,7 @@
 // Returns a fresh 1-hour signed URL for an existing ZIP in `document-exports`.
 // Used by the client to auto-recover when a previous URL has expired.
 // Rate-limited (20/min) since it's cheap but must not be exploitable to enumerate paths.
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { checkRateLimit, tooMany } from "../_shared/rate-limit.ts";
