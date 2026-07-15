@@ -142,11 +142,12 @@ BEGIN
 
   INSERT INTO public.vehicle_incidents(
     driver_id, owner_id, vehicle_id, incident_type, severity, status,
-    reported_at, occurred_at
+    title, description, reported_at, occurred_at
   ) VALUES (
     driver_id, owner_id, vehicle_id, 'accident', 'low', 'reported',
-    now(), now()
+    'Test incident', 'Trigger-guard fixture', now(), now()
   ) RETURNING id INTO inc_id;
+
 
   INSERT INTO public.weekly_inspection_reports(
     driver_id, owner_id, vehicle_id, week_start_date
