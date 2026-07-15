@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          link_type: string
+          notes: string | null
+          updated_at: string
+          user_a_id: string
+          user_b_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          link_type?: string
+          notes?: string | null
+          updated_at?: string
+          user_a_id: string
+          user_b_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          link_type?: string
+          notes?: string | null
+          updated_at?: string
+          user_a_id?: string
+          user_b_id?: string
+        }
+        Relationships: []
+      }
       admin_assistant_permissions: {
         Row: {
           can_manage_content: boolean
@@ -6653,6 +6686,12 @@ export type Database = {
     }
     Functions: {
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
+      get_linked_user_ids: {
+        Args: { _user_id: string }
+        Returns: {
+          linked_user_id: string
+        }[]
+      }
       get_support_staff_city: {
         Args: {
           _type: Database["public"]["Enums"]["support_task_type"]
