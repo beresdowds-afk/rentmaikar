@@ -1,8 +1,22 @@
-import { Shield, Clock, MapPin, Headphones, CreditCard, FileCheck, Radar, LifeBuoy, UserCheck } from "lucide-react";
+import { Shield, Clock, Radar, Headphones, CreditCard, FileCheck, LifeBuoy, UserCheck, type LucideIcon } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
-import { getFeaturesContent } from "@/lib/localized-content";
+import { getFeaturesContent, type FeatureIconKey } from "@/lib/localized-content";
 
-const icons = [UserCheck, Shield, Clock, Radar, Headphones, CreditCard, FileCheck, LifeBuoy, MapPin];
+/**
+ * Type-safe icon map. Every `FeatureIconKey` MUST have an entry — if you add
+ * a new key in localized-content.ts, TypeScript will flag the missing entry
+ * here at build time, so we can never render `undefined` as a component.
+ */
+const FEATURE_ICON_MAP: Record<FeatureIconKey, LucideIcon> = {
+  verification: Shield,
+  "rideshare-approval": UserCheck,
+  "flexible-terms": Clock,
+  tracking: Radar,
+  support: Headphones,
+  payments: CreditCard,
+  insurance: FileCheck,
+  roadside: LifeBuoy,
+};
 
 const FeaturesSection = () => {
   const { country } = useRegion();
@@ -11,7 +25,6 @@ const FeaturesSection = () => {
   return (
     <section className="py-20 bg-primary text-primary-foreground">
       <div className="container mx-auto px-4">
-        {/* Section Header */}
         <div className="text-center mb-16">
           <span className="inline-block px-4 py-2 rounded-full bg-accent/20 text-accent text-sm font-medium mb-4">
             {content.sectionBadge}
@@ -24,10 +37,9 @@ const FeaturesSection = () => {
           </p>
         </div>
 
-        {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {content.features.map((feature, index) => {
-            const Icon = icons[index] ?? Shield;
+          {content.features.map((feature) => {
+            const Icon = FEATURE_ICON_MAP[feature.icon] ?? Shield;
             return (
               <div
                 key={feature.title}
