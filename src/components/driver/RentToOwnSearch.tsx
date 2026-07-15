@@ -14,7 +14,7 @@ import {
   Search,
   Home,
   Car,
-  DollarSign,
+  Wallet,
   Calendar,
   Check,
   X,

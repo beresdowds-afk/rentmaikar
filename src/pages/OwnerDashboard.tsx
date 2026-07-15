@@ -43,7 +43,7 @@ import { RecallApprovalPanel } from '@/components/recall/RecallApprovalPanel';
 import {
   Car,
   Plus,
-  DollarSign,
+  
   TrendingUp,
   Calendar,
   MapPin,
