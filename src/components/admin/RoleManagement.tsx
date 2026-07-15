@@ -105,6 +105,10 @@ export function RoleManagement() {
     instructions: string;
   }>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [activationDialogOpen, setActivationDialogOpen] = useState(false);
+  const [activationTarget, setActivationTarget] = useState<UserWithRole | null>(null);
+  const [activationReason, setActivationReason] = useState('');
+  const [activationLoading, setActivationLoading] = useState(false);
 
   const queryClient = useQueryClient();
 
