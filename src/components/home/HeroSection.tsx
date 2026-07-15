@@ -47,7 +47,7 @@ const HeroSection = () => {
         <img
           src={heroCarsBg}
           alt="Rentmaikar cars"
-          className="w-full h-full object-contain object-top"
+          className="w-full h-full object-contain object-bottom"
         />
       </div>
 
