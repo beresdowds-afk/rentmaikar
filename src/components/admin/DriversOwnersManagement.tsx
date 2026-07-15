@@ -429,6 +429,7 @@ export function DriversOwnersManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>)}
     </>
   );
 }
