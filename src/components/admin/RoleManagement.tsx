@@ -88,6 +88,7 @@ export function RoleManagement() {
   const [newRole, setNewRole] = useState<AppRole>('admin_assistant');
   const [isUpdating, setIsUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState('users');
+  const [auditActionFilter, setAuditActionFilter] = useState<'all' | 'activation' | 'role' | 'created'>('all');
   
   // New user form state
   const [newUserEmail, setNewUserEmail] = useState('');
