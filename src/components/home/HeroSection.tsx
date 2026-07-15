@@ -183,15 +183,22 @@ const HeroSection = () => {
         </div>
 
         {/* Contact Buttons — sourced from admin Regional Contact Channels */}
-        <div className="flex flex-row justify-between items-start w-full max-w-3xl">
+        <div className="flex flex-row justify-between items-start w-full max-w-3xl gap-2 mt-2 sm:mt-3 px-1 sm:px-2">
           {whatsappNumber ? (
             <a
-              href={`https://wa.me/${whatsappNumber}`}
+              href={`https://wa.me/${whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(
+                "Hi Rentmaikar, I'd like to learn more about renting or listing a vehicle."
+              )}`}
               target="_blank"
               rel="noopener noreferrer"
               className="shrink-0"
+              aria-label="Chat with Rentmaikar on WhatsApp"
             >
-              <Button variant="whatsapp" size="sm" className="w-auto gap-1.5 px-3 py-1.5 text-xs">
+              <Button
+                variant="whatsapp"
+                size="sm"
+                className="w-auto gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs min-h-[36px]"
+              >
                 <MessageCircle className="w-3 h-3" />
                 WhatsApp
               </Button>
@@ -201,7 +208,7 @@ const HeroSection = () => {
               <Button
                 variant="whatsapp"
                 size="sm"
-                className="w-auto gap-1.5 px-3 py-1.5 text-xs"
+                className="w-auto gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs min-h-[36px]"
                 onClick={() => toast.info("WhatsApp not configured for this region yet.")}
               >
                 <MessageCircle className="w-3 h-3" />
@@ -210,16 +217,24 @@ const HeroSection = () => {
             </div>
           )}
           {supportEmail && (
-            <a href={`mailto:${supportEmail}`} className="shrink-0 hidden sm:inline-flex">
-              <Button variant="outline" size="sm" className="w-auto gap-1.5 px-3 py-1.5 text-xs">
+            <a href={`mailto:${supportEmail}`} className="shrink-0 hidden sm:inline-flex" aria-label={`Email ${supportEmail}`}>
+              <Button variant="outline" size="sm" className="w-auto gap-1.5 px-3 py-1.5 text-xs min-h-[36px]">
                 <Phone className="w-3 h-3" />
                 Email us
               </Button>
             </a>
           )}
           {smsNumber ? (
-            <a href={`sms:+${smsNumber}`} className="shrink-0">
-              <Button variant="sms" size="sm" className="w-auto gap-1.5 px-3 py-1.5 text-xs">
+            <a
+              href={`sms:+${smsNumber.replace(/\D/g, "")}`}
+              className="shrink-0"
+              aria-label="Send Rentmaikar a text message"
+            >
+              <Button
+                variant="sms"
+                size="sm"
+                className="w-auto gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs min-h-[36px]"
+              >
                 <Phone className="w-3 h-3" />
                 Text us
               </Button>
@@ -229,7 +244,7 @@ const HeroSection = () => {
               <Button
                 variant="sms"
                 size="sm"
-                className="w-auto gap-1.5 px-3 py-1.5 text-xs"
+                className="w-auto gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs min-h-[36px]"
                 onClick={() => toast.info("SMS not configured for this region yet.")}
               >
                 <Phone className="w-3 h-3" />
