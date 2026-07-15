@@ -351,11 +351,38 @@ export function RoleManagement() {
 
 
 
-  const openActivationDialog = (target: UserWithRole) => {
+  const openActivationDialog = async (target: UserWithRole) => {
     setActivationTarget(target);
     setActivationReason('');
+    setLinkedAccounts([]);
     setActivationDialogOpen(true);
+    setLinkedLoading(true);
+    try {
+      const { data: links, error } = await supabase.rpc('get_linked_user_ids', { _user_id: target.user_id });
+      if (error) throw error;
+      const ids = (links || []).map((r: any) => r.linked_user_id).filter(Boolean);
+      if (ids.length === 0) {
+        setLinkedAccounts([]);
+      } else {
+        const [{ data: profs }, { data: rolesData }] = await Promise.all([
+          supabase.from('profiles').select('user_id, full_name, email').in('user_id', ids),
+          supabase.from('user_roles').select('user_id, role').in('user_id', ids),
+        ]);
+        const roleMap = new Map<string, AppRole>((rolesData || []).map((r: any) => [r.user_id, r.role]));
+        setLinkedAccounts((profs || []).map((p: any) => ({
+          user_id: p.user_id,
+          full_name: p.full_name,
+          email: p.email,
+          role: roleMap.get(p.user_id) ?? null,
+        })));
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch linked accounts:', err);
+    } finally {
+      setLinkedLoading(false);
+    }
   };
+
 
   const handleToggleActivation = async () => {
     if (!activationTarget) return;
