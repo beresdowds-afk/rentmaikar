@@ -53,7 +53,7 @@ import {
   CheckCircle,
   MessageSquare,
   Phone,
-  DollarSign,
+  Landmark,
   TrendingUp,
   FileText,
   Bell,
@@ -227,7 +227,7 @@ export default function DriverDashboard() {
                       {formatCurrency(rental?.totalPaid ?? 0, currency)}
                     </p>
                   </div>
-                  <DollarSign className="h-8 w-8 text-blue-500" />
+                  <CurrencyIcon className="h-8 w-8 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
@@ -495,7 +495,7 @@ export default function DriverDashboard() {
                     </div>
                     <div className="p-4 border rounded-lg">
                       <div className="flex items-center gap-3 mb-2">
-                        <DollarSign className="h-5 w-5" />
+                        <Landmark className="h-5 w-5" />
                         <span className="font-medium">Bank Transfer</span>
                         <Badge variant="secondary">1-2 days</Badge>
                       </div>
