@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Building, Mail, Phone, MapPin, Car, Calendar, DollarSign, Check, ArrowLeft, Upload, ExternalLink, FileText, Shield } from "lucide-react";
+import { Building, Mail, Phone, MapPin, Car, Calendar, Check, ArrowLeft, Upload, ExternalLink, FileText, Shield } from "lucide-react";
+import { CurrencyIcon } from "@/components/ui/Currencyicon";
+import { useRegion } from "@/contexts/RegionContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -416,9 +418,9 @@ const OwnerRegistration = () => {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="desiredPrice">Desired Weekly Price ($)</Label>
+                  <Label htmlFor="desiredPrice">Desired Weekly Price ({currencySymbol})</Label>
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <CurrencyIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <Input
                       id="desiredPrice"
                       type="number"
