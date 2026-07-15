@@ -706,6 +706,15 @@ export function RoleManagement() {
                         </Badge>
                       </div>
                       <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Status</p>
+                        <Badge
+                          className={`mt-1 gap-1 ${selectedUser.is_active ? 'bg-emerald-600 text-white' : 'bg-muted text-muted-foreground'}`}
+                        >
+                          {selectedUser.is_active ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                          {selectedUser.is_active ? 'Active' : 'Deactivated'}
+                        </Badge>
+                      </div>
+                      <div>
                         <p className="text-xs text-muted-foreground uppercase tracking-wide">Created</p>
                         <p className="mt-1">{formatDate(selectedUser.created_at)}</p>
                       </div>
@@ -735,6 +744,33 @@ export function RoleManagement() {
                         Change role
                       </Button>
                       <Button
+                        variant={selectedUser.is_active ? 'outline' : 'default'}
+                        size="sm"
+                        onClick={() => openActivationDialog(selectedUser)}
+                        className={`gap-1 ${
+                          selectedUser.is_active
+                            ? 'text-amber-600 border-amber-500/40 hover:bg-amber-500/10'
+                            : ''
+                        }`}
+                        title={
+                          selectedUser.is_active
+                            ? 'Block sign-in and hide this user\'s dashboard until reactivated'
+                            : 'Restore sign-in and dashboard access'
+                        }
+                      >
+                        {selectedUser.is_active ? (
+                          <>
+                            <PowerOff className="h-4 w-4" />
+                            Deactivate
+                          </>
+                        ) : (
+                          <>
+                            <Power className="h-4 w-4" />
+                            Activate
+                          </>
+                        )}
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => openDeleteRoleDialog(selectedUser)}
@@ -744,8 +780,14 @@ export function RoleManagement() {
                         Remove role
                       </Button>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Deactivating a user immediately blocks their sign-in, hides their dashboard,
+                      and records the reason in the audit log. Reactivating restores access.
+                      Drivers and owners deactivated here also disappear from the Admin Assistant dashboard.
+                    </p>
                   </div>
                 );
+
 
                 return (
                   <SplitPane
