@@ -8,21 +8,18 @@ const CTASection = () => {
   const { country } = useRegion();
   const content = getCTAContent(country);
 
-  // Bold the first word ("Drivers" / "Owners") in button text, add "here" as second line
+  // Bold the first word ("Drivers" / "Owners") in button text.
   const renderCTALabel = (text: string) => {
     const commaIdx = text.indexOf(",");
-    if (commaIdx === -1) return (
-      <span className="flex flex-col items-start leading-tight">
-        <span>{text}</span>
-        <span className="text-xs font-normal opacity-80">here</span>
-      </span>
-    );
+    if (commaIdx === -1) {
+      return <span className="font-semibold">{text}</span>;
+    }
     const boldPart = text.slice(0, commaIdx);
     const rest = text.slice(commaIdx + 1).trim();
     return (
       <span className="flex flex-col items-start leading-tight">
-        <span className="font-black text-3xl uppercase tracking-wide">{boldPart}</span>
-        <span className="text-sm font-normal opacity-80">{rest} — <em>here</em></span>
+        <span className="font-black text-2xl uppercase tracking-wide">{boldPart}</span>
+        <span className="text-sm font-normal opacity-90">{rest}</span>
       </span>
     );
   };

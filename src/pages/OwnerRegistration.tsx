@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import PricingHintBanner from "@/components/home/PricingHintBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
 
@@ -175,7 +176,8 @@ const OwnerRegistration = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-24 pb-16">
+      <PricingHintBanner />
+      <main className="pt-8 pb-16">
         <div className="container mx-auto px-4 max-w-2xl">
           <Button
             variant="ghost"

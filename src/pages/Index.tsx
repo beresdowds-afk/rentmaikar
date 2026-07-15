@@ -1,6 +1,7 @@
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import HeroSection from "@/components/home/HeroSection";
+import PricingHintBanner from "@/components/home/PricingHintBanner";
 import CategoryCards from "@/components/home/CategoryCards";
 import HowItWorks from "@/components/home/HowItWorks";
 import FeaturesSection from "@/components/home/FeaturesSection";
@@ -21,6 +22,7 @@ const Index = () => {
       {/* Header hidden on home — hero has its own embedded nav */}
       <main className={!hasSelectedType ? "pb-24" : ""}>
         <HeroSection />
+        <PricingHintBanner />
         <div data-tour="categories">
           <CategoryCards />
         </div>
