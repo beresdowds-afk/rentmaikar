@@ -83,7 +83,7 @@ export function RoleManagement() {
   const [deleteRoleDialogOpen, setDeleteRoleDialogOpen] = useState(false);
   const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
-  const [newRole, setNewRole] = useState<AppRole>('driver');
+  const [newRole, setNewRole] = useState<AppRole>('admin_assistant');
   const [isUpdating, setIsUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState('users');
   
@@ -92,7 +92,7 @@ export function RoleManagement() {
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserFullName, setNewUserFullName] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
-  const [newUserRole, setNewUserRole] = useState<AppRole>('driver');
+  const [newUserRole, setNewUserRole] = useState<AppRole>('admin_assistant');
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [createResult, setCreateResult] = useState<null | {
     email: string;
@@ -291,7 +291,7 @@ export function RoleManagement() {
       setNewUserPassword('');
       setNewUserFullName('');
       setNewUserPhone('');
-      setNewUserRole('driver');
+      setNewUserRole('admin_assistant');
 
       fetchUsersWithRoles();
       fetchAuditLogs();
