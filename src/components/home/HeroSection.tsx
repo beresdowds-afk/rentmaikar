@@ -241,7 +241,7 @@ const HeroSection = () => {
       </div>
 
       {/* Spacer so cars stay visible below the CTAs */}
-      <div className="relative z-0 flex-1 min-h-[40vh]" aria-hidden="true" />
+      <div className="relative z-0 flex-1 min-h-[10vh] md:min-h-[40vh]" aria-hidden="true" />
 
       {/* Scroll Indicator */}
       <div className="relative z-10 flex justify-center pb-4 animate-bounce">
