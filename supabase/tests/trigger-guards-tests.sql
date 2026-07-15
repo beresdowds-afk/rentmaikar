@@ -47,6 +47,8 @@ DECLARE
   rs_id   uuid;
   inc_id  uuid;
   wr_id   uuid;
+  listing_id uuid;
+
 BEGIN
   ------------------------------------------------------------------------------
   -- Reuse existing real users so we don't need to insert into auth.users.
