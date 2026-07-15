@@ -176,63 +176,63 @@ const HeroSection = () => {
 
         {/* Tagline */}
         <div className="text-center max-w-2xl">
-          <p className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 leading-snug drop-shadow-sm">
+          <p className="text-xs sm:text-sm font-semibold text-gray-900 leading-snug drop-shadow-sm">
             "Your Journey, Our Wheels –{" "}
             <span className="text-black">Rent or List</span> with Confidence on Rentmaikar."
           </p>
         </div>
 
         {/* Contact Buttons — sourced from admin Regional Contact Channels */}
-        <div className="flex flex-row flex-wrap gap-3 justify-center w-full max-w-xl">
+        <div className="flex flex-row flex-wrap gap-2 justify-center w-full max-w-xl">
           {whatsappNumber ? (
             <a
               href={`https://wa.me/${whatsappNumber}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 min-w-[140px] max-w-[180px]"
+              className="flex-1 min-w-[110px] max-w-[150px]"
             >
-              <Button variant="whatsapp" size="sm" className="w-full gap-2">
-                <MessageCircle className="w-4 h-4" />
+              <Button variant="whatsapp" size="sm" className="w-full gap-1.5 py-1.5">
+                <MessageCircle className="w-3.5 h-3.5" />
                 WhatsApp
               </Button>
             </a>
           ) : (
-            <div className="flex-1 min-w-[140px] max-w-[180px]">
+            <div className="flex-1 min-w-[110px] max-w-[150px]">
               <Button
                 variant="whatsapp"
                 size="sm"
-                className="w-full gap-2"
+                className="w-full gap-1.5 py-1.5"
                 onClick={() => toast.info("WhatsApp not configured for this region yet.")}
               >
-                <MessageCircle className="w-4 h-4" />
+                <MessageCircle className="w-3.5 h-3.5" />
                 WhatsApp
               </Button>
             </div>
           )}
           {smsNumber ? (
-            <a href={`sms:+${smsNumber}`} className="flex-1 min-w-[140px] max-w-[180px]">
-              <Button variant="sms" size="sm" className="w-full gap-2">
-                <Phone className="w-4 h-4" />
+            <a href={`sms:+${smsNumber}`} className="flex-1 min-w-[110px] max-w-[150px]">
+              <Button variant="sms" size="sm" className="w-full gap-1.5 py-1.5">
+                <Phone className="w-3.5 h-3.5" />
                 Text us
               </Button>
             </a>
           ) : (
-            <div className="flex-1 min-w-[140px] max-w-[180px]">
+            <div className="flex-1 min-w-[110px] max-w-[150px]">
               <Button
                 variant="sms"
                 size="sm"
-                className="w-full gap-2"
+                className="w-full gap-1.5 py-1.5"
                 onClick={() => toast.info("SMS not configured for this region yet.")}
               >
-                <Phone className="w-4 h-4" />
+                <Phone className="w-3.5 h-3.5" />
                 Text us
               </Button>
             </div>
           )}
           {supportEmail && (
-            <a href={`mailto:${supportEmail}`} className="flex-1 min-w-[140px] max-w-[180px]">
-              <Button variant="outline" size="sm" className="w-full gap-2">
-                <Phone className="w-4 h-4" />
+            <a href={`mailto:${supportEmail}`} className="flex-1 min-w-[110px] max-w-[150px]">
+              <Button variant="outline" size="sm" className="w-full gap-1.5 py-1.5">
+                <Phone className="w-3.5 h-3.5" />
                 Email us
               </Button>
             </a>
@@ -241,7 +241,7 @@ const HeroSection = () => {
       </div>
 
       {/* Spacer so cars stay visible below the CTAs */}
-      <div className="relative z-0 flex-1 min-h-[10vh] md:min-h-[12vh]" aria-hidden="true" />
+      <div className="relative z-0 flex-1 min-h-[22vh] md:min-h-[28vh]" aria-hidden="true" />
 
     </section>
   );
