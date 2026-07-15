@@ -1503,6 +1503,61 @@ export type Database = {
           },
         ]
       }
+      iot_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json
+          device_id: string | null
+          id: string
+          performed_by: string | null
+          sim_id: string | null
+          vehicle_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json
+          device_id?: string | null
+          id?: string
+          performed_by?: string | null
+          sim_id?: string | null
+          vehicle_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json
+          device_id?: string | null
+          id?: string
+          performed_by?: string | null
+          sim_id?: string | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iot_audit_log_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "iot_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iot_audit_log_sim_id_fkey"
+            columns: ["sim_id"]
+            isOneToOne: false
+            referencedRelation: "iot_sim_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iot_audit_log_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       iot_device_orders: {
         Row: {
           created_at: string
@@ -1627,9 +1682,15 @@ export type Database = {
           created_at: string | null
           device_model: string | null
           firmware_version: string | null
+          health_details: Json
+          health_status: string
           id: string
           imei: string | null
+          installation_confirmed_at: string | null
+          installation_confirmed_by: string | null
+          installation_status: string
           is_linked: boolean | null
+          last_health_check_at: string | null
           last_ping: string | null
           latitude: number | null
           longitude: number | null
@@ -1640,6 +1701,7 @@ export type Database = {
           sim_number: string | null
           sim_provider: string | null
           status: Database["public"]["Enums"]["device_status"] | null
+          telemetry_enabled: boolean
           updated_at: string | null
           vehicle_id: string | null
         }
@@ -1649,9 +1711,15 @@ export type Database = {
           created_at?: string | null
           device_model?: string | null
           firmware_version?: string | null
+          health_details?: Json
+          health_status?: string
           id?: string
           imei?: string | null
+          installation_confirmed_at?: string | null
+          installation_confirmed_by?: string | null
+          installation_status?: string
           is_linked?: boolean | null
+          last_health_check_at?: string | null
           last_ping?: string | null
           latitude?: number | null
           longitude?: number | null
@@ -1662,6 +1730,7 @@ export type Database = {
           sim_number?: string | null
           sim_provider?: string | null
           status?: Database["public"]["Enums"]["device_status"] | null
+          telemetry_enabled?: boolean
           updated_at?: string | null
           vehicle_id?: string | null
         }
@@ -1671,9 +1740,15 @@ export type Database = {
           created_at?: string | null
           device_model?: string | null
           firmware_version?: string | null
+          health_details?: Json
+          health_status?: string
           id?: string
           imei?: string | null
+          installation_confirmed_at?: string | null
+          installation_confirmed_by?: string | null
+          installation_status?: string
           is_linked?: boolean | null
+          last_health_check_at?: string | null
           last_ping?: string | null
           latitude?: number | null
           longitude?: number | null
@@ -1684,6 +1759,7 @@ export type Database = {
           sim_number?: string | null
           sim_provider?: string | null
           status?: Database["public"]["Enums"]["device_status"] | null
+          telemetry_enabled?: boolean
           updated_at?: string | null
           vehicle_id?: string | null
         }
