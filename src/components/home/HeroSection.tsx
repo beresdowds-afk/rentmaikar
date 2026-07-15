@@ -2,14 +2,19 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MessageCircle, Phone, Menu, X, LayoutDashboard, LogOut, LogIn, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useRegion } from "@/contexts/RegionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserType } from "@/contexts/UserTypeContext";
+import { buildWhatsAppLink, buildSmsLink } from "@/lib/contact-links";
 
 import { toast } from "sonner";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 import rentmaikarHeroBanner from "@/assets/rentmaikar-hero-banner.jpg";
 import heroCarsBg from "@/assets/hero-cars-bg.png";
+
+const WHATSAPP_PREFILL =
+  "Hi Rentmaikar, I'd like to learn more about renting or listing a vehicle.";
 
 const HeroSection = () => {
   const { whatsappNumber, smsNumber, supportEmail } = useRegion();
@@ -17,6 +22,9 @@ const HeroSection = () => {
   const { userType } = useUserType();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const whatsappHref = buildWhatsAppLink(whatsappNumber, WHATSAPP_PREFILL);
+  const smsHref = buildSmsLink(smsNumber);
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -183,77 +191,114 @@ const HeroSection = () => {
         </div>
 
         {/* Contact Buttons — sourced from admin Regional Contact Channels */}
-        <div className="flex flex-row justify-between items-start w-full max-w-3xl gap-2 mt-2 sm:mt-3 px-1 sm:px-2">
-          {whatsappNumber ? (
-            <a
-              href={`https://wa.me/${whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(
-                "Hi Rentmaikar, I'd like to learn more about renting or listing a vehicle."
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0"
-              aria-label="Chat with Rentmaikar on WhatsApp"
-            >
-              <Button
-                variant="whatsapp"
-                size="sm"
-                className="w-auto gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs min-h-[36px]"
-              >
-                <MessageCircle className="w-3 h-3" />
-                WhatsApp
-              </Button>
-            </a>
-          ) : (
-            <div className="shrink-0">
-              <Button
-                variant="whatsapp"
-                size="sm"
-                className="w-auto gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs min-h-[36px]"
-                onClick={() => toast.info("WhatsApp not configured for this region yet.")}
-              >
-                <MessageCircle className="w-3 h-3" />
-                WhatsApp
-              </Button>
-            </div>
-          )}
+        <div className="flex flex-row justify-between items-start w-full max-w-3xl gap-2 mt-2 sm:mt-3 mb-1 px-1 sm:px-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {whatsappHref ? (
+                <a
+                  href={whatsappHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0"
+                  aria-label="Chat with Rentmaikar on WhatsApp — opens WhatsApp with a prefilled message"
+                  title="Chat with Rentmaikar on WhatsApp"
+                >
+                  <Button
+                    variant="whatsapp"
+                    size="sm"
+                    className="w-auto gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs min-h-[36px]"
+                  >
+                    <MessageCircle className="w-3 h-3" aria-hidden="true" />
+                    WhatsApp
+                  </Button>
+                </a>
+              ) : (
+                <div className="shrink-0">
+                  <Button
+                    variant="whatsapp"
+                    size="sm"
+                    className="w-auto gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs min-h-[36px]"
+                    aria-label="WhatsApp not configured for this region"
+                    title="WhatsApp not configured for this region yet"
+                    onClick={() => toast.info("WhatsApp not configured for this region yet.")}
+                  >
+                    <MessageCircle className="w-3 h-3" aria-hidden="true" />
+                    WhatsApp
+                  </Button>
+                </div>
+              )}
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {whatsappHref
+                ? "Opens WhatsApp with a message ready to send"
+                : "WhatsApp isn't configured for this region yet"}
+            </TooltipContent>
+          </Tooltip>
+
           {supportEmail && (
-            <a href={`mailto:${supportEmail}`} className="shrink-0 hidden sm:inline-flex" aria-label={`Email ${supportEmail}`}>
-              <Button variant="outline" size="sm" className="w-auto gap-1.5 px-3 py-1.5 text-xs min-h-[36px]">
-                <Phone className="w-3 h-3" />
-                Email us
-              </Button>
-            </a>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href={`mailto:${supportEmail}`}
+                  className="shrink-0 hidden sm:inline-flex"
+                  aria-label={`Email Rentmaikar support at ${supportEmail}`}
+                  title={`Email ${supportEmail}`}
+                >
+                  <Button variant="outline" size="sm" className="w-auto gap-1.5 px-3 py-1.5 text-xs min-h-[36px]">
+                    <Phone className="w-3 h-3" aria-hidden="true" />
+                    Email us
+                  </Button>
+                </a>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                Opens your email app to message support
+              </TooltipContent>
+            </Tooltip>
           )}
-          {smsNumber ? (
-            <a
-              href={`sms:+${smsNumber.replace(/\D/g, "")}`}
-              className="shrink-0"
-              aria-label="Send Rentmaikar a text message"
-            >
-              <Button
-                variant="sms"
-                size="sm"
-                className="w-auto gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs min-h-[36px]"
-              >
-                <Phone className="w-3 h-3" />
-                Text us
-              </Button>
-            </a>
-          ) : (
-            <div className="shrink-0">
-              <Button
-                variant="sms"
-                size="sm"
-                className="w-auto gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs min-h-[36px]"
-                onClick={() => toast.info("SMS not configured for this region yet.")}
-              >
-                <Phone className="w-3 h-3" />
-                Text us
-              </Button>
-            </div>
-          )}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {smsHref ? (
+                <a
+                  href={smsHref}
+                  className="shrink-0"
+                  aria-label="Text Rentmaikar — opens your messaging app with our number prefilled"
+                  title="Text Rentmaikar"
+                >
+                  <Button
+                    variant="sms"
+                    size="sm"
+                    className="w-auto gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs min-h-[36px]"
+                  >
+                    <Phone className="w-3 h-3" aria-hidden="true" />
+                    Text us
+                  </Button>
+                </a>
+              ) : (
+                <div className="shrink-0">
+                  <Button
+                    variant="sms"
+                    size="sm"
+                    className="w-auto gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs min-h-[36px]"
+                    aria-label="SMS not configured for this region"
+                    title="SMS not configured for this region yet"
+                    onClick={() => toast.info("SMS not configured for this region yet.")}
+                  >
+                    <Phone className="w-3 h-3" aria-hidden="true" />
+                    Text us
+                  </Button>
+                </div>
+              )}
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {smsHref
+                ? "Opens your messaging app with our number prefilled"
+                : "SMS isn't configured for this region yet"}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
+
 
       {/* Spacer so cars stay visible below the CTAs */}
       <div className="relative z-0 flex-1 min-h-[22vh] md:min-h-[28vh]" aria-hidden="true" />
