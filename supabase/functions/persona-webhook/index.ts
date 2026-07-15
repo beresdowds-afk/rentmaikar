@@ -1,5 +1,5 @@
 // Public webhook — signature-verified with PERSONA_WEBHOOK_SECRET.
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 async function hmac(secret: string, body: string) {

@@ -1,5 +1,5 @@
 // Admin-triggered re-verification: creates a fresh Persona inquiry and emails/SMS the hosted link.
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 

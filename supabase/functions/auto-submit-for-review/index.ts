@@ -2,7 +2,7 @@
 // - Called by the driver client when their document completion hits 100%.
 // - Idempotent: only transitions `pending` -> `under_review` once.
 // - Triggers notify-referees + verify-referees + persona-create-inquiry as best-effort.
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { logPipelineEvent } from "../_shared/pipeline-events.ts";
 

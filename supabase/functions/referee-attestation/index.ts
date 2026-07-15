@@ -1,7 +1,7 @@
 // Public endpoint. GET: returns minimal context for the attestation page from a token.
 // POST: records the referee's attested response and, on negative, notifies admins
 // and admin assistants for manual review. verify_jwt is off; auth is by opaque token.
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 

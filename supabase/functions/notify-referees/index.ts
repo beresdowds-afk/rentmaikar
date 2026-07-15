@@ -7,7 +7,7 @@
 //     network failures and 5xx / 429 responses (up to MAX_ATTEMPTS).
 //   - Detailed logs: every channel attempt is written to messaging_events with
 //     status, provider, http status, latency and error text for troubleshooting.
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { logPipelineEvent } from "../_shared/pipeline-events.ts";

@@ -1,6 +1,6 @@
 // Clones the master Persona inquiry template for a region's country code.
 // Admin-only. Idempotent — safe to re-run.
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 

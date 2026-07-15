@@ -7,7 +7,7 @@
 //   - Signed-in users may export ONLY their own documents.
 //   - Admins & admin assistants may export any user/vehicle.
 
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import JSZip from "https://esm.sh/jszip@3.10.1";
 import { z } from "https://esm.sh/zod@3.23.8";

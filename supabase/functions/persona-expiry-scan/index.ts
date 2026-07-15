@@ -1,5 +1,5 @@
 // Daily: for user documents expiring in <=14 days, queue Persona re-verification.
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 Deno.serve(async (req) => {
