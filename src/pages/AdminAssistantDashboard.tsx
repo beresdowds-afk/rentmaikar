@@ -361,7 +361,7 @@ const AdminAssistantDashboard = () => {
                 </div>
                 {rates && (
                   <p className="text-[10px] text-muted-foreground pt-1">
-                    Rate: $1 = ₦{rates.USD_NGN.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                    Rate: USD 1 = NGN {rates.USD_NGN.toLocaleString('en-US', { maximumFractionDigits: 2 })}
                   </p>
                 )}
               </div>
