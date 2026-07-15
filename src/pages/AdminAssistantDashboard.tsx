@@ -561,6 +561,7 @@ const AdminAssistantDashboard = () => {
               {activeTab === 'applications' && <ApplicationManagement />}
               {activeTab === 'attestation-review' && <NegativeAttestationReviewPanel />}
               {activeTab === 'accounts' && <UserAccountsView />}
+              {activeTab === 'drivers-owners' && <DriversOwnersManagement />}
               {activeTab === 'roles' && <RoleManagement />}
               {activeTab === 'admin-assistants' && <AdminAssistantManagement />}
               {activeTab === 'negotiations' && <AdminPriceNegotiation />}
