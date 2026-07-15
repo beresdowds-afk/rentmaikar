@@ -182,39 +182,61 @@ const HeroSection = () => {
         </div>
 
         {/* Contact Buttons — sourced from admin Regional Contact Channels */}
-        {(whatsappNumber || smsNumber || supportEmail) && (
-          <div className="flex flex-row flex-wrap gap-3 justify-center w-full max-w-xl">
-            {whatsappNumber && (
-              <a
-                href={`https://wa.me/${whatsappNumber}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 min-w-[140px] max-w-[180px]"
+        <div className="flex flex-row flex-wrap gap-3 justify-center w-full max-w-xl">
+          {whatsappNumber ? (
+            <a
+              href={`https://wa.me/${whatsappNumber}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 min-w-[140px] max-w-[180px]"
+            >
+              <Button variant="whatsapp" size="sm" className="w-full gap-2">
+                <MessageCircle className="w-4 h-4" />
+                WhatsApp
+              </Button>
+            </a>
+          ) : (
+            <div className="flex-1 min-w-[140px] max-w-[180px]">
+              <Button
+                variant="whatsapp"
+                size="sm"
+                className="w-full gap-2"
+                onClick={() => toast.info("WhatsApp not configured for this region yet.")}
               >
-                <Button variant="whatsapp" size="sm" className="w-full gap-2">
-                  <MessageCircle className="w-4 h-4" />
-                  WhatsApp
-                </Button>
-              </a>
-            )}
-            {smsNumber && (
-              <a href={`sms:+${smsNumber}`} className="flex-1 min-w-[140px] max-w-[180px]">
-                <Button variant="sms" size="sm" className="w-full gap-2">
-                  <Phone className="w-4 h-4" />
-                  Text us
-                </Button>
-              </a>
-            )}
-            {supportEmail && (
-              <a href={`mailto:${supportEmail}`} className="flex-1 min-w-[140px] max-w-[180px]">
-                <Button variant="outline" size="sm" className="w-full gap-2">
-                  <Phone className="w-4 h-4" />
-                  Email us
-                </Button>
-              </a>
-            )}
-          </div>
-        )}
+                <MessageCircle className="w-4 h-4" />
+                WhatsApp
+              </Button>
+            </div>
+          )}
+          {smsNumber ? (
+            <a href={`sms:+${smsNumber}`} className="flex-1 min-w-[140px] max-w-[180px]">
+              <Button variant="sms" size="sm" className="w-full gap-2">
+                <Phone className="w-4 h-4" />
+                Text us
+              </Button>
+            </a>
+          ) : (
+            <div className="flex-1 min-w-[140px] max-w-[180px]">
+              <Button
+                variant="sms"
+                size="sm"
+                className="w-full gap-2"
+                onClick={() => toast.info("SMS not configured for this region yet.")}
+              >
+                <Phone className="w-4 h-4" />
+                Text us
+              </Button>
+            </div>
+          )}
+          {supportEmail && (
+            <a href={`mailto:${supportEmail}`} className="flex-1 min-w-[140px] max-w-[180px]">
+              <Button variant="outline" size="sm" className="w-full gap-2">
+                <Phone className="w-4 h-4" />
+                Email us
+              </Button>
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Spacer so cars stay visible below the CTAs */}
