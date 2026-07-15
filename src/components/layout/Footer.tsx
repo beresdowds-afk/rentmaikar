@@ -149,12 +149,14 @@ const Footer = () => {
                   {companyInfo.phone}
                 </a>
               </li>
-              <li className="flex items-center gap-2">
-                <Mail className="w-4 h-4 shrink-0" />
-                <a href={`mailto:${EMAIL_CONFIG.support}`} className="hover:text-accent transition-colors">
-                  {EMAIL_CONFIG.support}
-                </a>
-              </li>
+              {supportEmail && (
+                <li className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 shrink-0" />
+                  <a href={`mailto:${supportEmail}`} className="hover:text-accent transition-colors">
+                    {supportEmail}
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
         </div>
