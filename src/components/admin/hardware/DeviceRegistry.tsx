@@ -95,28 +95,38 @@ export const DeviceRegistry = () => {
   useEffect(() => { load(); }, []);
 
   const buySim = async () => {
+    if (buySource === 'manual' && !buyIccid.trim()) {
+      toast.error('ICCID is required for manual entry');
+      return;
+    }
     setBuying(true);
     try {
       const { data, error } = await supabase.functions.invoke('iot-admin', {
         body: {
           action: 'purchase_sim',
-          plan_id: Number(buyPlan),
+          source: buySource,
+          provider: buySource === 'manual' ? (buyProvider.trim() || 'manual') : 'hologram',
+          plan_id: buySource === 'hologram' ? Number(buyPlan) : undefined,
+          plan_name: buySource === 'manual' ? (buyPlanName.trim() || null) : undefined,
           notes: buyNotes || null,
           iccid: buyIccid || undefined,
           msisdn: buyMsisdn || undefined,
+          imsi: buyImsi || undefined,
         },
       });
       if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
-      toast.success('eSIM added to inventory', {
-        description: (data as any)?.hologram_configured
-          ? 'Provisioned from Hologram pool.'
-          : 'Recorded locally — add HOLOGRAM_API_KEY to sync with the provider.',
+      toast.success(buySource === 'manual' ? 'SIM added to inventory' : 'eSIM added to inventory', {
+        description: buySource === 'manual'
+          ? `Recorded manually under provider "${buyProvider || 'manual'}".`
+          : (data as any)?.hologram_configured
+            ? 'Provisioned from Hologram pool.'
+            : 'Recorded locally — add HOLOGRAM_API_KEY to sync with the provider.',
       });
       setBuyOpen(false);
-      setBuyNotes(''); setBuyIccid(''); setBuyMsisdn('');
+      setBuyNotes(''); setBuyIccid(''); setBuyMsisdn(''); setBuyImsi(''); setBuyPlanName('');
       load();
     } catch (err: any) {
-      toast.error('Could not add eSIM', { description: err.message });
+      toast.error('Could not add SIM', { description: err.message });
     } finally {
       setBuying(false);
     }
