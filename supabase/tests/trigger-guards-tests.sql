@@ -89,13 +89,23 @@ BEGIN
     'ORIGINAL CONTENT', 'pending', true
   ) RETURNING id INTO la_id;
 
+  INSERT INTO public.rent_to_own_listings(
+    vehicle_id, owner_id, total_price, down_payment, monthly_payment,
+    duration_months, currency, allow_buyout, allow_conversion_to_rental,
+    status, is_available
+  ) VALUES (
+    vehicle_id, owner_id, 20000, 2000, 500,
+    36, 'USD', true, false, 'active', true
+  ) RETURNING id INTO listing_id;
+
   INSERT INTO public.rent_to_own_agreements(
-    driver_id, owner_id, vehicle_id, total_price, down_payment, monthly_payment,
+    driver_id, owner_id, vehicle_id, listing_id, total_price, down_payment, monthly_payment,
     duration_months, currency, status
   ) VALUES (
-    driver_id, owner_id, vehicle_id, 20000, 2000, 500,
+    driver_id, owner_id, vehicle_id, listing_id, 20000, 2000, 500,
     36, 'USD', 'pending'
   ) RETURNING id INTO rto_id;
+
 
   INSERT INTO public.price_negotiations(
     driver_id, owner_id, vehicle_id, proposed_daily_rate, status
