@@ -419,12 +419,25 @@ export function AdminAssistantManagement() {
                   });
                   if (error) throw error;
                   if ((data as any)?.error) throw new Error((data as any).error);
+                  const newUserId = (data as any)?.user_id as string | undefined;
                   toast.success('Admin assistant created', {
                     description: (data as any)?.message ?? 'Password-reset email sent.',
                   });
                   setCreateOpen(false);
                   setNewUser({ email: '', full_name: '', phone: '' });
                   await load();
+                  // Immediately open the permissions editor for the new assistant
+                  // so the admin can grant can_manage_users and other capabilities.
+                  if (newUserId) {
+                    setEditing(null);
+                    setSelectedUserId(newUserId);
+                    setNotes('');
+                    setPerms({ ...EMPTY_PERMS });
+                    setDialogOpen(true);
+                    toast.info('Grant capabilities', {
+                      description: 'Choose which admin areas this new assistant can access, then save.',
+                    });
+                  }
                 } catch (e: any) {
                   toast.error('Failed to create user', { description: e.message });
                 } finally {
