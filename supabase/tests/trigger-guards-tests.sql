@@ -121,9 +121,9 @@ BEGIN
 
 
   INSERT INTO public.price_negotiations(
-    driver_id, owner_id, vehicle_id, proposed_daily_rate, status
+    driver_id, owner_id, vehicle_id, requested_daily_rate, currency, status
   ) VALUES (
-    driver_id, owner_id, vehicle_id, 55, 'pending'
+    driver_id, owner_id, vehicle_id, 55, 'USD', 'pending'
   ) RETURNING id INTO pn_id;
 
   INSERT INTO public.rentals(
