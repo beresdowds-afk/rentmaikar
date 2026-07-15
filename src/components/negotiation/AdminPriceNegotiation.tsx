@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
-  DollarSign, 
+
   Clock, 
   CheckCircle, 
   XCircle, 
@@ -541,7 +541,7 @@ export const AdminPriceNegotiation = () => {
               <div className="space-y-2">
                 <Label htmlFor="counterOffer">Your Rate ({selectedNegotiation.currency}/day)</Label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <CurrencyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="counterOffer"
                     type="number"

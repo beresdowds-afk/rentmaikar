@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
-  DollarSign, 
+
   Send, 
   Clock, 
   CheckCircle, 
@@ -313,7 +313,7 @@ export const DriverPriceNegotiation = () => {
                     <div className="space-y-2">
                       <Label htmlFor="rate">Daily Rate ({currency})</Label>
                       <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <CurrencyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="rate"
                           type="number"
@@ -363,7 +363,7 @@ export const DriverPriceNegotiation = () => {
 
       {/* Price Tiers Info */}
       <Alert>
-        <DollarSign className="h-4 w-4" />
+        <CurrencyIcon className="h-4 w-4" />
         <AlertDescription>
           <strong>Weekly Price Ceilings:</strong> Budget{rangeSuffix('budget')}: {currencySymbol}250 | Standard{rangeSuffix('standard')}: {currencySymbol}300 | Premium{rangeSuffix('premium')}: {currencySymbol}350
         </AlertDescription>
@@ -373,7 +373,7 @@ export const DriverPriceNegotiation = () => {
       <div className="space-y-4">
         {negotiations.length === 0 ? (
           <Card className="p-8 text-center">
-            <DollarSign className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <CurrencyIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="font-semibold mb-2">No Negotiations Yet</h3>
             <p className="text-muted-foreground mb-4">Submit your first price request to get started</p>
             <Button onClick={() => setIsNewRequestOpen(true)}>
@@ -519,7 +519,7 @@ export const DriverPriceNegotiation = () => {
               <div className="space-y-2">
                 <Label htmlFor="newRate">Requested New Rate ({currency})</Label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <CurrencyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="newRate"
                     type="number"
