@@ -281,7 +281,7 @@ export function DeviceOrderRevenue() {
               </p>
               {rates && (
                 <p className="text-xs text-muted-foreground">
-                  Rate: $1 = ₦{rates.USD_NGN.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                  Rate: USD 1 = NGN {rates.USD_NGN.toLocaleString('en-US', { maximumFractionDigits: 2 })}
                 </p>
               )}
             </div>
