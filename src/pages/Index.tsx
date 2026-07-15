@@ -22,6 +22,7 @@ const Index = () => {
       {/* Header hidden on home — hero has its own embedded nav */}
       <main className={!hasSelectedType ? "pb-24" : ""}>
         <HeroSection />
+        <PricingHintBanner />
         <div data-tour="categories">
           <CategoryCards />
         </div>
