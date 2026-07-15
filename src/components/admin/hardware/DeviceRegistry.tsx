@@ -281,6 +281,7 @@ export const DeviceRegistry = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>ICCID</TableHead>
+                    <TableHead>Provider</TableHead>
                     <TableHead>MSISDN</TableHead>
                     <TableHead>Plan</TableHead>
                     <TableHead>Status</TableHead>
@@ -292,12 +293,23 @@ export const DeviceRegistry = () => {
                   {sims.map(s => (
                     <TableRow key={s.id}>
                       <TableCell className="font-mono text-xs">{s.iccid}</TableCell>
+                      <TableCell>
+                        <Badge variant={s.provider === 'hologram' ? 'default' : 'outline'} className="capitalize">
+                          {s.provider || 'unknown'}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{s.msisdn || '—'}</TableCell>
                       <TableCell>{s.plan_name || '—'}</TableCell>
                       <TableCell><Badge variant={s.status === 'active' ? 'default' : 'secondary'}>{s.status}</Badge></TableCell>
                       <TableCell className="text-sm">{s.data_usage_mb ?? 0} MB</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => syncSim(s.id)} disabled={syncingId === s.id}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => syncSim(s.id)}
+                          disabled={syncingId === s.id || s.provider !== 'hologram'}
+                          title={s.provider === 'hologram' ? 'Sync with Hologram' : 'Sync only available for Hologram SIMs'}
+                        >
                           {syncingId === s.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                         </Button>
                       </TableCell>
