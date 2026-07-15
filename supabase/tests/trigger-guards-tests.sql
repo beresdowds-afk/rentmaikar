@@ -144,7 +144,7 @@ BEGIN
     driver_id, owner_id, vehicle_id, incident_type, severity, status,
     reported_at, occurred_at
   ) VALUES (
-    driver_id, owner_id, vehicle_id, 'minor_damage', 'low', 'reported',
+    driver_id, owner_id, vehicle_id, 'accident', 'low', 'reported',
     now(), now()
   ) RETURNING id INTO inc_id;
 
