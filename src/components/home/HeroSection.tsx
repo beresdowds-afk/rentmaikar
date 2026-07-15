@@ -23,6 +23,9 @@ const HeroSection = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const whatsappHref = buildWhatsAppLink(whatsappNumber, WHATSAPP_PREFILL);
+  const smsHref = buildSmsLink(smsNumber);
+
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/how-it-works", label: "How it Works" },
