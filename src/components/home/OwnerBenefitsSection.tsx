@@ -1,4 +1,4 @@
-import { Building, DollarSign, Shield, TrendingUp, Clock, Headphones } from "lucide-react";
+import { Building, Wallet, Shield, TrendingUp, Clock, Headphones } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
 import { useUserType } from "@/contexts/UserTypeContext";
 
@@ -10,7 +10,7 @@ interface OwnerBenefit {
 
 const ownerBenefitsUSA: OwnerBenefit[] = [
   {
-    icon: DollarSign,
+    icon: Wallet,
     title: "Weekly Passive Income",
     description: "Earn consistent weekly payouts via PayPal. We handle driver payments and remit your share every Friday.",
   },
@@ -43,7 +43,7 @@ const ownerBenefitsUSA: OwnerBenefit[] = [
 
 const ownerBenefitsNigeria: OwnerBenefit[] = [
   {
-    icon: DollarSign,
+    icon: Wallet,
     title: "Steady Weekly Income",
     description: "Receive consistent weekly payouts via Paystack. We collect from drivers and remit your share every Friday.",
   },

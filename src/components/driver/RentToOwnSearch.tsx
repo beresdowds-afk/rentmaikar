@@ -14,7 +14,7 @@ import {
   Search,
   Home,
   Car,
-  DollarSign,
+  Wallet,
   Calendar,
   Check,
   X,
@@ -108,7 +108,7 @@ export function RentToOwnSearch() {
             </div>
             <Select value={priceFilter} onValueChange={setPriceFilter}>
               <SelectTrigger className="w-full md:w-48">
-                <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
+                <Wallet className="h-4 w-4 mr-2 text-muted-foreground" />
                 <SelectValue placeholder="Price Range" />
               </SelectTrigger>
               <SelectContent>

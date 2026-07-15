@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, DollarSign } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { CurrencyIcon } from "@/components/ui/Currencyicon";
 import { useRegion } from "@/contexts/RegionContext";
 import { useUserType } from "@/contexts/UserTypeContext";
 import { getCategoryContent } from "@/lib/localized-content";
@@ -77,7 +78,7 @@ const CategoryCard = ({
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <DollarSign className={`w-5 h-5 ${textColors[variant]}`} />
+            <CurrencyIcon className={`w-5 h-5 ${textColors[variant]}`} />
             <span className="text-lg font-bold text-foreground">{minPrice}</span>
             <span className="text-sm text-muted-foreground">-</span>
             <span className="text-lg font-bold text-foreground">{maxPrice}</span>
