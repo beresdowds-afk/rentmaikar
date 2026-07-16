@@ -222,12 +222,17 @@ export function TraccarDashboard() {
                       <TableHead>Status</TableHead>
                       <TableHead>Last Ping</TableHead>
                       <TableHead>Position</TableHead>
-                      <TableHead>Linked</TableHead>
+                      <TableHead>Vehicle</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filtered.map(d => (
-                      <TableRow key={d.id}>
+                      <TableRow
+                        key={d.id}
+                        className="cursor-pointer"
+                        onClick={() => { setSelected(d); setLinkVehicle(d.vehicle_id); }}
+                      >
                         <TableCell className="font-mono text-xs">{d.serial_number}</TableCell>
                         <TableCell>{d.device_model || "—"}</TableCell>
                         <TableCell>
@@ -241,6 +246,7 @@ export function TraccarDashboard() {
                             <a
                               className="inline-flex items-center gap-1 underline"
                               target="_blank" rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               href={`https://www.google.com/maps?q=${d.latitude},${d.longitude}`}
                             >
                               <MapPin className="h-3 w-3" />
@@ -249,7 +255,12 @@ export function TraccarDashboard() {
                           ) : "—"}
                         </TableCell>
                         <TableCell>
-                          {d.vehicle_id ? <Badge variant="outline">vehicle</Badge> : <span className="text-xs text-muted-foreground">unlinked</span>}
+                          {d.vehicle_id ? <Badge variant="outline">Linked</Badge> : <span className="text-xs text-muted-foreground">Unlinked</span>}
+                        </TableCell>
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="ghost" onClick={() => { setSelected(d); setLinkVehicle(d.vehicle_id); }}>
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
