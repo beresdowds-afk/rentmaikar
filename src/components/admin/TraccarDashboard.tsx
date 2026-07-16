@@ -86,8 +86,19 @@ export function TraccarDashboard() {
       if (res?.ok === false) throw new Error(JSON.stringify(res));
       if (action === "sync") toast.success(`Synced ${res?.devices_synced ?? 0} devices (${res?.positions_received ?? 0} positions)`);
       else if (action === "send_command") toast.success("Command dispatched to Traccar");
+      else if (action === "test_connection") toast.success("Traccar reachable");
+      else if (action === "link_device") toast.success("Device linked");
+      else if (action === "unlink_device") toast.success("Device unlinked");
       else toast.success("Action complete");
-      if (action === "sync") await load();
+      await load();
+      if (selected) {
+        const { data: fresh } = await supabase
+          .from("iot_devices")
+          .select("id, serial_number, provider, device_model, status, last_ping, latitude, longitude, telemetry_enabled, is_linked, vehicle_id, health_details")
+          .eq("id", selected.id)
+          .maybeSingle();
+        if (fresh) setSelected(fresh as Device);
+      }
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
