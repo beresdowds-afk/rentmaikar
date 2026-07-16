@@ -116,8 +116,9 @@ export const SubscriptionManagement = () => {
     const [subs, sigs, pays] = await Promise.all([
       supabase.from("user_subscriptions").select("*").eq("user_id", p.user_id).order("created_at", { ascending: false }),
       supabase.from("agreement_signature_audit").select("*").eq("actor_id", p.user_id).order("created_at", { ascending: false }).limit(50),
-      supabase.from("payments").select("id, user_id, amount, currency, status, payment_method, reference, created_at")
-        .eq("user_id", p.user_id).order("created_at", { ascending: false }).limit(50),
+      supabase.from("payments").select("id, driver_id, amount, currency, status, payment_method, transaction_id, created_at")
+        .eq("driver_id", p.user_id).order("created_at", { ascending: false }).limit(50),
+
     ]);
     setUserSubs((subs.data || []) as UserSubscription[]);
     setUserSigs((sigs.data || []) as SignatureAudit[]);
