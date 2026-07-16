@@ -48,6 +48,8 @@ const AuditLogPage = lazy(() => import("./pages/admin/AuditLogPage"));
 const PaymentsViewerPage = lazy(() => import("./pages/admin/PaymentsViewerPage"));
 const TourStepConfigPage = lazy(() => import("./pages/admin/TourStepConfigPage"));
 const TourAnalyticsPage = lazy(() => import("./pages/admin/TourAnalyticsPage"));
+const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
+const SubscriptionSuccessPage = lazy(() => import("./pages/SubscriptionSuccessPage"));
 
 const queryClient = new QueryClient();
 
@@ -240,6 +242,23 @@ const App = () => (
 
 
 
+
+                  <Route
+                    path="/subscriptions"
+                    element={
+                      <ProtectedRoute>
+                        <SubscriptionsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/subscriptions/success"
+                    element={
+                      <ProtectedRoute>
+                        <SubscriptionSuccessPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
                   <Route path="*" element={<NotFound />} />
                   </Routes>

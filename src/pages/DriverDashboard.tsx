@@ -42,6 +42,7 @@ import { PaymentMethodPicker } from '@/components/payments/PaymentMethodPicker';
 import { RentalPaymentStatusPanel } from '@/components/payments/RentalPaymentStatusPanel';
 import { EnablePushButton } from '@/components/notifications/EnablePushButton';
 import { installDeepLinkListener } from '@/lib/push';
+import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
 import { useNavigate } from 'react-router-dom';
 import {
   Car,
@@ -271,6 +272,10 @@ export default function DriverDashboard() {
                 Agreements
               </TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="subscriptions" className="flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                Subscriptions
+              </TabsTrigger>
               <TabsTrigger value="telemetry" className="flex items-center gap-1">
                 <Activity className="h-3 w-3" />
                 Driving Score
@@ -281,6 +286,15 @@ export default function DriverDashboard() {
               </TabsTrigger>
               <TabsTrigger value="settings" data-tour="driver-settings">Settings</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="subscriptions" className="space-y-6">
+              <SubscriptionPlansPanel
+                title="Driver Training (required, unlocks Insurance)"
+                planTypes={["training"]}
+              />
+              <SubscriptionPlansPanel title="Insurance" planTypes={["insurance"]} />
+              <SubscriptionPlansPanel title="Roadside Support" planTypes={["roadside_support"]} />
+            </TabsContent>
 
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
