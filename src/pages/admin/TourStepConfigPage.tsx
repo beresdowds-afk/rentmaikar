@@ -166,6 +166,9 @@ export default function TourStepConfigPage() {
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={addStep}><Plus className="w-4 h-4 mr-1" />Add step</Button>
+                <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)} disabled={steps.length === 0}>
+                  <Play className="w-4 h-4 mr-1" />Preview
+                </Button>
                 <Button size="sm" disabled={!isValid || saving} onClick={save}>
                   {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
                   Save
