@@ -221,6 +221,23 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/admin/tour-config"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <TourStepConfigPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/tour-analytics"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <TourAnalyticsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
 
 
 
