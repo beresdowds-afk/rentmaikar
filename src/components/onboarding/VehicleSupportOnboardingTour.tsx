@@ -132,11 +132,16 @@ interface VehicleSupportOnboardingTourProps {
 }
 
 export const VehicleSupportOnboardingTour = ({ onComplete, isOpen }: VehicleSupportOnboardingTourProps) => {
+  const { country } = useRegion();
+  const tourSteps = useMemo(() => buildTourSteps(country), [country]);
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
+  useEffect(() => { setCurrentStep(0); }, [country]);
+
   const step = tourSteps[currentStep];
   const progress = ((currentStep + 1) / tourSteps.length) * 100;
+
 
   const updateTargetRect = useCallback(() => {
     if (step.target) {
