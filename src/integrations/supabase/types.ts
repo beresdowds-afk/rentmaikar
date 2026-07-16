@@ -6927,6 +6927,13 @@ export type Database = {
         }
         Returns: string
       }
+      admin_cancel_subscription: {
+        Args: { _reason?: string; _subscription_id: string }
+        Returns: {
+          cancelled_id: string
+          cascaded_ids: string[]
+        }[]
+      }
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
       driver_request_rental_extension: {
         Args: { _rental_id: string }
