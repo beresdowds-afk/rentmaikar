@@ -360,7 +360,7 @@ export const SubscriptionManagement = () => {
                         <div key={p.id} className="text-xs p-2 rounded border flex justify-between gap-2">
                           <span>
                             <Badge variant={p.status === "completed" || p.status === "success" ? "default" : "secondary"} className="mr-2">{p.status || "—"}</Badge>
-                            {p.currency} {Number(p.amount || 0).toLocaleString()} · {p.payment_method || "—"} · {p.reference?.slice(0, 16) || "—"}
+                            {p.currency} {Number(p.amount || 0).toLocaleString()} · {p.payment_method || "—"} · {p.transaction_id?.slice(0, 16) || "—"}
                           </span>
                           <span className="text-muted-foreground whitespace-nowrap">{new Date(p.created_at).toLocaleString()}</span>
                         </div>
