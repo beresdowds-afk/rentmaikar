@@ -7,7 +7,9 @@ import { Progress } from "@/components/ui/progress";
 import { X, ChevronLeft, ChevronRight, Car, User, Shield, CreditCard, MapPin, Bell, LogIn, Inbox, MessageSquare, FileText, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRegion, type Country } from "@/contexts/RegionContext";
+import { useTourAnalytics } from "@/hooks/useTourAnalytics";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
+
 
 
 interface TourStep {
@@ -169,6 +171,10 @@ export const OnboardingTour = ({ onComplete, isOpen }: OnboardingTourProps) => {
 
   const step = tourSteps[currentStep];
   const progress = ((currentStep + 1) / tourSteps.length) * 100;
+
+  useTourAnalytics("landing", country, isOpen, currentStep, step?.id, tourSteps.length);
+
+
 
 
   const updateTargetRect = useCallback(() => {
