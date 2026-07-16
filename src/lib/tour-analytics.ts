@@ -11,6 +11,7 @@
 //      future in-app listeners.
 
 import { trackEvent } from "@/lib/meta-pixel";
+import { supabase } from "@/integrations/supabase/client";
 import type { Country } from "@/contexts/RegionContext";
 
 export type TourEventType = "tour_start" | "tour_step_view" | "tour_complete";
@@ -62,6 +63,24 @@ export function trackTourEvent(
         new CustomEvent("rentmaikar:tour", { detail: full }),
       );
     }
+  } catch {
+    /* ignore */
+  }
+
+  // Persist to DB (fire-and-forget). Never throw.
+  try {
+    void supabase.auth.getUser().then(({ data }) => {
+      void supabase.from("tour_analytics_events").insert({
+        event_type: event,
+        tour_name: payload.tour,
+        country: String(payload.country),
+        step_id: payload.stepId ?? null,
+        step_index: payload.stepIndex ?? null,
+        total_steps: payload.totalSteps ?? null,
+        user_id: data.user?.id ?? null,
+        extra: (payload.extra ?? {}) as never,
+      });
+    });
   } catch {
     /* ignore */
   }

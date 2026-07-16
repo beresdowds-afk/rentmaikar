@@ -495,6 +495,12 @@ const AdminDashboard = () => {
               <Button asChild variant="outline" size="sm" className="justify-start">
                 <a href="/m/call-in">Mobile call-in</a>
               </Button>
+              <Button asChild variant="outline" size="sm" className="justify-start">
+                <a href="/admin/tour-config">Tour step config</a>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="justify-start">
+                <a href="/admin/tour-analytics">Tour analytics</a>
+              </Button>
             </div>
           </Card>
 
