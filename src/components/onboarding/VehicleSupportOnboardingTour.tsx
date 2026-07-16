@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRegion, type Country } from '@/contexts/RegionContext';
+import { useTourAnalytics } from '@/hooks/useTourAnalytics';
+
 
 import { createPortal } from 'react-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -143,6 +145,10 @@ export const VehicleSupportOnboardingTour = ({ onComplete, isOpen }: VehicleSupp
 
   const step = tourSteps[currentStep];
   const progress = ((currentStep + 1) / tourSteps.length) * 100;
+
+  useTourAnalytics('vehicle-support', country, isOpen, currentStep, step?.id, tourSteps.length);
+
+
 
 
   const updateTargetRect = useCallback(() => {
