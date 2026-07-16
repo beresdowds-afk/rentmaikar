@@ -59,6 +59,7 @@ export default function TourStepConfigPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingId, setExistingId] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const issues = useMemo(() => validateSteps(steps), [steps]);
   const isValid = issues.length === 0;
