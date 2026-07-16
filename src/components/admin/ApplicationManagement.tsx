@@ -525,6 +525,107 @@ export const ApplicationManagement = () => {
         </CardContent>
       </Card>
 
+      {/* Full-details dialog opened by the View button */}
+      <Dialog open={!!viewApp} onOpenChange={(open) => !open && setViewApp(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {viewApp?.application_type === 'driver' ? (
+                <User className="h-5 w-5 text-purple-600" />
+              ) : (
+                <Car className="h-5 w-5 text-indigo-600" />
+              )}
+              {viewApp?.first_name} {viewApp?.last_name}
+              {viewApp && (
+                <Badge className={`ml-2 ${statusConfig[viewApp.status].color}`}>
+                  {statusConfig[viewApp.status].label}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {viewApp && (
+            <div className="space-y-4 text-sm">
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><span className="font-medium">Email:</span> {viewApp.email}</div>
+                <div><span className="font-medium">Phone:</span> {viewApp.phone_country === 'us' ? '+1 ' : '+234 '}{viewApp.phone_number}</div>
+                <div><span className="font-medium">Country:</span> {viewApp.country.toUpperCase()}</div>
+                <div><span className="font-medium">City:</span> {viewApp.city}</div>
+                <div><span className="font-medium">ZIP:</span> {viewApp.zip_code}</div>
+                <div><span className="font-medium">Region:</span> {viewApp.region}</div>
+                <div><span className="font-medium">Submitted:</span> {format(new Date(viewApp.created_at), 'MMM dd, yyyy HH:mm')}</div>
+                <div><span className="font-medium">Last update:</span> {format(new Date(viewApp.updated_at), 'MMM dd, yyyy HH:mm')}</div>
+              </section>
+
+              {viewApp.application_type === 'driver' ? (
+                <section className="space-y-2 border-t pt-3">
+                  <h4 className="font-semibold">Driver details</h4>
+                  <div><span className="font-medium">Rideshare platforms:</span> {(viewApp.rideshare_platforms || []).join(', ') || '—'}</div>
+                  <div><span className="font-medium">Driver license:</span> {viewApp.has_driver_license ? 'Yes' : 'No'}</div>
+                </section>
+              ) : (
+                <section className="space-y-2 border-t pt-3">
+                  <h4 className="font-semibold">Vehicle details</h4>
+                  <div>{viewApp.vehicle_year} {viewApp.vehicle_make} {viewApp.vehicle_model} ({viewApp.vehicle_color})</div>
+                  <div><span className="font-medium">Plate:</span> {viewApp.vehicle_plate}</div>
+                  <div><span className="font-medium">Desired weekly price:</span> {viewApp.country === 'nigeria' ? '₦' : '$'}{viewApp.desired_weekly_price}</div>
+                  <div><span className="font-medium">Registration:</span> {viewApp.has_registration ? 'Yes' : 'No'} · <span className="font-medium">Insurance:</span> {viewApp.has_insurance ? 'Yes' : 'No'}</div>
+                  {viewApp.vehicle_description && (
+                    <div><span className="font-medium">Description:</span> {viewApp.vehicle_description}</div>
+                  )}
+                </section>
+              )}
+
+              <section className="space-y-2 border-t pt-3">
+                <h4 className="font-semibold">Agreements</h4>
+                <div className="flex flex-wrap gap-1">
+                  <Badge variant={viewApp.agreed_terms ? 'default' : 'destructive'} className="text-xs">Terms</Badge>
+                  <Badge variant={viewApp.agreed_privacy ? 'default' : 'destructive'} className="text-xs">Privacy</Badge>
+                  <Badge variant={viewApp.agreed_iot ? 'default' : 'destructive'} className="text-xs">IoT Consent</Badge>
+                  <Badge variant={viewApp.agreed_fees ? 'default' : 'destructive'} className="text-xs">Fees</Badge>
+                </div>
+              </section>
+
+              {(viewApp.review_notes || viewApp.rejection_reason || viewApp.reviewed_at) && (
+                <section className="space-y-2 border-t pt-3">
+                  <h4 className="font-semibold">Review history</h4>
+                  {viewApp.reviewed_at && <div><span className="font-medium">Reviewed at:</span> {format(new Date(viewApp.reviewed_at), 'MMM dd, yyyy HH:mm')}</div>}
+                  {viewApp.review_notes && <div><span className="font-medium">Notes:</span> {viewApp.review_notes}</div>}
+                  {viewApp.rejection_reason && (
+                    <div className="p-3 bg-red-50 rounded"><span className="font-medium text-red-700">Rejection reason:</span> <span className="text-red-600">{viewApp.rejection_reason}</span></div>
+                  )}
+                </section>
+              )}
+            </div>
+          )}
+          <DialogFooter className="flex flex-wrap gap-2">
+            {viewApp && (viewApp.status === 'pending' || viewApp.status === 'under_review') && (
+              <>
+                <Button
+                  variant="default"
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    handleQuickApprove(viewApp);
+                    setViewApp(null);
+                  }}
+                >
+                  <CheckCircle className="h-4 w-4 mr-1" /> Approve
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    handleQuickReject(viewApp);
+                    setViewApp(null);
+                  }}
+                >
+                  <XCircle className="h-4 w-4 mr-1" /> Reject
+                </Button>
+              </>
+            )}
+            <Button variant="outline" onClick={() => setViewApp(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Rejection Dialog */}
       <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
         <DialogContent>
