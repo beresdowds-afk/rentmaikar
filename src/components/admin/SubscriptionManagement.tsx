@@ -35,10 +35,11 @@ interface SignatureAudit {
   changed_columns: string[] | null; created_at: string;
 }
 interface PaymentRow {
-  id: string; user_id: string | null; amount: number | null; currency: string | null;
-  status: string | null; payment_method: string | null; reference: string | null;
+  id: string; driver_id: string | null; amount: number | null; currency: string | null;
+  status: string | null; payment_method: string | null; transaction_id: string | null;
   created_at: string;
 }
+
 
 const PLAN_META: Record<string, { label: string; icon: any; accent: string }> = {
   training:         { label: "Driver Training",   icon: GraduationCap, accent: "text-blue-600" },
