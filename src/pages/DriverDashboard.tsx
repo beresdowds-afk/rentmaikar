@@ -286,6 +286,15 @@ export default function DriverDashboard() {
               <TabsTrigger value="settings" data-tour="driver-settings">Settings</TabsTrigger>
             </TabsList>
 
+            <TabsContent value="subscriptions" className="space-y-6">
+              <SubscriptionPlansPanel
+                title="Driver Training (required, unlocks Insurance)"
+                planTypes={["training"]}
+              />
+              <SubscriptionPlansPanel title="Insurance" planTypes={["insurance"]} />
+              <SubscriptionPlansPanel title="Roadside Support" planTypes={["roadside_support"]} />
+            </TabsContent>
+
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
               <div className="grid lg:grid-cols-2 gap-6">
