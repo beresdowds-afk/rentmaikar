@@ -337,18 +337,128 @@ export function TraccarDashboard() {
           </Card>
           <Card>
             <CardHeader>
+              <CardTitle className="flex items-center gap-2"><PlugZap className="h-4 w-4" /> Test connection</CardTitle>
+              <CardDescription>Send a live probe to the Traccar server using the configured credentials.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button
+                size="sm" disabled={!configured || busy === "test_connection"}
+                onClick={() => run("test_connection")} className="gap-2"
+              >
+                {busy === "test_connection" ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />}
+                Test connection
+              </Button>
+              <Button size="sm" variant="outline" onClick={refreshStatus} className="gap-2">
+                <RefreshCw className="h-4 w-4" /> Re-check status
+              </Button>
+              <a
+                href="https://www.traccar.org/api-reference/" target="_blank" rel="noreferrer"
+                className="text-xs text-muted-foreground underline self-center"
+              >
+                Traccar API reference →
+              </a>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2"><Database className="h-4 w-4" /> Data flow</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
               Sync writes devices to <code>iot_devices</code> (provider = traccar, unique on serial_number)
-              and appends each latest position to <code>mqtt_telemetry_logs</code>
-              (topic <code>traccar/{"{uniqueId}"}/position</code>) so the existing IoT Monitoring Hub, driver
-              behaviour rules and geofence engine consume Traccar the same as any other provider.
-              Set Traccar active in the Telemetry Provider Switch to route the fleet through it.
+              and appends each latest position to <code>mqtt_telemetry_logs</code> enriched with the linked
+              <code> vehicle_id</code> (topic <code>traccar/{"{uniqueId}"}/position</code>) so the IoT Monitoring
+              Hub, driver behaviour rules and geofence engine consume Traccar the same as any other provider.
+              Every engine command is recorded in <code>iot_audit_log</code>.
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="audit">
+          <IoTAuditTrailPanel actionPrefix="traccar_" title="Traccar audit trail" />
+        </TabsContent>
       </Tabs>
+
+      <Sheet open={!!selected} onOpenChange={(o) => { if (!o) setSelected(null); }}>
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+          {selected && (
+            <>
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <Satellite className="h-4 w-4" /> Device {selected.serial_number}
+                </SheetTitle>
+                <SheetDescription>
+                  {selected.device_model || "Traccar device"} · status <code>{selected.status}</code>
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="mt-4 space-y-4 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Last ping</p>
+                    <p className="text-xs">{selected.last_ping ? new Date(selected.last_ping).toLocaleString() : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Position</p>
+                    <p className="text-xs">
+                      {selected.latitude !== null && selected.longitude !== null
+                        ? `${selected.latitude.toFixed(5)}, ${selected.longitude.toFixed(5)}`
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Telemetry</p>
+                    <p className="text-xs">{selected.telemetry_enabled ? "enabled" : "disabled"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Traccar ID</p>
+                    <p className="text-xs font-mono">
+                      {(selected.health_details as { traccar_device_id?: number } | null)?.traccar_device_id ?? "—"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-md border p-3 space-y-2">
+                  <p className="text-xs font-medium flex items-center gap-2">
+                    <Link2 className="h-3.5 w-3.5" /> Link device to vehicle
+                  </p>
+                  <VehiclePicker value={linkVehicle} onChange={setLinkVehicle} />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => run("link_device", { device_row_id: selected.id, vehicle_id: linkVehicle })}
+                      disabled={busy === "link_device" || linkVehicle === selected.vehicle_id}
+                      className="gap-2"
+                    >
+                      {busy === "link_device" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                      Save link
+                    </Button>
+                    {selected.vehicle_id && (
+                      <Button
+                        size="sm" variant="outline"
+                        onClick={() => run("unlink_device", { device_row_id: selected.id })}
+                        disabled={busy === "unlink_device"}
+                      >Unlink</Button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Once linked, subsequent Traccar positions are written to
+                    <code> mqtt_telemetry_logs</code> tagged with this vehicle.
+                  </p>
+                </div>
+
+                {selected.health_details && (
+                  <details className="rounded-md border p-3">
+                    <summary className="text-xs font-medium cursor-pointer">Raw health details</summary>
+                    <pre className="text-[11px] mt-2 overflow-x-auto">
+{JSON.stringify(selected.health_details, null, 2)}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
