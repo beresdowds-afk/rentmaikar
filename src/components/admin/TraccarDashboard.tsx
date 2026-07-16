@@ -8,10 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Loader2, RefreshCw, Satellite, ShieldCheck, ShieldAlert, Download, Ban,
-  Power, MapPin, Search, KeyRound, Database, Send,
+  Power, MapPin, Search, KeyRound, Database, Send, Link2, Eye, PlugZap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { IngestionMonitor } from "./IngestionMonitor";
+import { IoTAuditTrailPanel } from "./IoTAuditTrailPanel";
+import { VehiclePicker } from "./VehiclePicker";
 
 interface Device {
   id: string;
