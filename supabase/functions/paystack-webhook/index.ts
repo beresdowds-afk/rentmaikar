@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
   const raw = await req.text();
   const signature = req.headers.get("x-paystack-signature") ?? "";
   const expected = createHmac("sha512", secret).update(raw).digest("hex");
-  if (signature !== expected) return new Response("invalid signature", { status: 401 });
+  if (!timingSafeEqualHex(signature, expected)) return new Response("invalid signature", { status: 401 });
 
   const evt = JSON.parse(raw);
   const supabase = createClient(
