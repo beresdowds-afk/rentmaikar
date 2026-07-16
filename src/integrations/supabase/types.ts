@@ -1589,6 +1589,164 @@ export type Database = {
           },
         ]
       }
+      invoice_activity_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_role: string | null
+          channel: string | null
+          created_at: string
+          details: Json
+          entity_id: string
+          entity_type: string
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_role?: string | null
+          channel?: string | null
+          created_at?: string
+          details?: Json
+          entity_id: string
+          entity_type: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_role?: string | null
+          channel?: string | null
+          created_at?: string
+          details?: Json
+          entity_id?: string
+          entity_type?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      invoices: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          driver_id: string | null
+          due_date: string | null
+          id: string
+          invoice_number: string
+          invoice_type: string
+          issued_at: string
+          line_items: Json
+          metadata: Json
+          owner_id: string | null
+          paid_at: string | null
+          payment_id: string | null
+          pdf_url: string | null
+          recipient_email: string | null
+          region: string | null
+          rental_id: string | null
+          sent_at: string | null
+          status: string
+          subscription_id: string | null
+          tax_amount: number
+          total_amount: number
+          updated_at: string
+          vehicle_id: string | null
+          voided_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          driver_id?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          invoice_type?: string
+          issued_at?: string
+          line_items?: Json
+          metadata?: Json
+          owner_id?: string | null
+          paid_at?: string | null
+          payment_id?: string | null
+          pdf_url?: string | null
+          recipient_email?: string | null
+          region?: string | null
+          rental_id?: string | null
+          sent_at?: string | null
+          status?: string
+          subscription_id?: string | null
+          tax_amount?: number
+          total_amount: number
+          updated_at?: string
+          vehicle_id?: string | null
+          voided_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          driver_id?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          invoice_type?: string
+          issued_at?: string
+          line_items?: Json
+          metadata?: Json
+          owner_id?: string | null
+          paid_at?: string | null
+          payment_id?: string | null
+          pdf_url?: string | null
+          recipient_email?: string | null
+          region?: string | null
+          rental_id?: string | null
+          sent_at?: string | null
+          status?: string
+          subscription_id?: string | null
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+          vehicle_id?: string | null
+          voided_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "user_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       iot_audit_log: {
         Row: {
           action: string
@@ -3507,6 +3665,110 @@ export type Database = {
           window_start?: string
         }
         Relationships: []
+      }
+      receipts: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          description: string | null
+          driver_id: string | null
+          id: string
+          invoice_id: string | null
+          issued_at: string
+          metadata: Json
+          owner_id: string | null
+          payment_id: string | null
+          payment_method: string | null
+          pdf_url: string | null
+          receipt_number: string
+          recipient_email: string | null
+          region: string | null
+          rental_id: string | null
+          sent_at: string | null
+          status: string
+          transaction_id: string | null
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          description?: string | null
+          driver_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          issued_at?: string
+          metadata?: Json
+          owner_id?: string | null
+          payment_id?: string | null
+          payment_method?: string | null
+          pdf_url?: string | null
+          receipt_number?: string
+          recipient_email?: string | null
+          region?: string | null
+          rental_id?: string | null
+          sent_at?: string | null
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          description?: string | null
+          driver_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          issued_at?: string
+          metadata?: Json
+          owner_id?: string | null
+          payment_id?: string | null
+          payment_method?: string | null
+          pdf_url?: string | null
+          receipt_number?: string
+          recipient_email?: string | null
+          region?: string | null
+          rental_id?: string | null
+          sent_at?: string | null
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reconciliation_alerts: {
         Row: {
