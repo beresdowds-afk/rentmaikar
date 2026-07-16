@@ -468,6 +468,34 @@ const AdminDashboard = () => {
             <AdminDailyTodoList />
           </div>
 
+          {/* Admin Tools quick links */}
+          <Card className="p-4 mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Shield className="w-4 h-4 text-primary" />
+                Admin Tools
+              </h3>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <Button asChild variant="outline" size="sm" className="justify-start">
+                <a href="/admin/audit-log">Security audit log</a>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="justify-start">
+                <a href="/admin/reconciliation">Reconciliation logs</a>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="justify-start">
+                <a href="/admin/export-audit">Document export audit</a>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="justify-start">
+                <a href="/admin/document-failures">Document failures</a>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="justify-start">
+                <a href="/m/call-in">Mobile call-in</a>
+              </Button>
+            </div>
+          </Card>
+
+
           {/* Portal Navigation */}
           <div className="flex flex-col gap-4 mb-6">
             <div className="flex flex-wrap items-center gap-2">

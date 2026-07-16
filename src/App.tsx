@@ -44,6 +44,7 @@ const PaymentReceipt = lazy(() => import("./pages/PaymentReceipt"));
 const ReconciliationLogsPage = lazy(() => import("./pages/admin/ReconciliationLogsPage"));
 const AdminDocumentExportAuditPage = lazy(() => import("./pages/admin/AdminDocumentExportAuditPage"));
 const AdminDocumentFailuresPage = lazy(() => import("./pages/admin/AdminDocumentFailuresPage"));
+const AuditLogPage = lazy(() => import("./pages/admin/AuditLogPage"));
 
 const queryClient = new QueryClient();
 
@@ -201,6 +202,15 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/admin/audit-log"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AuditLogPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
                   <Route path="*" element={<NotFound />} />
                   </Routes>
                   </main>
