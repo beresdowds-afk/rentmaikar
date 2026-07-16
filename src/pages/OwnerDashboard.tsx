@@ -746,5 +746,6 @@ export default function OwnerDashboard() {
         <CallSupportButton userType="owner" variant="floating" />
       </div>
     </VerificationGate>
+    </DashboardAuthGate>
   );
 }

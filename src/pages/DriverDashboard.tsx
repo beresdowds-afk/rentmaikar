@@ -617,5 +617,6 @@ export default function DriverDashboard() {
         <CallSupportButton userType="driver" variant="floating" />
       </div>
     </VerificationGate>
+    </DashboardAuthGate>
   );
 }
