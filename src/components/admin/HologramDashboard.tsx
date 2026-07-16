@@ -8,10 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Loader2, RefreshCw, Radio, ShieldCheck, ShieldAlert, Download, Play, Pause,
-  Signal, Search, Database, KeyRound,
+  Signal, Search, Database, KeyRound, Eye, PlugZap, Link2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { IoTAuditTrailPanel } from "./IoTAuditTrailPanel";
+import { VehiclePicker } from "./VehiclePicker";
 
 interface SimCard {
   id: string;
@@ -28,6 +33,9 @@ interface SimCard {
   activated_at: string | null;
   suspended_at: string | null;
   vehicle_id: string | null;
+  device_id: string | null;
+  metadata: Record<string, unknown> | null;
+  updated_at: string | null;
 }
 
 type StatusResp = {
@@ -53,6 +61,9 @@ export function HologramDashboard() {
   const [busy, setBusy] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [planId, setPlanId] = useState<string>("");
+  const [selected, setSelected] = useState<SimCard | null>(null);
+  const [linkVehicle, setLinkVehicle] = useState<string | null>(null);
+  const [lastSyncResult, setLastSyncResult] = useState<Record<string, { state: string | null; usage_mb: number | null; at: string }>>({});
 
   const load = async () => {
     setLoading(true);
@@ -83,12 +94,25 @@ export function HologramDashboard() {
         body: { action, ...body },
       });
       if (error) throw new Error(error.message);
-      const res = data as { ok?: boolean; imported?: number; updated?: number };
+      const res = data as { ok?: boolean; imported?: number; updated?: number; state?: string | null; usage_mb?: number | null };
       if (res?.ok === false) throw new Error(JSON.stringify(res));
       if (action === "import_sims") toast.success(`Imported ${res?.imported ?? 0} SIMs`);
       else if (action === "sync_usage") toast.success(`Synced usage for ${res?.updated ?? 0} SIMs`);
+      else if (action === "test_connection") toast.success("Hologram API reachable");
+      else if (action === "sync_one_usage" && body.sim_id) {
+        setLastSyncResult(prev => ({
+          ...prev,
+          [String(body.sim_id)]: { state: res?.state ?? null, usage_mb: res?.usage_mb ?? null, at: new Date().toISOString() },
+        }));
+        toast.success("Usage synced for SIM");
+      } else if (action === "link_sim") toast.success("SIM linked");
+      else if (action === "unlink_sim") toast.success("SIM unlinked");
       else toast.success("Action complete");
       await load();
+      if (selected) {
+        const { data: fresh } = await supabase.from("iot_sim_cards").select("*").eq("id", selected.id).maybeSingle();
+        if (fresh) setSelected(fresh as SimCard);
+      }
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -115,6 +139,11 @@ export function HologramDashboard() {
 
   const configured = status?.configured === true;
 
+  const openDetails = (s: SimCard) => {
+    setSelected(s);
+    setLinkVehicle(s.vehicle_id);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
@@ -124,7 +153,7 @@ export function HologramDashboard() {
             Hologram eUICC IoT SIM Cards
           </h2>
           <p className="text-muted-foreground">
-            Manage Hyper eUICC connectivity. Import, activate, suspend and monitor
+            Manage Hyper eUICC connectivity — import, activate/suspend, link to vehicles and monitor
             data usage across the Rentmaikar fleet.
           </p>
         </div>
@@ -172,10 +201,11 @@ export function HologramDashboard() {
           <TabsTrigger value="sims">SIM Inventory</TabsTrigger>
           <TabsTrigger value="ops">Operations</TabsTrigger>
           <TabsTrigger value="setup">API Setup</TabsTrigger>
+          <TabsTrigger value="audit">Audit Trail</TabsTrigger>
         </TabsList>
 
         <TabsContent value="sims" className="space-y-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="relative flex-1 max-w-md">
               <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -194,6 +224,15 @@ export function HologramDashboard() {
               {busy === "sync_usage" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Signal className="h-4 w-4" />}
               Sync usage
             </Button>
+            <Button
+              size="sm"
+              disabled={!configured || busy === "import_sims"}
+              onClick={() => run("import_sims")}
+              className="gap-2"
+            >
+              {busy === "import_sims" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Bulk import
+            </Button>
           </div>
 
           <Card>
@@ -202,7 +241,7 @@ export function HologramDashboard() {
                 <div className="flex items-center gap-2 p-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
               ) : filtered.length === 0 ? (
                 <div className="p-6 text-sm text-muted-foreground">
-                  No Hologram SIMs recorded. Use <strong>Import from Hologram</strong> in Operations to pull your inventory.
+                  No Hologram SIMs recorded. Use <strong>Bulk import</strong> to pull your inventory.
                 </div>
               ) : (
                 <Table>
@@ -214,12 +253,13 @@ export function HologramDashboard() {
                       <TableHead>Status</TableHead>
                       <TableHead>Usage (MB)</TableHead>
                       <TableHead>Last Session</TableHead>
+                      <TableHead>Vehicle</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filtered.map(s => (
-                      <TableRow key={s.id}>
+                      <TableRow key={s.id} className="cursor-pointer" onClick={() => openDetails(s)}>
                         <TableCell className="font-mono text-xs">{s.iccid}</TableCell>
                         <TableCell>{s.msisdn || "—"}</TableCell>
                         <TableCell>{s.plan_name || "—"}</TableCell>
@@ -231,16 +271,22 @@ export function HologramDashboard() {
                         <TableCell className="text-xs">
                           {s.last_session_at ? new Date(s.last_session_at).toLocaleString() : "—"}
                         </TableCell>
-                        <TableCell className="text-right space-x-1">
+                        <TableCell className="text-xs">
+                          {s.vehicle_id ? <Badge variant="outline">Linked</Badge> : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="text-right space-x-1" onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="ghost" onClick={() => openDetails(s)}>
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
                           <Button
                             size="sm" variant="ghost"
-                            disabled={!configured || !s.provider_sim_id || !planId || busy === "activate"}
+                            disabled={!configured || !s.provider_sim_id || !planId || busy === "activate_sim"}
                             onClick={() => run("activate_sim", { sim_id: s.provider_sim_id, plan_id: Number(planId) })}
                             title={planId ? "Activate SIM" : "Enter a plan ID in Operations first"}
                           ><Play className="h-3.5 w-3.5" /></Button>
                           <Button
                             size="sm" variant="ghost"
-                            disabled={!configured || !s.provider_sim_id || busy === "suspend"}
+                            disabled={!configured || !s.provider_sim_id || busy === "suspend_sim"}
                             onClick={() => run("suspend_sim", { sim_id: s.provider_sim_id })}
                             title="Suspend SIM"
                           ><Pause className="h-3.5 w-3.5" /></Button>
@@ -289,13 +335,47 @@ export function HologramDashboard() {
         <TabsContent value="setup" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><KeyRound className="h-4 w-4" /> Required secrets</CardTitle>
-              <CardDescription>Add these in backend secrets to enable the Hologram integration.</CardDescription>
+              <CardTitle className="flex items-center gap-2"><KeyRound className="h-4 w-4" /> Integration status & keys</CardTitle>
+              <CardDescription>
+                Backend secrets are managed in Project Settings → Secrets. This panel checks the
+                connection and lets you send a live probe.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="text-sm space-y-2">
-              <div><code>HOLOGRAM_API_KEY</code> — API key from Hologram dashboard → Account → API</div>
-              <div><code>HOLOGRAM_ORG_ID</code> — Numeric organization ID from your Hologram URL</div>
-              <div className="text-muted-foreground text-xs pt-2">
+            <CardContent className="space-y-4">
+              <div className="grid gap-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <code>HOLOGRAM_API_KEY</code>
+                  <Badge variant={configured ? "default" : "destructive"}>
+                    {configured ? "configured" : "missing"}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <code>HOLOGRAM_ORG_ID</code>
+                  <Badge variant={configured ? "default" : "destructive"}>
+                    {configured ? "configured" : "missing"}
+                  </Badge>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm" onClick={() => run("test_connection")}
+                  disabled={!configured || busy === "test_connection"} className="gap-2"
+                >
+                  {busy === "test_connection" ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />}
+                  Test connection
+                </Button>
+                <Button size="sm" variant="outline" onClick={refreshStatus} className="gap-2">
+                  <RefreshCw className="h-4 w-4" /> Re-check status
+                </Button>
+                <a
+                  href="https://dashboard.hologram.io/account/api"
+                  target="_blank" rel="noreferrer"
+                  className="text-xs text-muted-foreground underline self-center"
+                >
+                  Get your Hologram API key →
+                </a>
+              </div>
+              <div className="text-xs text-muted-foreground">
                 Base URL: <code>https://dashboard.hologram.io/api/1</code>. Auth: Basic (<code>apikey:$KEY</code>).
                 Endpoints used: <code>/links/cellular</code>, <code>/links/cellular/{"{id}"}/state</code>,
                 <code> /links/cellular/{"{id}"}/usage</code>.
@@ -308,12 +388,124 @@ export function HologramDashboard() {
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
               Imports write to <code>iot_sim_cards</code> (provider = hologram, unique on ICCID).
-              The <code>hologram-sync</code> cron refreshes usage every schedule tick; on-demand actions
-              here use the <code>hologram-admin</code> edge function.
+              Linking a SIM stores <code>vehicle_id</code> / <code>device_id</code> on the row so
+              downstream telemetry can be attributed. Every change is written to <code>iot_audit_log</code>.
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="audit">
+          <IoTAuditTrailPanel actionPrefix="hologram_" title="Hologram audit trail" />
+        </TabsContent>
       </Tabs>
+
+      <Sheet open={!!selected} onOpenChange={(o) => { if (!o) setSelected(null); }}>
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+          {selected && (
+            <>
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <Radio className="h-4 w-4" /> SIM {selected.iccid}
+                </SheetTitle>
+                <SheetDescription>
+                  Provider ID <code>{selected.provider_sim_id || "—"}</code>
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="mt-4 space-y-4 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <StatusPill status={selected.status} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Plan</p>
+                    <p>{selected.plan_name || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">MSISDN</p>
+                    <p>{selected.msisdn || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">IMSI</p>
+                    <p className="font-mono text-xs">{selected.imsi || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Usage</p>
+                    <p>{(selected.data_usage_mb ?? 0).toFixed(2)} MB
+                      {selected.data_limit_mb ? ` / ${selected.data_limit_mb}` : ""}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Last session</p>
+                    <p className="text-xs">{selected.last_session_at ? new Date(selected.last_session_at).toLocaleString() : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Activated</p>
+                    <p className="text-xs">{selected.activated_at ? new Date(selected.activated_at).toLocaleString() : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Last update</p>
+                    <p className="text-xs">{selected.updated_at ? new Date(selected.updated_at).toLocaleString() : "—"}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-md border p-3 space-y-2">
+                  <p className="text-xs font-medium flex items-center gap-2">
+                    <Link2 className="h-3.5 w-3.5" /> Vehicle mapping
+                  </p>
+                  <VehiclePicker value={linkVehicle} onChange={setLinkVehicle} />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => run("link_sim", { sim_row_id: selected.id, vehicle_id: linkVehicle })}
+                      disabled={busy === "link_sim" || linkVehicle === selected.vehicle_id}
+                      className="gap-2"
+                    >
+                      {busy === "link_sim" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                      Save link
+                    </Button>
+                    {selected.vehicle_id && (
+                      <Button
+                        size="sm" variant="outline"
+                        onClick={() => run("unlink_sim", { sim_row_id: selected.id })}
+                        disabled={busy === "unlink_sim"}
+                      >Unlink</Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-md border p-3 space-y-2">
+                  <p className="text-xs font-medium">Usage sync</p>
+                  <Button
+                    size="sm" variant="outline" className="gap-2"
+                    disabled={!configured || !selected.provider_sim_id || busy === "sync_one_usage"}
+                    onClick={() => run("sync_one_usage", { sim_id: selected.provider_sim_id })}
+                  >
+                    {busy === "sync_one_usage" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Signal className="h-3.5 w-3.5" />}
+                    Sync usage for this SIM
+                  </Button>
+                  {selected.provider_sim_id && lastSyncResult[selected.provider_sim_id] && (
+                    <p className="text-xs text-muted-foreground">
+                      Last result: state <code>{lastSyncResult[selected.provider_sim_id].state ?? "—"}</code>,
+                      usage <code>{lastSyncResult[selected.provider_sim_id].usage_mb ?? "—"}</code> MB
+                      at {new Date(lastSyncResult[selected.provider_sim_id].at).toLocaleTimeString()}
+                    </p>
+                  )}
+                </div>
+
+                {selected.metadata && Object.keys(selected.metadata).length > 0 && (
+                  <details className="rounded-md border p-3">
+                    <summary className="text-xs font-medium cursor-pointer">Raw provider payload</summary>
+                    <pre className="text-[11px] mt-2 overflow-x-auto">
+{JSON.stringify(selected.metadata, null, 2)}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

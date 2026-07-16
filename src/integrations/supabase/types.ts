@@ -1922,6 +1922,51 @@ export type Database = {
         }
         Relationships: []
       }
+      iot_sync_state: {
+        Row: {
+          created_at: string
+          devices_synced: number
+          extra: Json
+          id: string
+          last_error: string | null
+          last_error_at: string | null
+          last_success_at: string | null
+          last_sync_at: string | null
+          positions_imported: number
+          provider: string
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          devices_synced?: number
+          extra?: Json
+          id?: string
+          last_error?: string | null
+          last_error_at?: string | null
+          last_success_at?: string | null
+          last_sync_at?: string | null
+          positions_imported?: number
+          provider: string
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          devices_synced?: number
+          extra?: Json
+          id?: string
+          last_error?: string | null
+          last_error_at?: string | null
+          last_success_at?: string | null
+          last_sync_at?: string | null
+          positions_imported?: number
+          provider?: string
+          state?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       legal_agreements: {
         Row: {
           admin_witness_id: string | null

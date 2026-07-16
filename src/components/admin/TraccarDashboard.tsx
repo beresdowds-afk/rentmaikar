@@ -8,10 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Loader2, RefreshCw, Satellite, ShieldCheck, ShieldAlert, Download, Ban,
-  Power, MapPin, Search, KeyRound, Database, Send,
+  Power, MapPin, Search, KeyRound, Database, Send, Link2, Eye, PlugZap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { IngestionMonitor } from "./IngestionMonitor";
+import { IoTAuditTrailPanel } from "./IoTAuditTrailPanel";
+import { VehiclePicker } from "./VehiclePicker";
 
 interface Device {
   id: string;
@@ -44,6 +50,8 @@ export function TraccarDashboard() {
   const [query, setQuery] = useState("");
   const [cmdDevice, setCmdDevice] = useState<string>("");
   const [cmd, setCmd] = useState<string>("engineStop");
+  const [selected, setSelected] = useState<Device | null>(null);
+  const [linkVehicle, setLinkVehicle] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -78,8 +86,19 @@ export function TraccarDashboard() {
       if (res?.ok === false) throw new Error(JSON.stringify(res));
       if (action === "sync") toast.success(`Synced ${res?.devices_synced ?? 0} devices (${res?.positions_received ?? 0} positions)`);
       else if (action === "send_command") toast.success("Command dispatched to Traccar");
+      else if (action === "test_connection") toast.success("Traccar reachable");
+      else if (action === "link_device") toast.success("Device linked");
+      else if (action === "unlink_device") toast.success("Device unlinked");
       else toast.success("Action complete");
-      if (action === "sync") await load();
+      await load();
+      if (selected) {
+        const { data: fresh } = await supabase
+          .from("iot_devices")
+          .select("id, serial_number, provider, device_model, status, last_ping, latitude, longitude, telemetry_enabled, is_linked, vehicle_id, health_details")
+          .eq("id", selected.id)
+          .maybeSingle();
+        if (fresh) setSelected(fresh as Device);
+      }
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -162,11 +181,20 @@ export function TraccarDashboard() {
         </CardContent></Card>
       </div>
 
+      <IngestionMonitor
+        provider="traccar"
+        functionName="traccar-admin"
+        syncAction="sync"
+        disabled={!configured}
+        onSynced={load}
+      />
+
       <Tabs defaultValue="devices" className="w-full">
         <TabsList>
           <TabsTrigger value="devices">Devices</TabsTrigger>
           <TabsTrigger value="commands">Remote Commands</TabsTrigger>
           <TabsTrigger value="setup">API Setup</TabsTrigger>
+          <TabsTrigger value="audit">Audit Trail</TabsTrigger>
         </TabsList>
 
         <TabsContent value="devices" className="space-y-4">
@@ -205,12 +233,17 @@ export function TraccarDashboard() {
                       <TableHead>Status</TableHead>
                       <TableHead>Last Ping</TableHead>
                       <TableHead>Position</TableHead>
-                      <TableHead>Linked</TableHead>
+                      <TableHead>Vehicle</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filtered.map(d => (
-                      <TableRow key={d.id}>
+                      <TableRow
+                        key={d.id}
+                        className="cursor-pointer"
+                        onClick={() => { setSelected(d); setLinkVehicle(d.vehicle_id); }}
+                      >
                         <TableCell className="font-mono text-xs">{d.serial_number}</TableCell>
                         <TableCell>{d.device_model || "—"}</TableCell>
                         <TableCell>
@@ -224,6 +257,7 @@ export function TraccarDashboard() {
                             <a
                               className="inline-flex items-center gap-1 underline"
                               target="_blank" rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               href={`https://www.google.com/maps?q=${d.latitude},${d.longitude}`}
                             >
                               <MapPin className="h-3 w-3" />
@@ -232,7 +266,12 @@ export function TraccarDashboard() {
                           ) : "—"}
                         </TableCell>
                         <TableCell>
-                          {d.vehicle_id ? <Badge variant="outline">vehicle</Badge> : <span className="text-xs text-muted-foreground">unlinked</span>}
+                          {d.vehicle_id ? <Badge variant="outline">Linked</Badge> : <span className="text-xs text-muted-foreground">Unlinked</span>}
+                        </TableCell>
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="ghost" onClick={() => { setSelected(d); setLinkVehicle(d.vehicle_id); }}>
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -309,18 +348,128 @@ export function TraccarDashboard() {
           </Card>
           <Card>
             <CardHeader>
+              <CardTitle className="flex items-center gap-2"><PlugZap className="h-4 w-4" /> Test connection</CardTitle>
+              <CardDescription>Send a live probe to the Traccar server using the configured credentials.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button
+                size="sm" disabled={!configured || busy === "test_connection"}
+                onClick={() => run("test_connection")} className="gap-2"
+              >
+                {busy === "test_connection" ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />}
+                Test connection
+              </Button>
+              <Button size="sm" variant="outline" onClick={refreshStatus} className="gap-2">
+                <RefreshCw className="h-4 w-4" /> Re-check status
+              </Button>
+              <a
+                href="https://www.traccar.org/api-reference/" target="_blank" rel="noreferrer"
+                className="text-xs text-muted-foreground underline self-center"
+              >
+                Traccar API reference →
+              </a>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2"><Database className="h-4 w-4" /> Data flow</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
               Sync writes devices to <code>iot_devices</code> (provider = traccar, unique on serial_number)
-              and appends each latest position to <code>mqtt_telemetry_logs</code>
-              (topic <code>traccar/{"{uniqueId}"}/position</code>) so the existing IoT Monitoring Hub, driver
-              behaviour rules and geofence engine consume Traccar the same as any other provider.
-              Set Traccar active in the Telemetry Provider Switch to route the fleet through it.
+              and appends each latest position to <code>mqtt_telemetry_logs</code> enriched with the linked
+              <code> vehicle_id</code> (topic <code>traccar/{"{uniqueId}"}/position</code>) so the IoT Monitoring
+              Hub, driver behaviour rules and geofence engine consume Traccar the same as any other provider.
+              Every engine command is recorded in <code>iot_audit_log</code>.
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="audit">
+          <IoTAuditTrailPanel actionPrefix="traccar_" title="Traccar audit trail" />
+        </TabsContent>
       </Tabs>
+
+      <Sheet open={!!selected} onOpenChange={(o) => { if (!o) setSelected(null); }}>
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+          {selected && (
+            <>
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <Satellite className="h-4 w-4" /> Device {selected.serial_number}
+                </SheetTitle>
+                <SheetDescription>
+                  {selected.device_model || "Traccar device"} · status <code>{selected.status}</code>
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="mt-4 space-y-4 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Last ping</p>
+                    <p className="text-xs">{selected.last_ping ? new Date(selected.last_ping).toLocaleString() : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Position</p>
+                    <p className="text-xs">
+                      {selected.latitude !== null && selected.longitude !== null
+                        ? `${selected.latitude.toFixed(5)}, ${selected.longitude.toFixed(5)}`
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Telemetry</p>
+                    <p className="text-xs">{selected.telemetry_enabled ? "enabled" : "disabled"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Traccar ID</p>
+                    <p className="text-xs font-mono">
+                      {(selected.health_details as { traccar_device_id?: number } | null)?.traccar_device_id ?? "—"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-md border p-3 space-y-2">
+                  <p className="text-xs font-medium flex items-center gap-2">
+                    <Link2 className="h-3.5 w-3.5" /> Link device to vehicle
+                  </p>
+                  <VehiclePicker value={linkVehicle} onChange={setLinkVehicle} />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => run("link_device", { device_row_id: selected.id, vehicle_id: linkVehicle })}
+                      disabled={busy === "link_device" || linkVehicle === selected.vehicle_id}
+                      className="gap-2"
+                    >
+                      {busy === "link_device" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                      Save link
+                    </Button>
+                    {selected.vehicle_id && (
+                      <Button
+                        size="sm" variant="outline"
+                        onClick={() => run("unlink_device", { device_row_id: selected.id })}
+                        disabled={busy === "unlink_device"}
+                      >Unlink</Button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Once linked, subsequent Traccar positions are written to
+                    <code> mqtt_telemetry_logs</code> tagged with this vehicle.
+                  </p>
+                </div>
+
+                {selected.health_details && (
+                  <details className="rounded-md border p-3">
+                    <summary className="text-xs font-medium cursor-pointer">Raw health details</summary>
+                    <pre className="text-[11px] mt-2 overflow-x-auto">
+{JSON.stringify(selected.health_details, null, 2)}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
