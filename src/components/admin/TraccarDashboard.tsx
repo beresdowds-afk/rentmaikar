@@ -170,11 +170,20 @@ export function TraccarDashboard() {
         </CardContent></Card>
       </div>
 
+      <IngestionMonitor
+        provider="traccar"
+        functionName="traccar-admin"
+        syncAction="sync"
+        disabled={!configured}
+        onSynced={load}
+      />
+
       <Tabs defaultValue="devices" className="w-full">
         <TabsList>
           <TabsTrigger value="devices">Devices</TabsTrigger>
           <TabsTrigger value="commands">Remote Commands</TabsTrigger>
           <TabsTrigger value="setup">API Setup</TabsTrigger>
+          <TabsTrigger value="audit">Audit Trail</TabsTrigger>
         </TabsList>
 
         <TabsContent value="devices" className="space-y-4">
