@@ -242,6 +242,14 @@ export default function TourStepConfigPage() {
           </div>
         </>
       )}
+
+      <TourPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        steps={steps}
+        tour={tour}
+        country={country}
+      />
     </div>
   );
 }
