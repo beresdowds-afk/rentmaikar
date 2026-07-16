@@ -18,8 +18,10 @@ interface TourStep {
   position?: "top" | "bottom" | "left" | "right" | "center";
 }
 
-const buildTourSteps = (country: Country): TourStep[] => {
+export const buildTourSteps = (input: Country | string): TourStep[] => {
+  const country: Country = input === "Nigeria" ? "Nigeria" : "USA";
   const isNG = country === "Nigeria";
+
   const smsProvider = isNG ? "Termii" : "Twilio";
   const paymentProvider = isNG ? "Paystack/Opay (Naira)" : "PayPal (USD)";
   const hubs = isNG ? "Lagos, Abuja, Port Harcourt" : "DC, Maryland, Virginia";

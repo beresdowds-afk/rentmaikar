@@ -29,8 +29,10 @@ interface TourStep {
   position?: 'top' | 'bottom' | 'left' | 'right' | 'center';
 }
 
-const buildTourSteps = (country: Country): TourStep[] => {
+export const buildTourSteps = (input: Country | string): TourStep[] => {
+  const country: Country = input === 'Nigeria' ? 'Nigeria' : 'USA';
   const isNG = country === 'Nigeria';
+
   const jurisdiction = isNG ? 'Nigerian' : 'US state';
   const complianceNote = isNG
     ? 'Nigeria: verify NIN/BVN, ensure stamp duty and Lagos State Consumer Protection compliance.'

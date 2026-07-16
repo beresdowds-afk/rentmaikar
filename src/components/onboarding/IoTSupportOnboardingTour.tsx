@@ -30,8 +30,10 @@ interface TourStep {
   position?: 'top' | 'bottom' | 'left' | 'right' | 'center';
 }
 
-const buildTourSteps = (country: Country): TourStep[] => {
+export const buildTourSteps = (input: Country | string): TourStep[] => {
+  const country: Country = input === 'Nigeria' ? 'Nigeria' : 'USA';
   const isNG = country === 'Nigeria';
+
   const simCarriers = isNG ? 'MTN, Airtel, Glo (Nigeria)' : 'AT&T, T-Mobile, Verizon (USA)';
   const idField = isNG ? 'IMEI, plate number, or address' : 'device serial number, IMEI, vehicle plate, or VIN';
 

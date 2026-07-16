@@ -19,11 +19,15 @@ interface TourStep {
   position?: "top" | "bottom" | "left" | "right" | "center";
 }
 
-const buildTourSteps = (country: Country): TourStep[] => {
+// Fallback: any unknown/unsupported country renders the USA tour so the
+// walkthrough never fails to show. Callable/type-safe via `Country | string`.
+export const buildTourSteps = (input: Country | string): TourStep[] => {
+  const country: Country = input === "Nigeria" ? "Nigeria" : "USA";
   const isNG = country === "Nigeria";
   const regionTagline = isNG
     ? "Nigeria's trusted platform for owners registering vehicles with rideshare drivers on Uber, Bolt, and inDrive."
     : "The USA's trusted platform for owners earning from their cars with Uber and Lyft rideshare drivers.";
+
   const hubs = isNG
     ? "Lagos, Abuja, and Port Harcourt"
     : "Washington DC, Maryland, and Virginia";
