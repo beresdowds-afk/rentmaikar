@@ -11,6 +11,7 @@
 //      future in-app listeners.
 
 import { trackEvent } from "@/lib/meta-pixel";
+import { supabase } from "@/integrations/supabase/client";
 import type { Country } from "@/contexts/RegionContext";
 
 export type TourEventType = "tour_start" | "tour_step_view" | "tour_complete";
