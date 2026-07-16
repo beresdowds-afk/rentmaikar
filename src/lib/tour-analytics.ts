@@ -66,4 +66,22 @@ export function trackTourEvent(
   } catch {
     /* ignore */
   }
+
+  // Persist to DB (fire-and-forget). Never throw.
+  try {
+    void supabase.auth.getUser().then(({ data }) => {
+      void supabase.from("tour_analytics_events").insert({
+        event_type: event,
+        tour_name: payload.tour,
+        country: String(payload.country),
+        step_id: payload.stepId ?? null,
+        step_index: payload.stepIndex ?? null,
+        total_steps: payload.totalSteps ?? null,
+        user_id: data.user?.id ?? null,
+        extra: (payload.extra ?? {}) as never,
+      });
+    });
+  } catch {
+    /* ignore */
+  }
 }
