@@ -474,6 +474,7 @@ export const ApplicationManagement = () => {
                         onReject={() => handleQuickReject(selectedApp)}
                         onMarkReview={() => handleMarkUnderReview(selectedApp)}
                         onAssign={(staffId) => assignStaffMutation.mutate({ appId: selectedApp.id, staffId })}
+                        onView={() => setViewApp(selectedApp)}
                       />
                     );
 
@@ -490,6 +491,7 @@ export const ApplicationManagement = () => {
                               onReject={() => handleQuickReject(app)}
                               onMarkReview={() => handleMarkUnderReview(app)}
                               onAssign={(staffId) => assignStaffMutation.mutate({ appId: app.id, staffId })}
+                              onView={() => setViewApp(app)}
                             />
                           ))}
                           <DataPagination
