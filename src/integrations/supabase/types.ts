@@ -6957,6 +6957,10 @@ export type Database = {
           linked_user_id: string
         }[]
       }
+      get_owner_available_balance: {
+        Args: { _currency: string; _owner_id: string }
+        Returns: number
+      }
       get_support_staff_city: {
         Args: {
           _type: Database["public"]["Enums"]["support_task_type"]
