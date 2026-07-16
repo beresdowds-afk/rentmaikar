@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,9 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Progress } from "@/components/ui/progress";
 import { X, ChevronLeft, ChevronRight, Car, User, Shield, CreditCard, MapPin, Bell, LogIn, Inbox, MessageSquare, FileText, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRegion, type Country } from "@/contexts/RegionContext";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
+
 
 interface TourStep {
   id: string;
