@@ -573,15 +573,17 @@ interface ApplicationCardProps {
   onReject: () => void;
   onMarkReview: () => void;
   onAssign: (staffId: string) => void;
+  onView: () => void;
 }
 
-const ApplicationCard = ({ 
-  application, 
+const ApplicationCard = ({
+  application,
   supportStaff,
-  onApprove, 
-  onReject, 
+  onApprove,
+  onReject,
   onMarkReview,
-  onAssign 
+  onAssign,
+  onView,
 }: ApplicationCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const status = statusConfig[application.status];
