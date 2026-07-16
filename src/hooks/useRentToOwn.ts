@@ -425,34 +425,10 @@ export function useRentToOwn() {
   const signAgreement = async (agreementId: string, signature: string, role: 'driver' | 'owner') => {
     if (!user) return;
 
-    const updates: Record<string, unknown> = {};
-    
-    if (role === 'driver') {
-      updates.driver_signature = signature;
-      updates.driver_signed_at = new Date().toISOString();
-    } else {
-      updates.owner_signature = signature;
-      updates.owner_signed_at = new Date().toISOString();
-    }
-
-    // Check if this completes all signatures
-    const agreement = agreements.find(a => a.id === agreementId);
-    if (agreement) {
-      const willBeComplete = 
-        (role === 'driver' || agreement.driver_signature) &&
-        (role === 'owner' || agreement.owner_signature) &&
-        agreement.admin_witness_signature;
-
-      if (willBeComplete) {
-        updates.status = 'active';
-        updates.next_payment_due = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      }
-    }
-
-    const { error } = await supabase
-      .from('rent_to_own_agreements')
-      .update(updates)
-      .eq('id', agreementId);
+    const { error } = await supabase.rpc('sign_rent_to_own_agreement', {
+      _agreement_id: agreementId,
+      _signature: signature,
+    });
 
     if (error) {
       toast.error('Failed to sign agreement');

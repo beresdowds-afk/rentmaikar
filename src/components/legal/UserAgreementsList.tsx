@@ -148,28 +148,10 @@ export default function UserAgreementsList({ userType }: UserAgreementsListProps
 
     setSigning(true);
     try {
-      const signatureColumn = userType === 'driver' ? 'driver_signature' : 'owner_signature';
-      const signedAtColumn = userType === 'driver' ? 'driver_signed_at' : 'owner_signed_at';
-
-      const updateData: Record<string, unknown> = {
-        [signatureColumn]: signature,
-        [signedAtColumn]: new Date().toISOString(),
-      };
-
-      // Check if both parties have now signed
-      const otherSignature = userType === 'driver' 
-        ? selectedAgreement.owner_signature 
-        : selectedAgreement.driver_signature;
-
-      if (otherSignature) {
-        // Both have signed, update status to pending_witness
-        updateData.status = 'pending_witness';
-      }
-
-      const { error } = await supabase
-        .from('legal_agreements')
-        .update(updateData)
-        .eq('id', selectedAgreement.id);
+      const { error } = await supabase.rpc('sign_legal_agreement', {
+        _agreement_id: selectedAgreement.id,
+        _signature: signature,
+      });
 
       if (error) throw error;
 

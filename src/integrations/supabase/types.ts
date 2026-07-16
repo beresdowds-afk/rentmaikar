@@ -6930,6 +6930,82 @@ export type Database = {
         Args: { _email: string }
         Returns: boolean
       }
+      sign_legal_agreement: {
+        Args: { _agreement_id: string; _signature: string }
+        Returns: {
+          admin_witness_id: string | null
+          admin_witness_signature: string | null
+          admin_witnessed_at: string | null
+          agreement_content: string
+          agreement_type: string
+          agreement_version: string
+          created_at: string
+          driver_id: string
+          driver_signature: string | null
+          driver_signed_at: string | null
+          email_sent_at: string | null
+          email_sent_to: Json | null
+          expires_at: string | null
+          id: string
+          is_compulsory: boolean
+          owner_id: string
+          owner_signature: string | null
+          owner_signed_at: string | null
+          parent_agreement_id: string | null
+          pdf_url: string | null
+          renewal_count: number
+          renewal_notified_at: string | null
+          status: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "legal_agreements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      sign_rent_to_own_agreement: {
+        Args: { _agreement_id: string; _signature: string }
+        Returns: {
+          admin_witness_id: string | null
+          admin_witness_signature: string | null
+          admin_witnessed_at: string | null
+          agreement_content: string
+          allow_buyout: boolean
+          allow_conversion_to_rental: boolean
+          created_at: string
+          currency: string
+          down_payment: number
+          driver_id: string
+          driver_signature: string | null
+          driver_signed_at: string | null
+          duration_months: number
+          id: string
+          listing_id: string
+          monthly_payment: number
+          next_payment_due: string | null
+          owner_id: string
+          owner_signature: string | null
+          owner_signed_at: string | null
+          payments_made: number
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          total_amount_paid: number
+          total_price: number
+          updated_at: string
+          vehicle_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "rent_to_own_agreements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role:
