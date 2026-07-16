@@ -29,82 +29,98 @@ interface TourStep {
   position?: 'top' | 'bottom' | 'left' | 'right' | 'center';
 }
 
-const tourSteps: TourStep[] = [
-  {
-    id: 'welcome',
-    title: 'Welcome to Legal Support',
-    description: 'This dashboard helps you manage legal tasks for vehicle rentals — document reviews, tri-party agreement signatures, dispute resolutions, and compliance tracking. Let\'s walk through the key features.',
-    icon: Scale,
-    position: 'center',
-  },
-  {
-    id: 'stats',
-    title: 'Task Overview',
-    description: 'View your task statistics at a glance — open tasks, documents pending review, items awaiting signatures, and escalated cases.',
-    target: '[data-tour="stats"]',
-    icon: FileText,
-    position: 'bottom',
-  },
-  {
-    id: 'filters',
-    title: 'Filter Tasks',
-    description: 'Use filters to sort tasks by status, priority, or date. Focus on what matters most — pending signatures, escalated cases, or new reviews.',
-    target: '[data-tour="filters"]',
-    icon: Filter,
-    position: 'bottom',
-  },
-  {
-    id: 'search',
-    title: 'Search Tasks',
-    description: 'Quickly find tasks by searching for driver names, vehicle details, agreement numbers, or owner information.',
-    target: '[data-tour="search"]',
-    icon: Search,
-    position: 'bottom',
-  },
-  {
-    id: 'task-list',
-    title: 'Your Task List',
-    description: 'View all legal tasks assigned to your city. Click any task to update its status, add feedback, or view agreement details.',
-    target: '[data-tour="task-list"]',
-    icon: Users,
-    position: 'top',
-  },
-  {
-    id: 'status-update',
-    title: 'Update Task Status',
-    description: 'Move tasks through the legal workflow: Open → Document Review → Pending Signature → Resolved → Closed. Add notes at each stage for a complete audit trail.',
-    icon: PenTool,
-    position: 'center',
-  },
-  {
-    id: 'agreements',
-    title: 'Tri-Party Agreements',
-    description: 'Legal agreements involve three parties — driver, owner, and admin witness. Each party signs digitally, and completed agreements can be exported as PDFs and emailed.',
-    icon: FileText,
-    position: 'center',
-  },
-  {
-    id: 'escalation',
-    title: 'Escalate Issues',
-    description: 'If a case requires admin attention, use the escalation feature. Escalated cases are flagged for priority handling and trigger notifications.',
-    icon: AlertTriangle,
-    position: 'center',
-  },
-  {
-    id: 'feedback',
-    title: 'Add Feedback',
-    description: 'Add notes and feedback to tasks to keep all stakeholders informed. All updates are logged for transparency and compliance.',
-    icon: MessageSquare,
-    position: 'center',
-  },
-  {
-    id: 'complete',
-    title: 'You\'re Ready! ⚖️',
-    description: 'You now know the basics of the Legal Support Dashboard. Your tasks are city-restricted, so you\'ll only see tasks in your assigned location. All activity is audited.',
-    icon: CheckCircle,
-    position: 'center',
-  },
-];
+const buildTourSteps = (country: Country): TourStep[] => {
+  const isNG = country === 'Nigeria';
+  const jurisdiction = isNG ? 'Nigerian' : 'US state';
+  const complianceNote = isNG
+    ? 'Nigeria: verify NIN/BVN, ensure stamp duty and Lagos State Consumer Protection compliance.'
+    : 'USA: verify SSN/VIN, ensure state-level DMV compliance and consumer protection rules.';
+
+  return [
+    {
+      id: 'welcome',
+      title: isNG ? 'Welcome to Legal Support — Nigeria' : 'Welcome to Legal Support — USA',
+      description: `You're viewing the ${country} legal support dashboard. It helps you manage legal tasks for vehicle rentals — document reviews, tri-party agreement signatures, dispute resolutions, and ${jurisdiction} compliance tracking.`,
+      icon: Scale,
+      position: 'center',
+    },
+    {
+      id: 'stats',
+      title: 'Task Overview',
+      description: 'View your task statistics at a glance — open tasks, documents pending review, items awaiting signatures, and escalated cases.',
+      target: '[data-tour="stats"]',
+      icon: FileText,
+      position: 'bottom',
+    },
+    {
+      id: 'filters',
+      title: 'Filter Tasks',
+      description: 'Use filters to sort tasks by status, priority, or date. Focus on what matters most — pending signatures, escalated cases, or new reviews.',
+      target: '[data-tour="filters"]',
+      icon: Filter,
+      position: 'bottom',
+    },
+    {
+      id: 'search',
+      title: 'Search Tasks',
+      description: 'Quickly find tasks by searching for driver names, vehicle details, agreement numbers, or owner information.',
+      target: '[data-tour="search"]',
+      icon: Search,
+      position: 'bottom',
+    },
+    {
+      id: 'task-list',
+      title: 'Your Task List',
+      description: `View all legal tasks assigned to your ${country} city. Click any task to update its status, add feedback, or view agreement details.`,
+      target: '[data-tour="task-list"]',
+      icon: Users,
+      position: 'top',
+    },
+    {
+      id: 'status-update',
+      title: 'Update Task Status',
+      description: 'Move tasks through the legal workflow: Open → Document Review → Pending Signature → Resolved → Closed. Add notes at each stage for a complete audit trail.',
+      icon: PenTool,
+      position: 'center',
+    },
+    {
+      id: 'agreements',
+      title: 'Tri-Party Agreements',
+      description: `Legal agreements involve three parties — driver, owner, and admin witness — under ${jurisdiction} jurisdiction. Each party signs digitally, and completed agreements can be exported as PDFs and emailed.`,
+      icon: FileText,
+      position: 'center',
+    },
+    {
+      id: 'escalation',
+      title: 'Escalate Issues',
+      description: 'If a case requires admin attention, use the escalation feature. Escalated cases are flagged for priority handling and trigger notifications.',
+      icon: AlertTriangle,
+      position: 'center',
+    },
+    {
+      id: 'feedback',
+      title: 'Add Feedback',
+      description: 'Add notes and feedback to tasks to keep all stakeholders informed. All updates are logged for transparency and compliance.',
+      icon: MessageSquare,
+      position: 'center',
+    },
+    {
+      id: 'compliance',
+      title: 'Regional Compliance',
+      description: complianceNote,
+      icon: Scale,
+      position: 'center',
+    },
+    {
+      id: 'complete',
+      title: "You're Ready! ⚖️",
+      description: `You now know the basics of the ${country} Legal Support Dashboard. Your tasks are city-restricted, so you'll only see tasks in your assigned location. All activity is audited.`,
+      icon: CheckCircle,
+      position: 'center',
+    },
+  ];
+};
+
 
 interface LegalSupportOnboardingTourProps {
   onComplete: () => void;
