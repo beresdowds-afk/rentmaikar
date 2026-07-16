@@ -135,37 +135,36 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
 
         toast.success('Agreement created and witnessed. Awaiting driver and owner signatures.');
       } else {
-        // Update existing agreement with signature
-        const updates: Record<string, unknown> = {};
-        
-        if (userRole === 'driver') {
-          updates.driver_signature = signature;
-          updates.driver_signed_at = new Date().toISOString();
-        } else if (userRole === 'owner') {
-          updates.owner_signature = signature;
-          updates.owner_signed_at = new Date().toISOString();
+        // Drivers and owners sign via SECURITY DEFINER RPC that only allows
+        // updating their own signature/timestamp columns. Admins still update
+        // directly (their RLS policy scopes the row).
+        if (userRole === 'driver' || userRole === 'owner') {
+          const { error: rpcError } = await supabase.rpc('sign_legal_agreement', {
+            _agreement_id: existingAgreement.id,
+            _signature: signature,
+          });
+          if (rpcError) throw rpcError;
         } else if (userRole === 'admin') {
-          updates.admin_witness_signature = signature;
-          updates.admin_witnessed_at = new Date().toISOString();
-          updates.admin_witness_id = user.id;
+          const updates: Record<string, unknown> = {
+            admin_witness_signature: signature,
+            admin_witnessed_at: new Date().toISOString(),
+            admin_witness_id: user.id,
+          };
+          if (existingAgreement.driverSignature && existingAgreement.ownerSignature) {
+            updates.status = 'completed';
+          }
+          const { error: updateError } = await supabase
+            .from('legal_agreements')
+            .update(updates)
+            .eq('id', existingAgreement.id);
+          if (updateError) throw updateError;
         }
 
-        // Check if all signatures are now complete
-        const willBeComplete = 
+        // Determine completion for notification purposes
+        const willBeComplete =
           (userRole === 'driver' || existingAgreement.driverSignature) &&
           (userRole === 'owner' || existingAgreement.ownerSignature) &&
           (userRole === 'admin' || existingAgreement.adminWitnessSignature);
-
-        if (willBeComplete) {
-          updates.status = 'completed';
-        }
-
-        const { error: updateError } = await supabase
-          .from('legal_agreements')
-          .update(updates)
-          .eq('id', existingAgreement.id);
-
-        if (updateError) throw updateError;
 
         // If completed, send email notification
         if (willBeComplete) {
