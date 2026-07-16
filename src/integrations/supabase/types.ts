@@ -304,6 +304,51 @@ export type Database = {
           },
         ]
       }
+      agreement_signature_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_role: string
+          agreement_id: string
+          agreement_type: string
+          changed_columns: string[]
+          created_at: string
+          id: string
+          metadata: Json
+          new_status: string | null
+          old_status: string | null
+          signature_length: number | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_role: string
+          agreement_id: string
+          agreement_type: string
+          changed_columns?: string[]
+          created_at?: string
+          id?: string
+          metadata?: Json
+          new_status?: string | null
+          old_status?: string | null
+          signature_length?: number | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_role?: string
+          agreement_id?: string
+          agreement_type?: string
+          changed_columns?: string[]
+          created_at?: string
+          id?: string
+          metadata?: Json
+          new_status?: string | null
+          old_status?: string | null
+          signature_length?: number | null
+        }
+        Relationships: []
+      }
       api_key_usage_log: {
         Row: {
           api_key_id: string
@@ -6874,6 +6919,38 @@ export type Database = {
         Returns: string
       }
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
+      driver_request_rental_extension: {
+        Args: { _rental_id: string }
+        Returns: {
+          created_at: string
+          currency: string
+          daily_rate: number
+          driver_id: string
+          end_date: string
+          extended_end_date: string | null
+          extension_approved: boolean | null
+          extension_requested: boolean
+          id: string
+          owner_id: string
+          payment_frequency: string
+          pickup_location: string | null
+          region: string
+          return_confirmed_at: string | null
+          return_inspection_notes: string | null
+          return_location: string | null
+          return_reminder_sent: boolean
+          start_date: string
+          status: string
+          updated_at: string
+          vehicle_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "rentals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_linked_user_ids: {
         Args: { _user_id: string }
         Returns: {
