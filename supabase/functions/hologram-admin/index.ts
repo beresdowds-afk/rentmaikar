@@ -1,7 +1,6 @@
-// Admin-only Hologram operations: config check, list SIMs (from provider or
-// mirror table), import SIMs into iot_sim_cards, and activate/suspend
-// individual SIMs. Returns safe stub responses when HOLOGRAM_* secrets are
-// missing so the dashboard still renders.
+// Admin-only Hologram operations: config check, list SIMs, bulk import,
+// activate/suspend, usage sync, connection test and SIM→vehicle linking.
+// Every state-changing action is logged to iot_audit_log for traceability.
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
@@ -10,14 +9,21 @@ import { hologram } from "../_shared/hologram-client.ts";
 const Body = z.object({
   action: z.enum([
     "status",
+    "test_connection",
     "list_sims",
     "import_sims",
     "activate_sim",
     "suspend_sim",
     "sync_usage",
+    "sync_one_usage",
+    "link_sim",
+    "unlink_sim",
   ]),
   sim_id: z.string().min(1).max(64).optional(),
+  sim_row_id: z.string().uuid().optional(),
   plan_id: z.number().int().positive().optional(),
+  vehicle_id: z.string().uuid().nullable().optional(),
+  device_id: z.string().uuid().nullable().optional(),
 });
 
 Deno.serve(async (req) => {
@@ -38,12 +44,26 @@ Deno.serve(async (req) => {
     );
     const { data: u, error: uErr } = await supa.auth.getUser(auth.replace("Bearer ", ""));
     if (uErr || !u?.user) return json({ error: "Unauthenticated" }, 401);
-    const { data: isAdmin } = await supa.rpc("has_role", { _user_id: u.user.id, _role: "admin" });
+    const actor = u.user.id;
+    const { data: isAdmin } = await supa.rpc("has_role", { _user_id: actor, _role: "admin" });
     if (!isAdmin) return json({ error: "Admin only" }, 403);
 
     const parsed = Body.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
-    const { action, sim_id, plan_id } = parsed.data;
+    const { action, sim_id, sim_row_id, plan_id, vehicle_id, device_id } = parsed.data;
+
+    const audit = async (
+      row: { action: string; sim_id?: string | null; vehicle_id?: string | null; device_id?: string | null; details?: Record<string, unknown> },
+    ) => {
+      await supa.from("iot_audit_log").insert({
+        performed_by: actor,
+        action: row.action,
+        sim_id: row.sim_id ?? null,
+        vehicle_id: row.vehicle_id ?? null,
+        device_id: row.device_id ?? null,
+        details: row.details ?? {},
+      } as never);
+    };
 
     if (!hologram.isConfigured()) {
       return json({
@@ -54,8 +74,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (action === "status") {
+    if (action === "status" || action === "test_connection") {
       const probe = await hologram.listSims(1);
+      if (action === "test_connection") {
+        await audit({ action: "hologram_connection_tested", details: { ok: probe.ok } });
+      }
       return json({ ok: probe.ok, configured: true, probe });
     }
 
@@ -83,11 +106,10 @@ Deno.serve(async (req) => {
           plan_name: (s.plan as string | null) ?? null,
           metadata: s as never,
         };
-        const { error } = await supa
-          .from("iot_sim_cards")
-          .upsert(payload, { onConflict: "iccid" });
+        const { error } = await supa.from("iot_sim_cards").upsert(payload, { onConflict: "iccid" });
         if (!error) imported++;
       }
+      await audit({ action: "hologram_bulk_import", details: { imported, total: rows.length } });
       return json({ ok: true, imported, total: rows.length });
     }
 
@@ -95,10 +117,19 @@ Deno.serve(async (req) => {
       if (!sim_id || !plan_id) return json({ error: "sim_id and plan_id required" }, 400);
       const r = await hologram.activateSim(sim_id, plan_id);
       if (r.ok) {
-        await supa
+        const { data: row } = await supa
           .from("iot_sim_cards")
           .update({ status: "live", activated_at: new Date().toISOString(), suspended_at: null })
-          .eq("provider_sim_id", sim_id);
+          .eq("provider_sim_id", sim_id)
+          .select("id, vehicle_id, device_id")
+          .maybeSingle();
+        await audit({
+          action: "hologram_sim_activated",
+          sim_id: row?.id,
+          vehicle_id: row?.vehicle_id,
+          device_id: row?.device_id,
+          details: { provider_sim_id: sim_id, plan_id },
+        });
       }
       return json({ ok: r.ok, ...r });
     }
@@ -107,12 +138,47 @@ Deno.serve(async (req) => {
       if (!sim_id) return json({ error: "sim_id required" }, 400);
       const r = await hologram.suspendSim(sim_id);
       if (r.ok) {
-        await supa
+        const { data: row } = await supa
           .from("iot_sim_cards")
           .update({ status: "paused", suspended_at: new Date().toISOString() })
-          .eq("provider_sim_id", sim_id);
+          .eq("provider_sim_id", sim_id)
+          .select("id, vehicle_id, device_id")
+          .maybeSingle();
+        await audit({
+          action: "hologram_sim_suspended",
+          sim_id: row?.id,
+          vehicle_id: row?.vehicle_id,
+          device_id: row?.device_id,
+          details: { provider_sim_id: sim_id },
+        });
       }
       return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "sync_one_usage") {
+      if (!sim_id) return json({ error: "sim_id required" }, 400);
+      const info = await hologram.getSim(sim_id);
+      const usage = await hologram.getSimUsage(sim_id);
+      const state = (info.ok ? (info.body as { data?: { state?: string } })?.data?.state : null) ?? null;
+      const dataMb = usage.ok
+        ? Number((usage.body as { data?: { usage_mb?: number } })?.data?.usage_mb ?? 0)
+        : null;
+      const { data: row } = await supa
+        .from("iot_sim_cards")
+        .update({
+          status: state ?? undefined,
+          data_usage_mb: dataMb ?? undefined,
+          last_session_at: new Date().toISOString(),
+        })
+        .eq("provider_sim_id", sim_id)
+        .select("id")
+        .maybeSingle();
+      await audit({
+        action: "hologram_sim_usage_synced",
+        sim_id: row?.id,
+        details: { state, usage_mb: dataMb },
+      });
+      return json({ ok: true, state, usage_mb: dataMb });
     }
 
     if (action === "sync_usage") {
@@ -141,7 +207,30 @@ Deno.serve(async (req) => {
           .eq("id", sim.id);
         updated++;
       }
+      await audit({ action: "hologram_bulk_usage_sync", details: { updated } });
       return json({ ok: true, updated });
+    }
+
+    if (action === "link_sim" || action === "unlink_sim") {
+      if (!sim_row_id) return json({ error: "sim_row_id required" }, 400);
+      const payload = action === "unlink_sim"
+        ? { vehicle_id: null, device_id: null }
+        : { vehicle_id: vehicle_id ?? null, device_id: device_id ?? null };
+      const { data: row, error } = await supa
+        .from("iot_sim_cards")
+        .update(payload)
+        .eq("id", sim_row_id)
+        .select("id, iccid, vehicle_id, device_id")
+        .maybeSingle();
+      if (error) return json({ error: error.message }, 400);
+      await audit({
+        action: action === "unlink_sim" ? "hologram_sim_unlinked" : "hologram_sim_linked",
+        sim_id: row?.id,
+        vehicle_id: row?.vehicle_id,
+        device_id: row?.device_id,
+        details: { iccid: row?.iccid },
+      });
+      return json({ ok: true, row });
     }
 
     return json({ error: "Unsupported action" }, 400);
