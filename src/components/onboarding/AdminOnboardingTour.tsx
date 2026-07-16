@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { X, ChevronLeft, ChevronRight, Shield, Inbox, MessageSquare, Users, Car, CreditCard, Settings, AlertTriangle, Camera, FileText, Home, Package, GraduationCap, Globe, Phone, BarChart3, Megaphone, Mail, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRegion, type Country } from "@/contexts/RegionContext";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
+
 
 interface TourStep {
   id: string;
