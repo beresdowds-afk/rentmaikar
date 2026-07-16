@@ -436,6 +436,9 @@ export default function DriverDashboard() {
                 />
               )}
 
+              <DriverBillingPanel userId={user?.id} />
+
+
               {showPaymentModal ? (
                 <PaymentOptionsSelector
                   baseAmount={weeklyRate}
