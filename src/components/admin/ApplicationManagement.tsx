@@ -636,7 +636,7 @@ const ApplicationCard = ({
 
           {/* Actions */}
           <div className="flex items-center gap-2 flex-wrap">
-            <Button size="sm" variant="outline" onClick={() => (window as any).__openAppView?.(application)}>
+            <Button size="sm" variant="outline" onClick={onView}>
               <Eye className="h-4 w-4 mr-1" />
               View
             </Button>
