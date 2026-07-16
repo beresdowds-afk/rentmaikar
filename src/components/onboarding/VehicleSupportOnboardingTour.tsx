@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRegion, type Country } from '@/contexts/RegionContext';
+
 import { createPortal } from 'react-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,89 +30,101 @@ interface TourStep {
   position?: 'top' | 'bottom' | 'left' | 'right' | 'center';
 }
 
-const tourSteps: TourStep[] = [
-  {
-    id: 'welcome',
-    title: 'Welcome to Vehicle Support',
-    description: 'This dashboard helps you manage vehicle recalls, maintenance tasks, and roadside assistance. Handle inspections, repairs, and ensure vehicles are safe and roadworthy.',
-    icon: Car,
-    position: 'center',
-  },
-  {
-    id: 'stats',
-    title: 'Work Summary',
-    description: 'Track your workload — see reported issues, dispatched tasks, active repairs, and completed jobs at a glance.',
-    target: '[data-tour="stats"]',
-    icon: Wrench,
-    position: 'bottom',
-  },
-  {
-    id: 'filters',
-    title: 'Filter by Task Type',
-    description: 'Switch between recall tasks and maintenance requests. Each type follows a different workflow and priority level.',
-    target: '[data-tour="filters"]',
-    icon: Filter,
-    position: 'bottom',
-  },
-  {
-    id: 'search',
-    title: 'Find Vehicles',
-    description: 'Search by license plate, make/model, driver name, or VIN to quickly locate specific tasks.',
-    target: '[data-tour="search"]',
-    icon: SearchIcon,
-    position: 'bottom',
-  },
-  {
-    id: 'task-list',
-    title: 'Your Task Queue',
-    description: 'View all vehicle tasks in your assigned city. Each card shows vehicle details, IoT device status, location, and current repair status.',
-    target: '[data-tour="task-list"]',
-    icon: Car,
-    position: 'top',
-  },
-  {
-    id: 'workflow',
-    title: 'Repair Workflow',
-    description: 'Move tasks through: Reported → Dispatched → Inspection → Repair in Progress → Pending Parts → Quality Check → Completed. Each step is logged.',
-    icon: Truck,
-    position: 'center',
-  },
-  {
-    id: 'parts',
-    title: 'Pending Parts',
-    description: 'If a repair needs parts, mark the task as "Pending Parts". Update when parts arrive to continue the repair workflow.',
-    icon: Package,
-    position: 'center',
-  },
-  {
-    id: 'escalation',
-    title: 'Escalate Critical Issues',
-    description: 'Use the escalation status for safety-critical issues needing immediate admin attention. Notifications are sent to admins via all channels.',
-    icon: AlertTriangle,
-    position: 'center',
-  },
-  {
-    id: 'quality',
-    title: 'Quality Check',
-    description: 'Always perform a quality check before marking repairs as complete. This ensures vehicle safety and compliance with platform standards.',
-    icon: ClipboardCheck,
-    position: 'center',
-  },
-  {
-    id: 'feedback',
-    title: 'Document Your Work',
-    description: 'Add notes about repairs, parts used, costs, and any issues encountered. This creates a maintenance history for future reference and audit.',
-    icon: MessageSquare,
-    position: 'center',
-  },
-  {
-    id: 'complete',
-    title: 'Ready for Service! 🔧',
-    description: 'You\'re all set to manage vehicle recalls and maintenance. Remember, safety is the top priority. All activity is logged for audit and tracking.',
-    icon: CheckCircle,
-    position: 'center',
-  },
-];
+const buildTourSteps = (country: Country): TourStep[] => {
+  const isNG = country === 'Nigeria';
+  const idLabel = isNG ? 'plate number, make/model, driver name, or chassis' : 'license plate, make/model, driver name, or VIN';
+  const partsNote = isNG
+    ? 'Nigerian parts sourcing may involve local dealers or import — record supplier and lead time.'
+    : 'US parts sourcing goes through approved OEM/aftermarket suppliers — record supplier and warranty.';
+  const roadsideNote = isNG
+    ? 'Roadside assistance is coordinated with regional partners across Lagos, Abuja, and Port Harcourt.'
+    : 'Roadside assistance is available to $12/month subscribers across DC, Maryland, and Virginia.';
+
+  return [
+    {
+      id: 'welcome',
+      title: isNG ? 'Welcome to Vehicle Support — Nigeria' : 'Welcome to Vehicle Support — USA',
+      description: `You're viewing the ${country} vehicle support dashboard. It helps you manage vehicle recalls, maintenance tasks, and roadside assistance. ${roadsideNote}`,
+      icon: Car,
+      position: 'center',
+    },
+    {
+      id: 'stats',
+      title: 'Work Summary',
+      description: 'Track your workload — see reported issues, dispatched tasks, active repairs, and completed jobs at a glance.',
+      target: '[data-tour="stats"]',
+      icon: Wrench,
+      position: 'bottom',
+    },
+    {
+      id: 'filters',
+      title: 'Filter by Task Type',
+      description: 'Switch between recall tasks and maintenance requests. Each type follows a different workflow and priority level.',
+      target: '[data-tour="filters"]',
+      icon: Filter,
+      position: 'bottom',
+    },
+    {
+      id: 'search',
+      title: 'Find Vehicles',
+      description: `Search by ${idLabel} to quickly locate specific tasks.`,
+      target: '[data-tour="search"]',
+      icon: SearchIcon,
+      position: 'bottom',
+    },
+    {
+      id: 'task-list',
+      title: 'Your Task Queue',
+      description: `View all vehicle tasks in your assigned ${country} city. Each card shows vehicle details, IoT device status, location, and current repair status.`,
+      target: '[data-tour="task-list"]',
+      icon: Car,
+      position: 'top',
+    },
+    {
+      id: 'workflow',
+      title: 'Repair Workflow',
+      description: 'Move tasks through: Reported → Dispatched → Inspection → Repair in Progress → Pending Parts → Quality Check → Completed. Each step is logged.',
+      icon: Truck,
+      position: 'center',
+    },
+    {
+      id: 'parts',
+      title: 'Pending Parts',
+      description: `If a repair needs parts, mark the task as "Pending Parts" and update when parts arrive. ${partsNote}`,
+      icon: Package,
+      position: 'center',
+    },
+    {
+      id: 'escalation',
+      title: 'Escalate Critical Issues',
+      description: 'Use the escalation status for safety-critical issues needing immediate admin attention. Notifications are sent to admins via all channels.',
+      icon: AlertTriangle,
+      position: 'center',
+    },
+    {
+      id: 'quality',
+      title: 'Quality Check',
+      description: 'Always perform a quality check before marking repairs as complete. This ensures vehicle safety and compliance with platform standards.',
+      icon: ClipboardCheck,
+      position: 'center',
+    },
+    {
+      id: 'feedback',
+      title: 'Document Your Work',
+      description: `Add notes about repairs, parts used, costs (${isNG ? 'Naira ₦' : 'USD $'}), and any issues encountered. This creates a maintenance history for future reference and audit.`,
+      icon: MessageSquare,
+      position: 'center',
+    },
+    {
+      id: 'complete',
+      title: 'Ready for Service! 🔧',
+      description: `You're all set to manage ${country} vehicle recalls and maintenance. Remember, safety is the top priority. All activity is logged for audit and tracking.`,
+      icon: CheckCircle,
+      position: 'center',
+    },
+  ];
+};
+
 
 interface VehicleSupportOnboardingTourProps {
   onComplete: () => void;
@@ -118,11 +132,16 @@ interface VehicleSupportOnboardingTourProps {
 }
 
 export const VehicleSupportOnboardingTour = ({ onComplete, isOpen }: VehicleSupportOnboardingTourProps) => {
+  const { country } = useRegion();
+  const tourSteps = useMemo(() => buildTourSteps(country), [country]);
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
+  useEffect(() => { setCurrentStep(0); }, [country]);
+
   const step = tourSteps[currentStep];
   const progress = ((currentStep + 1) / tourSteps.length) * 100;
+
 
   const updateTargetRect = useCallback(() => {
     if (step.target) {
