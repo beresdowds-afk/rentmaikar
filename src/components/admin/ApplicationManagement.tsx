@@ -81,6 +81,7 @@ export const ApplicationManagement = () => {
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | 'all'>('all');
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [viewApp, setViewApp] = useState<Application | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
