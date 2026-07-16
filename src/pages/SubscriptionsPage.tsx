@@ -4,8 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Navigate } from "react-router-dom";
 
 const SubscriptionsPage = () => {
-  const { user, loading } = useAuth();
-  if (loading) return null;
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
   if (!user) return <Navigate to="/auth" replace />;
 
   return (
