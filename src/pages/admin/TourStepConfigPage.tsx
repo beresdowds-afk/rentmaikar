@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Save, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Save, AlertTriangle, CheckCircle2, Play } from "lucide-react";
+import { TourPreviewModal } from "@/components/admin/TourPreviewModal";
 
 const TOURS = ["landing", "admin", "vehicle-support", "iot-support", "legal-support"];
 const COUNTRIES = ["USA", "Nigeria"];
@@ -58,6 +59,7 @@ export default function TourStepConfigPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingId, setExistingId] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const issues = useMemo(() => validateSteps(steps), [steps]);
   const isValid = issues.length === 0;
@@ -164,6 +166,9 @@ export default function TourStepConfigPage() {
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={addStep}><Plus className="w-4 h-4 mr-1" />Add step</Button>
+                <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)} disabled={steps.length === 0}>
+                  <Play className="w-4 h-4 mr-1" />Preview
+                </Button>
                 <Button size="sm" disabled={!isValid || saving} onClick={save}>
                   {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
                   Save
@@ -237,6 +242,14 @@ export default function TourStepConfigPage() {
           </div>
         </>
       )}
+
+      <TourPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        steps={steps}
+        tour={tour}
+        country={country}
+      />
     </div>
   );
 }
