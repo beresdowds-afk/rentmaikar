@@ -19,97 +19,132 @@ interface TourStep {
   position?: "top" | "bottom" | "left" | "right" | "center";
 }
 
-const tourSteps: TourStep[] = [
-  {
-    id: "welcome",
-    title: "Welcome to Rentmaikar! 🚗",
-    description: "Your trusted platform for connecting vehicle owners with rideshare drivers across the USA and Nigeria. Let's take a quick tour to help you get started.",
-    icon: Car,
-    position: "center"
-  },
-  {
-    id: "user-type",
-    title: "Choose Your Role",
-    description: "Select whether you're a Driver looking to rent a vehicle, or an Owner wanting to list your cars. This helps us personalize your experience.",
-    target: "[data-tour='user-type']",
-    icon: User,
-    position: "top"
-  },
-  {
-    id: "categories",
-    title: "Browse Vehicle Categories",
-    description: "Explore our three pricing tiers — Budget, Standard, and Premium — each with daily or weekly payment options. Year ranges are shown on every category card and reflect the latest admin configuration.",
-    target: "[data-tour='categories']",
-    icon: Car,
-    position: "top"
-  },
-  {
-    id: "regions",
-    title: "Regional Operations",
-    description: "We operate in hubs across the USA (DC, Maryland, Virginia) and Nigeria (Lagos, Abuja, Port Harcourt). Switch regions to see local pricing and available features.",
-    target: "[data-tour='region']",
-    icon: MapPin,
-    position: "bottom"
-  },
-  {
-    id: "security",
-    title: "IoT-Powered Security",
-    description: "Every rental vehicle is equipped with our IoT device for real-time GPS tracking, accident detection, and remote vehicle management capabilities.",
-    target: "[data-tour='features']",
-    icon: Shield,
-    position: "top"
-  },
-  {
-    id: "training",
-    title: "Mandatory Driver Training 📚",
-    description: "All drivers must complete our online training program before driving. Training is a precondition for group insurance eligibility and must be refreshed every 6 months.",
-    icon: FileText,
-    position: "center"
-  },
-  {
-    id: "payments",
-    title: "Flexible Payment Options",
-    description: "Choose between daily or weekly payment plans. We support PayPal in the USA and Paystack (bank transfers) in Nigeria. Payment reminders are sent automatically via SMS, WhatsApp, and email.",
-    target: "[data-tour='payments']",
-    icon: CreditCard,
-    position: "top"
-  },
-  {
-    id: "rent-to-own",
-    title: "Rent-to-Own Program 🏠",
-    description: "Owners can list vehicles for rent-to-own with country-specific pricing. Drivers can search for listings in their region and work toward vehicle ownership.",
-    icon: Home,
-    position: "center"
-  },
-  {
-    id: "notifications",
-    title: "Multi-Channel Communication 📱",
-    description: "Stay connected via WhatsApp, SMS, email, or voice calls. You can set your communication preferences and opt out anytime. All channels are supported in both USA and Nigeria.",
-    icon: MessageSquare,
-    position: "center"
-  },
-  {
-    id: "unified-inbox",
-    title: "Unified Support System 📬",
-    description: "Need help? Reach us via email, SMS, WhatsApp, or phone. All your messages are handled through our centralized support system with regional forwarding numbers for quick, local responses.",
-    icon: Inbox,
-    position: "center"
-  },
-  {
-    id: "policies",
-    title: "Terms & Policies",
-    description: "During registration, you'll review and accept our Terms of Service (including mandatory training and group insurance), Privacy Policy, and platform-specific agreements. These are versioned and region-specific.",
-    icon: FileText,
-    position: "center"
-  },
-  {
-    id: "complete",
-    title: "You're All Set! 🎉",
-    description: "Start exploring Rentmaikar now. Register as a driver or owner to access your personalized dashboard with vehicle tracking, payment management, inspections, and more.",
-    icon: Car,
-    position: "center"
-  }
-];
+const buildTourSteps = (country: Country): TourStep[] => {
+  const isNG = country === "Nigeria";
+  const regionTagline = isNG
+    ? "Nigeria's trusted platform for owners registering vehicles with rideshare drivers on Uber, Bolt, and inDrive."
+    : "The USA's trusted platform for owners earning from their cars with Uber and Lyft rideshare drivers.";
+  const hubs = isNG
+    ? "Lagos, Abuja, and Port Harcourt"
+    : "Washington DC, Maryland, and Virginia";
+  const currencyNote = isNG
+    ? "Prices display in Naira (₦) with local NGN pricing tiers."
+    : "Prices display in US Dollars ($) with local USD pricing tiers.";
+  const idDocs = isNG
+    ? "NIN and BVN verification"
+    : "SSN and VIN verification";
+  const paymentsCopy = isNG
+    ? "Choose between daily or weekly payment plans. We support Paystack and Opay bank transfers in Nigeria. Reminders go out via WhatsApp, SMS, and email."
+    : "Choose between daily or weekly payment plans. We support PayPal and card payments in the USA. Reminders go out via SMS, WhatsApp, and email.";
+  const commsCopy = isNG
+    ? "Stay connected via WhatsApp, SMS (Termii), email, or voice calls. Support hours: 8am–8pm WAT."
+    : "Stay connected via WhatsApp, SMS (Twilio), email, or voice calls. Support hours: 9am–9pm ET.";
+  const inboxCopy = isNG
+    ? "Need help? Reach our Nigeria team via email, WhatsApp, SMS, or phone. Messages route through Termii and local forwarding numbers for quick responses in WAT hours."
+    : "Need help? Reach our USA team via email, SMS, WhatsApp, or phone. Messages route through Twilio and local forwarding numbers for quick responses in ET hours.";
+  const trainingCopy = isNG
+    ? "All Nigerian drivers must complete our online training program before driving. Training is a precondition for group insurance eligibility and must be refreshed every 6 months."
+    : "All US drivers must complete our online training program before driving. Training is a precondition for group insurance eligibility and must be refreshed every 6 months.";
+
+  return [
+    {
+      id: "welcome",
+      title: isNG ? "Welcome to Rentmaikar Nigeria! 🚗" : "Welcome to Rentmaikar USA! 🚗",
+      description: `${regionTagline} Let's take a quick tour to help you get started.`,
+      icon: Car,
+      position: "center",
+    },
+    {
+      id: "user-type",
+      title: "Choose Your Role",
+      description: isNG
+        ? "Select whether you're a Driver looking to rent a vehicle for Uber/Bolt/inDrive, or an Owner wanting to register your cars. This helps us personalize your experience."
+        : "Select whether you're a Driver looking to rent a vehicle for Uber/Lyft, or an Owner wanting to earn from your car. This helps us personalize your experience.",
+      target: "[data-tour='user-type']",
+      icon: User,
+      position: "top",
+    },
+    {
+      id: "categories",
+      title: "Browse Vehicle Categories",
+      description: `Explore our three pricing tiers — Budget, Standard, and Premium — each with daily or weekly payment options. ${currencyNote}`,
+      target: "[data-tour='categories']",
+      icon: Car,
+      position: "top",
+    },
+    {
+      id: "regions",
+      title: "Regional Operations",
+      description: `You're viewing ${country} content. We operate in hubs across ${hubs}. Switch regions anytime to see local pricing and available features.`,
+      target: "[data-tour='region']",
+      icon: MapPin,
+      position: "bottom",
+    },
+    {
+      id: "security",
+      title: "IoT-Powered Security",
+      description: `Every rental vehicle is equipped with our IoT device for real-time GPS tracking, accident detection, and remote vehicle management. Includes ${idDocs} for compliance.`,
+      target: "[data-tour='features']",
+      icon: Shield,
+      position: "top",
+    },
+    {
+      id: "training",
+      title: "Mandatory Driver Training 📚",
+      description: trainingCopy,
+      icon: FileText,
+      position: "center",
+    },
+    {
+      id: "payments",
+      title: "Flexible Payment Options",
+      description: paymentsCopy,
+      target: "[data-tour='payments']",
+      icon: CreditCard,
+      position: "top",
+    },
+    {
+      id: "rent-to-own",
+      title: "Rent-to-Own Program 🏠",
+      description: isNG
+        ? "Owners can list vehicles for rent-to-own with Naira pricing. Drivers can search for listings in their Nigerian city and work toward vehicle ownership."
+        : "Owners can list vehicles for rent-to-own with USD pricing. Drivers can search for listings within a 35-mile radius and work toward vehicle ownership.",
+      icon: Home,
+      position: "center",
+    },
+    {
+      id: "notifications",
+      title: "Multi-Channel Communication 📱",
+      description: commsCopy,
+      icon: MessageSquare,
+      position: "center",
+    },
+    {
+      id: "unified-inbox",
+      title: "Unified Support System 📬",
+      description: inboxCopy,
+      icon: Inbox,
+      position: "center",
+    },
+    {
+      id: "policies",
+      title: "Terms & Policies",
+      description: `During registration, you'll review and accept our ${country}-specific Terms of Service (including mandatory training and group insurance), Privacy Policy, and platform agreements. These are versioned per region.`,
+      icon: FileText,
+      position: "center",
+    },
+    {
+      id: "complete",
+      title: "You're All Set! 🎉",
+      description: isNG
+        ? "Start exploring Rentmaikar Nigeria now. Register as a driver or owner to access your dashboard with vehicle tracking, Naira payments, inspections, and more."
+        : "Start exploring Rentmaikar USA now. Register as a driver or owner to access your dashboard with vehicle tracking, USD payments, inspections, and more.",
+      icon: Car,
+      position: "center",
+    },
+  ];
+};
+
 
 interface OnboardingTourProps {
   onComplete: () => void;
