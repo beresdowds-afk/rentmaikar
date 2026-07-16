@@ -155,8 +155,10 @@ export default function OwnerDashboard() {
     setSelectedVehicle(null);
   };
 
+  const authGate = useDashboardAuthGate({ allowedRoles: ['owner'], label: 'Owner Dashboard' });
+  if (authGate) return <>{authGate}</>;
+
   return (
-    <DashboardAuthGate allowedRoles={['owner']} label="Owner Dashboard">
     <VerificationGate userType="owner" bypassForAdmin={isAdminView}>
       <div className="min-h-screen bg-background">
         <Header />
@@ -747,6 +749,5 @@ export default function OwnerDashboard() {
         <CallSupportButton userType="owner" variant="floating" />
       </div>
     </VerificationGate>
-    </DashboardAuthGate>
   );
 }
