@@ -2,11 +2,19 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
+import { requireAuthenticatedUser } from "../_shared/auth-guards.ts";
 
 const BodySchema = z.object({ reference: z.string().min(6).max(128) });
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // Require an authenticated caller AND require them to be the driver on
+  // the transaction they're verifying. Prevents anonymous enumeration and
+  // status-flipping on other users' payments.
+  const authRes = await requireAuthenticatedUser(req);
+  if (authRes instanceof Response) return authRes;
+  const userId = authRes.userId;
 
   try {
     const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
@@ -20,6 +28,12 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    const { data: ownTx } = await supabase.from("paystack_transactions")
+      .select("driver_id").eq("reference", reference).maybeSingle();
+    if (ownTx && ownTx.driver_id && ownTx.driver_id !== userId) {
+      return json({ error: "Forbidden" }, 403);
+    }
 
     const resp = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
       headers: { Authorization: `Bearer ${secret}` },
