@@ -42,6 +42,7 @@ import { PaymentMethodPicker } from '@/components/payments/PaymentMethodPicker';
 import { RentalPaymentStatusPanel } from '@/components/payments/RentalPaymentStatusPanel';
 import { EnablePushButton } from '@/components/notifications/EnablePushButton';
 import { installDeepLinkListener } from '@/lib/push';
+import { DashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -158,6 +159,7 @@ export default function DriverDashboard() {
   };
 
   return (
+    <DashboardAuthGate allowedRoles={['driver']} label="Driver Dashboard">
     <VerificationGate userType="driver" bypassForAdmin={isAdminView}>
       <div className="min-h-screen bg-background">
         <Header />

@@ -155,6 +155,7 @@ export default function OwnerDashboard() {
   };
 
   return (
+    <DashboardAuthGate allowedRoles={['owner']} label="Owner Dashboard">
     <VerificationGate userType="owner" bypassForAdmin={isAdminView}>
       <div className="min-h-screen bg-background">
         <Header />
