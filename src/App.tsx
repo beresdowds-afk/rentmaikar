@@ -98,22 +98,8 @@ const App = () => (
                       </ProtectedRoute>
                     } 
                   />
-                  <Route 
-                    path="/driver/dashboard" 
-                    element={
-                      <ProtectedRoute allowedRoles={['driver', 'admin']}>
-                        <DriverDashboard />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/owner/dashboard" 
-                    element={
-                      <ProtectedRoute allowedRoles={['owner', 'admin']}>
-                        <OwnerDashboard />
-                      </ProtectedRoute>
-                    } 
-                  />
+                  <Route path="/driver/dashboard" element={<DriverDashboard />} />
+                  <Route path="/owner/dashboard" element={<OwnerDashboard />} />
                   <Route path="/catalogue/:category" element={<Catalogue />} />
                   <Route 
                     path="/api-docs" 
