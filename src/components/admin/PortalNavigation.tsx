@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Building2, UsersRound, Users, Headphones, LayoutGrid, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, ShieldCheck, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail, Wifi, Activity, Clock, Radio, Globe, Star, Calendar } from "lucide-react";
+import { ChevronDown, Building2, UsersRound, Users, Headphones, LayoutGrid, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, ShieldCheck, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail, Wifi, Activity, Clock, Radio, Globe, Star, Calendar, Satellite, Signal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -44,6 +44,8 @@ export const erpTabs: PortalTab[] = [
   { value: "assets", label: "Assets Registry", icon: <ClipboardList className="h-4 w-4" />, dataTour: "admin-assets" },
   { value: "pickup-locations", label: "Pickup Locations", icon: <MapPin className="h-4 w-4" /> },
   { value: "iot-monitoring", label: "IoT Monitoring Hub", icon: <Radio className="h-4 w-4" /> },
+  { value: "hologram", label: "Hologram SIMs", icon: <Signal className="h-4 w-4" /> },
+  { value: "traccar", label: "Traccar Tracking", icon: <Satellite className="h-4 w-4" /> },
   { value: "hardware", label: "Hardware", icon: <Cpu className="h-4 w-4" /> },
   { value: "mqtt-credentials", label: "MQTT Credentials", icon: <Wifi className="h-4 w-4" /> },
   { value: "driver-behavior", label: "Driver Behavior", icon: <Activity className="h-4 w-4" /> },

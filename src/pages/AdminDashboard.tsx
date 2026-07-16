@@ -3,6 +3,8 @@ import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, Eye,
 import { CallCenterPage } from "@/components/admin/voip/CallCenterPage";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { IoTMonitoringHub } from "@/components/admin/IoTMonitoringHub";
+import { HologramDashboard } from "@/components/admin/HologramDashboard";
+import { TraccarDashboard } from "@/components/admin/TraccarDashboard";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
 import { VehicleCategoryYearSpecs } from "@/components/admin/VehicleCategoryYearSpecs";
@@ -735,6 +737,8 @@ const AdminDashboard = () => {
               {activeTab === 'assets' && <AssetsRegistry />}
               {activeTab === 'pickup-locations' && <VehiclePickupManagement />}
               {activeTab === 'iot-monitoring' && <IoTMonitoringHub />}
+              {activeTab === 'hologram' && <HologramDashboard />}
+              {activeTab === 'traccar' && <TraccarDashboard />}
               {activeTab === 'hardware' && <HardwareManagement />}
               {activeTab === 'mqtt-credentials' && <VehicleMqttCredentials readOnly={false} />}
               {activeTab === 'driver-behavior' && <DriverBehaviorLogs />}
