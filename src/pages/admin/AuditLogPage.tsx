@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,10 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, RefreshCw, Shield, ArrowLeft, Search } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Loader2, RefreshCw, Shield, ArrowLeft, Search, X, CalendarIcon, Filter } from "lucide-react";
 import { format } from "date-fns";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { cn } from "@/lib/utils";
 
 interface DeniedEntry {
   id: string;
@@ -26,8 +30,16 @@ interface DeniedEntry {
 const AuditLogPage = () => {
   const [entries, setEntries] = useState<DeniedEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState("");
-  const [tableFilter, setTableFilter] = useState("");
+
+  // Filters
+  const [tableFilter, setTableFilter] = useState<string>("all");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [reason, setReason] = useState("");
+  const [userIdF, setUserIdF] = useState("");
+  const [requestIdF, setRequestIdF] = useState("");
+  const [action, setAction] = useState("");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
 
   const load = async () => {
     setLoading(true);
@@ -35,24 +47,52 @@ const AuditLogPage = () => {
       .from("permission_denied_log")
       .select("*")
       .order("attempted_at", { ascending: false })
-      .limit(500);
+      .limit(1000);
     if (!error && data) setEntries(data as DeniedEntry[]);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
 
-  const filtered = entries.filter((e) => {
-    if (tableFilter && !e.target_table?.toLowerCase().includes(tableFilter.toLowerCase())) return false;
-    if (!q) return true;
-    const needle = q.toLowerCase();
-    return (
-      e.reason?.toLowerCase().includes(needle) ||
-      e.user_id?.toLowerCase().includes(needle) ||
-      e.target_row_id?.toLowerCase().includes(needle) ||
-      e.attempted_fields?.some((f) => f.toLowerCase().includes(needle))
-    );
-  });
+  const tables = useMemo(
+    () => Array.from(new Set(entries.map((e) => e.target_table).filter(Boolean))).sort(),
+    [entries]
+  );
+  const roles = useMemo(
+    () => Array.from(new Set(entries.map((e) => e.session_role).filter(Boolean) as string[])).sort(),
+    [entries]
+  );
+
+  const filtered = useMemo(() => entries.filter((e) => {
+    if (tableFilter !== "all" && e.target_table !== tableFilter) return false;
+    if (roleFilter !== "all" && e.session_role !== roleFilter) return false;
+    if (reason && !e.reason?.toLowerCase().includes(reason.toLowerCase())) return false;
+    if (userIdF && !e.user_id?.toLowerCase().includes(userIdF.toLowerCase())) return false;
+    if (requestIdF && !e.target_row_id?.toLowerCase().includes(requestIdF.toLowerCase())) return false;
+    if (action) {
+      const a = action.toLowerCase();
+      const hit = e.attempted_fields?.some((f) => f.toLowerCase().includes(a));
+      if (!hit) return false;
+    }
+    if (dateFrom && new Date(e.attempted_at) < dateFrom) return false;
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      if (new Date(e.attempted_at) > end) return false;
+    }
+    return true;
+  }), [entries, tableFilter, roleFilter, reason, userIdF, requestIdF, action, dateFrom, dateTo]);
+
+  const clearFilters = () => {
+    setTableFilter("all"); setRoleFilter("all");
+    setReason(""); setUserIdF(""); setRequestIdF(""); setAction("");
+    setDateFrom(undefined); setDateTo(undefined);
+  };
+
+  const activeCount = [
+    tableFilter !== "all", roleFilter !== "all",
+    !!reason, !!userIdF, !!requestIdF, !!action, !!dateFrom, !!dateTo,
+  ].filter(Boolean).length;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -68,34 +108,95 @@ const AuditLogPage = () => {
               Security Audit Log
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Every RLS-denied update and blocked field change is recorded here. Latest 500 entries.
+              Every RLS-denied update and blocked field change is recorded here. Latest 1,000 entries.
             </p>
           </div>
           <Button onClick={load} variant="outline" disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />Refresh
           </Button>
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Filters</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              Advanced filters
+              {activeCount > 0 && <Badge variant="secondary" className="ml-1">{activeCount}</Badge>}
+            </CardTitle>
+            {activeCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-1" />Clear
+              </Button>
+            )}
           </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search reason, user id, row id, field…"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                className="pl-10"
-              />
+          <CardContent className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Table</label>
+              <Select value={tableFilter} onValueChange={setTableFilter}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All tables</SelectItem>
+                  {tables.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-            <Input
-              placeholder="Filter by table name (e.g. rentals)"
-              value={tableFilter}
-              onChange={(e) => setTableFilter(e.target.value)}
-            />
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Session role</label>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All roles</SelectItem>
+                  {roles.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Action / field</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="e.g. status, daily_rate" value={action} onChange={(e) => setAction(e.target.value)} className="pl-10" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Reason</label>
+              <Input placeholder="Search reason text" value={reason} onChange={(e) => setReason(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">User ID</label>
+              <Input placeholder="uuid contains…" value={userIdF} onChange={(e) => setUserIdF(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Request / Row ID</label>
+              <Input placeholder="target row id contains…" value={requestIdF} onChange={(e) => setRequestIdF(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">From</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    {dateFrom ? format(dateFrom, "PPP") : "Any date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className={cn("p-3 pointer-events-auto")} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">To</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    {dateTo ? format(dateTo, "PPP") : "Any date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className={cn("p-3 pointer-events-auto")} />
+                </PopoverContent>
+              </Popover>
+            </div>
           </CardContent>
         </Card>
 
@@ -108,13 +209,9 @@ const AuditLogPage = () => {
           <CardContent>
             <ScrollArea className="h-[600px] pr-2">
               {loading ? (
-                <div className="flex items-center justify-center py-16">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                </div>
+                <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div>
               ) : filtered.length === 0 ? (
-                <div className="text-center py-16 text-muted-foreground text-sm">
-                  No denied attempts recorded.
-                </div>
+                <div className="text-center py-16 text-muted-foreground text-sm">No entries match these filters.</div>
               ) : (
                 <div className="space-y-3">
                   {filtered.map((e) => (
