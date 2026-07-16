@@ -64,6 +64,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 
 const VEHICLE_CATEGORY_DEFS = [
   { value: 'smart-start', label: 'Smart Start', specKey: 'budget', maxWeekly: 250 },
@@ -153,6 +154,9 @@ export default function OwnerDashboard() {
     setWithdrawAmount('');
     setSelectedVehicle(null);
   };
+
+  const authGate = useDashboardAuthGate({ allowedRoles: ['owner'], label: 'Owner Dashboard' });
+  if (authGate) return <>{authGate}</>;
 
   return (
     <VerificationGate userType="owner" bypassForAdmin={isAdminView}>

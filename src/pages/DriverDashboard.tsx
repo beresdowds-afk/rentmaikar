@@ -42,6 +42,7 @@ import { PaymentMethodPicker } from '@/components/payments/PaymentMethodPicker';
 import { RentalPaymentStatusPanel } from '@/components/payments/RentalPaymentStatusPanel';
 import { EnablePushButton } from '@/components/notifications/EnablePushButton';
 import { installDeepLinkListener } from '@/lib/push';
+import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -156,6 +157,9 @@ export default function DriverDashboard() {
   const handleRequestNegotiation = () => {
     toast.info('Price negotiation request submitted. Admin will review shortly.');
   };
+
+  const authGate = useDashboardAuthGate({ allowedRoles: ['driver'], label: 'Driver Dashboard' });
+  if (authGate) return <>{authGate}</>;
 
   return (
     <VerificationGate userType="driver" bypassForAdmin={isAdminView}>
