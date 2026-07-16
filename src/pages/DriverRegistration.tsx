@@ -201,6 +201,13 @@ const DriverRegistration = () => {
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {submitError && (
+                <RegistrationErrorAlert
+                  error={submitError}
+                  onRetry={handleRetry}
+                  isRetrying={isRetrying}
+                />
+              )}
               {/* Personal Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
