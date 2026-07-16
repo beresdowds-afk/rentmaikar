@@ -271,6 +271,10 @@ export default function DriverDashboard() {
                 Agreements
               </TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="subscriptions" className="flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                Subscriptions
+              </TabsTrigger>
               <TabsTrigger value="telemetry" className="flex items-center gap-1">
                 <Activity className="h-3 w-3" />
                 Driving Score
