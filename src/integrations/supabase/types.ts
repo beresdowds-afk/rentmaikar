@@ -4988,6 +4988,78 @@ export type Database = {
         }
         Relationships: []
       }
+      tour_analytics_events: {
+        Row: {
+          country: string
+          created_at: string
+          event_type: string
+          extra: Json | null
+          id: string
+          step_id: string | null
+          step_index: number | null
+          total_steps: number | null
+          tour_name: string
+          user_id: string | null
+        }
+        Insert: {
+          country: string
+          created_at?: string
+          event_type: string
+          extra?: Json | null
+          id?: string
+          step_id?: string | null
+          step_index?: number | null
+          total_steps?: number | null
+          tour_name: string
+          user_id?: string | null
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          event_type?: string
+          extra?: Json | null
+          id?: string
+          step_id?: string | null
+          step_index?: number | null
+          total_steps?: number | null
+          tour_name?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      tour_step_configs: {
+        Row: {
+          country: string
+          created_at: string
+          id: string
+          is_active: boolean
+          steps: Json
+          tour_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          country: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          steps?: Json
+          tour_name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          steps?: Json
+          tour_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       training_completions: {
         Row: {
           completed_at: string
