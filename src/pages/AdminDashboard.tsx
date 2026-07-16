@@ -737,6 +737,8 @@ const AdminDashboard = () => {
               {activeTab === 'assets' && <AssetsRegistry />}
               {activeTab === 'pickup-locations' && <VehiclePickupManagement />}
               {activeTab === 'iot-monitoring' && <IoTMonitoringHub />}
+              {activeTab === 'hologram' && <HologramDashboard />}
+              {activeTab === 'traccar' && <TraccarDashboard />}
               {activeTab === 'hardware' && <HardwareManagement />}
               {activeTab === 'mqtt-credentials' && <VehicleMqttCredentials readOnly={false} />}
               {activeTab === 'driver-behavior' && <DriverBehaviorLogs />}
