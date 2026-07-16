@@ -37,6 +37,7 @@ export const crmTabs: PortalTab[] = [
   { value: "subscriptions", label: "Subscriptions", icon: <CreditCard className="h-4 w-4" /> },
   { value: "training", label: "Driver Training", icon: <GraduationCap className="h-4 w-4" /> },
   { value: "roadside-partners", label: "Roadside Partners", icon: <Truck className="h-4 w-4" /> },
+  { value: "billing", label: "Invoices & Receipts", icon: <FileText className="h-4 w-4" /> },
 ];
 
 export const erpTabs: PortalTab[] = [
