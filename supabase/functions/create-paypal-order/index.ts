@@ -103,7 +103,14 @@ Deno.serve(async (req) => {
 
     // Persist order intent using the service role client.
     const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const driverId = data.driver_id ?? userId;
+    // Driver identity ALWAYS from JWT — reject spoofed values.
+    if (data.driver_id && data.driver_id !== userId) {
+      return new Response(JSON.stringify({ error: "driver_id does not match authenticated user" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const driverId = userId;
 
     const ctx = await resolvePaymentContext({
       supabase: supa,
