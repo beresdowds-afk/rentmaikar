@@ -16,20 +16,20 @@ type AppRole =
   | 'iot_support'
   | 'vehicle_support';
 
-interface Props {
-  children: ReactNode;
-  /** Roles allowed to view the dashboard. Admins are always allowed. */
+interface GateArgs {
   allowedRoles: AppRole[];
-  /** Human-readable label used in the sign-in prompt (e.g. "Driver Dashboard"). */
   label: string;
 }
 
 /**
- * Renders a friendly sign-in prompt for anonymous visitors and a
- * "wrong role" prompt for signed-in users who don't have access,
- * instead of showing empty/partial dashboard content.
+ * Returns a JSX element to render in place of the dashboard when the
+ * visitor is not authenticated or lacks the required role. Returns null
+ * when the caller should render its real dashboard content.
+ *
+ * Use as an early return so downstream JSX (which may deref rental /
+ * vehicle fields) never evaluates for unauthenticated users.
  */
-export function DashboardAuthGate({ children, allowedRoles, label }: Props) {
+export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNode | null {
   const { user, isLoading, userRole, isRoleLoading } = useAuth();
   const location = useLocation();
 
@@ -121,5 +121,5 @@ export function DashboardAuthGate({ children, allowedRoles, label }: Props) {
     );
   }
 
-  return <>{children}</>;
+  return null;
 }
