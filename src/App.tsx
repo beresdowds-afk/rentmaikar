@@ -46,6 +46,8 @@ const AdminDocumentExportAuditPage = lazy(() => import("./pages/admin/AdminDocum
 const AdminDocumentFailuresPage = lazy(() => import("./pages/admin/AdminDocumentFailuresPage"));
 const AuditLogPage = lazy(() => import("./pages/admin/AuditLogPage"));
 const PaymentsViewerPage = lazy(() => import("./pages/admin/PaymentsViewerPage"));
+const TourStepConfigPage = lazy(() => import("./pages/admin/TourStepConfigPage"));
+const TourAnalyticsPage = lazy(() => import("./pages/admin/TourAnalyticsPage"));
 
 const queryClient = new QueryClient();
 
