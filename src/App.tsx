@@ -202,6 +202,15 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/admin/audit-log"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AuditLogPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
                   <Route path="*" element={<NotFound />} />
                   </Routes>
                   </main>
