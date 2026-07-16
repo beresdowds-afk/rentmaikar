@@ -50,6 +50,8 @@ export function TraccarDashboard() {
   const [query, setQuery] = useState("");
   const [cmdDevice, setCmdDevice] = useState<string>("");
   const [cmd, setCmd] = useState<string>("engineStop");
+  const [selected, setSelected] = useState<Device | null>(null);
+  const [linkVehicle, setLinkVehicle] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
