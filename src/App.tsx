@@ -211,6 +211,16 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/admin/payments"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <PaymentsViewerPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+
 
                   <Route path="*" element={<NotFound />} />
                   </Routes>
