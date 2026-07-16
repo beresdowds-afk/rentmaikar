@@ -243,6 +243,23 @@ const App = () => (
 
 
 
+                  <Route
+                    path="/subscriptions"
+                    element={
+                      <ProtectedRoute>
+                        <SubscriptionsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/subscriptions/success"
+                    element={
+                      <ProtectedRoute>
+                        <SubscriptionSuccessPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
                   <Route path="*" element={<NotFound />} />
                   </Routes>
                   </main>
