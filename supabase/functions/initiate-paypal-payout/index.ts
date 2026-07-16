@@ -38,6 +38,25 @@ Deno.serve(async (req) => {
       return json({ error: "Invalid PayPal payout account" }, 400);
     }
 
+    // Enforce minimum, precision, and available-balance guardrails.
+    if (b.amount < 1) return json({ error: "Amount below minimum payout" }, 400);
+    if (Math.round(b.amount * 100) !== b.amount * 100) {
+      return json({ error: "Amount must have at most 2 decimals" }, 400);
+    }
+
+    const { data: balanceRow, error: balanceErr } = await supabase.rpc(
+      "get_owner_available_balance",
+      { _owner_id: owner.id, _currency: "USD" },
+    );
+    if (balanceErr) {
+      console.error("[initiate-paypal-payout] balance rpc error:", balanceErr);
+      return json({ error: "Failed to verify balance" }, 500);
+    }
+    const available = Number(balanceRow ?? 0);
+    if (b.amount > available) {
+      return json({ error: "Amount exceeds available balance", available }, 400);
+    }
+
     const { count } = await supabase.from("owner_payouts")
       .select("*", { count: "exact", head: true })
       .eq("owner_id", owner.id).in("status", ["pending", "processing"]);

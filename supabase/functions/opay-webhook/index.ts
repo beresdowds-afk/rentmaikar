@@ -2,6 +2,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHmac } from "node:crypto";
+import { timingSafeEqualHex } from "../_shared/timing-safe.ts";
 
 async function notifyPush(paymentId: string, rentalId: string | null, status: string, amount?: number, currency?: string, reference?: string) {
   const secret = Deno.env.get("CRON_SECRET");
@@ -24,7 +25,7 @@ Deno.serve(async (req) => {
   const raw = await req.text();
   const sig = req.headers.get("Signature") ?? "";
   const expected = createHmac("sha512", secretKey).update(raw).digest("hex");
-  if (sig !== expected) return new Response("invalid signature", { status: 401 });
+  if (!timingSafeEqualHex(sig, expected)) return new Response("invalid signature", { status: 401 });
 
   const evt = JSON.parse(raw);
   const reference: string | undefined = evt?.payload?.reference ?? evt?.reference;

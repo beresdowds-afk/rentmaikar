@@ -29,17 +29,19 @@ Deno.serve(async (req) => {
     if (!parsed.success) return json({ error: parsed.error.flatten() }, 400);
     const b = parsed.data;
 
+    // Driver identity ALWAYS from JWT — body value is only accepted if it matches.
     const auth = req.headers.get("Authorization") ?? "";
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    let driverId = b.driverId;
-    if (auth.startsWith("Bearer ")) {
-      const { data: u } = await supabase.auth.getUser(auth.replace("Bearer ", ""));
-      driverId = driverId ?? u?.user?.id;
+    if (!auth.startsWith("Bearer ")) return json({ error: "Unauthenticated" }, 401);
+    const { data: u, error: uErr } = await supabase.auth.getUser(auth.replace("Bearer ", ""));
+    if (uErr || !u?.user) return json({ error: "Unauthenticated" }, 401);
+    const driverId = u.user.id;
+    if (b.driverId && b.driverId !== driverId) {
+      return json({ error: "driverId does not match authenticated user" }, 403);
     }
-    if (!driverId) return json({ error: "Unauthenticated" }, 401);
 
     const ctx = await resolvePaymentContext({
       supabase, rentalId: b.rentalId, vehicleId: b.vehicleId,

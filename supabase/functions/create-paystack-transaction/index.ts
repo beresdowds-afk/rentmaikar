@@ -41,15 +41,23 @@ Deno.serve(async (req) => {
     }
     const body = parsed.data;
 
-    // Resolve driver identity from JWT if not passed
-    let driverId = body.driverId;
-    if (auth.startsWith("Bearer ")) {
-      const { data: userData } = await supabase.auth.getUser(auth.replace("Bearer ", ""));
-      if (userData?.user) driverId = driverId ?? userData.user.id;
-    }
-    if (!driverId) {
+    // Driver identity is ALWAYS derived from the JWT — never trust the body.
+    if (!auth.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthenticated" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: userData, error: userErr } = await supabase.auth.getUser(auth.replace("Bearer ", ""));
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthenticated" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const driverId = userData.user.id;
+    // If the caller passed a mismatched driverId, reject rather than silently accept.
+    if (body.driverId && body.driverId !== driverId) {
+      return new Response(JSON.stringify({ error: "driverId does not match authenticated user" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
