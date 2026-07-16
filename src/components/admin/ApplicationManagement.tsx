@@ -634,6 +634,10 @@ const ApplicationCard = ({
 
           {/* Actions */}
           <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" variant="outline" onClick={() => (window as any).__openAppView?.(application)}>
+              <Eye className="h-4 w-4 mr-1" />
+              View
+            </Button>
             {application.status === 'pending' && (
               <>
                 <Button size="sm" variant="outline" onClick={onMarkReview}>
