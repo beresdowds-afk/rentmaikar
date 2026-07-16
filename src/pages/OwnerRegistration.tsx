@@ -17,6 +17,8 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import PricingHintBanner from "@/components/home/PricingHintBanner";
 import { supabase } from "@/integrations/supabase/client";
+import { classifyRegistrationError, type FriendlyRegistrationError } from "@/lib/registration-errors";
+import { RegistrationErrorAlert } from "@/components/registration/RegistrationErrorAlert";
 import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
 
 const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
@@ -84,6 +86,9 @@ const OwnerRegistration = () => {
   const navigate = useNavigate();
   const { currencySymbol } = useRegion();
   const [currentCountry, setCurrentCountry] = useState<"usa" | "nigeria">("usa");
+  const [submitError, setSubmitError] = useState<FriendlyRegistrationError | null>(null);
+  const [lastFormData, setLastFormData] = useState<OwnerFormData | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
   
   const {
     register,
@@ -145,6 +150,8 @@ const OwnerRegistration = () => {
   };
 
   const onSubmit = async (data: OwnerFormData) => {
+    setLastFormData(data);
+    setSubmitError(null);
     try {
       const { error } = await supabase.from('applications').insert({
         application_type: 'owner' as const,
@@ -171,16 +178,29 @@ const OwnerRegistration = () => {
         agreed_iot: data.agreeIoT,
         agreed_fees: data.agreeFees,
       });
-      
+
       if (error) throw error;
-      
+
       toast.success("Vehicle submitted for review! We'll contact you within 24-48 hours.");
+      setSubmitError(null);
       navigate("/");
     } catch (error) {
       console.error("Owner registration error:", error);
-      toast.error("Something went wrong. Please try again.");
+      const friendly = classifyRegistrationError(error);
+      setSubmitError(friendly);
+      toast.error(friendly.title);
+    } finally {
+      setIsRetrying(false);
     }
   };
+
+  const handleRetry = () => {
+    if (!lastFormData) return;
+    setIsRetrying(true);
+    onSubmit(lastFormData);
+  };
+
+
 
   return (
     <div className="min-h-screen bg-background">
