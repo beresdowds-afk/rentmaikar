@@ -64,7 +64,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { DashboardAuthGate } from '@/components/auth/DashboardAuthGate';
+import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 
 const VEHICLE_CATEGORY_DEFS = [
   { value: 'smart-start', label: 'Smart Start', specKey: 'budget', maxWeekly: 250 },
