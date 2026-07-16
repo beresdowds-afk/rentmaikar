@@ -70,7 +70,6 @@ const renderAt = (initial: string, ui: React.ReactNode) =>
       <Routes>
         <Route path="/auth" element={<div>SIGN IN PAGE</div>} />
         <Route path="/" element={<div>HOME</div>} />
-        <Route path="/admin" element={<div>ADMIN FALLBACK</div>} />
         <Route path="/driver/dashboard" element={<div>DRIVER HOME</div>} />
         <Route path="/owner/dashboard" element={<div>OWNER HOME</div>} />
         {ui}
