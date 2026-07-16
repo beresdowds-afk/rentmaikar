@@ -18,153 +18,166 @@ interface TourStep {
   position?: "top" | "bottom" | "left" | "right" | "center";
 }
 
-const tourSteps: TourStep[] = [
-  {
-    id: "welcome",
-    title: "Welcome, Admin! 🛡️",
-    description: "This tour covers the admin dashboard organized into 4 portals: CRM, ERP, SUPPORT, and MARKETING. Let's walk through the key features.",
-    icon: Shield,
-    position: "center"
-  },
-  {
-    id: "portal-nav",
-    title: "Portal Navigation",
-    description: "The dashboard is divided into CRM (users, agreements, negotiations), ERP (vehicles, hardware, tracking), SUPPORT (inbox, contacts, call center), and MARKETING (social media campaigns).",
-    target: "[data-tour='admin-portal']",
-    icon: Settings,
-    position: "bottom"
-  },
-  {
-    id: "global-search",
-    title: "Global Search ⌘K",
-    description: "Use the command palette (Ctrl+K / ⌘K) to quickly search and navigate to any portal, user, vehicle, or feature across the entire dashboard.",
-    icon: Search,
-    position: "center"
-  },
-  {
-    id: "unified-inbox",
-    title: "Unified Inbox",
-    description: "Manage all customer messages from SMS, WhatsApp, and email in one threaded view. Replies are routed back through the original channel and regional provider (Twilio for USA, Termii for Nigeria).",
-    target: "[data-tour='admin-inbox']",
-    icon: Inbox,
-    position: "bottom"
-  },
-  {
-    id: "contact-settings",
-    title: "Contact & Email Configuration",
-    description: "Manage platform email addresses (support@, admin@, payments@, etc.) with inline editing. Configure regional contact channels for SMS, WhatsApp, and phone, plus message forwarding numbers.",
-    target: "[data-tour='admin-contacts']",
-    icon: Mail,
-    position: "bottom"
-  },
-  {
-    id: "call-center",
-    title: "Call Center & VoIP",
-    description: "Handle inbound/outbound voice calls with call groups, conference rooms, recording playback, and call history. Supports Twilio for USA and regional providers for Nigeria.",
-    icon: Phone,
-    position: "center"
-  },
-  {
-    id: "regional-ops",
-    title: "Regional Operations 🌍",
-    description: "Manage the country → region → city hierarchy with master switches for services and 17+ granular feature toggles. Configure forwarding numbers and communication providers per region.",
-    icon: Globe,
-    position: "center"
-  },
-  {
-    id: "user-accounts",
-    title: "User Management",
-    description: "View and manage all drivers and owners. Preview their dashboards read-only, approve registrations, manage roles, and initiate legal agreements from approved negotiations.",
-    target: "[data-tour='admin-accounts']",
-    icon: Users,
-    position: "bottom"
-  },
-  {
-    id: "assets-registry",
-    title: "Assets & Vehicle Tracking",
-    description: "Track all vehicles with real-time IoT GPS data, current driver assignments, and device health status on an interactive map.",
-    target: "[data-tour='admin-assets']",
-    icon: Car,
-    position: "bottom"
-  },
-  {
-    id: "device-orders",
-    title: "IoT Device Orders",
-    description: "Manage hardware orders from owners — track payment status, shipping, SIM provisioning, and installation confirmations with revenue analytics.",
-    target: "[data-tour='admin-device-orders']",
-    icon: Package,
-    position: "bottom"
-  },
-  {
-    id: "negotiations",
-    title: "Price Negotiations",
-    description: "Review price modification requests from drivers and owners. Approve, counter-offer, or reject — with notifications sent via the user's preferred channel.",
-    target: "[data-tour='admin-negotiations']",
-    icon: CreditCard,
-    position: "bottom"
-  },
-  {
-    id: "rent-to-own",
-    title: "Rent-to-Own Management",
-    description: "Approve or reject rent-to-own listings with country-specific pricing. Manage subscriptions and security deposit tracking.",
-    target: "[data-tour='admin-rto']",
-    icon: Home,
-    position: "bottom"
-  },
-  {
-    id: "incidents",
-    title: "Incident Management",
-    description: "Monitor accidents, maintenance issues, and IoT-detected events. Late reports (>1 hour) are automatically flagged. Nigeria regions may require police reports.",
-    target: "[data-tour='admin-incidents']",
-    icon: AlertTriangle,
-    position: "bottom"
-  },
-  {
-    id: "inspections",
-    title: "Weekly Inspections",
-    description: "Review quarterly vehicle inspection reports with photo comparisons. Approve or flag issues for follow-up with automated reminders.",
-    target: "[data-tour='admin-inspections']",
-    icon: Camera,
-    position: "bottom"
-  },
-  {
-    id: "agreements",
-    title: "Legal Agreements",
-    description: "Generate, manage, and witness tri-party legal agreements between drivers, owners, and admin. Export signed documents as PDFs and send via email.",
-    target: "[data-tour='admin-agreements']",
-    icon: FileText,
-    position: "bottom"
-  },
-  {
-    id: "training",
-    title: "Training & Insurance",
-    description: "Manage mandatory driver training modules with 6-month refresh cycles. Training completion is a precondition for group insurance eligibility and subscription management.",
-    target: "[data-tour='admin-training']",
-    icon: GraduationCap,
-    position: "bottom"
-  },
-  {
-    id: "social-media",
-    title: "Social Media Campaigns 📣",
-    description: "Manage marketing campaigns across Facebook, Instagram, LinkedIn, and Google from a centralized dashboard.",
-    icon: Megaphone,
-    position: "center"
-  },
-  {
-    id: "security",
-    title: "Security Dashboard 🔒",
-    description: "Monitor RLS policy health, admin audit logs, active sessions, API rate limits, and 2FA compliance from a dedicated security scorecard.",
-    icon: Shield,
-    position: "center"
-  },
-  {
-    id: "complete",
-    title: "You're Ready! 🎉",
-    description: "Explore the dashboard portals and manage your platform efficiently. You can restart this tour anytime from the settings.",
-    icon: Shield,
-    position: "center"
-  }
-];
+const buildTourSteps = (country: Country): TourStep[] => {
+  const isNG = country === "Nigeria";
+  const smsProvider = isNG ? "Termii" : "Twilio";
+  const paymentProvider = isNG ? "Paystack/Opay (Naira)" : "PayPal (USD)";
+  const hubs = isNG ? "Lagos, Abuja, Port Harcourt" : "DC, Maryland, Virginia";
+  const idDocs = isNG ? "NIN/BVN" : "SSN/VIN";
+  const incidentNote = isNG
+    ? "Nigeria incidents may require a police report attached before closure."
+    : "USA incidents may require an insurance claim reference before closure.";
+  const supportHours = isNG ? "8am–8pm WAT" : "9am–9pm ET";
+
+  return [
+    {
+      id: "welcome",
+      title: isNG ? "Welcome, Admin — Nigeria Operations 🛡️" : "Welcome, Admin — USA Operations 🛡️",
+      description: `You're viewing the ${country} admin dashboard. It's organized into 4 portals: CRM, ERP, SUPPORT, and MARKETING. Let's walk through the key features.`,
+      icon: Shield,
+      position: "center",
+    },
+    {
+      id: "portal-nav",
+      title: "Portal Navigation",
+      description: "The dashboard is divided into CRM (users, agreements, negotiations), ERP (vehicles, hardware, tracking), SUPPORT (inbox, contacts, call center), and MARKETING (social media campaigns).",
+      target: "[data-tour='admin-portal']",
+      icon: Settings,
+      position: "bottom",
+    },
+    {
+      id: "global-search",
+      title: "Global Search ⌘K",
+      description: "Use the command palette (Ctrl+K / ⌘K) to quickly search and navigate to any portal, user, vehicle, or feature across the entire dashboard.",
+      icon: Search,
+      position: "center",
+    },
+    {
+      id: "unified-inbox",
+      title: "Unified Inbox",
+      description: `Manage all customer messages from SMS, WhatsApp, and email in one threaded view. Replies route back through the original channel using ${smsProvider} for ${country}.`,
+      target: "[data-tour='admin-inbox']",
+      icon: Inbox,
+      position: "bottom",
+    },
+    {
+      id: "contact-settings",
+      title: "Contact & Email Configuration",
+      description: `Manage platform email addresses (support@, admin@, payments@, etc.) with inline editing. Configure ${country} contact channels for SMS, WhatsApp, and phone, plus message forwarding numbers.`,
+      target: "[data-tour='admin-contacts']",
+      icon: Mail,
+      position: "bottom",
+    },
+    {
+      id: "call-center",
+      title: "Call Center & VoIP",
+      description: `Handle inbound/outbound voice calls with call groups, conference rooms, recording playback, and call history. ${country} routes through ${smsProvider}. Support hours: ${supportHours}.`,
+      icon: Phone,
+      position: "center",
+    },
+    {
+      id: "regional-ops",
+      title: "Regional Operations 🌍",
+      description: `Manage the country → region → city hierarchy with master switches and 17+ granular feature toggles. ${country} hubs: ${hubs}.`,
+      icon: Globe,
+      position: "center",
+    },
+    {
+      id: "user-accounts",
+      title: "User Management",
+      description: `View and manage all drivers and owners in ${country}. Approve registrations (${idDocs} verification), manage roles, and initiate legal agreements from approved negotiations.`,
+      target: "[data-tour='admin-accounts']",
+      icon: Users,
+      position: "bottom",
+    },
+    {
+      id: "assets-registry",
+      title: "Assets & Vehicle Tracking",
+      description: "Track all vehicles with real-time IoT GPS data, current driver assignments, and device health status on an interactive map.",
+      target: "[data-tour='admin-assets']",
+      icon: Car,
+      position: "bottom",
+    },
+    {
+      id: "device-orders",
+      title: "IoT Device Orders",
+      description: "Manage hardware orders from owners — track payment status, shipping, SIM provisioning, and installation confirmations with revenue analytics.",
+      target: "[data-tour='admin-device-orders']",
+      icon: Package,
+      position: "bottom",
+    },
+    {
+      id: "negotiations",
+      title: "Price Negotiations",
+      description: `Review price modification requests from drivers and owners in ${country}. Approve, counter-offer, or reject — notifications go via the user's preferred channel.`,
+      target: "[data-tour='admin-negotiations']",
+      icon: CreditCard,
+      position: "bottom",
+    },
+    {
+      id: "rent-to-own",
+      title: "Rent-to-Own Management",
+      description: `Approve or reject rent-to-own listings with ${country} pricing (${paymentProvider}). Manage subscriptions and security deposit tracking.`,
+      target: "[data-tour='admin-rto']",
+      icon: Home,
+      position: "bottom",
+    },
+    {
+      id: "incidents",
+      title: "Incident Management",
+      description: `Monitor accidents, maintenance issues, and IoT-detected events. Late reports (>1 hour) are automatically flagged. ${incidentNote}`,
+      target: "[data-tour='admin-incidents']",
+      icon: AlertTriangle,
+      position: "bottom",
+    },
+    {
+      id: "inspections",
+      title: "Weekly Inspections",
+      description: "Review quarterly vehicle inspection reports with photo comparisons. Approve or flag issues for follow-up with automated reminders.",
+      target: "[data-tour='admin-inspections']",
+      icon: Camera,
+      position: "bottom",
+    },
+    {
+      id: "agreements",
+      title: "Legal Agreements",
+      description: `Generate, manage, and witness tri-party legal agreements between drivers, owners, and admin under ${country} jurisdiction. Export signed documents as PDFs and send via email.`,
+      target: "[data-tour='admin-agreements']",
+      icon: FileText,
+      position: "bottom",
+    },
+    {
+      id: "training",
+      title: "Training & Insurance",
+      description: `Manage mandatory ${country} driver training modules with 6-month refresh cycles. Training completion is a precondition for group insurance eligibility.`,
+      target: "[data-tour='admin-training']",
+      icon: GraduationCap,
+      position: "bottom",
+    },
+    {
+      id: "social-media",
+      title: "Social Media Campaigns 📣",
+      description: `Manage ${country} marketing campaigns across Facebook, Instagram, LinkedIn, and Google from a centralized dashboard.`,
+      icon: Megaphone,
+      position: "center",
+    },
+    {
+      id: "security",
+      title: "Security Dashboard 🔒",
+      description: "Monitor RLS policy health, admin audit logs, active sessions, API rate limits, and 2FA compliance from a dedicated security scorecard.",
+      icon: Shield,
+      position: "center",
+    },
+    {
+      id: "complete",
+      title: "You're Ready! 🎉",
+      description: `Explore the ${country} dashboard portals and manage your platform efficiently. You can restart this tour anytime from the settings.`,
+      icon: Shield,
+      position: "center",
+    },
+  ];
+};
+
 
 interface AdminOnboardingTourProps {
   onComplete: () => void;
