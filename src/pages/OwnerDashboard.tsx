@@ -426,8 +426,12 @@ export default function OwnerDashboard() {
             </TabsContent>
 
             {/* Insurance Tab */}
-            <TabsContent value="insurance">
+            <TabsContent value="insurance" className="space-y-6">
               <OwnerInsuranceSupport />
+              <SubscriptionPlansPanel
+                title="Optional coverage & support"
+                planTypes={["insurance", "roadside_support"]}
+              />
             </TabsContent>
 
             {/* Agreements Tab */}
