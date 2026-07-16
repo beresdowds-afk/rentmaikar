@@ -6918,6 +6918,15 @@ export type Database = {
         Args: { _confirm: string }
         Returns: string
       }
+      activate_user_subscription: {
+        Args: {
+          _payment_method: string
+          _payment_reference: string
+          _plan_id: string
+          _user_id: string
+        }
+        Returns: string
+      }
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
       driver_request_rental_extension: {
         Args: { _rental_id: string }
@@ -6967,6 +6976,10 @@ export type Database = {
           _user_id: string
         }
         Returns: string
+      }
+      has_active_subscription: {
+        Args: { _plan_type: string; _region?: string; _user_id: string }
+        Returns: boolean
       }
       has_admin_assistant_permission: {
         Args: { _permission: string; _user_id: string }
