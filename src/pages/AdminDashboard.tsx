@@ -718,6 +718,7 @@ const AdminDashboard = () => {
               {activeTab === 'subscriptions' && <SubscriptionManagement />}
               {activeTab === 'training' && <TrainingModuleManagement />}
               {activeTab === 'roadside-partners' && <RoadsidePartnerManagement />}
+              {activeTab === 'billing' && <BillingDashboard />}
             </div>
           )}
 
