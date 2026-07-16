@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Save, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Save, AlertTriangle, CheckCircle2, Play } from "lucide-react";
+import { TourPreviewModal } from "@/components/admin/TourPreviewModal";
 
 const TOURS = ["landing", "admin", "vehicle-support", "iot-support", "legal-support"];
 const COUNTRIES = ["USA", "Nigeria"];
