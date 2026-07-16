@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRegion, type Country } from '@/contexts/RegionContext';
+import { useTourAnalytics } from '@/hooks/useTourAnalytics';
+
 
 import { createPortal } from 'react-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,8 +32,10 @@ interface TourStep {
   position?: 'top' | 'bottom' | 'left' | 'right' | 'center';
 }
 
-const buildTourSteps = (country: Country): TourStep[] => {
+export const buildTourSteps = (input: Country | string): TourStep[] => {
+  const country: Country = input === 'Nigeria' ? 'Nigeria' : 'USA';
   const isNG = country === 'Nigeria';
+
   const idLabel = isNG ? 'plate number, make/model, driver name, or chassis' : 'license plate, make/model, driver name, or VIN';
   const partsNote = isNG
     ? 'Nigerian parts sourcing may involve local dealers or import — record supplier and lead time.'
@@ -141,6 +145,10 @@ export const VehicleSupportOnboardingTour = ({ onComplete, isOpen }: VehicleSupp
 
   const step = tourSteps[currentStep];
   const progress = ((currentStep + 1) / tourSteps.length) * 100;
+
+  useTourAnalytics('vehicle-support', country, isOpen, currentStep, step?.id, tourSteps.length);
+
+
 
 
   const updateTargetRect = useCallback(() => {

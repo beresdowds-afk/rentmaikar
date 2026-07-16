@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRegion, type Country } from '@/contexts/RegionContext';
+import { useTourAnalytics } from '@/hooks/useTourAnalytics';
+
 
 import { createPortal } from 'react-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,8 +31,10 @@ interface TourStep {
   position?: 'top' | 'bottom' | 'left' | 'right' | 'center';
 }
 
-const buildTourSteps = (country: Country): TourStep[] => {
+export const buildTourSteps = (input: Country | string): TourStep[] => {
+  const country: Country = input === 'Nigeria' ? 'Nigeria' : 'USA';
   const isNG = country === 'Nigeria';
+
   const jurisdiction = isNG ? 'Nigerian' : 'US state';
   const complianceNote = isNG
     ? 'Nigeria: verify NIN/BVN, ensure stamp duty and Lagos State Consumer Protection compliance.'
@@ -137,6 +141,10 @@ export const LegalSupportOnboardingTour = ({ onComplete, isOpen }: LegalSupportO
 
   const step = tourSteps[currentStep];
   const progress = ((currentStep + 1) / tourSteps.length) * 100;
+
+  useTourAnalytics('legal-support', country, isOpen, currentStep, step?.id, tourSteps.length);
+
+
 
 
   const updateTargetRect = useCallback(() => {
