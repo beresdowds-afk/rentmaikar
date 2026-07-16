@@ -40,6 +40,7 @@ import { CallInPanel } from '@/components/driver/CallInPanel';
 import { PayPalCheckout } from '@/components/payments/PayPalCheckout';
 import { PaymentMethodPicker } from '@/components/payments/PaymentMethodPicker';
 import { RentalPaymentStatusPanel } from '@/components/payments/RentalPaymentStatusPanel';
+import { DriverBillingPanel } from '@/components/driver/DriverBillingPanel';
 import { EnablePushButton } from '@/components/notifications/EnablePushButton';
 import { installDeepLinkListener } from '@/lib/push';
 import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
@@ -434,6 +435,9 @@ export default function DriverDashboard() {
                   onError={() => setPaymentRefreshKey((k) => k + 1)}
                 />
               )}
+
+              <DriverBillingPanel userId={user?.id} />
+
 
               {showPaymentModal ? (
                 <PaymentOptionsSelector

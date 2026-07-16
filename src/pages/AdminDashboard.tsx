@@ -47,6 +47,7 @@ import { AdminAssistantManagement } from "@/components/admin/AdminAssistantManag
 import { PortalNavigation, type PortalType } from "@/components/admin/PortalNavigation";
 import { TrainingModuleManagement } from "@/components/admin/TrainingModuleManagement";
 import { SubscriptionManagement } from "@/components/admin/SubscriptionManagement";
+import { BillingDashboard } from "@/components/admin/BillingDashboard";
 import { RoadsidePartnerManagement } from "@/components/admin/RoadsidePartnerManagement";
 import { PortalAnalyticsCards } from "@/components/admin/PortalAnalyticsCards";
 import { GlobalSearch } from "@/components/admin/GlobalSearch";
@@ -718,6 +719,7 @@ const AdminDashboard = () => {
               {activeTab === 'subscriptions' && <SubscriptionManagement />}
               {activeTab === 'training' && <TrainingModuleManagement />}
               {activeTab === 'roadside-partners' && <RoadsidePartnerManagement />}
+              {activeTab === 'billing' && <BillingDashboard />}
             </div>
           )}
 
