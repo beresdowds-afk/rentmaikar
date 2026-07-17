@@ -51,7 +51,18 @@ Deno.serve(async (req) => {
         status: "completed", processed_at: new Date().toISOString(), failure_reason: null,
       }).eq("id", tx.payment_id);
       await notifyPush(tx.payment_id, tx.rental_id ?? null, "completed", tx.amount ? Number(tx.amount) / 100 : undefined, tx.currency ?? undefined, reference);
+      // Trigger receipt email (receipt is auto-created by the payments trigger)
+      try {
+        await supabase.functions.invoke("billing-portal", {
+          headers: { "x-internal-secret": Deno.env.get("CRON_SECRET") ?? "" },
+          body: { action: "auto_send_receipt_for_payment", payment_id: tx.payment_id },
+        });
+      } catch (e) { console.error("[paystack-webhook] receipt email failed", e); }
     }
+    await supabase.from("payment_webhook_events").insert({
+      provider: "paystack", event_type: evt.event, reference,
+      status: "verified", signature_valid: true, payment_id: tx?.payment_id ?? null, payload: evt,
+    });
   } else if (evt.event === "charge.failed" && reference) {
     await supabase.from("paystack_transactions").update({
       status: "failed",
