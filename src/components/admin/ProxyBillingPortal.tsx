@@ -140,6 +140,23 @@ export function ProxyBillingPortal() {
                     <img src={selected.consent_signature} alt="signature" className="border rounded max-h-40" />
                   </div>
                 )}
+                <div className="border rounded-lg p-3 bg-muted/30">
+                  <p className="text-sm font-medium mb-3">Consent lifecycle</p>
+                  <ProxyStatusTimeline proxy={selected} />
+                </div>
+                {selected.consent_status === "signed" && selected.admin_review_status !== "approved" && selected.admin_review_status !== "rejected" && (
+                  <div className="space-y-2 border-t pt-3">
+                    <p className="text-sm font-medium">Admin review</p>
+                    <Textarea placeholder="Notes (optional)" value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} maxLength={500} />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => review("approved")}><CheckCircle2 className="h-4 w-4 mr-1" /> Approve</Button>
+                      <Button size="sm" variant="destructive" onClick={() => review("rejected")}><XCircle className="h-4 w-4 mr-1" /> Reject</Button>
+                    </div>
+                  </div>
+                )}
+                    <img src={selected.consent_signature} alt="signature" className="border rounded max-h-40" />
+                  </div>
+                )}
                 <div>
                   <p className="text-sm font-medium mb-2">Audit trail</p>
                   <div className="max-h-64 overflow-y-auto border rounded divide-y">
