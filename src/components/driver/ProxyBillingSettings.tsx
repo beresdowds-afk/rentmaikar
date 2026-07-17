@@ -44,14 +44,31 @@ export function ProxyBillingSettings({ userId }: Props) {
     if (!channels.length) return toast.error("Pick at least one notification channel");
     if (!form.proxy_full_name.trim() || !form.proxy_email.trim()) return toast.error("Name and email are required");
     setLoading(true);
+    const now = new Date();
+    const expires = new Date(now.getTime() + form.validity_days * 86400 * 1000);
+    const idem = crypto.randomUUID();
     const { data, error } = await supabase.functions.invoke("proxy-consent-manager", {
-      body: { action: "create", ...form, channels, region: country === "Nigeria" ? "NG" : "US" },
+      body: {
+        action: "create",
+        proxy_full_name: form.proxy_full_name,
+        proxy_email: form.proxy_email,
+        proxy_phone: form.proxy_phone || undefined,
+        proxy_relationship: form.proxy_relationship || undefined,
+        channels,
+        region: country === "Nigeria" ? "NG" : "US",
+        use_type: form.use_type,
+        validity_starts_at: now.toISOString(),
+        validity_expires_at: expires.toISOString(),
+        max_uses: form.use_type === "one_time" ? 1 : form.max_uses,
+      },
+      headers: { "x-idempotency-key": idem } as any,
     });
     setLoading(false);
     if (error || !data?.ok) return toast.error(data?.error?.message ?? "Could not create proxy request");
     toast.success("Consent request sent to your proxy");
     load();
   };
+
 
   const resend = async () => {
     if (!proxy) return;
