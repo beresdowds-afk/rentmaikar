@@ -1058,6 +1058,7 @@ export type Database = {
           identity_status: string
           identity_verified_at: string | null
           max_uses: number | null
+          notification_prefs: Json
           persona_inquiry_id: string | null
           proxy_email: string
           proxy_full_name: string
@@ -1104,6 +1105,7 @@ export type Database = {
           identity_status?: string
           identity_verified_at?: string | null
           max_uses?: number | null
+          notification_prefs?: Json
           persona_inquiry_id?: string | null
           proxy_email: string
           proxy_full_name: string
@@ -1150,6 +1152,7 @@ export type Database = {
           identity_status?: string
           identity_verified_at?: string | null
           max_uses?: number | null
+          notification_prefs?: Json
           persona_inquiry_id?: string | null
           proxy_email?: string
           proxy_full_name?: string
@@ -7769,6 +7772,7 @@ export type Database = {
           identity_status: string
           identity_verified_at: string | null
           max_uses: number | null
+          notification_prefs: Json
           persona_inquiry_id: string | null
           proxy_email: string
           proxy_full_name: string
@@ -7824,6 +7828,7 @@ export type Database = {
           identity_status: string
           identity_verified_at: string | null
           max_uses: number | null
+          notification_prefs: Json
           persona_inquiry_id: string | null
           proxy_email: string
           proxy_full_name: string
@@ -7927,6 +7932,7 @@ export type Database = {
           identity_status: string
           identity_verified_at: string | null
           max_uses: number | null
+          notification_prefs: Json
           persona_inquiry_id: string | null
           proxy_email: string
           proxy_full_name: string
@@ -8139,6 +8145,63 @@ export type Database = {
           identity_status: string
           identity_verified_at: string | null
           max_uses: number | null
+          notification_prefs: Json
+          persona_inquiry_id: string | null
+          proxy_email: string
+          proxy_full_name: string
+          proxy_phone: string | null
+          proxy_relationship: string | null
+          region: string
+          revoke_reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          status: string
+          updated_at: string
+          use_type: string
+          uses_count: number
+          validity_expires_at: string | null
+          validity_starts_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "driver_proxy_billing_accounts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_proxy_notification_prefs: {
+        Args: { _prefs: Json; _proxy_id: string; _token?: string }
+        Returns: {
+          activated_at: string | null
+          admin_review_notes: string | null
+          admin_review_status: string
+          admin_reviewed_at: string | null
+          admin_reviewed_by: string | null
+          card_brand: string | null
+          card_exp_month: number | null
+          card_exp_year: number | null
+          card_fingerprint: string | null
+          card_last4: string | null
+          card_provider: string | null
+          card_token: string | null
+          consent_channels: string[] | null
+          consent_ip: string | null
+          consent_pdf_url: string | null
+          consent_sent_at: string | null
+          consent_signature: string | null
+          consent_signed_at: string | null
+          consent_status: string
+          consent_token: string
+          consent_token_expires_at: string
+          consent_user_agent: string | null
+          created_at: string
+          driver_id: string
+          expired_at: string | null
+          id: string
+          identity_status: string
+          identity_verified_at: string | null
+          max_uses: number | null
+          notification_prefs: Json
           persona_inquiry_id: string | null
           proxy_email: string
           proxy_full_name: string
