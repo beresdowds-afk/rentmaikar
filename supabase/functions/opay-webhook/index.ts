@@ -52,7 +52,19 @@ Deno.serve(async (req) => {
       processed_at: status === "completed" ? new Date().toISOString() : null,
     }).eq("id", tx.payment_id);
     await notifyPush(tx.payment_id, tx.rental_id ?? null, status, tx.amount ? Number(tx.amount) : undefined, tx.currency ?? undefined, reference);
+    if (status === "completed") {
+      try {
+        await supabase.functions.invoke("billing-portal", {
+          headers: { "x-internal-secret": Deno.env.get("CRON_SECRET") ?? "" },
+          body: { action: "auto_send_receipt_for_payment", payment_id: tx.payment_id },
+        });
+      } catch (e) { console.error("[opay-webhook] receipt email failed", e); }
+    }
   }
+  await supabase.from("payment_webhook_events").insert({
+    provider: "opay", event_type: opayStatus, reference,
+    status: "received", payment_id: tx?.payment_id ?? null, payload: evt,
+  });
 
   return new Response(JSON.stringify({ received: true }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },

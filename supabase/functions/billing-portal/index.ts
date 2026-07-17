@@ -1,9 +1,10 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// deno-lint-ignore-file no-explicit-any
 import { corsHeaders } from "../_shared/cors.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const INTERNAL_SECRET = Deno.env.get("CRON_SECRET") || "";
 
 function renderInvoicePdfHtml(inv: any) {
   const items = Array.isArray(inv.line_items) ? inv.line_items : [];
@@ -28,7 +29,7 @@ function renderInvoicePdfHtml(inv: any) {
     <div>Tax: ${inv.currency} ${Number(inv.tax_amount ?? 0).toFixed(2)}</div>
     <div style="font-size:18px;font-weight:bold;color:#10B981">Total: ${inv.currency} ${Number(inv.total_amount).toFixed(2)}</div>
     <div class="muted" style="margin-top:8px">Status: ${inv.status.toUpperCase()}</div></div>
-    <p class="muted" style="margin-top:32px">Thank you for choosing Rentmaikar. Payments are handled by our licensed regional providers (PayPal, Paystack).</p>
+    <p class="muted" style="margin-top:32px">Thank you for choosing Rentmaikar.</p>
     </body></html>`;
 }
 
@@ -45,108 +46,211 @@ function renderReceiptPdfHtml(r: any) {
     ${r.transaction_id ? `<div class="row"><span>Transaction ID</span><span style="font-family:monospace">${r.transaction_id}</span></div>` : ""}
     ${r.invoice_id ? `<div class="row"><span>Invoice</span><span>${r.invoice_id}</span></div>` : ""}
     <div class="row" style="border:none;margin-top:8px"><span>Amount Paid</span><span class="big">${r.currency} ${Number(r.amount).toFixed(2)}</span></div></div>
-    <p class="muted" style="margin-top:24px">This receipt confirms your payment has been received and processed successfully. Keep it for your records.</p>
+    <p class="muted" style="margin-top:24px">This receipt confirms your payment has been received.</p>
     </body></html>`;
 }
 
-async function sendEmail(admin: any, params: {
+async function trySendEmail(admin: any, params: {
   to: string; subject: string; html: string; category: string; entity_id: string; entity_type: string;
 }) {
   try {
     const { error } = await admin.functions.invoke("send-outbound-email", {
       body: {
-        to: params.to,
-        subject: params.subject,
-        html: params.html,
-        category: params.category,
-        priority: "normal",
+        to: params.to, subject: params.subject, html: params.html,
+        category: params.category, priority: "normal",
         metadata: { entity_id: params.entity_id, entity_type: params.entity_type },
       },
     });
     if (error) throw error;
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
-    console.error("[billing-portal] email send failed", e);
-    return { ok: false, error: String(e) };
+    console.error("[billing-portal] email failed", e);
+    return { ok: false as const, error: String((e as Error).message ?? e) };
   }
 }
 
-serve(async (req) => {
+async function resolveEmail(admin: any, row: any): Promise<string | null> {
+  if (row.recipient_email) return row.recipient_email;
+  if (row.driver_id) {
+    const { data: p } = await admin.from("profiles").select("email").eq("user_id", row.driver_id).maybeSingle();
+    if (p?.email) return p.email;
+  }
+  if (row.owner_id) {
+    const { data: p } = await admin.from("profiles").select("email").eq("user_id", row.owner_id).maybeSingle();
+    if (p?.email) return p.email;
+  }
+  return null;
+}
+
+async function sendInvoiceById(admin: any, invoice_id: string, actor_id: string | null) {
+  const { data: inv, error } = await admin.from("invoices").select("*").eq("id", invoice_id).single();
+  if (error || !inv) throw error ?? new Error("Invoice not found");
+  const email = await resolveEmail(admin, inv);
+  const now = new Date().toISOString();
+  const attempts = (inv.email_attempts ?? 0) + 1;
+
+  if (!email) {
+    await admin.from("invoices").update({
+      email_status: "failed", email_error: "No recipient email",
+      email_attempts: attempts, email_last_attempt_at: now,
+    }).eq("id", invoice_id);
+    await admin.from("invoice_activity_log").insert({
+      entity_type: "invoice", entity_id: invoice_id, action: "send_failed",
+      actor_id, channel: "email", details: { error: "No recipient email", attempts },
+    });
+    return { ok: false, email: null, error: "No recipient email" };
+  }
+
+  const send = await trySendEmail(admin, {
+    to: email, subject: `Invoice ${inv.invoice_number} – ${inv.currency} ${Number(inv.total_amount).toFixed(2)}`,
+    html: renderInvoicePdfHtml(inv), category: "payment", entity_id: inv.id, entity_type: "invoice",
+  });
+
+  await admin.from("invoices").update({
+    status: send.ok ? "sent" : inv.status,
+    sent_at: send.ok ? now : inv.sent_at,
+    recipient_email: email,
+    email_status: send.ok ? "sent" : "failed",
+    email_error: send.ok ? null : send.error,
+    email_attempts: attempts,
+    email_last_attempt_at: now,
+  }).eq("id", invoice_id);
+
+  await admin.from("invoice_activity_log").insert({
+    entity_type: "invoice", entity_id: inv.id,
+    action: send.ok ? "sent" : "send_failed",
+    actor_id, channel: "email",
+    details: { email, error: send.ok ? null : send.error, attempts },
+  });
+  return { ok: send.ok, email, error: send.ok ? null : send.error };
+}
+
+async function sendReceiptById(admin: any, receipt_id: string, actor_id: string | null) {
+  const { data: r, error } = await admin.from("receipts").select("*").eq("id", receipt_id).single();
+  if (error || !r) throw error ?? new Error("Receipt not found");
+  const email = await resolveEmail(admin, r);
+  const now = new Date().toISOString();
+  const attempts = (r.email_attempts ?? 0) + 1;
+
+  if (!email) {
+    await admin.from("receipts").update({
+      email_status: "failed", email_error: "No recipient email",
+      email_attempts: attempts, email_last_attempt_at: now,
+    }).eq("id", receipt_id);
+    await admin.from("invoice_activity_log").insert({
+      entity_type: "receipt", entity_id: receipt_id, action: "send_failed",
+      actor_id, channel: "email", details: { error: "No recipient email", attempts },
+    });
+    return { ok: false, email: null, error: "No recipient email" };
+  }
+
+  const send = await trySendEmail(admin, {
+    to: email, subject: `Receipt ${r.receipt_number} – ${r.currency} ${Number(r.amount).toFixed(2)}`,
+    html: renderReceiptPdfHtml(r), category: "payment_receipt", entity_id: r.id, entity_type: "receipt",
+  });
+
+  await admin.from("receipts").update({
+    status: send.ok ? "sent" : r.status,
+    sent_at: send.ok ? now : r.sent_at,
+    recipient_email: email,
+    email_status: send.ok ? "sent" : "failed",
+    email_error: send.ok ? null : send.error,
+    email_attempts: attempts,
+    email_last_attempt_at: now,
+  }).eq("id", receipt_id);
+
+  await admin.from("invoice_activity_log").insert({
+    entity_type: "receipt", entity_id: r.id,
+    action: send.ok ? "sent" : "send_failed",
+    actor_id, channel: "email",
+    details: { email, error: send.ok ? null : send.error, attempts },
+  });
+  return { ok: send.ok, email, error: send.ok ? null : send.error };
+}
+
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const jwt = authHeader.replace("Bearer ", "");
-  const { data: userData } = await admin.auth.getUser(jwt);
-  const user = userData?.user;
-  if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  const internal = req.headers.get("x-internal-secret") ?? "";
+  const isInternal = !!INTERNAL_SECRET && internal === INTERNAL_SECRET;
+
+  let actor_id: string | null = null;
+  if (!isInternal) {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const jwt = authHeader.replace("Bearer ", "");
+    const { data: userData } = await admin.auth.getUser(jwt);
+    if (!userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    actor_id = userData.user.id;
+  }
 
   let body: any = {};
   try { body = await req.json(); } catch { /* ignore */ }
   const action = body.action as string;
 
   try {
+    // ---------- Idempotent invoice create ----------
     if (action === "create_invoice") {
-      const { rental_id, driver_id, owner_id, vehicle_id, subscription_id, invoice_type, amount, tax_amount = 0, currency = "USD", description, line_items = [], due_date, recipient_email, region } = body;
+      const {
+        rental_id, driver_id, owner_id, vehicle_id, subscription_id, invoice_type,
+        amount, tax_amount = 0, currency = "USD", description, line_items = [],
+        due_date, recipient_email, region, payment_id, idempotency_key,
+      } = body;
       const total = Number(amount) + Number(tax_amount || 0);
+      const idem = idempotency_key
+        ?? (payment_id ? `payment-${payment_id}` : (rental_id ? `rental-${rental_id}-${invoice_type}-${amount}` : null));
+
+      if (idem) {
+        const { data: existing } = await admin.from("invoices").select("*").eq("idempotency_key", idem).maybeSingle();
+        if (existing) return new Response(JSON.stringify({ ok: true, invoice: existing, idempotent: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       const { data: inv, error } = await admin.from("invoices").insert({
-        rental_id, driver_id, owner_id, vehicle_id, subscription_id,
+        rental_id, driver_id, owner_id, vehicle_id, subscription_id, payment_id,
         invoice_type: invoice_type || "rental",
         amount, tax_amount, total_amount: total, currency, description, line_items,
         due_date, recipient_email, region,
-        status: "draft", created_by: user.id,
+        status: "draft", created_by: actor_id, idempotency_key: idem,
       }).select().single();
       if (error) throw error;
       await admin.from("invoice_activity_log").insert({
-        entity_type: "invoice", entity_id: inv.id, action: "created", actor_id: user.id, details: { amount, currency },
+        entity_type: "invoice", entity_id: inv.id, action: "created",
+        actor_id, details: { amount, currency, idempotency_key: idem },
       });
-      return new Response(JSON.stringify({ ok: true, invoice: inv }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ ok: true, invoice: inv }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (action === "send_invoice") {
-      const { invoice_id } = body;
-      const { data: inv, error } = await admin.from("invoices").select("*").eq("id", invoice_id).single();
-      if (error || !inv) throw error ?? new Error("Invoice not found");
-      let email = inv.recipient_email;
-      if (!email && inv.driver_id) {
-        const { data: p } = await admin.from("profiles").select("email").eq("id", inv.driver_id).single();
-        email = p?.email;
-      }
-      const html = renderInvoicePdfHtml(inv);
-      const send = email ? await sendEmail(admin, {
-        to: email, subject: `Invoice ${inv.invoice_number} – ${inv.currency} ${Number(inv.total_amount).toFixed(2)}`,
-        html, category: "payment", entity_id: inv.id, entity_type: "invoice",
-      }) : { ok: false, error: "No recipient email" };
-
-      await admin.from("invoices").update({ status: "sent", sent_at: new Date().toISOString(), recipient_email: email }).eq("id", invoice_id);
-      await admin.from("invoice_activity_log").insert({
-        entity_type: "invoice", entity_id: inv.id, action: send.ok ? "sent" : "send_failed",
-        actor_id: user.id, channel: "email", details: { email, error: send.ok ? null : send.error },
-      });
-      return new Response(JSON.stringify({ ok: send.ok, email }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const r = await sendInvoiceById(admin, body.invoice_id, actor_id);
+      return new Response(JSON.stringify(r), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    if (action === "send_receipt") {
-      const { receipt_id } = body;
-      const { data: r, error } = await admin.from("receipts").select("*").eq("id", receipt_id).single();
-      if (error || !r) throw error ?? new Error("Receipt not found");
-      let email = r.recipient_email;
-      if (!email && r.driver_id) {
-        const { data: p } = await admin.from("profiles").select("email").eq("id", r.driver_id).single();
-        email = p?.email;
+    if (action === "send_receipt" || action === "auto_send_receipt_for_payment") {
+      let receipt_id = body.receipt_id as string | undefined;
+      if (!receipt_id && body.payment_id) {
+        const { data: rc } = await admin.from("receipts").select("id").eq("payment_id", body.payment_id).maybeSingle();
+        receipt_id = rc?.id;
       }
-      const html = renderReceiptPdfHtml(r);
-      const send = email ? await sendEmail(admin, {
-        to: email, subject: `Receipt ${r.receipt_number} – ${r.currency} ${Number(r.amount).toFixed(2)}`,
-        html, category: "payment_receipt", entity_id: r.id, entity_type: "receipt",
-      }) : { ok: false, error: "No recipient email" };
+      if (!receipt_id) {
+        return new Response(JSON.stringify({ ok: false, error: "receipt not found" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const r = await sendReceiptById(admin, receipt_id, actor_id);
+      return new Response(JSON.stringify(r), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
-      await admin.from("receipts").update({ status: "sent", sent_at: new Date().toISOString(), recipient_email: email }).eq("id", receipt_id);
-      await admin.from("invoice_activity_log").insert({
-        entity_type: "receipt", entity_id: r.id, action: send.ok ? "sent" : "send_failed",
-        actor_id: user.id, channel: "email", details: { email, error: send.ok ? null : send.error },
-      });
-      return new Response(JSON.stringify({ ok: send.ok, email }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (action === "retry_email") {
+      const { kind, id } = body; // kind = 'invoice' | 'receipt'
+      const r = kind === "receipt"
+        ? await sendReceiptById(admin, id, actor_id)
+        : await sendInvoiceById(admin, id, actor_id);
+      return new Response(JSON.stringify(r), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (action === "render_html") {
@@ -155,7 +259,7 @@ serve(async (req) => {
       const { data, error } = await admin.from(table).select("*").eq("id", id).single();
       if (error || !data) throw error ?? new Error("Not found");
       await admin.from("invoice_activity_log").insert({
-        entity_type: kind, entity_id: id, action: "viewed", actor_id: user.id, channel: "download",
+        entity_type: kind, entity_id: id, action: "viewed", actor_id, channel: "download",
       });
       const html = kind === "receipt" ? renderReceiptPdfHtml(data) : renderInvoicePdfHtml(data);
       return new Response(html, { headers: { ...corsHeaders, "Content-Type": "text/html" } });
@@ -163,16 +267,25 @@ serve(async (req) => {
 
     if (action === "void_invoice") {
       const { invoice_id, reason } = body;
-      await admin.from("invoices").update({ status: "void", voided_at: new Date().toISOString(), metadata: { void_reason: reason } }).eq("id", invoice_id);
+      await admin.from("invoices").update({
+        status: "void", voided_at: new Date().toISOString(),
+        metadata: { void_reason: reason },
+      }).eq("id", invoice_id);
       await admin.from("invoice_activity_log").insert({
-        entity_type: "invoice", entity_id: invoice_id, action: "voided", actor_id: user.id, details: { reason },
+        entity_type: "invoice", entity_id: invoice_id, action: "voided",
+        actor_id, details: { reason },
       });
-      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ ok: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Unknown action" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     console.error("[billing-portal]", e);
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: String(e) }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

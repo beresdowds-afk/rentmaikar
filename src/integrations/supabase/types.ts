@@ -1634,7 +1634,12 @@ export type Database = {
           description: string | null
           driver_id: string | null
           due_date: string | null
+          email_attempts: number
+          email_error: string | null
+          email_last_attempt_at: string | null
+          email_status: string
           id: string
+          idempotency_key: string | null
           invoice_number: string
           invoice_type: string
           issued_at: string
@@ -1664,7 +1669,12 @@ export type Database = {
           description?: string | null
           driver_id?: string | null
           due_date?: string | null
+          email_attempts?: number
+          email_error?: string | null
+          email_last_attempt_at?: string | null
+          email_status?: string
           id?: string
+          idempotency_key?: string | null
           invoice_number?: string
           invoice_type?: string
           issued_at?: string
@@ -1694,7 +1704,12 @@ export type Database = {
           description?: string | null
           driver_id?: string | null
           due_date?: string | null
+          email_attempts?: number
+          email_error?: string | null
+          email_last_attempt_at?: string | null
+          email_status?: string
           id?: string
+          idempotency_key?: string | null
           invoice_number?: string
           invoice_type?: string
           issued_at?: string
@@ -1717,6 +1732,13 @@ export type Database = {
           voided_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "billing_reconciliation_view"
+            referencedColumns: ["payment_id"]
+          },
           {
             foreignKeyName: "invoices_payment_id_fkey"
             columns: ["payment_id"]
@@ -2080,6 +2102,33 @@ export type Database = {
         }
         Relationships: []
       }
+      iot_sync_schedule: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          interval_minutes: number
+          last_updated_by: string | null
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          interval_minutes?: number
+          last_updated_by?: string | null
+          provider: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          interval_minutes?: number
+          last_updated_by?: string | null
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       iot_sync_state: {
         Row: {
           created_at: string
@@ -2375,6 +2424,13 @@ export type Database = {
             foreignKeyName: "opay_transactions_payment_id_fkey"
             columns: ["payment_id"]
             isOneToOne: false
+            referencedRelation: "billing_reconciliation_view"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "opay_transactions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
             referencedRelation: "payments"
             referencedColumns: ["id"]
           },
@@ -2629,6 +2685,97 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_webhook_events: {
+        Row: {
+          created_at: string
+          error: string | null
+          event_type: string | null
+          external_event_id: string | null
+          id: string
+          invoice_id: string | null
+          payload: Json
+          payment_id: string | null
+          provider: string
+          receipt_id: string | null
+          reference: string | null
+          signature_valid: boolean | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          event_type?: string | null
+          external_event_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          payload?: Json
+          payment_id?: string | null
+          provider: string
+          receipt_id?: string | null
+          reference?: string | null
+          signature_valid?: boolean | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          event_type?: string | null
+          external_event_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          payload?: Json
+          payment_id?: string | null
+          provider?: string
+          receipt_id?: string | null
+          reference?: string | null
+          signature_valid?: boolean | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_webhook_events_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "billing_reconciliation_view"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "payment_webhook_events_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_webhook_events_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "billing_reconciliation_view"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "payment_webhook_events_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_webhook_events_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "billing_reconciliation_view"
+            referencedColumns: ["receipt_id"]
+          },
+          {
+            foreignKeyName: "payment_webhook_events_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -2760,6 +2907,13 @@ export type Database = {
             foreignKeyName: "paypal_transactions_payment_id_fkey"
             columns: ["payment_id"]
             isOneToOne: false
+            referencedRelation: "billing_reconciliation_view"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "paypal_transactions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
             referencedRelation: "payments"
             referencedColumns: ["id"]
           },
@@ -2831,6 +2985,13 @@ export type Database = {
           vehicle_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "paystack_transactions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "billing_reconciliation_view"
+            referencedColumns: ["payment_id"]
+          },
           {
             foreignKeyName: "paystack_transactions_payment_id_fkey"
             columns: ["payment_id"]
@@ -3673,7 +3834,12 @@ export type Database = {
           currency: string
           description: string | null
           driver_id: string | null
+          email_attempts: number
+          email_error: string | null
+          email_last_attempt_at: string | null
+          email_status: string
           id: string
+          idempotency_key: string | null
           invoice_id: string | null
           issued_at: string
           metadata: Json
@@ -3697,7 +3863,12 @@ export type Database = {
           currency?: string
           description?: string | null
           driver_id?: string | null
+          email_attempts?: number
+          email_error?: string | null
+          email_last_attempt_at?: string | null
+          email_status?: string
           id?: string
+          idempotency_key?: string | null
           invoice_id?: string | null
           issued_at?: string
           metadata?: Json
@@ -3721,7 +3892,12 @@ export type Database = {
           currency?: string
           description?: string | null
           driver_id?: string | null
+          email_attempts?: number
+          email_error?: string | null
+          email_last_attempt_at?: string | null
+          email_status?: string
           id?: string
+          idempotency_key?: string | null
           invoice_id?: string | null
           issued_at?: string
           metadata?: Json
@@ -3744,8 +3920,22 @@ export type Database = {
             foreignKeyName: "receipts_invoice_id_fkey"
             columns: ["invoice_id"]
             isOneToOne: false
+            referencedRelation: "billing_reconciliation_view"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "receipts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
             referencedRelation: "invoices"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "billing_reconciliation_view"
+            referencedColumns: ["payment_id"]
           },
           {
             foreignKeyName: "receipts_payment_id_fkey"
@@ -7248,6 +7438,36 @@ export type Database = {
       }
     }
     Views: {
+      billing_reconciliation_view: {
+        Row: {
+          created_at: string | null
+          currency: string | null
+          discrepancy: string | null
+          driver_id: string | null
+          invoice_id: string | null
+          invoice_number: string | null
+          invoice_paid_at: string | null
+          invoice_status: string | null
+          payment_amount: number | null
+          payment_id: string | null
+          payment_status: string | null
+          processed_at: string | null
+          receipt_id: string | null
+          receipt_number: string | null
+          receipt_status: string | null
+          rental_id: string | null
+          transaction_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       latest_application_pipeline_status: {
         Row: {
           actor_id: string | null
