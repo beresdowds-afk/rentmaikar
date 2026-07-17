@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
             persona_inquiry_id: inquiryId,
           })
           .eq("id", row.subject_ref)
-          .select("id, driver_id, proxy_email, proxy_phone, proxy_full_name, consent_token, consent_channels")
+          .select("id, driver_id, proxy_email, proxy_phone, proxy_full_name, consent_token, consent_channels, notification_prefs")
           .maybeSingle();
 
         if (proxyRow) {
@@ -143,7 +143,13 @@ Deno.serve(async (req) => {
           if (status === "approved") {
             const link = `${Deno.env.get("APP_URL") ?? "https://rentmaikar.lovable.app"}/proxy/consent?token=${proxyRow.consent_token}`;
             const message = `${proxyRow.proxy_full_name}, your identity is verified. Please sign the proxy billing consent form: ${link}`;
-            const channels: string[] = (proxyRow.consent_channels as string[] | null) ?? ["email"];
+            const prefs: any = proxyRow.notification_prefs ?? {};
+            const events = prefs.events ?? {};
+            const prefChannels = prefs.channels ?? {};
+            const base: string[] = (proxyRow.consent_channels as string[] | null) ?? ["email"];
+            const channels: string[] = events.identity_result === false
+              ? []
+              : base.filter((c) => prefChannels[c] !== false);
             const jobs: Promise<any>[] = [];
             if (channels.includes("email")) {
               jobs.push(supa.functions.invoke("send-transactional-email", {

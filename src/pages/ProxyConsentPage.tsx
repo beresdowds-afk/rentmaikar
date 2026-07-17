@@ -9,6 +9,7 @@ import { Loader2, ShieldCheck, PenLine, CreditCard, CheckCircle2, AlertTriangle 
 import SignaturePad from "@/components/legal/SignaturePad";
 import PersonaVerification from "@/components/verification/PersonaVerification";
 import { toast } from "sonner";
+import { ProxyNotificationPrefs } from "@/components/proxy/ProxyNotificationPrefs";
 
 type Step = "loading" | "invalid" | "identity" | "sign" | "card" | "done";
 
@@ -141,6 +142,17 @@ export default function ProxyConsentPage() {
               <AlertTitle>Consent complete</AlertTitle>
               <AlertDescription>You may close this window. The driver has been notified.</AlertDescription>
             </Alert>
+          )}
+
+          {ctx?.proxy_account_id && (step === "card" || step === "done") && (
+            <ProxyNotificationPrefs
+              proxyId={ctx.proxy_account_id}
+              consentToken={token}
+              initial={ctx.notification_prefs ?? null}
+              phoneAvailable={!!ctx.proxy_phone}
+              title="Your alert preferences"
+              description="Pick how Rentmaikar reaches you about this proxy authorization. You can change this any time from the link in future emails."
+            />
           )}
         </CardContent>
       </Card>

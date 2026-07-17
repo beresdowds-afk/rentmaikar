@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { UserPlus, ShieldCheck, Send, CreditCard, Loader2, Info } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
 import { ProxyStatusTimeline } from "@/components/proxy/ProxyStatusTimeline";
+import { ProxyNotificationPrefs } from "@/components/proxy/ProxyNotificationPrefs";
 
 interface Props { userId?: string }
 
@@ -148,6 +149,16 @@ export function ProxyBillingSettings({ userId }: Props) {
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-1" />} Resend consent link
               </Button>
             </div>
+
+            <ProxyNotificationPrefs
+              proxyId={proxy.id}
+              initial={proxy.notification_prefs ?? null}
+              phoneAvailable={!!proxy.proxy_phone}
+              title="Proxy alert preferences"
+              description="Choose which channels and events reach your proxy. They can adjust this from their consent link too."
+              onSaved={() => load()}
+            />
+
 
             <p className="text-xs text-muted-foreground">
               To end this proxy relationship, contact admin support — proxy revocation is admin-mediated for your safety.
