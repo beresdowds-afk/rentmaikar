@@ -205,19 +205,34 @@ async function sendConsentInvites(supa: any, row: any, channels: string[], appUr
   const link = `${appUrl}/proxy/consent?token=${row.consent_token}`;
   const subject = "Proxy billing consent requested";
   const message = `${row.proxy_full_name}, a driver on Rentmaikar has listed you as their proxy card holder. Please verify your identity and sign the consent form: ${link}\n\nIf you didn't expect this, ignore this message. Link expires in 14 days.`;
+
+  // Honor proxy preferences once they've been set. On brand-new invites, prefs
+  // default to whatever the driver ticked so the initial reachout still lands.
+  const prefs = row.notification_prefs ?? {};
+  const prefChannels = prefs.channels ?? {};
+  const events = prefs.events ?? {};
+  const eventAllowed = events.consent_reminder !== false; // default on
+
+  const effective = channels.filter((c) => {
+    // If prefs.channels has an explicit false, respect it.
+    if (prefChannels[c] === false) return false;
+    return eventAllowed;
+  });
+
   const jobs: Promise<any>[] = [];
-  if (channels.includes("email")) {
+  if (effective.includes("email")) {
     jobs.push(supa.functions.invoke("send-transactional-email", {
       body: { templateName: "generic-notice", recipientEmail: row.proxy_email,
         idempotencyKey: `proxy-consent-${row.id}-${Date.now()}`,
         templateData: { subject, body: message, ctaLabel: "Review request", ctaUrl: link } },
     }).catch(() => null));
   }
-  if (channels.includes("sms") && row.proxy_phone) {
+  if (effective.includes("sms") && row.proxy_phone) {
     jobs.push(supa.functions.invoke("send-sms", { body: { to: row.proxy_phone, message } }).catch(() => null));
   }
-  if (channels.includes("whatsapp") && row.proxy_phone) {
+  if (effective.includes("whatsapp") && row.proxy_phone) {
     jobs.push(supa.functions.invoke("send-whatsapp", { body: { to: row.proxy_phone, message } }).catch(() => null));
   }
   await Promise.all(jobs);
 }
+
