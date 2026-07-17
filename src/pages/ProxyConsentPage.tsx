@@ -143,6 +143,17 @@ export default function ProxyConsentPage() {
               <AlertDescription>You may close this window. The driver has been notified.</AlertDescription>
             </Alert>
           )}
+
+          {ctx?.proxy_account_id && (step === "card" || step === "done") && (
+            <ProxyNotificationPrefs
+              proxyId={ctx.proxy_account_id}
+              consentToken={token}
+              initial={ctx.notification_prefs ?? null}
+              phoneAvailable={!!ctx.proxy_phone}
+              title="Your alert preferences"
+              description="Pick how Rentmaikar reaches you about this proxy authorization. You can change this any time from the link in future emails."
+            />
+          )}
         </CardContent>
       </Card>
     </FullPage>
