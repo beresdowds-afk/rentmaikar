@@ -144,6 +144,51 @@ export function HologramDashboard() {
     setLinkVehicle(s.vehicle_id);
   };
 
+  const exportSim = (s: SimCard, format: "csv" | "json") => {
+    const row = {
+      iccid: s.iccid,
+      msisdn: s.msisdn,
+      imsi: s.imsi,
+      provider_sim_id: s.provider_sim_id,
+      status: s.status,
+      plan_name: s.plan_name,
+      data_usage_mb: s.data_usage_mb,
+      data_limit_mb: s.data_limit_mb,
+      last_session_at: s.last_session_at,
+      activated_at: s.activated_at,
+      suspended_at: s.suspended_at,
+      vehicle_id: s.vehicle_id,
+      device_id: s.device_id,
+      last_sync_state: s.provider_sim_id ? lastSyncResult[s.provider_sim_id]?.state ?? null : null,
+      last_sync_usage_mb: s.provider_sim_id ? lastSyncResult[s.provider_sim_id]?.usage_mb ?? null : null,
+      last_sync_at: s.provider_sim_id ? lastSyncResult[s.provider_sim_id]?.at ?? null : null,
+      updated_at: s.updated_at,
+    };
+    let blob: Blob;
+    let ext: string;
+    if (format === "csv") {
+      const keys = Object.keys(row);
+      const escape = (v: unknown) => {
+        if (v === null || v === undefined) return "";
+        const str = String(v).replace(/"/g, '""');
+        return /[",\n]/.test(str) ? `"${str}"` : str;
+      };
+      const csv = keys.join(",") + "\n" + keys.map(k => escape((row as Record<string, unknown>)[k])).join(",");
+      blob = new Blob([csv], { type: "text/csv" });
+      ext = "csv";
+    } else {
+      blob = new Blob([JSON.stringify(row, null, 2)], { type: "application/json" });
+      ext = "json";
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `hologram-sim-${s.iccid || s.id}-${new Date().toISOString().slice(0, 10)}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported SIM as ${ext.toUpperCase()}`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
