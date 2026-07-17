@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { UserPlus, ShieldCheck, Send, CreditCard, Loader2, Info } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
 import { ProxyStatusTimeline } from "@/components/proxy/ProxyStatusTimeline";
+import { ProxyNotificationPrefs } from "@/components/proxy/ProxyNotificationPrefs";
 
 interface Props { userId?: string }
 
