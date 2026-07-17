@@ -1,11 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, RefreshCw, Activity, AlertTriangle, CheckCircle2, PlayCircle } from "lucide-react";
+import { Loader2, RefreshCw, Activity, AlertTriangle, CheckCircle2, PlayCircle, Filter, X } from "lucide-react";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+
+interface VehicleOpt { id: string; label: string; }
 
 interface SyncState {
   provider: string;
