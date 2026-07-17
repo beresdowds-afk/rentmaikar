@@ -7888,6 +7888,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      approve_application: {
+        Args: { _app_id: string; _notes?: string }
+        Returns: string
+      }
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
       consume_proxy_charge: {
         Args: { _proxy_id: string }
