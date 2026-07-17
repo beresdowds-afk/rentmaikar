@@ -61,17 +61,45 @@ export function IngestionMonitor({
     return () => clearInterval(t);
   }, [provider]);
 
+  useEffect(() => {
+    if (!enableVehicleScope) return;
+    (async () => {
+      const { data } = await supabase
+        .from("vehicles")
+        .select("id, make, model, license_plate, year")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      setVehicles(((data as Array<{ id: string; make: string | null; model: string | null; license_plate: string | null; year: number | null }>) ?? []).map(v => ({
+        id: v.id,
+        label: `${[v.year, v.make, v.model].filter(Boolean).join(" ") || "Vehicle"}${v.license_plate ? ` · ${v.license_plate}` : ""}`,
+      })));
+    })();
+  }, [enableVehicleScope]);
+
+  const filteredVehicles = useMemo(() => {
+    const q = vFilter.trim().toLowerCase();
+    return q ? vehicles.filter(v => v.label.toLowerCase().includes(q)) : vehicles;
+  }, [vehicles, vFilter]);
+
+  const toggleScope = (id: string) => {
+    setScope(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   const retry = async () => {
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke(functionName, {
-        body: { action: syncAction },
-      });
+      const body: Record<string, unknown> = { action: syncAction };
+      if (enableVehicleScope && scope.size > 0) body.vehicle_ids = Array.from(scope);
+      const { data, error } = await supabase.functions.invoke(functionName, { body });
       if (error) throw new Error(error.message);
       const res = data as { ok?: boolean; devices_synced?: number; positions_imported?: number };
       if (res?.ok === false) throw new Error(JSON.stringify(res));
       toast.success(
-        `Sync complete — ${res?.devices_synced ?? 0} devices, ${res?.positions_imported ?? 0} positions`,
+        `Sync complete — ${res?.devices_synced ?? 0} devices, ${res?.positions_imported ?? 0} positions${scope.size ? ` (scoped to ${scope.size} vehicle${scope.size === 1 ? "" : "s"})` : ""}`,
       );
       await load();
       onSynced?.();
