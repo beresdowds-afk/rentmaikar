@@ -143,7 +143,12 @@ Deno.serve(async (req) => {
           if (status === "approved") {
             const link = `${Deno.env.get("APP_URL") ?? "https://rentmaikar.lovable.app"}/proxy/consent?token=${proxyRow.consent_token}`;
             const message = `${proxyRow.proxy_full_name}, your identity is verified. Please sign the proxy billing consent form: ${link}`;
-            const channels: string[] = (proxyRow.consent_channels as string[] | null) ?? ["email"];
+            const prefs: any = proxyRow.notification_prefs ?? {};
+            const events = prefs.events ?? {};
+            if (events.identity_result === false) { /* proxy opted out of this event */ break; }
+            const prefChannels = prefs.channels ?? {};
+            const base: string[] = (proxyRow.consent_channels as string[] | null) ?? ["email"];
+            const channels: string[] = base.filter((c) => prefChannels[c] !== false);
             const jobs: Promise<any>[] = [];
             if (channels.includes("email")) {
               jobs.push(supa.functions.invoke("send-transactional-email", {
