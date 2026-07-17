@@ -18,6 +18,7 @@ export function ProxyBillingPortal() {
   const [selected, setSelected] = useState<any | null>(null);
   const [audit, setAudit] = useState<any[]>([]);
   const [revokeReason, setRevokeReason] = useState("");
+  const [reviewNotes, setReviewNotes] = useState("");
 
   const load = async () => {
     setLoading(true);
