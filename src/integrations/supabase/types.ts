@@ -3836,6 +3836,7 @@ export type Database = {
           notification_email: boolean | null
           notification_sms: boolean | null
           notification_whatsapp: boolean | null
+          onboarding_completed_at: string | null
           payments_suspended: boolean
           phone: string | null
           phone_verification_code: string | null
@@ -3866,6 +3867,7 @@ export type Database = {
           notification_email?: boolean | null
           notification_sms?: boolean | null
           notification_whatsapp?: boolean | null
+          onboarding_completed_at?: string | null
           payments_suspended?: boolean
           phone?: string | null
           phone_verification_code?: string | null
@@ -3896,6 +3898,7 @@ export type Database = {
           notification_email?: boolean | null
           notification_sms?: boolean | null
           notification_whatsapp?: boolean | null
+          onboarding_completed_at?: string | null
           payments_suspended?: boolean
           phone?: string | null
           phone_verification_code?: string | null
@@ -7893,6 +7896,7 @@ export type Database = {
         Returns: string
       }
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
+      complete_onboarding: { Args: never; Returns: string }
       consume_proxy_charge: {
         Args: { _proxy_id: string }
         Returns: {

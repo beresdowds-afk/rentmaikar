@@ -83,11 +83,34 @@ const Auth = () => {
       vehicle_support: '/support/vehicle',
     };
 
-    // If the user was sent here from a protected route they are allowed to view,
-    // honor that; otherwise send them to their role home.
-    const target = roleHome[userRole] ?? from ?? '/';
-    const isRoleHomeRoute = Object.values(roleHome).includes(from);
-    navigate(isRoleHomeRoute && from !== '/' ? from : target, { replace: true });
+    const onboardingRoute: Record<string, string> = {
+      driver: '/driver/onboarding',
+      owner: '/owner/onboarding',
+    };
+
+    const finishRedirect = (target: string) => {
+      const isRoleHomeRoute = Object.values(roleHome).includes(from);
+      navigate(isRoleHomeRoute && from !== '/' ? from : target, { replace: true });
+    };
+
+    // First-login redirect for driver/owner → role-specific onboarding
+    if (onboardingRoute[userRole]) {
+      supabase
+        .from('profiles')
+        .select('onboarding_completed_at')
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (!data?.onboarding_completed_at) {
+            navigate(onboardingRoute[userRole], { replace: true });
+          } else {
+            finishRedirect(roleHome[userRole]);
+          }
+        });
+      return;
+    }
+
+    finishRedirect(roleHome[userRole] ?? from ?? '/');
   }, [user, authLoading, userRole, navigate, from, twoFactorVerified, show2FA]);
 
   const loginForm = useForm<LoginFormData>({
