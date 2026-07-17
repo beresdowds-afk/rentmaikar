@@ -280,6 +280,24 @@ const DriverRegistration = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="At least 8 characters"
+                    autoComplete="new-password"
+                    {...register("password")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    You'll use this password to sign in to your driver dashboard after approval.
+                  </p>
+                  {errors.password && (
+                    <p className="text-destructive text-sm">{errors.password.message}</p>
+                  )}
+                </div>
+
+
+                <div className="space-y-2">
                   <Label>Phone Number</Label>
                   <div className="flex gap-2">
                     <Select
