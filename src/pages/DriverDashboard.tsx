@@ -41,6 +41,7 @@ import { PayPalCheckout } from '@/components/payments/PayPalCheckout';
 import { PaymentMethodPicker } from '@/components/payments/PaymentMethodPicker';
 import { RentalPaymentStatusPanel } from '@/components/payments/RentalPaymentStatusPanel';
 import { DriverBillingPanel } from '@/components/driver/DriverBillingPanel';
+import { ProxyBillingSettings } from '@/components/driver/ProxyBillingSettings';
 import { EnablePushButton } from '@/components/notifications/EnablePushButton';
 import { installDeepLinkListener } from '@/lib/push';
 import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
