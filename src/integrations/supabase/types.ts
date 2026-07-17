@@ -4005,6 +4005,42 @@ export type Database = {
           },
         ]
       }
+      push_devices: {
+        Row: {
+          created_at: string
+          device_label: string | null
+          id: string
+          last_seen_at: string
+          notification_prefs: Json
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_label?: string | null
+          id?: string
+          last_seen_at?: string
+          notification_prefs?: Json
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_label?: string | null
+          id?: string
+          last_seen_at?: string
+          notification_prefs?: Json
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           auth: string
@@ -8034,6 +8070,10 @@ export type Database = {
         Args: { _email: string }
         Returns: boolean
       }
+      register_push_device: {
+        Args: { _device_label?: string; _platform: string; _token: string }
+        Returns: string
+      }
       sign_legal_agreement: {
         Args: { _agreement_id: string; _signature: string }
         Returns: {
@@ -8226,6 +8266,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      update_push_device_prefs: {
+        Args: { _device_id: string; _prefs: Json }
+        Returns: boolean
       }
     }
     Enums: {

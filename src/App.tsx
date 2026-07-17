@@ -13,6 +13,16 @@ import MessageConsent from "@/components/MessageConsent";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import PageSkeleton from "@/components/PageSkeleton";
 import SkipToContent from "@/components/SkipToContent";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { useNativePush } from "@/hooks/useNativePush";
+
+// Global background worker: keeps PWA + native mobile builds in sync with the
+// website by streaming DB changes and registering native push devices.
+const AppLiveSync = () => {
+  useRealtimeSync(true);
+  useNativePush();
+  return null;
+};
 import LiveAnnouncer from "@/components/LiveAnnouncer";
 import MetaPixelRouteTracker from "@/components/MetaPixelRouteTracker";
 import DocumentExpiryInAppNotifier from "@/components/notifications/DocumentExpiryInAppNotifier";
@@ -59,6 +69,9 @@ const PageLoader = () => <PageSkeleton />;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <AppLiveSync />
+
+
     <AuthProvider>
       <RegionProvider>
         <UserTypeProvider>
