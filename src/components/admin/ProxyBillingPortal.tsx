@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Ban, Eye, ShieldCheck } from "lucide-react";
+import { RefreshCw, Ban, Eye, ShieldCheck, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { ProxyStatusTimeline } from "@/components/proxy/ProxyStatusTimeline";
 
 export function ProxyBillingPortal() {
   const [rows, setRows] = useState<any[]>([]);
