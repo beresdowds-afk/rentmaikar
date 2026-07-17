@@ -743,6 +743,8 @@ const AdminDashboard = () => {
               {activeTab === 'iot-monitoring' && <IoTMonitoringHub />}
               {activeTab === 'hologram' && <HologramDashboard />}
               {activeTab === 'traccar' && <TraccarDashboard />}
+              {activeTab === 'sync-schedule' && <SyncScheduleSettings />}
+              {activeTab === 'reconciliation' && <BillingReconciliationPage />}
               {activeTab === 'hardware' && <HardwareManagement />}
               {activeTab === 'mqtt-credentials' && <VehicleMqttCredentials readOnly={false} />}
               {activeTab === 'driver-behavior' && <DriverBehaviorLogs />}
