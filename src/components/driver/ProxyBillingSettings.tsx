@@ -42,7 +42,7 @@ export function ProxyBillingSettings({ userId }: Props) {
     if (!form.proxy_full_name.trim() || !form.proxy_email.trim()) return toast.error("Name and email are required");
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("proxy-consent-manager", {
-      body: { action: "create", ...form, channels, region: country === "NG" ? "NG" : "US" },
+      body: { action: "create", ...form, channels, region: country === "Nigeria" ? "NG" : "US" },
     });
     setLoading(false);
     if (error || !data?.ok) return toast.error(data?.error?.message ?? "Could not create proxy request");
