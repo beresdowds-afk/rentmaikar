@@ -608,6 +608,8 @@ export const ApplicationManagement = () => {
                   )}
                 </section>
               )}
+
+              <ApplicationAuditLog applicationId={viewApp.id} />
             </div>
           )}
           <DialogFooter className="flex flex-wrap gap-2">
