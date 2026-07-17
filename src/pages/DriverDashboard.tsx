@@ -437,6 +437,7 @@ export default function DriverDashboard() {
               )}
 
               <DriverBillingPanel userId={user?.id} />
+              <ProxyBillingSettings userId={user?.id} />
 
 
               {showPaymentModal ? (
