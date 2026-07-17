@@ -175,6 +175,18 @@ export const ApplicationManagement = () => {
       notes?: string; 
       reason?: string;
     }) => {
+      // Approvals go through a security-definer RPC that also grants the
+      // driver/owner role in one transaction. Other status changes remain a
+      // direct update.
+      if (newStatus === 'approved') {
+        const { error } = await supabase.rpc('approve_application', {
+          _app_id: appId,
+          _notes: notes ?? null,
+        });
+        if (error) throw error;
+        return;
+      }
+
       const updateData: Record<string, unknown> = {
         status: newStatus,
         reviewed_by: user?.id,

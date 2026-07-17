@@ -26,6 +26,7 @@ const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   firstName: z.string().min(2, "First name is required").max(50, "First name too long"),
   lastName: z.string().min(2, "Last name is required").max(50, "Last name too long"),
   email: z.string().email("Invalid email address").max(255, "Email too long"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password too long"),
   phoneCountry: z.enum(["us", "ng"]),
   phoneNumber: z.string().min(10, "Phone number is required").max(15, "Phone number too long"),
   
@@ -153,7 +154,28 @@ const OwnerRegistration = () => {
     setLastFormData(data);
     setSubmitError(null);
     try {
+      // 1) Ensure an auth user exists for this applicant.
+      const { data: sessionData } = await supabase.auth.getSession();
+      let userId = sessionData.session?.user?.id ?? null;
+
+      if (!userId) {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: data.email,
+          password: data.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              full_name: `${data.firstName} ${data.lastName}`.trim(),
+            },
+          },
+        });
+        if (signUpError) throw signUpError;
+        userId = signUpData.user?.id ?? null;
+        if (!userId) throw new Error("Could not create your account. Please try again.");
+      }
+
       const { error } = await supabase.from('applications').insert({
+        user_id: userId,
         application_type: 'owner' as const,
         first_name: data.firstName,
         last_name: data.lastName,
@@ -278,6 +300,24 @@ const OwnerRegistration = () => {
                     <p className="text-destructive text-sm">{errors.email.message}</p>
                   )}
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="At least 8 characters"
+                    autoComplete="new-password"
+                    {...register("password")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    You'll use this password to sign in to your owner dashboard after approval.
+                  </p>
+                  {errors.password && (
+                    <p className="text-destructive text-sm">{errors.password.message}</p>
+                  )}
+                </div>
+
 
                 <div className="space-y-2">
                   <Label>Phone Number</Label>
