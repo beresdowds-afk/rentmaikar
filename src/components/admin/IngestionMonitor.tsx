@@ -126,10 +126,49 @@ export function IngestionMonitor({
             Live status of the {provider} pull job — last run, records imported, and errors.
           </CardDescription>
         </div>
-        <Button size="sm" onClick={retry} disabled={disabled || busy} className="gap-2">
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlayCircle className="h-3.5 w-3.5" />}
-          {isError ? "Retry sync" : "Run sync now"}
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {enableVehicleScope && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-2">
+                  <Filter className="h-3.5 w-3.5" />
+                  {scope.size > 0 ? `${scope.size} vehicle${scope.size === 1 ? "" : "s"}` : "All vehicles"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-3" align="end">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium">Scope sync to vehicles</p>
+                  {scope.size > 0 && (
+                    <Button size="sm" variant="ghost" className="h-6 gap-1 text-xs" onClick={() => setScope(new Set())}>
+                      <X className="h-3 w-3" /> Clear
+                    </Button>
+                  )}
+                </div>
+                <Input
+                  placeholder="Search vehicles…"
+                  value={vFilter}
+                  onChange={(e) => setVFilter(e.target.value)}
+                  className="mb-2 h-8 text-xs"
+                />
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {filteredVehicles.length === 0 && (
+                    <p className="text-xs text-muted-foreground py-2">No vehicles.</p>
+                  )}
+                  {filteredVehicles.map(v => (
+                    <label key={v.id} className="flex items-center gap-2 py-1 text-xs cursor-pointer hover:bg-muted/50 px-1 rounded">
+                      <Checkbox checked={scope.has(v.id)} onCheckedChange={() => toggleScope(v.id)} />
+                      <span className="truncate">{v.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+          <Button size="sm" onClick={retry} disabled={disabled || busy} className="gap-2">
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlayCircle className="h-3.5 w-3.5" />}
+            {isError ? "Retry sync" : "Run sync now"}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {loading ? (
