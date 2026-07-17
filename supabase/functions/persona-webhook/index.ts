@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
             persona_inquiry_id: inquiryId,
           })
           .eq("id", row.subject_ref)
-          .select("id, driver_id, proxy_email, proxy_phone, proxy_full_name, consent_token, consent_channels")
+          .select("id, driver_id, proxy_email, proxy_phone, proxy_full_name, consent_token, consent_channels, notification_prefs")
           .maybeSingle();
 
         if (proxyRow) {
