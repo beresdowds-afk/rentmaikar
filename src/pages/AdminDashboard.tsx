@@ -50,6 +50,7 @@ import { PortalNavigation, type PortalType } from "@/components/admin/PortalNavi
 import { TrainingModuleManagement } from "@/components/admin/TrainingModuleManagement";
 import { SubscriptionManagement } from "@/components/admin/SubscriptionManagement";
 import { BillingDashboard } from "@/components/admin/BillingDashboard";
+import { ProxyBillingPortal } from "@/components/admin/ProxyBillingPortal";
 import { RoadsidePartnerManagement } from "@/components/admin/RoadsidePartnerManagement";
 import { PortalAnalyticsCards } from "@/components/admin/PortalAnalyticsCards";
 import { GlobalSearch } from "@/components/admin/GlobalSearch";
@@ -722,6 +723,7 @@ const AdminDashboard = () => {
               {activeTab === 'training' && <TrainingModuleManagement />}
               {activeTab === 'roadside-partners' && <RoadsidePartnerManagement />}
               {activeTab === 'billing' && <BillingDashboard />}
+              {activeTab === 'proxy-billing' && <ProxyBillingPortal />}
             </div>
           )}
 

@@ -1027,6 +1027,111 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_proxy_billing_accounts: {
+        Row: {
+          card_brand: string | null
+          card_exp_month: number | null
+          card_exp_year: number | null
+          card_last4: string | null
+          card_provider: string | null
+          card_token: string | null
+          consent_channels: string[] | null
+          consent_ip: string | null
+          consent_pdf_url: string | null
+          consent_sent_at: string | null
+          consent_signature: string | null
+          consent_signed_at: string | null
+          consent_status: string
+          consent_token: string
+          consent_token_expires_at: string
+          consent_user_agent: string | null
+          created_at: string
+          driver_id: string
+          id: string
+          identity_status: string
+          identity_verified_at: string | null
+          persona_inquiry_id: string | null
+          proxy_email: string
+          proxy_full_name: string
+          proxy_phone: string | null
+          proxy_relationship: string | null
+          region: string
+          revoke_reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          card_brand?: string | null
+          card_exp_month?: number | null
+          card_exp_year?: number | null
+          card_last4?: string | null
+          card_provider?: string | null
+          card_token?: string | null
+          consent_channels?: string[] | null
+          consent_ip?: string | null
+          consent_pdf_url?: string | null
+          consent_sent_at?: string | null
+          consent_signature?: string | null
+          consent_signed_at?: string | null
+          consent_status?: string
+          consent_token?: string
+          consent_token_expires_at?: string
+          consent_user_agent?: string | null
+          created_at?: string
+          driver_id: string
+          id?: string
+          identity_status?: string
+          identity_verified_at?: string | null
+          persona_inquiry_id?: string | null
+          proxy_email: string
+          proxy_full_name: string
+          proxy_phone?: string | null
+          proxy_relationship?: string | null
+          region?: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          card_brand?: string | null
+          card_exp_month?: number | null
+          card_exp_year?: number | null
+          card_last4?: string | null
+          card_provider?: string | null
+          card_token?: string | null
+          consent_channels?: string[] | null
+          consent_ip?: string | null
+          consent_pdf_url?: string | null
+          consent_sent_at?: string | null
+          consent_signature?: string | null
+          consent_signed_at?: string | null
+          consent_status?: string
+          consent_token?: string
+          consent_token_expires_at?: string
+          consent_user_agent?: string | null
+          created_at?: string
+          driver_id?: string
+          id?: string
+          identity_status?: string
+          identity_verified_at?: string | null
+          persona_inquiry_id?: string | null
+          proxy_email?: string
+          proxy_full_name?: string
+          proxy_phone?: string | null
+          proxy_relationship?: string | null
+          region?: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_analytics: {
         Row: {
           category: string
@@ -3766,6 +3871,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      proxy_billing_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_role: string | null
+          created_at: string
+          details: Json
+          driver_id: string | null
+          id: string
+          ip_address: string | null
+          proxy_account_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          details?: Json
+          driver_id?: string | null
+          id?: string
+          ip_address?: string | null
+          proxy_account_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          details?: Json
+          driver_id?: string | null
+          id?: string
+          ip_address?: string | null
+          proxy_account_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proxy_billing_audit_log_proxy_account_id_fkey"
+            columns: ["proxy_account_id"]
+            isOneToOne: false
+            referencedRelation: "driver_proxy_billing_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {
@@ -7502,6 +7654,49 @@ export type Database = {
           cascaded_ids: string[]
         }[]
       }
+      admin_revoke_proxy_billing: {
+        Args: { _proxy_id: string; _reason: string }
+        Returns: {
+          card_brand: string | null
+          card_exp_month: number | null
+          card_exp_year: number | null
+          card_last4: string | null
+          card_provider: string | null
+          card_token: string | null
+          consent_channels: string[] | null
+          consent_ip: string | null
+          consent_pdf_url: string | null
+          consent_sent_at: string | null
+          consent_signature: string | null
+          consent_signed_at: string | null
+          consent_status: string
+          consent_token: string
+          consent_token_expires_at: string
+          consent_user_agent: string | null
+          created_at: string
+          driver_id: string
+          id: string
+          identity_status: string
+          identity_verified_at: string | null
+          persona_inquiry_id: string | null
+          proxy_email: string
+          proxy_full_name: string
+          proxy_phone: string | null
+          proxy_relationship: string | null
+          region: string
+          revoke_reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "driver_proxy_billing_accounts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
       driver_request_rental_extension: {
         Args: { _rental_id: string }
@@ -7544,6 +7739,18 @@ export type Database = {
       get_owner_available_balance: {
         Args: { _currency: string; _owner_id: string }
         Returns: number
+      }
+      get_proxy_consent_context: {
+        Args: { _token: string }
+        Returns: {
+          consent_status: string
+          driver_name: string
+          identity_status: string
+          proxy_account_id: string
+          proxy_full_name: string
+          region: string
+          token_expires_at: string
+        }[]
       }
       get_support_staff_city: {
         Args: {
@@ -7671,6 +7878,54 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "rent_to_own_agreements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      submit_proxy_consent: {
+        Args: {
+          _ip?: string
+          _signature: string
+          _token: string
+          _user_agent?: string
+        }
+        Returns: {
+          card_brand: string | null
+          card_exp_month: number | null
+          card_exp_year: number | null
+          card_last4: string | null
+          card_provider: string | null
+          card_token: string | null
+          consent_channels: string[] | null
+          consent_ip: string | null
+          consent_pdf_url: string | null
+          consent_sent_at: string | null
+          consent_signature: string | null
+          consent_signed_at: string | null
+          consent_status: string
+          consent_token: string
+          consent_token_expires_at: string
+          consent_user_agent: string | null
+          created_at: string
+          driver_id: string
+          id: string
+          identity_status: string
+          identity_verified_at: string | null
+          persona_inquiry_id: string | null
+          proxy_email: string
+          proxy_full_name: string
+          proxy_phone: string | null
+          proxy_relationship: string | null
+          region: string
+          revoke_reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "driver_proxy_billing_accounts"
           isOneToOne: true
           isSetofReturn: false
         }

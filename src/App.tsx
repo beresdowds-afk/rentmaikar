@@ -51,6 +51,7 @@ const TourStepConfigPage = lazy(() => import("./pages/admin/TourStepConfigPage")
 const TourAnalyticsPage = lazy(() => import("./pages/admin/TourAnalyticsPage"));
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
 const SubscriptionSuccessPage = lazy(() => import("./pages/SubscriptionSuccessPage"));
+const ProxyConsentPage = lazy(() => import("./pages/ProxyConsentPage"));
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,7 @@ const App = () => (
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/referee-attest" element={<RefereeAttestation />} />
+                  <Route path="/proxy/consent" element={<ProxyConsentPage />} />
                   <Route path="/m/call-in" element={<ProtectedRoute><MobileCallIn /></ProtectedRoute>} />
                   <Route path="/m/call-in/:type" element={<ProtectedRoute><MobileCallIn /></ProtectedRoute>} />
                   <Route path="/driver/register" element={<DriverRegistration />} />
