@@ -51,6 +51,7 @@ const TourStepConfigPage = lazy(() => import("./pages/admin/TourStepConfigPage")
 const TourAnalyticsPage = lazy(() => import("./pages/admin/TourAnalyticsPage"));
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
 const SubscriptionSuccessPage = lazy(() => import("./pages/SubscriptionSuccessPage"));
+const ProxyConsentPage = lazy(() => import("./pages/ProxyConsentPage"));
 
 const queryClient = new QueryClient();
 
