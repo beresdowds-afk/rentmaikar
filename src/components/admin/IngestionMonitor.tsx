@@ -30,6 +30,7 @@ interface Props {
   syncAction?: string;
   disabled?: boolean;
   onSynced?: () => void;
+  enableVehicleScope?: boolean;
 }
 
 export function IngestionMonitor({
@@ -38,10 +39,14 @@ export function IngestionMonitor({
   syncAction = "sync",
   disabled,
   onSynced,
+  enableVehicleScope = false,
 }: Props) {
   const [state, setState] = useState<SyncState | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [vehicles, setVehicles] = useState<VehicleOpt[]>([]);
+  const [scope, setScope] = useState<Set<string>>(new Set());
+  const [vFilter, setVFilter] = useState("");
 
   const load = async () => {
     const { data } = await supabase
