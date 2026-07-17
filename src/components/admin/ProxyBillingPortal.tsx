@@ -54,6 +54,16 @@ export function ProxyBillingPortal() {
     setSelected(null); setRevokeReason(""); load();
   };
 
+  const review = async (decision: "approved" | "rejected") => {
+    if (!selected) return;
+    const { error } = await supabase.rpc("admin_review_proxy_billing" as any, {
+      _proxy_id: selected.id, _decision: decision, _notes: reviewNotes || null,
+    });
+    if (error) return toast.error(error.message);
+    toast.success(decision === "approved" ? "Proxy approved" : "Proxy rejected");
+    setReviewNotes(""); openDetails({ ...selected }); load();
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between">
