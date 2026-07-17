@@ -169,6 +169,32 @@ export function ProxyBillingSettings({ userId }: Props) {
                 </Select>
               </div>
             </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 pt-2 border-t">
+              <div>
+                <Label>Consent type</Label>
+                <Select value={form.use_type} onValueChange={(v: any) => setForm({ ...form, use_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="one_time">One-time use</SelectItem>
+                    <SelectItem value="recurring">Recurring</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Valid for (days)</Label>
+                <Input type="number" min={1} max={365} value={form.validity_days}
+                  onChange={(e) => setForm({ ...form, validity_days: Math.max(1, Math.min(365, Number(e.target.value) || 1)) })} />
+              </div>
+              {form.use_type === "recurring" && (
+                <div>
+                  <Label>Max charges</Label>
+                  <Input type="number" min={1} max={365} value={form.max_uses}
+                    onChange={(e) => setForm({ ...form, max_uses: Math.max(1, Math.min(365, Number(e.target.value) || 1)) })} />
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center gap-4">
               <span className="text-sm">Notify via:</span>
               <div className="flex items-center gap-2"><Checkbox checked={form.channels.email} onCheckedChange={(v) => setForm({ ...form, channels: { ...form.channels, email: !!v } })} /> Email</div>
