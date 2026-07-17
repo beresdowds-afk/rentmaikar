@@ -154,10 +154,8 @@ export function ProxyBillingPortal() {
                     </div>
                   </div>
                 )}
-                    <img src={selected.consent_signature} alt="signature" className="border rounded max-h-40" />
-                  </div>
-                )}
                 <div>
+
                   <p className="text-sm font-medium mb-2">Audit trail</p>
                   <div className="max-h-64 overflow-y-auto border rounded divide-y">
                     {audit.map(a => (
