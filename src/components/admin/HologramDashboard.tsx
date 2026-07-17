@@ -476,14 +476,28 @@ export function HologramDashboard() {
 
                 <div className="rounded-md border p-3 space-y-2">
                   <p className="text-xs font-medium">Usage sync</p>
-                  <Button
-                    size="sm" variant="outline" className="gap-2"
-                    disabled={!configured || !selected.provider_sim_id || busy === "sync_one_usage"}
-                    onClick={() => run("sync_one_usage", { sim_id: selected.provider_sim_id })}
-                  >
-                    {busy === "sync_one_usage" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Signal className="h-3.5 w-3.5" />}
-                    Sync usage for this SIM
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm" variant="outline" className="gap-2"
+                      disabled={!configured || !selected.provider_sim_id || busy === "sync_one_usage"}
+                      onClick={() => run("sync_one_usage", { sim_id: selected.provider_sim_id })}
+                    >
+                      {busy === "sync_one_usage" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Signal className="h-3.5 w-3.5" />}
+                      Sync usage for this SIM
+                    </Button>
+                    <Button
+                      size="sm" variant="outline" className="gap-2"
+                      onClick={() => exportSim(selected, "csv")}
+                    >
+                      <Download className="h-3.5 w-3.5" /> Export CSV
+                    </Button>
+                    <Button
+                      size="sm" variant="outline" className="gap-2"
+                      onClick={() => exportSim(selected, "json")}
+                    >
+                      <Download className="h-3.5 w-3.5" /> Export JSON
+                    </Button>
+                  </div>
                   {selected.provider_sim_id && lastSyncResult[selected.provider_sim_id] && (
                     <p className="text-xs text-muted-foreground">
                       Last result: state <code>{lastSyncResult[selected.provider_sim_id].state ?? "—"}</code>,
