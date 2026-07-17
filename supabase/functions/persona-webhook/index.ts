@@ -145,10 +145,11 @@ Deno.serve(async (req) => {
             const message = `${proxyRow.proxy_full_name}, your identity is verified. Please sign the proxy billing consent form: ${link}`;
             const prefs: any = proxyRow.notification_prefs ?? {};
             const events = prefs.events ?? {};
-            if (events.identity_result === false) { /* proxy opted out of this event */ break; }
             const prefChannels = prefs.channels ?? {};
             const base: string[] = (proxyRow.consent_channels as string[] | null) ?? ["email"];
-            const channels: string[] = base.filter((c) => prefChannels[c] !== false);
+            const channels: string[] = events.identity_result === false
+              ? []
+              : base.filter((c) => prefChannels[c] !== false);
             const jobs: Promise<any>[] = [];
             if (channels.includes("email")) {
               jobs.push(supa.functions.invoke("send-transactional-email", {
