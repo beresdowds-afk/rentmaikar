@@ -57,21 +57,10 @@ const queryClient = new QueryClient();
 
 const PageLoader = () => <PageSkeleton />;
 
-// Runs the global realtime sync worker and (on native builds) registers the
-// device for push notifications. Rendered inside providers so it can use the
-// query client and the authenticated Supabase session.
-const AppLiveSync = () => {
-  // Lazy imports avoid pulling Capacitor into unrelated bundles.
-  const { useRealtimeSync } = require("@/hooks/useRealtimeSync");
-  const { useNativePush } = require("@/hooks/useNativePush");
-  useRealtimeSync(true);
-  useNativePush();
-  return null;
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AppLiveSync />
+
 
     <AuthProvider>
       <RegionProvider>
