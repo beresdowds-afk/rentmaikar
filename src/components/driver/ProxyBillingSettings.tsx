@@ -21,6 +21,9 @@ export function ProxyBillingSettings({ userId }: Props) {
   const [form, setForm] = useState({
     proxy_full_name: "", proxy_email: "", proxy_phone: "", proxy_relationship: "",
     channels: { email: true, sms: false, whatsapp: false },
+    use_type: "recurring" as "recurring" | "one_time",
+    validity_days: 90,
+    max_uses: 12,
   });
 
   const load = async () => {
