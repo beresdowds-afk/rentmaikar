@@ -61,7 +61,7 @@ export default function BillingReconciliationPage() {
           {(["ok","missing_receipt","invoice_not_marked_paid","receipt_without_completed_payment","amount_mismatch"] as const).map(k => (
             <Card key={k}>
               <CardContent className="pt-4">
-                <p className="text-xs text-muted-foreground">{k.replaceAll("_"," ")}</p>
+                <p className="text-xs text-muted-foreground">{k.split("_").join(" ")}</p>
                 <p className="text-2xl font-bold">{counts[k] ?? 0}</p>
               </CardContent>
             </Card>
@@ -86,7 +86,7 @@ export default function BillingReconciliationPage() {
                     <TableCell>{r.currency} {Number(r.payment_amount).toFixed(2)}</TableCell>
                     <TableCell className="text-xs">{r.invoice_number ?? "—"} {r.invoice_status && <Badge variant="outline">{r.invoice_status}</Badge>}</TableCell>
                     <TableCell className="text-xs">{r.receipt_number ?? "—"} {r.receipt_status && <Badge variant="outline">{r.receipt_status}</Badge>}</TableCell>
-                    <TableCell><Badge variant={badge(r.discrepancy) as never}>{r.discrepancy.replaceAll("_"," ")}</Badge></TableCell>
+                    <TableCell><Badge variant={badge(r.discrepancy) as never}>{r.discrepancy.split("_").join(" ")}</Badge></TableCell>
                     <TableCell className="text-xs">{new Date(r.created_at).toLocaleString()}</TableCell>
                   </TableRow>
                 ))}

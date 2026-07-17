@@ -42,6 +42,7 @@ const RefereeAttestation = lazy(() => import("./pages/RefereeAttestation"));
 const MobileCallIn = lazy(() => import("./pages/MobileCallIn"));
 const PaymentReceipt = lazy(() => import("./pages/PaymentReceipt"));
 const ReconciliationLogsPage = lazy(() => import("./pages/admin/ReconciliationLogsPage"));
+const BillingReconciliationPage = lazy(() => import("./pages/admin/BillingReconciliationPage"));
 const AdminDocumentExportAuditPage = lazy(() => import("./pages/admin/AdminDocumentExportAuditPage"));
 const AdminDocumentFailuresPage = lazy(() => import("./pages/admin/AdminDocumentFailuresPage"));
 const AuditLogPage = lazy(() => import("./pages/admin/AuditLogPage"));
