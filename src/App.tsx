@@ -117,7 +117,9 @@ const App = () => (
                     } 
                   />
                   <Route path="/driver/dashboard" element={<DriverDashboard />} />
+                  <Route path="/driver/onboarding" element={<DriverOnboarding />} />
                   <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+                  <Route path="/owner/onboarding" element={<OwnerOnboarding />} />
                   <Route path="/catalogue/:category" element={<Catalogue />} />
                   <Route 
                     path="/api-docs" 
