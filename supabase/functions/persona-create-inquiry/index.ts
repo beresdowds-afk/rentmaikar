@@ -4,8 +4,8 @@ import { z } from "https://esm.sh/zod@3.23.8";
 import { templateForRole, type PersonaSubjectRole } from "../_shared/persona-templates.ts";
 
 const Body = z.object({
-  subject_type: z.enum(["self", "referee"]),
-  subject_role: z.enum(["driver", "referee", "owner", "support_staff", "admin_assistant"]).optional(),
+  subject_type: z.enum(["self", "referee", "proxy"]),
+  subject_role: z.enum(["driver", "referee", "owner", "support_staff", "admin_assistant", "proxy"]).optional(),
   subject_ref: z.string().max(200).optional(),
   region: z.string().max(40).optional(),
   fields: z.object({

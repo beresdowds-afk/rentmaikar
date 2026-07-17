@@ -13,7 +13,8 @@ export type PersonaSubjectRole =
   | "referee"
   | "owner"
   | "support_staff"
-  | "admin_assistant";
+  | "admin_assistant"
+  | "proxy";
 
 export const PERSONA_TEMPLATE_IDS: Record<PersonaSubjectRole, string> = {
   driver: "ctmpl_As49Kz1UKtAYYEW9dPZmEeFiM12ty1",
@@ -21,6 +22,8 @@ export const PERSONA_TEMPLATE_IDS: Record<PersonaSubjectRole, string> = {
   owner: "ctmpl_As49Kz1JwTcfM32GH38WQda8xGy1Zs",
   support_staff: "ctmpl_As49Kz1JwTcfM32GH38WQda8xGy1Zs",
   admin_assistant: "ctmpl_As49Kz1JwTcfM32GH38WQda8xGy1Zs",
+  // Proxy re-uses the referee template (same identity + address check profile)
+  proxy: "ctmpl_As49Kz14uVkobxDdh5gP4rYWavgfqs",
 };
 
 export function templateForRole(role: PersonaSubjectRole | string | null | undefined): string | null {

@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { UserPlus, ShieldCheck, Send, CreditCard, Loader2, Info } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
+import { ProxyStatusTimeline } from "@/components/proxy/ProxyStatusTimeline";
 
 interface Props { userId?: string }
 
@@ -21,6 +22,9 @@ export function ProxyBillingSettings({ userId }: Props) {
   const [form, setForm] = useState({
     proxy_full_name: "", proxy_email: "", proxy_phone: "", proxy_relationship: "",
     channels: { email: true, sms: false, whatsapp: false },
+    use_type: "recurring" as "recurring" | "one_time",
+    validity_days: 90,
+    max_uses: 12,
   });
 
   const load = async () => {
@@ -41,14 +45,31 @@ export function ProxyBillingSettings({ userId }: Props) {
     if (!channels.length) return toast.error("Pick at least one notification channel");
     if (!form.proxy_full_name.trim() || !form.proxy_email.trim()) return toast.error("Name and email are required");
     setLoading(true);
+    const now = new Date();
+    const expires = new Date(now.getTime() + form.validity_days * 86400 * 1000);
+    const idem = crypto.randomUUID();
     const { data, error } = await supabase.functions.invoke("proxy-consent-manager", {
-      body: { action: "create", ...form, channels, region: country === "Nigeria" ? "NG" : "US" },
+      body: {
+        action: "create",
+        proxy_full_name: form.proxy_full_name,
+        proxy_email: form.proxy_email,
+        proxy_phone: form.proxy_phone || undefined,
+        proxy_relationship: form.proxy_relationship || undefined,
+        channels,
+        region: country === "Nigeria" ? "NG" : "US",
+        use_type: form.use_type,
+        validity_starts_at: now.toISOString(),
+        validity_expires_at: expires.toISOString(),
+        max_uses: form.use_type === "one_time" ? 1 : form.max_uses,
+      },
+      headers: { "x-idempotency-key": idem } as any,
     });
     setLoading(false);
     if (error || !data?.ok) return toast.error(data?.error?.message ?? "Could not create proxy request");
     toast.success("Consent request sent to your proxy");
     load();
   };
+
 
   const resend = async () => {
     if (!proxy) return;
@@ -97,6 +118,18 @@ export function ProxyBillingSettings({ userId }: Props) {
               </div>
             </div>
 
+            <div className="rounded-lg border p-4 bg-muted/30">
+              <p className="text-sm font-medium mb-3">Consent progress</p>
+              <ProxyStatusTimeline proxy={proxy} />
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-3 text-xs text-muted-foreground">
+              <div>Use type: <span className="font-medium text-foreground">{proxy.use_type ?? "recurring"}</span></div>
+              {proxy.validity_expires_at && <div>Expires: <span className="font-medium text-foreground">{new Date(proxy.validity_expires_at).toLocaleDateString()}</span></div>}
+              {proxy.max_uses && <div>Uses: <span className="font-medium text-foreground">{proxy.uses_count ?? 0}/{proxy.max_uses}</span></div>}
+            </div>
+
+
             {proxy.status !== "active" && (
               <Alert>
                 <Info className="h-4 w-4" />
@@ -136,6 +169,32 @@ export function ProxyBillingSettings({ userId }: Props) {
                 </Select>
               </div>
             </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 pt-2 border-t">
+              <div>
+                <Label>Consent type</Label>
+                <Select value={form.use_type} onValueChange={(v: any) => setForm({ ...form, use_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="one_time">One-time use</SelectItem>
+                    <SelectItem value="recurring">Recurring</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Valid for (days)</Label>
+                <Input type="number" min={1} max={365} value={form.validity_days}
+                  onChange={(e) => setForm({ ...form, validity_days: Math.max(1, Math.min(365, Number(e.target.value) || 1)) })} />
+              </div>
+              {form.use_type === "recurring" && (
+                <div>
+                  <Label>Max charges</Label>
+                  <Input type="number" min={1} max={365} value={form.max_uses}
+                    onChange={(e) => setForm({ ...form, max_uses: Math.max(1, Math.min(365, Number(e.target.value) || 1)) })} />
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center gap-4">
               <span className="text-sm">Notify via:</span>
               <div className="flex items-center gap-2"><Checkbox checked={form.channels.email} onCheckedChange={(v) => setForm({ ...form, channels: { ...form.channels, email: !!v } })} /> Email</div>

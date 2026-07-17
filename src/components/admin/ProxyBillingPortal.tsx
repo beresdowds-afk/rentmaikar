@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Ban, Eye, ShieldCheck } from "lucide-react";
+import { RefreshCw, Ban, Eye, ShieldCheck, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { ProxyStatusTimeline } from "@/components/proxy/ProxyStatusTimeline";
 
 export function ProxyBillingPortal() {
   const [rows, setRows] = useState<any[]>([]);
@@ -17,6 +18,7 @@ export function ProxyBillingPortal() {
   const [selected, setSelected] = useState<any | null>(null);
   const [audit, setAudit] = useState<any[]>([]);
   const [revokeReason, setRevokeReason] = useState("");
+  const [reviewNotes, setReviewNotes] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -50,6 +52,16 @@ export function ProxyBillingPortal() {
     if (error) return toast.error(error.message);
     toast.success("Proxy revoked");
     setSelected(null); setRevokeReason(""); load();
+  };
+
+  const review = async (decision: "approved" | "rejected") => {
+    if (!selected) return;
+    const { error } = await supabase.rpc("admin_review_proxy_billing" as any, {
+      _proxy_id: selected.id, _decision: decision, _notes: reviewNotes || null,
+    });
+    if (error) return toast.error(error.message);
+    toast.success(decision === "approved" ? "Proxy approved" : "Proxy rejected");
+    setReviewNotes(""); openDetails({ ...selected }); load();
   };
 
   return (
@@ -128,7 +140,22 @@ export function ProxyBillingPortal() {
                     <img src={selected.consent_signature} alt="signature" className="border rounded max-h-40" />
                   </div>
                 )}
+                <div className="border rounded-lg p-3 bg-muted/30">
+                  <p className="text-sm font-medium mb-3">Consent lifecycle</p>
+                  <ProxyStatusTimeline proxy={selected} />
+                </div>
+                {selected.consent_status === "signed" && selected.admin_review_status !== "approved" && selected.admin_review_status !== "rejected" && (
+                  <div className="space-y-2 border-t pt-3">
+                    <p className="text-sm font-medium">Admin review</p>
+                    <Textarea placeholder="Notes (optional)" value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} maxLength={500} />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => review("approved")}><CheckCircle2 className="h-4 w-4 mr-1" /> Approve</Button>
+                      <Button size="sm" variant="destructive" onClick={() => review("rejected")}><XCircle className="h-4 w-4 mr-1" /> Reject</Button>
+                    </div>
+                  </div>
+                )}
                 <div>
+
                   <p className="text-sm font-medium mb-2">Audit trail</p>
                   <div className="max-h-64 overflow-y-auto border rounded divide-y">
                     {audit.map(a => (
