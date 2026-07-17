@@ -18,10 +18,12 @@ const Body = z.object({
     "link_device",
     "unlink_device",
     "get_sync_state",
+    "validate_link",
   ]),
   device_id: z.number().int().positive().optional(),
   device_row_id: z.string().uuid().optional(),
   vehicle_id: z.string().uuid().nullable().optional(),
+  vehicle_ids: z.array(z.string().uuid()).optional(),
   command: z.string().min(2).max(48).optional(),
   attributes: z.record(z.unknown()).optional(),
 });
@@ -39,21 +41,28 @@ Deno.serve(async (req) => {
 
   try {
     const auth = req.headers.get("Authorization") ?? "";
-    if (!auth.startsWith("Bearer ")) return json({ error: "Unauthenticated" }, 401);
+    const cronSecret = Deno.env.get("CRON_SECRET") ?? "";
+    const providedCron = req.headers.get("x-cron-secret") ?? "";
+    const isCron = !!cronSecret && providedCron === cronSecret;
 
     const supa = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    const { data: u, error: uErr } = await supa.auth.getUser(auth.replace("Bearer ", ""));
-    if (uErr || !u?.user) return json({ error: "Unauthenticated" }, 401);
-    const actor = u.user.id;
-    const { data: isAdmin } = await supa.rpc("has_role", { _user_id: actor, _role: "admin" });
-    if (!isAdmin) return json({ error: "Admin only" }, 403);
+
+    let actor: string | null = null;
+    if (!isCron) {
+      if (!auth.startsWith("Bearer ")) return json({ error: "Unauthenticated" }, 401);
+      const { data: u, error: uErr } = await supa.auth.getUser(auth.replace("Bearer ", ""));
+      if (uErr || !u?.user) return json({ error: "Unauthenticated" }, 401);
+      actor = u.user.id;
+      const { data: isAdmin } = await supa.rpc("has_role", { _user_id: actor, _role: "admin" });
+      if (!isAdmin) return json({ error: "Admin only" }, 403);
+    }
 
     const parsed = Body.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
-    const { action, device_id, device_row_id, vehicle_id, command, attributes } = parsed.data;
+    const { action, device_id, device_row_id, vehicle_id, vehicle_ids, command, attributes } = parsed.data;
 
     const audit = async (row: {
       action: string;
