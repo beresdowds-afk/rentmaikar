@@ -84,11 +84,61 @@ Deno.serve(async (req) => {
         }).eq("user_id", row.user_id);
       }
 
-      // Referee cascade
-      if (row.subject_type === "referee" && row.subject_ref) {
-        const newStatus = status === "approved" ? "verified"
-          : status === "declined" ? "action_required"
-          : status === "needs_review" ? "mismatch"
+      // Proxy billing: identity result drives consent link + status transitions
+      if (row.subject_type === "proxy" && row.subject_ref) {
+        const nextIdentity = status === "approved" ? "verified"
+          : status === "declined" ? "failed"
+          : "submitted";
+        const { data: proxyRow } = await supa
+          .from("driver_proxy_billing_accounts")
+          .update({
+            identity_status: nextIdentity,
+            identity_verified_at: status === "approved" ? new Date().toISOString() : null,
+            persona_inquiry_id: inquiryId,
+          })
+          .eq("id", row.subject_ref)
+          .select("id, driver_id, proxy_email, proxy_phone, proxy_full_name, consent_token, consent_channels")
+          .maybeSingle();
+
+        if (proxyRow) {
+          await supa.from("proxy_billing_audit_log").insert({
+            proxy_account_id: proxyRow.id, driver_id: proxyRow.driver_id, actor_id: null,
+            actor_role: "system", action: "persona_webhook",
+            details: { persona_status: status, inquiry_id: inquiryId },
+            new_state: { identity_status: nextIdentity },
+          }).then(() => {}, () => {});
+
+          if (status === "approved") {
+            // Kick off consent-link notifications automatically
+            const link = `${Deno.env.get("APP_URL") ?? "https://rentmaikar.lovable.app"}/proxy/consent?token=${proxyRow.consent_token}`;
+            const message = `${proxyRow.proxy_full_name}, your identity is verified. Please sign the proxy billing consent form: ${link}`;
+            const channels: string[] = (proxyRow.consent_channels as string[] | null) ?? ["email"];
+            const jobs: Promise<any>[] = [];
+            if (channels.includes("email")) {
+              jobs.push(supa.functions.invoke("send-transactional-email", {
+                body: {
+                  templateName: "generic-notice", recipientEmail: proxyRow.proxy_email,
+                  idempotencyKey: `proxy-verified-${proxyRow.id}`,
+                  templateData: {
+                    subject: "Identity verified — please sign the consent form",
+                    body: message, ctaLabel: "Sign consent", ctaUrl: link,
+                  },
+                },
+              }).catch(() => null));
+            }
+            if (channels.includes("sms") && proxyRow.proxy_phone) {
+              jobs.push(supa.functions.invoke("send-sms",
+                { body: { to: proxyRow.proxy_phone, message } }).catch(() => null));
+            }
+            if (channels.includes("whatsapp") && proxyRow.proxy_phone) {
+              jobs.push(supa.functions.invoke("send-whatsapp",
+                { body: { to: proxyRow.proxy_phone, message } }).catch(() => null));
+            }
+            await Promise.all(jobs);
+          }
+        }
+      }
+    }
           : "running";
         const { data: refRow } = await supa
           .from("referee_verifications")
