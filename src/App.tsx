@@ -179,6 +179,14 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/admin/billing-reconciliation"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <BillingReconciliationPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/export-audit"
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
