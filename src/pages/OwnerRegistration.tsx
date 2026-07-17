@@ -26,6 +26,7 @@ const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   firstName: z.string().min(2, "First name is required").max(50, "First name too long"),
   lastName: z.string().min(2, "Last name is required").max(50, "Last name too long"),
   email: z.string().email("Invalid email address").max(255, "Email too long"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password too long"),
   phoneCountry: z.enum(["us", "ng"]),
   phoneNumber: z.string().min(10, "Phone number is required").max(15, "Phone number too long"),
   
