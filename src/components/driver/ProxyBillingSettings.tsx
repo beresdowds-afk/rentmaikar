@@ -150,6 +150,16 @@ export function ProxyBillingSettings({ userId }: Props) {
               </Button>
             </div>
 
+            <ProxyNotificationPrefs
+              proxyId={proxy.id}
+              initial={proxy.notification_prefs ?? null}
+              phoneAvailable={!!proxy.proxy_phone}
+              title="Proxy alert preferences"
+              description="Choose which channels and events reach your proxy. They can adjust this from their consent link too."
+              onSaved={() => load()}
+            />
+
+
             <p className="text-xs text-muted-foreground">
               To end this proxy relationship, contact admin support — proxy revocation is admin-mediated for your safety.
             </p>
