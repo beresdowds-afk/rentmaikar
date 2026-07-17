@@ -9,6 +9,7 @@ import { Loader2, ShieldCheck, PenLine, CreditCard, CheckCircle2, AlertTriangle 
 import SignaturePad from "@/components/legal/SignaturePad";
 import PersonaVerification from "@/components/verification/PersonaVerification";
 import { toast } from "sonner";
+import { ProxyNotificationPrefs } from "@/components/proxy/ProxyNotificationPrefs";
 
 type Step = "loading" | "invalid" | "identity" | "sign" | "card" | "done";
 
