@@ -5,6 +5,8 @@ import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { IoTMonitoringHub } from "@/components/admin/IoTMonitoringHub";
 import { HologramDashboard } from "@/components/admin/HologramDashboard";
 import { TraccarDashboard } from "@/components/admin/TraccarDashboard";
+import { SyncScheduleSettings } from "@/components/admin/SyncScheduleSettings";
+import BillingReconciliationPage from "@/pages/admin/BillingReconciliationPage";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
 import { VehicleCategoryYearSpecs } from "@/components/admin/VehicleCategoryYearSpecs";
@@ -741,6 +743,8 @@ const AdminDashboard = () => {
               {activeTab === 'iot-monitoring' && <IoTMonitoringHub />}
               {activeTab === 'hologram' && <HologramDashboard />}
               {activeTab === 'traccar' && <TraccarDashboard />}
+              {activeTab === 'sync-schedule' && <SyncScheduleSettings />}
+              {activeTab === 'reconciliation' && <BillingReconciliationPage />}
               {activeTab === 'hardware' && <HardwareManagement />}
               {activeTab === 'mqtt-credentials' && <VehicleMqttCredentials readOnly={false} />}
               {activeTab === 'driver-behavior' && <DriverBehaviorLogs />}

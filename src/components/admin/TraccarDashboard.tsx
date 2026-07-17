@@ -187,6 +187,7 @@ export function TraccarDashboard() {
         syncAction="sync"
         disabled={!configured}
         onSynced={load}
+        enableVehicleScope
       />
 
       <Tabs defaultValue="devices" className="w-full">

@@ -144,6 +144,51 @@ export function HologramDashboard() {
     setLinkVehicle(s.vehicle_id);
   };
 
+  const exportSim = (s: SimCard, format: "csv" | "json") => {
+    const row = {
+      iccid: s.iccid,
+      msisdn: s.msisdn,
+      imsi: s.imsi,
+      provider_sim_id: s.provider_sim_id,
+      status: s.status,
+      plan_name: s.plan_name,
+      data_usage_mb: s.data_usage_mb,
+      data_limit_mb: s.data_limit_mb,
+      last_session_at: s.last_session_at,
+      activated_at: s.activated_at,
+      suspended_at: s.suspended_at,
+      vehicle_id: s.vehicle_id,
+      device_id: s.device_id,
+      last_sync_state: s.provider_sim_id ? lastSyncResult[s.provider_sim_id]?.state ?? null : null,
+      last_sync_usage_mb: s.provider_sim_id ? lastSyncResult[s.provider_sim_id]?.usage_mb ?? null : null,
+      last_sync_at: s.provider_sim_id ? lastSyncResult[s.provider_sim_id]?.at ?? null : null,
+      updated_at: s.updated_at,
+    };
+    let blob: Blob;
+    let ext: string;
+    if (format === "csv") {
+      const keys = Object.keys(row);
+      const escape = (v: unknown) => {
+        if (v === null || v === undefined) return "";
+        const str = String(v).replace(/"/g, '""');
+        return /[",\n]/.test(str) ? `"${str}"` : str;
+      };
+      const csv = keys.join(",") + "\n" + keys.map(k => escape((row as Record<string, unknown>)[k])).join(",");
+      blob = new Blob([csv], { type: "text/csv" });
+      ext = "csv";
+    } else {
+      blob = new Blob([JSON.stringify(row, null, 2)], { type: "application/json" });
+      ext = "json";
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `hologram-sim-${s.iccid || s.id}-${new Date().toISOString().slice(0, 10)}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported SIM as ${ext.toUpperCase()}`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
@@ -476,14 +521,28 @@ export function HologramDashboard() {
 
                 <div className="rounded-md border p-3 space-y-2">
                   <p className="text-xs font-medium">Usage sync</p>
-                  <Button
-                    size="sm" variant="outline" className="gap-2"
-                    disabled={!configured || !selected.provider_sim_id || busy === "sync_one_usage"}
-                    onClick={() => run("sync_one_usage", { sim_id: selected.provider_sim_id })}
-                  >
-                    {busy === "sync_one_usage" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Signal className="h-3.5 w-3.5" />}
-                    Sync usage for this SIM
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm" variant="outline" className="gap-2"
+                      disabled={!configured || !selected.provider_sim_id || busy === "sync_one_usage"}
+                      onClick={() => run("sync_one_usage", { sim_id: selected.provider_sim_id })}
+                    >
+                      {busy === "sync_one_usage" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Signal className="h-3.5 w-3.5" />}
+                      Sync usage for this SIM
+                    </Button>
+                    <Button
+                      size="sm" variant="outline" className="gap-2"
+                      onClick={() => exportSim(selected, "csv")}
+                    >
+                      <Download className="h-3.5 w-3.5" /> Export CSV
+                    </Button>
+                    <Button
+                      size="sm" variant="outline" className="gap-2"
+                      onClick={() => exportSim(selected, "json")}
+                    >
+                      <Download className="h-3.5 w-3.5" /> Export JSON
+                    </Button>
+                  </div>
                   {selected.provider_sim_id && lastSyncResult[selected.provider_sim_id] && (
                     <p className="text-xs text-muted-foreground">
                       Last result: state <code>{lastSyncResult[selected.provider_sim_id].state ?? "—"}</code>,
