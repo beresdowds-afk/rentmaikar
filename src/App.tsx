@@ -34,6 +34,8 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const DriverRegistration = lazy(() => import("./pages/DriverRegistration"));
 const OwnerRegistration = lazy(() => import("./pages/OwnerRegistration"));
 const DriverDashboard = lazy(() => import("./pages/DriverDashboard"));
+const DriverOnboarding = lazy(() => import("./pages/DriverOnboarding"));
+const OwnerOnboarding = lazy(() => import("./pages/OwnerOnboarding"));
 const OwnerDashboard = lazy(() => import("./pages/OwnerDashboard"));
 const Catalogue = lazy(() => import("./pages/Catalogue"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
