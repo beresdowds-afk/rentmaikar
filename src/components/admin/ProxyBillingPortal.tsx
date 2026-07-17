@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { RefreshCw, Ban, Eye, ShieldCheck, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { ProxyStatusTimeline } from "@/components/proxy/ProxyStatusTimeline";
+import { ProxyNotificationPrefs } from "@/components/proxy/ProxyNotificationPrefs";
 
 export function ProxyBillingPortal() {
   const [rows, setRows] = useState<any[]>([]);
