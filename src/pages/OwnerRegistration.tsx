@@ -154,7 +154,28 @@ const OwnerRegistration = () => {
     setLastFormData(data);
     setSubmitError(null);
     try {
+      // 1) Ensure an auth user exists for this applicant.
+      const { data: sessionData } = await supabase.auth.getSession();
+      let userId = sessionData.session?.user?.id ?? null;
+
+      if (!userId) {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: data.email,
+          password: data.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              full_name: `${data.firstName} ${data.lastName}`.trim(),
+            },
+          },
+        });
+        if (signUpError) throw signUpError;
+        userId = signUpData.user?.id ?? null;
+        if (!userId) throw new Error("Could not create your account. Please try again.");
+      }
+
       const { error } = await supabase.from('applications').insert({
+        user_id: userId,
         application_type: 'owner' as const,
         first_name: data.firstName,
         last_name: data.lastName,
