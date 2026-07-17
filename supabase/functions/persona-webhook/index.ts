@@ -84,6 +84,38 @@ Deno.serve(async (req) => {
         }).eq("user_id", row.user_id);
       }
 
+      // Referee cascade
+      if (row.subject_type === "referee" && row.subject_ref) {
+        const newStatus = status === "approved" ? "verified"
+          : status === "declined" ? "action_required"
+          : status === "needs_review" ? "mismatch"
+          : "running";
+        const { data: refRow } = await supa
+          .from("referee_verifications")
+          .update({
+            status: newStatus,
+            mismatch_reason: status === "approved" ? null : (attrs?.["decision-reason"] ?? null),
+            verified_at: status === "approved" ? new Date().toISOString() : null,
+          })
+          .eq("id", row.subject_ref)
+          .select("application_id, user_id, full_name, referee_index")
+          .maybeSingle();
+
+        if (refRow && newStatus !== "verified") {
+          await supa.from("inbox_messages").insert({
+            user_id: refRow.user_id,
+            direction: "inbound",
+            channel: "system",
+            subject: "Referee verification issue",
+            body: `Referee #${refRow.referee_index + 1} (${refRow.full_name}) could not be verified. Please review and update this referee's details in your application.`,
+            status: "unread",
+          }).then(() => {}, () => {});
+          await supa.from("applications")
+            .update({ referees_verification_status: "action_required" })
+            .eq("id", refRow.application_id);
+        }
+      }
+
       // Proxy billing: identity result drives consent link + status transitions
       if (row.subject_type === "proxy" && row.subject_ref) {
         const nextIdentity = status === "approved" ? "verified"
@@ -109,7 +141,6 @@ Deno.serve(async (req) => {
           }).then(() => {}, () => {});
 
           if (status === "approved") {
-            // Kick off consent-link notifications automatically
             const link = `${Deno.env.get("APP_URL") ?? "https://rentmaikar.lovable.app"}/proxy/consent?token=${proxyRow.consent_token}`;
             const message = `${proxyRow.proxy_full_name}, your identity is verified. Please sign the proxy billing consent form: ${link}`;
             const channels: string[] = (proxyRow.consent_channels as string[] | null) ?? ["email"];
@@ -136,33 +167,6 @@ Deno.serve(async (req) => {
             }
             await Promise.all(jobs);
           }
-        }
-      }
-    }
-          : "running";
-        const { data: refRow } = await supa
-          .from("referee_verifications")
-          .update({
-            status: newStatus,
-            mismatch_reason: status === "approved" ? null : (attrs?.["decision-reason"] ?? null),
-            verified_at: status === "approved" ? new Date().toISOString() : null,
-          })
-          .eq("id", row.subject_ref)
-          .select("application_id, user_id, full_name, referee_index")
-          .maybeSingle();
-
-        if (refRow && newStatus !== "verified") {
-          await supa.from("inbox_messages").insert({
-            user_id: refRow.user_id,
-            direction: "inbound",
-            channel: "system",
-            subject: "Referee verification issue",
-            body: `Referee #${refRow.referee_index + 1} (${refRow.full_name}) could not be verified. Please review and update this referee's details in your application.`,
-            status: "unread",
-          }).then(() => {}, () => {});
-          await supa.from("applications")
-            .update({ referees_verification_status: "action_required" })
-            .eq("id", refRow.application_id);
         }
       }
     }
