@@ -118,6 +118,18 @@ export function ProxyBillingSettings({ userId }: Props) {
               </div>
             </div>
 
+            <div className="rounded-lg border p-4 bg-muted/30">
+              <p className="text-sm font-medium mb-3">Consent progress</p>
+              <ProxyStatusTimeline proxy={proxy} />
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-3 text-xs text-muted-foreground">
+              <div>Use type: <span className="font-medium text-foreground">{proxy.use_type ?? "recurring"}</span></div>
+              {proxy.validity_expires_at && <div>Expires: <span className="font-medium text-foreground">{new Date(proxy.validity_expires_at).toLocaleDateString()}</span></div>}
+              {proxy.max_uses && <div>Uses: <span className="font-medium text-foreground">{proxy.uses_count ?? 0}/{proxy.max_uses}</span></div>}
+            </div>
+
+
             {proxy.status !== "active" && (
               <Alert>
                 <Info className="h-4 w-4" />
