@@ -7972,8 +7972,10 @@ export type Database = {
           consent_status: string
           driver_name: string
           identity_status: string
+          notification_prefs: Json
           proxy_account_id: string
           proxy_full_name: string
+          proxy_phone: string
           region: string
           token_expires_at: string
         }[]
