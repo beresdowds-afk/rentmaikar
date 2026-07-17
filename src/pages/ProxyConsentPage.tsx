@@ -93,8 +93,8 @@ export default function ProxyConsentPage() {
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm"><ShieldCheck className="h-4 w-4" /> Verify your identity with Persona</div>
               <PersonaVerification
-                subject="referee"
-                subjectRole="referee"
+                subject={"proxy" as any}
+                subjectRole={"proxy" as any}
                 subjectRef={ctx?.proxy_account_id}
                 fields={{ name: ctx?.proxy_full_name ?? "" }}
                 onComplete={() => setTimeout(load, 1500)}
