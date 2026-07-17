@@ -125,7 +125,7 @@ export function BillingDashboard() {
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Number</TableHead><TableHead>Type</TableHead><TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead><TableHead>Due</TableHead><TableHead>Actions</TableHead>
+                <TableHead>Status</TableHead><TableHead>Email</TableHead><TableHead>Due</TableHead><TableHead>Actions</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {filteredInv.map(i => (
@@ -134,15 +134,24 @@ export function BillingDashboard() {
                     <TableCell><Badge variant="outline">{i.invoice_type}</Badge></TableCell>
                     <TableCell>{i.currency} {Number(i.total_amount).toFixed(2)}</TableCell>
                     <TableCell><Badge variant={statusColor(i.status)}>{i.status}</Badge></TableCell>
+                    <TableCell>
+                      <Badge variant={i.email_status === "sent" ? "default" : i.email_status === "failed" ? "destructive" : "outline"}>
+                        {i.email_status ?? "pending"}
+                      </Badge>
+                      {i.email_attempts > 0 && <span className="text-[10px] text-muted-foreground ml-1">×{i.email_attempts}</span>}
+                    </TableCell>
                     <TableCell className="text-xs">{i.due_date ? new Date(i.due_date).toLocaleDateString() : "—"}</TableCell>
                     <TableCell className="flex gap-1">
                       <Button size="sm" variant="ghost" onClick={() => viewDoc("invoice", i.id)}><Eye className="h-3 w-3" /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => sendInvoice(i.id)} disabled={i.status === "void"}><Send className="h-3 w-3" /></Button>
+                      <Button size="sm" variant={i.email_status === "failed" ? "destructive" : "ghost"}
+                        onClick={() => sendInvoice(i.id)} disabled={i.status === "void"}
+                        title={i.email_status === "failed" ? `Retry (last error: ${i.email_error ?? "unknown"})` : "Send / resend"}
+                      ><Send className="h-3 w-3" /></Button>
                       {i.status !== "void" && <Button size="sm" variant="ghost" onClick={() => voidInvoice(i.id)}><Ban className="h-3 w-3" /></Button>}
                     </TableCell>
                   </TableRow>
                 ))}
-                {filteredInv.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No invoices yet</TableCell></TableRow>}
+                {filteredInv.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No invoices yet</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent></Card>
@@ -153,7 +162,7 @@ export function BillingDashboard() {
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Number</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead>
-                <TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead>Actions</TableHead>
+                <TableHead>Status</TableHead><TableHead>Email</TableHead><TableHead>Date</TableHead><TableHead>Actions</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {filteredRc.map(r => (
@@ -162,14 +171,23 @@ export function BillingDashboard() {
                     <TableCell>{r.currency} {Number(r.amount).toFixed(2)}</TableCell>
                     <TableCell><Badge variant="outline">{r.payment_method ?? "—"}</Badge></TableCell>
                     <TableCell><Badge variant={statusColor(r.status)}>{r.status}</Badge></TableCell>
+                    <TableCell>
+                      <Badge variant={r.email_status === "sent" ? "default" : r.email_status === "failed" ? "destructive" : "outline"}>
+                        {r.email_status ?? "pending"}
+                      </Badge>
+                      {r.email_attempts > 0 && <span className="text-[10px] text-muted-foreground ml-1">×{r.email_attempts}</span>}
+                    </TableCell>
                     <TableCell className="text-xs">{new Date(r.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="flex gap-1">
                       <Button size="sm" variant="ghost" onClick={() => viewDoc("receipt", r.id)}><Eye className="h-3 w-3" /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => sendReceipt(r.id)}><Send className="h-3 w-3" /></Button>
+                      <Button size="sm" variant={r.email_status === "failed" ? "destructive" : "ghost"}
+                        onClick={() => sendReceipt(r.id)}
+                        title={r.email_status === "failed" ? `Retry (last error: ${r.email_error ?? "unknown"})` : "Send / resend"}
+                      ><Send className="h-3 w-3" /></Button>
                     </TableCell>
                   </TableRow>
                 ))}
-                {filteredRc.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No receipts yet</TableCell></TableRow>}
+                {filteredRc.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No receipts yet</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent></Card>
