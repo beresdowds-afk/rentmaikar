@@ -172,6 +172,16 @@ export function ProxyBillingPortal() {
                     {audit.length === 0 && <p className="p-3 text-xs text-muted-foreground text-center">No audit entries</p>}
                   </div>
                 </div>
+
+                <ProxyNotificationPrefs
+                  proxyId={selected.id}
+                  initial={selected.notification_prefs ?? null}
+                  phoneAvailable={!!selected.proxy_phone}
+                  title="Notification preferences (admin override)"
+                  description="Admins can adjust channels and event alerts on behalf of the proxy — every change is audit-logged."
+                  onSaved={() => openDetails({ ...selected })}
+                />
+
                 {selected.status !== "revoked" && (
                   <div className="space-y-2 border-t pt-3">
                     <p className="text-sm font-medium">Admin-mediated revocation</p>
