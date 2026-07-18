@@ -7201,6 +7201,68 @@ export type Database = {
           },
         ]
       }
+      voip_call_transcripts: {
+        Row: {
+          audio_bytes: number | null
+          audio_storage_path: string | null
+          call_id: string
+          created_at: string
+          created_by: string | null
+          duration_ms: number | null
+          id: string
+          language_code: string | null
+          segment_ended_at: string | null
+          segment_index: number
+          segment_started_at: string | null
+          source: string
+          speaker: string | null
+          transcript_text: string
+          words: Json | null
+        }
+        Insert: {
+          audio_bytes?: number | null
+          audio_storage_path?: string | null
+          call_id: string
+          created_at?: string
+          created_by?: string | null
+          duration_ms?: number | null
+          id?: string
+          language_code?: string | null
+          segment_ended_at?: string | null
+          segment_index?: number
+          segment_started_at?: string | null
+          source?: string
+          speaker?: string | null
+          transcript_text: string
+          words?: Json | null
+        }
+        Update: {
+          audio_bytes?: number | null
+          audio_storage_path?: string | null
+          call_id?: string
+          created_at?: string
+          created_by?: string | null
+          duration_ms?: number | null
+          id?: string
+          language_code?: string | null
+          segment_ended_at?: string | null
+          segment_index?: number
+          segment_started_at?: string | null
+          source?: string
+          speaker?: string | null
+          transcript_text?: string
+          words?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voip_call_transcripts_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "voip_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       voip_calls: {
         Row: {
           call_sid: string | null

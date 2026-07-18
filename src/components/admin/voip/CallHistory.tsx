@@ -3,12 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { History, RefreshCw, Phone, Users, PhoneIncoming, PhoneOutgoing, Loader2, Play, Volume2 } from 'lucide-react';
+import { History, RefreshCw, Phone, Users, PhoneIncoming, PhoneOutgoing, Loader2, Play, Volume2, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import type { VoIPCall, CallRegion } from '@/types/voip';
 import { formatPhoneForDisplay } from '@/types/voip';
 import { RecordingPlaybackModal } from './RecordingPlaybackModal';
+import { CallTranscriptDialog } from './CallTranscriptDialog';
+
 
 interface CallHistoryProps {
   calls: VoIPCall[];
@@ -38,6 +40,8 @@ export const CallHistory = ({ calls, onRefresh, isLoading }: CallHistoryProps) =
   const [typeFilter, setTypeFilter] = useState<'all' | 'individual' | 'group'>('all');
   const [selectedCall, setSelectedCall] = useState<VoIPCall | null>(null);
   const [isPlaybackOpen, setIsPlaybackOpen] = useState(false);
+  const [transcriptCall, setTranscriptCall] = useState<VoIPCall | null>(null);
+
 
   const filteredCalls = calls.filter(call => {
     if (regionFilter !== 'all' && call.region !== regionFilter) return false;
@@ -164,28 +168,37 @@ export const CallHistory = ({ calls, onRefresh, isLoading }: CallHistoryProps) =
                     </TableCell>
                     <TableCell>{formatDuration(call.duration_seconds)}</TableCell>
                     <TableCell>
-                      {(call as any)?.recording_status === 'ready' ? (
+                      <div className="flex items-center gap-1">
+                        {(call as any)?.recording_status === 'ready' ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedCall(call);
+                              setIsPlaybackOpen(true);
+                            }}
+                            className="text-green-600 hover:text-green-700"
+                          >
+                            <Play className="h-4 w-4 mr-1" />
+                            Play
+                          </Button>
+                        ) : (call as any)?.recording_status === 'processing' ? (
+                          <span className="flex items-center gap-1 text-yellow-600 text-sm">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Processing
+                          </span>
+                        ) : null}
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            setSelectedCall(call);
-                            setIsPlaybackOpen(true);
-                          }}
-                          className="text-green-600 hover:text-green-700"
+                          onClick={() => setTranscriptCall(call)}
+                          title="View transcript"
                         >
-                          <Play className="h-4 w-4 mr-1" />
-                          Play
+                          <FileText className="h-4 w-4" />
                         </Button>
-                      ) : (call as any)?.recording_status === 'processing' ? (
-                        <span className="flex items-center gap-1 text-yellow-600 text-sm">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          Processing
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      )}
+                      </div>
                     </TableCell>
+
                     <TableCell>
                       <div className="text-sm">
                         {format(new Date(call.created_at), 'MMM d, yyyy')}
@@ -211,6 +224,14 @@ export const CallHistory = ({ calls, onRefresh, isLoading }: CallHistoryProps) =
             setSelectedCall(null);
           }}
         />
+
+        {/* Transcript Dialog */}
+        <CallTranscriptDialog
+          call={transcriptCall}
+          isOpen={!!transcriptCall}
+          onClose={() => setTranscriptCall(null)}
+        />
+
       </CardContent>
     </Card>
   );

@@ -4,9 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Phone, PhoneOff, Users, Mic, MicOff, Volume2, VolumeX, Circle } from 'lucide-react';
+import { Phone, PhoneOff, Users, Mic, MicOff, Volume2, VolumeX, Circle, FileText, Loader2 } from 'lucide-react';
 import type { VoIPCall } from '@/types/voip';
 import { formatPhoneForDisplay } from '@/types/voip';
+import { useCallTranscription } from '@/hooks/useCallTranscription';
+import { useRegion } from '@/contexts/RegionContext';
+
 
 interface ActiveCallPanelProps {
   call: VoIPCall;
@@ -18,6 +21,16 @@ export const ActiveCallPanel = ({ call, onEndCall }: ActiveCallPanelProps) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
+  const [saveVoiceLog, setSaveVoiceLog] = useState(false);
+  const { country } = useRegion();
+  const transcription = useCallTranscription({
+    callId: call.id,
+    saveVoiceLog,
+    languageCode: call.region === 'Nigeria' || country === 'Nigeria' ? 'en' : 'en',
+    speaker: 'caller',
+    segmentSeconds: 15,
+  });
+
 
   useEffect(() => {
     const startTime = call.started_at ? new Date(call.started_at).getTime() : Date.now();
@@ -94,8 +107,40 @@ export const ActiveCallPanel = ({ call, onEndCall }: ActiveCallPanelProps) => {
             </div>
 
             {/* Call Controls */}
-            <div className="flex items-center gap-2">
-              {/* Recording Toggle */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Live Transcription Toggle (ElevenLabs Scribe) */}
+              <div className="flex items-center gap-1.5 mr-2 px-2 py-1 rounded-md border bg-background">
+                {transcription.isTranscribing ? (
+                  <Loader2 className="h-3 w-3 text-primary animate-spin" />
+                ) : (
+                  <FileText className="h-3 w-3 text-muted-foreground" />
+                )}
+                <Label htmlFor="transcribe-toggle" className="text-xs cursor-pointer">
+                  {transcription.isTranscribing ? 'Transcribing' : 'Transcribe'}
+                </Label>
+                <Switch
+                  id="transcribe-toggle"
+                  checked={transcription.isTranscribing}
+                  onCheckedChange={(on) => (on ? transcription.start() : transcription.stop())}
+                  className="scale-75"
+                />
+              </div>
+
+              {/* Voice log toggle (optional recording of audio segments) */}
+              <div className="flex items-center gap-1.5 mr-2 px-2 py-1 rounded-md border bg-background">
+                <Circle className={`h-3 w-3 ${saveVoiceLog ? 'text-red-500 fill-red-500 animate-pulse' : 'text-muted-foreground'}`} />
+                <Label htmlFor="voice-log-toggle" className="text-xs cursor-pointer">
+                  Voice log
+                </Label>
+                <Switch
+                  id="voice-log-toggle"
+                  checked={saveVoiceLog}
+                  onCheckedChange={setSaveVoiceLog}
+                  className="scale-75"
+                />
+              </div>
+
+              {/* Legacy Recording Toggle (Twilio) */}
               <div className="flex items-center gap-1.5 mr-2 px-2 py-1 rounded-md border bg-background">
                 <Circle className={`h-3 w-3 ${isRecording ? 'text-red-500 fill-red-500 animate-pulse' : 'text-muted-foreground'}`} />
                 <Label htmlFor="recording-toggle" className="text-xs cursor-pointer">
@@ -133,7 +178,37 @@ export const ActiveCallPanel = ({ call, onEndCall }: ActiveCallPanelProps) => {
             </div>
           </div>
         </div>
+
+        {/* Live transcript rail */}
+        {(transcription.isTranscribing || transcription.segments.length > 0) && (
+          <div className="mt-4 p-3 rounded-md border bg-background/60 max-h-40 overflow-y-auto text-sm space-y-1">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Live transcript · ElevenLabs Scribe
+              </span>
+              {saveVoiceLog && (
+                <Badge variant="outline" className="text-[10px]">
+                  <Circle className="h-2 w-2 mr-1 fill-red-500 text-red-500" /> Voice log saving
+                </Badge>
+              )}
+            </div>
+            {transcription.segments.length === 0 && transcription.isTranscribing && (
+              <p className="text-xs text-muted-foreground italic">Listening… first segment arrives after ~15s.</p>
+            )}
+            {transcription.segments.map((s) => (
+              <p key={`${s.segment_index}-${s.id ?? 'x'}`} className="leading-relaxed">
+                <span className="text-[10px] text-muted-foreground mr-2">#{s.segment_index + 1}</span>
+                {s.transcript_text}
+              </p>
+            ))}
+            {transcription.interimError && (
+              <p className="text-xs text-destructive">{transcription.interimError}</p>
+            )}
+          </div>
+        )}
+
       </CardContent>
     </Card>
+
   );
 };
