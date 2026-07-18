@@ -8,6 +8,7 @@ import { TraccarDashboard } from "@/components/admin/TraccarDashboard";
 import { SyncScheduleSettings } from "@/components/admin/SyncScheduleSettings";
 import BillingReconciliationPage from "@/pages/admin/BillingReconciliationPage";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
+import AdminVehicleCataloguePage from "@/pages/admin/AdminVehicleCataloguePage";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
 import { VehicleCategoryYearSpecs } from "@/components/admin/VehicleCategoryYearSpecs";
 
