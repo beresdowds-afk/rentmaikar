@@ -230,7 +230,7 @@ const Catalogue = () => {
               {country === "Nigeria" ? (
                 <>Showing vehicles in <strong>{driverHome.location}</strong> (your home city)</>
               ) : (
-                <>Showing vehicles within <strong>35 miles</strong> of <strong>{driverHome.location}</strong></>
+                <>Showing vehicles within <strong>{radiusMiles} miles</strong> of <strong>{driverHome.location}</strong></>
               )}
             </AlertDescription>
           </Alert>
