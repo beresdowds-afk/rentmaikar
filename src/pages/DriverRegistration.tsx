@@ -184,7 +184,7 @@ const DriverRegistration = () => {
 
       toast.success("Registration submitted successfully! We'll review your application within 24-48 hours.");
       setSubmitError(null);
-      navigate("/");
+      navigate("/driver/dashboard");
     } catch (error) {
       console.error("Driver registration error:", error);
       const friendly = classifyRegistrationError(error);
