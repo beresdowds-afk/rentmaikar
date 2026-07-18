@@ -196,7 +196,15 @@ export default function DriverDashboard() {
                 {country} Region • {isUSA ? '🇺🇸' : '🇳🇬'} {currency}
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="default"
+                className="gap-2"
+                onClick={() => navigate(`/catalogue/standard?radius=25&filter=nearby`)}
+              >
+                <MapPin className="h-4 w-4" />
+                {isUSA ? 'Vehicles within 25 mi' : 'Vehicles in my city'}
+              </Button>
               <Button variant="outline" className="gap-2">
                 <MessageSquare className="h-4 w-4" />
                 {isUSA ? 'Contact Support' : 'WhatsApp Support'}

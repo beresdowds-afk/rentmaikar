@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { Search, Filter, MapPin, Calendar, Star, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { useRegion } from "@/contexts/RegionContext";
 import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
-import { isVehicleInRange, getVehicleDistance, getNigeriaParentCity } from "@/lib/geo-utils";
+import { isVehicleInRange, getVehicleDistance, getNigeriaParentCity, USA_DEFAULT_RADIUS_MILES } from "@/lib/geo-utils";
 import categoryBudget from "@/assets/category-budget.jpg";
 import categoryStandard from "@/assets/category-standard.jpg";
 import categoryPremium from "@/assets/category-premium.jpg";
@@ -82,7 +82,10 @@ const getDriverHomeLocation = (country: "USA" | "Nigeria") => {
 
 const Catalogue = () => {
   const { category = "budget" } = useParams<{ category: string }>();
+  const [searchParams] = useSearchParams();
   const { country, currency, currencySymbol } = useRegion();
+  const radiusParam = Number(searchParams.get("radius"));
+  const radiusMiles = Number.isFinite(radiusParam) && radiusParam > 0 ? radiusParam : USA_DEFAULT_RADIUS_MILES;
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("nearby");
   const [sortBy, setSortBy] = useState("price-low");
@@ -116,7 +119,8 @@ const Catalogue = () => {
           vehicle.coordinates || null,
           driverHome.location,
           driverHome.coordinates,
-          country
+          country,
+          radiusMiles
         );
         const nearestCity = country === "Nigeria" 
           ? getNigeriaParentCity(vehicle.location) || vehicle.location
@@ -130,7 +134,7 @@ const Catalogue = () => {
         if (!a.isNearby && b.isNearby) return 1;
         return a.distance - b.distance;
       });
-  }, [allVehicles, country, driverHome]);
+  }, [allVehicles, country, driverHome, radiusMiles]);
 
   // Get nearby vehicles count for display
   const nearbyCount = useMemo(() => 
@@ -226,7 +230,7 @@ const Catalogue = () => {
               {country === "Nigeria" ? (
                 <>Showing vehicles in <strong>{driverHome.location}</strong> (your home city)</>
               ) : (
-                <>Showing vehicles within <strong>35 miles</strong> of <strong>{driverHome.location}</strong></>
+                <>Showing vehicles within <strong>{radiusMiles} miles</strong> of <strong>{driverHome.location}</strong></>
               )}
             </AlertDescription>
           </Alert>
@@ -251,7 +255,7 @@ const Catalogue = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="nearby">
-                    {country === "Nigeria" ? "My City Only" : "Within 35 Miles"}
+                    {country === "Nigeria" ? "My City Only" : `Within ${radiusMiles} Miles`}
                   </SelectItem>
                   <SelectItem value="all">
                     All {country === "Nigeria" ? "Nigeria" : "DMV Area"}

@@ -80,13 +80,18 @@ export const getDistanceBetweenLocations = (
   }
 };
 
+// Default USA catalogue radius (miles). Updated from 35 → 25 to match the
+// tighter "vehicles near me" rule surfaced on the driver dashboard.
+export const USA_DEFAULT_RADIUS_MILES = 25;
+
 // Check if a vehicle is within range based on country rules
 export const isVehicleInRange = (
   vehicleLocation: string,
   vehicleCoordinates: { lat: number; lng: number } | null,
   userLocation: string,
   userCoordinates: { lat: number; lng: number } | null,
-  country: "USA" | "Nigeria"
+  country: "USA" | "Nigeria",
+  radiusMiles: number = USA_DEFAULT_RADIUS_MILES
 ): boolean => {
   if (country === "Nigeria") {
     // Nigeria: Match by city
@@ -94,25 +99,22 @@ export const isVehicleInRange = (
     const userParentCity = getNigeriaParentCity(userLocation);
     return vehicleParentCity !== null && vehicleParentCity === userParentCity;
   } else {
-    // USA: 35-mile radius
+    // USA: configurable radius (default 25 miles)
     if (!vehicleCoordinates || !userCoordinates) {
-      // Fallback: check if coordinates can be looked up
       const vCoords = usaLocationCoordinates[vehicleLocation];
       const uCoords = usaLocationCoordinates[userLocation];
       if (!vCoords || !uCoords) return false;
-      
       const distance = calculateDistanceInMiles(
         uCoords.lat, uCoords.lng,
         vCoords.lat, vCoords.lng
       );
-      return distance <= 35;
+      return distance <= radiusMiles;
     }
-    
     const distance = calculateDistanceInMiles(
       userCoordinates.lat, userCoordinates.lng,
       vehicleCoordinates.lat, vehicleCoordinates.lng
     );
-    return distance <= 35;
+    return distance <= radiusMiles;
   }
 };
 

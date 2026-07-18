@@ -190,6 +190,12 @@ export const AssetsRegistry = () => {
           <div className="flex items-center gap-3">
             <Car className="h-5 w-5 text-primary" />
             <h3 className="text-lg font-semibold">Vehicle Assets Registry</h3>
+            <a
+              href="/admin/vehicle-catalogue"
+              className="ml-2 text-xs text-primary underline underline-offset-2"
+            >
+              Open searchable catalogue →
+            </a>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative">

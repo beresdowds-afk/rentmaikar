@@ -61,6 +61,7 @@ const AuditLogPage = lazy(() => import("./pages/admin/AuditLogPage"));
 const PaymentsViewerPage = lazy(() => import("./pages/admin/PaymentsViewerPage"));
 const TourStepConfigPage = lazy(() => import("./pages/admin/TourStepConfigPage"));
 const TourAnalyticsPage = lazy(() => import("./pages/admin/TourAnalyticsPage"));
+const AdminVehicleCataloguePage = lazy(() => import("./pages/admin/AdminVehicleCataloguePage"));
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
 const SubscriptionSuccessPage = lazy(() => import("./pages/SubscriptionSuccessPage"));
 const ProxyConsentPage = lazy(() => import("./pages/ProxyConsentPage"));
@@ -250,6 +251,14 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <TourAnalyticsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/vehicle-catalogue"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminVehicleCataloguePage />
                       </ProtectedRoute>
                     }
                   />
