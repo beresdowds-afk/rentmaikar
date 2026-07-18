@@ -417,7 +417,7 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                 New Agreement
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Rental Agreement</DialogTitle>
                 <DialogDescription>
