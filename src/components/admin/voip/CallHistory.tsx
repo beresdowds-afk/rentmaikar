@@ -168,28 +168,37 @@ export const CallHistory = ({ calls, onRefresh, isLoading }: CallHistoryProps) =
                     </TableCell>
                     <TableCell>{formatDuration(call.duration_seconds)}</TableCell>
                     <TableCell>
-                      {(call as any)?.recording_status === 'ready' ? (
+                      <div className="flex items-center gap-1">
+                        {(call as any)?.recording_status === 'ready' ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedCall(call);
+                              setIsPlaybackOpen(true);
+                            }}
+                            className="text-green-600 hover:text-green-700"
+                          >
+                            <Play className="h-4 w-4 mr-1" />
+                            Play
+                          </Button>
+                        ) : (call as any)?.recording_status === 'processing' ? (
+                          <span className="flex items-center gap-1 text-yellow-600 text-sm">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Processing
+                          </span>
+                        ) : null}
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            setSelectedCall(call);
-                            setIsPlaybackOpen(true);
-                          }}
-                          className="text-green-600 hover:text-green-700"
+                          onClick={() => setTranscriptCall(call)}
+                          title="View transcript"
                         >
-                          <Play className="h-4 w-4 mr-1" />
-                          Play
+                          <FileText className="h-4 w-4" />
                         </Button>
-                      ) : (call as any)?.recording_status === 'processing' ? (
-                        <span className="flex items-center gap-1 text-yellow-600 text-sm">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          Processing
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      )}
+                      </div>
                     </TableCell>
+
                     <TableCell>
                       <div className="text-sm">
                         {format(new Date(call.created_at), 'MMM d, yyyy')}
