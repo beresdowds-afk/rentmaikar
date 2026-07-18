@@ -745,6 +745,7 @@ const AdminDashboard = () => {
                 </Card>
               )}
               {activeTab === 'assets' && <AssetsRegistry />}
+              {activeTab === 'catalogue' && <AdminVehicleCataloguePage embedded />}
               {activeTab === 'pickup-locations' && <VehiclePickupManagement />}
               {activeTab === 'iot-monitoring' && <IoTMonitoringHub />}
               {activeTab === 'hologram' && <HologramDashboard />}
