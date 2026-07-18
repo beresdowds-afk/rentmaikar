@@ -213,7 +213,7 @@ const OwnerRegistration = () => {
 
       toast.success("Vehicle submitted for review! We'll contact you within 24-48 hours.");
       setSubmitError(null);
-      navigate("/");
+      navigate("/owner/dashboard");
     } catch (error) {
       console.error("Owner registration error:", error);
       const friendly = classifyRegistrationError(error);
