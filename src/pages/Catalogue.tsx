@@ -10,7 +10,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { useRegion } from "@/contexts/RegionContext";
 import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
-import { isVehicleInRange, getVehicleDistance, getNigeriaParentCity } from "@/lib/geo-utils";
+import { isVehicleInRange, getVehicleDistance, getNigeriaParentCity, USA_DEFAULT_RADIUS_MILES } from "@/lib/geo-utils";
 import categoryBudget from "@/assets/category-budget.jpg";
 import categoryStandard from "@/assets/category-standard.jpg";
 import categoryPremium from "@/assets/category-premium.jpg";
