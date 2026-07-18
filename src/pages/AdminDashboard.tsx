@@ -14,6 +14,7 @@ import { VehicleCategoryYearSpecs } from "@/components/admin/VehicleCategoryYear
 import { SecretsManagement } from "@/components/admin/SecretsManagement";
 import { TechStackDocButton } from "@/components/admin/TechStackDocButton";
 import { TwilioTestSendPanel } from "@/components/admin/TwilioTestSendPanel";
+import { ElevenLabsTestPanel } from "@/components/admin/ElevenLabsTestPanel";
 import { PSPConfigChecklist } from "@/components/admin/PSPConfigChecklist";
 import { ApiKeyManagement } from "@/components/admin/ApiKeyManagement";
 import { WebhookManagement } from "@/components/admin/WebhookManagement";
@@ -835,6 +836,7 @@ const AdminDashboard = () => {
                   </div>
                   <PSPConfigChecklist />
                   <TwilioTestSendPanel />
+                  <ElevenLabsTestPanel />
                   <SecretsManagement />
                 </div>
               )}
