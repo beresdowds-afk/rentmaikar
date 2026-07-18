@@ -1171,6 +1171,78 @@ export type Database = {
         }
         Relationships: []
       }
+      elevenlabs_test_logs: {
+        Row: {
+          audio_bytes: number | null
+          audio_storage_path: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          input_file_name: string | null
+          input_file_size_bytes: number | null
+          input_mime_type: string | null
+          input_text: string | null
+          kind: string
+          language_code: string | null
+          model_id: string | null
+          region: string | null
+          request_metadata: Json
+          response_metadata: Json
+          status: string
+          transcript_text: string | null
+          user_id: string | null
+          voice_id: string | null
+          words: Json | null
+        }
+        Insert: {
+          audio_bytes?: number | null
+          audio_storage_path?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_file_name?: string | null
+          input_file_size_bytes?: number | null
+          input_mime_type?: string | null
+          input_text?: string | null
+          kind: string
+          language_code?: string | null
+          model_id?: string | null
+          region?: string | null
+          request_metadata?: Json
+          response_metadata?: Json
+          status?: string
+          transcript_text?: string | null
+          user_id?: string | null
+          voice_id?: string | null
+          words?: Json | null
+        }
+        Update: {
+          audio_bytes?: number | null
+          audio_storage_path?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_file_name?: string | null
+          input_file_size_bytes?: number | null
+          input_mime_type?: string | null
+          input_text?: string | null
+          kind?: string
+          language_code?: string | null
+          model_id?: string | null
+          region?: string | null
+          request_metadata?: Json
+          response_metadata?: Json
+          status?: string
+          transcript_text?: string | null
+          user_id?: string | null
+          voice_id?: string | null
+          words?: Json | null
+        }
+        Relationships: []
+      }
       email_analytics: {
         Row: {
           category: string

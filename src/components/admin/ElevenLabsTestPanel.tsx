@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,19 +8,25 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Volume2, Mic, Square, Upload, Radio, PhoneOff, Phone } from "lucide-react";
+import { Loader2, Volume2, Mic, Square, Upload, Radio, PhoneOff, Phone, RefreshCw, Play, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useElevenLabsTTS } from "@/hooks/useElevenLabsTTS";
 import { useConversation } from "@elevenlabs/react";
 
 const DEFAULT_TTS = "Hello from Rentmaikar. This is an ElevenLabs test message confirming end-to-end audio delivery.";
+const FUNCTIONS_BASE = "https://bwvocmhcledbwqlpcswp.functions.supabase.co";
 
 // ---------------- TTS TAB ----------------
-function TTSTest() {
+function TTSTest({ onLogged }: { onLogged: () => void }) {
   const [text, setText] = useState(DEFAULT_TTS);
   const [voiceId, setVoiceId] = useState("");
   const [region, setRegion] = useState<"US" | "NG">("US");
   const { speak, stop, isLoading, isPlaying, error } = useElevenLabsTTS();
+
+  const handleSpeak = async () => {
+    await speak(text, { region, voiceId: voiceId || undefined });
+    onLogged();
+  };
 
   return (
     <div className="space-y-4">
@@ -43,7 +49,7 @@ function TTSTest() {
         </div>
       </div>
       <div className="flex gap-2">
-        <Button onClick={() => speak(text, { region, voiceId: voiceId || undefined })} disabled={isLoading || !text.trim()}>
+        <Button onClick={handleSpeak} disabled={isLoading || !text.trim()}>
           {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Volume2 className="h-4 w-4 mr-2" />}
           Generate & Play
         </Button>
@@ -63,7 +69,7 @@ function TTSTest() {
 interface TranscriptWord { text: string; start: number; end: number; speaker?: string }
 interface TranscriptResult { text: string; words?: TranscriptWord[]; language_code?: string }
 
-function STTTest() {
+function STTTest({ onLogged }: { onLogged: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
@@ -112,7 +118,7 @@ function STTTest() {
       form.append("audio", file);
       form.append("diarize", "true");
       form.append("tag_audio_events", "true");
-      const res = await fetch("https://bwvocmhcledbwqlpcswp.functions.supabase.co/elevenlabs-stt", {
+      const res = await fetch(`${FUNCTIONS_BASE}/elevenlabs-stt`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: form,
@@ -121,6 +127,7 @@ function STTTest() {
       if (!res.ok) throw new Error(json?.details || json?.error || `HTTP ${res.status}`);
       setResult(json);
       toast.success("Transcription complete");
+      onLogged();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Transcription failed");
     } finally {
@@ -180,16 +187,39 @@ function STTTest() {
 }
 
 // ---------------- VOICE AGENT TAB ----------------
+type MicPermState = "unknown" | "granted" | "denied" | "prompt";
+const MAX_RECONNECT_ATTEMPTS = 3;
+
 function VoiceAgentTest() {
   const [agentId, setAgentId] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [transcript, setTranscript] = useState<Array<{ role: string; text: string }>>([]);
   const [error, setError] = useState<string | null>(null);
+  const [micState, setMicState] = useState<MicPermState>("unknown");
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
+  const shouldReconnectRef = useRef(false);
+  const reconnectTimerRef = useRef<number | null>(null);
 
   const conversation = useConversation({
-    onConnect: () => toast.success("Voice agent connected"),
-    onDisconnect: () => toast.info("Voice agent disconnected"),
-    onError: (err) => setError(String(err)),
+    onConnect: () => {
+      setReconnectAttempt(0);
+      shouldReconnectRef.current = true;
+      toast.success("Voice agent connected");
+    },
+    onDisconnect: () => {
+      toast.info("Voice agent disconnected");
+      if (shouldReconnectRef.current && reconnectAttempt < MAX_RECONNECT_ATTEMPTS) {
+        const attempt = reconnectAttempt + 1;
+        const delay = Math.min(1000 * 2 ** (attempt - 1), 8000);
+        setReconnectAttempt(attempt);
+        toast(`Reconnecting… attempt ${attempt}/${MAX_RECONNECT_ATTEMPTS}`);
+        reconnectTimerRef.current = window.setTimeout(() => void start(true), delay);
+      }
+    },
+    onError: (err) => {
+      const msg = typeof err === "string" ? err : (err as Error)?.message || "Voice agent error";
+      setError(msg);
+    },
     onMessage: (msg: unknown) => {
       const m = msg as { type?: string; user_transcription_event?: { user_transcript?: string }; agent_response_event?: { agent_response?: string } };
       if (m.type === "user_transcript" && m.user_transcription_event?.user_transcript) {
@@ -200,15 +230,56 @@ function VoiceAgentTest() {
     },
   });
 
-  const start = async () => {
-    setError(null);
-    setConnecting(true);
+  // Query mic permission state on mount (best-effort; not all browsers/iOS)
+  useEffect(() => {
+    const nav = navigator as Navigator & { permissions?: { query: (p: { name: PermissionName }) => Promise<PermissionStatus> } };
+    if (!nav.permissions?.query) return;
+    nav.permissions.query({ name: "microphone" as PermissionName })
+      .then((status) => {
+        setMicState(status.state as MicPermState);
+        status.onchange = () => setMicState(status.state as MicPermState);
+      })
+      .catch(() => { /* Safari/iOS may not support this */ });
+  }, []);
+
+  useEffect(() => () => {
+    if (reconnectTimerRef.current) window.clearTimeout(reconnectTimerRef.current);
+    shouldReconnectRef.current = false;
+  }, []);
+
+  const requestMic = useCallback(async () => {
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      setMicState("granted");
+      return true;
+    } catch (e) {
+      const name = (e as DOMException)?.name;
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        setMicState("denied");
+        setError("Microphone permission denied. Enable it in your browser/device settings, then try again. On iOS: Settings → Safari → Microphone. On Android: site settings → Permissions.");
+      } else if (name === "NotFoundError") {
+        setError("No microphone was detected on this device.");
+      } else if (name === "NotReadableError") {
+        setError("Microphone is in use by another app. Close it and retry.");
+      } else {
+        setError(e instanceof Error ? e.message : "Microphone unavailable");
+      }
+      return false;
+    }
+  }, []);
+
+  const start = useCallback(async (isReconnect = false) => {
+    setError(null);
+    if (!isReconnect) setConnecting(true);
+    try {
+      const gotMic = await requestMic();
+      if (!gotMic) return;
+
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
       if (!token) throw new Error("Not signed in");
-      const res = await fetch("https://bwvocmhcledbwqlpcswp.functions.supabase.co/elevenlabs-agent-token", {
+      const res = await fetch(`${FUNCTIONS_BASE}/elevenlabs-agent-token`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ agentId: agentId.trim() || undefined }),
@@ -218,12 +289,15 @@ function VoiceAgentTest() {
       await conversation.startSession({ conversationToken: json.token, connectionType: "webrtc" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to connect agent");
+      shouldReconnectRef.current = false;
     } finally {
-      setConnecting(false);
+      if (!isReconnect) setConnecting(false);
     }
-  };
+  }, [agentId, conversation, requestMic]);
 
   const stop = async () => {
+    shouldReconnectRef.current = false;
+    if (reconnectTimerRef.current) window.clearTimeout(reconnectTimerRef.current);
     await conversation.endSession();
   };
 
@@ -237,13 +311,30 @@ function VoiceAgentTest() {
           Or save an <code>ELEVENLABS_AGENT_ID</code> secret as the default.
         </AlertDescription>
       </Alert>
+      {micState === "denied" && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="text-xs">
+            Microphone is blocked. Enable it in browser/OS settings, then tap “Retry mic access”.
+          </AlertDescription>
+        </Alert>
+      )}
+      <div className="flex gap-2 items-center flex-wrap">
+        <Button size="sm" variant="outline" onClick={requestMic}>
+          <Mic className="h-4 w-4 mr-2" /> Retry mic access
+        </Button>
+        <Badge variant={micState === "granted" ? "default" : "secondary"}>Mic: {micState}</Badge>
+        {reconnectAttempt > 0 && (
+          <Badge variant="secondary" className="gap-1"><RefreshCw className="h-3 w-3 animate-spin" />Reconnecting {reconnectAttempt}/{MAX_RECONNECT_ATTEMPTS}</Badge>
+        )}
+      </div>
       <div>
         <Label>Agent ID (optional)</Label>
         <Input value={agentId} onChange={(e) => setAgentId(e.target.value)} placeholder="agent_..." />
       </div>
       <div className="flex gap-2 items-center">
         {!isConnected ? (
-          <Button onClick={start} disabled={connecting}>
+          <Button onClick={() => start(false)} disabled={connecting}>
             {connecting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Phone className="h-4 w-4 mr-2" />}
             Start conversation
           </Button>
@@ -259,7 +350,7 @@ function VoiceAgentTest() {
           </Badge>
         )}
       </div>
-      {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+      {error && <Alert variant="destructive"><AlertDescription className="text-xs whitespace-pre-line">{error}</AlertDescription></Alert>}
       {transcript.length > 0 && (
         <Card className="p-4 max-h-72 overflow-auto space-y-2">
           {transcript.map((m, i) => (
@@ -276,14 +367,145 @@ function VoiceAgentTest() {
   );
 }
 
+// ---------------- RECENT RUNS TAB ----------------
+interface RunRow {
+  id: string;
+  kind: "tts" | "stt";
+  status: string;
+  region: string | null;
+  voice_id: string | null;
+  model_id: string | null;
+  input_text: string | null;
+  input_file_name: string | null;
+  input_file_size_bytes: number | null;
+  transcript_text: string | null;
+  language_code: string | null;
+  audio_storage_path: string | null;
+  audio_bytes: number | null;
+  duration_ms: number | null;
+  request_metadata: unknown;
+  response_metadata: unknown;
+  error_message: string | null;
+  created_at: string;
+  user_id: string | null;
+}
+
+function RecentRuns({ refreshToken }: { refreshToken: number }) {
+  const [rows, setRows] = useState<RunRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState<"all" | "tts" | "stt">("all");
+  const [playingId, setPlayingId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    let q = supabase.from("elevenlabs_test_logs").select("*").order("created_at", { ascending: false }).limit(50);
+    if (filter !== "all") q = q.eq("kind", filter);
+    const { data, error } = await q;
+    if (error) toast.error(error.message);
+    else setRows((data ?? []) as unknown as RunRow[]);
+    setLoading(false);
+  }, [filter]);
+
+  useEffect(() => { void load(); }, [load, refreshToken]);
+
+  const playAudio = async (row: RunRow) => {
+    if (!row.audio_storage_path) return toast.error("No audio saved for this run");
+    setPlayingId(row.id);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      const res = await fetch(`${FUNCTIONS_BASE}/elevenlabs-test-audio-url`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ logId: row.id }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Failed to load audio");
+      const audio = new Audio(json.url);
+      await audio.play();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Playback failed");
+    } finally {
+      setPlayingId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2 items-center">
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as typeof filter)}
+          className="h-9 border rounded-md px-3 bg-background text-sm"
+        >
+          <option value="all">All runs</option>
+          <option value="tts">TTS only</option>
+          <option value="stt">STT only</option>
+        </select>
+        <Button size="sm" variant="outline" onClick={load} disabled={loading}>
+          {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+          Refresh
+        </Button>
+        <span className="text-xs text-muted-foreground">{rows.length} runs</span>
+      </div>
+      <div className="border rounded-md divide-y max-h-[520px] overflow-auto">
+        {rows.length === 0 && !loading && (
+          <div className="p-6 text-sm text-muted-foreground text-center">No test runs yet.</div>
+        )}
+        {rows.map((r) => (
+          <div key={r.id} className="p-3 text-sm space-y-1">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Badge variant={r.kind === "tts" ? "default" : "secondary"}>{r.kind.toUpperCase()}</Badge>
+                <Badge variant={r.status === "success" ? "outline" : "destructive"}>{r.status}</Badge>
+                {r.language_code && <Badge variant="secondary">{r.language_code}</Badge>}
+                {r.region && <Badge variant="secondary">{r.region}</Badge>}
+                <span className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</span>
+                {r.duration_ms != null && <span className="text-xs text-muted-foreground">{r.duration_ms}ms</span>}
+              </div>
+              {r.audio_storage_path && (
+                <Button size="sm" variant="ghost" onClick={() => playAudio(r)} disabled={playingId === r.id}>
+                  {playingId === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                  <span className="ml-1 text-xs">Play</span>
+                </Button>
+              )}
+            </div>
+            {r.input_text && (
+              <div className="text-xs text-muted-foreground line-clamp-2"><b>Input:</b> {r.input_text}</div>
+            )}
+            {r.input_file_name && (
+              <div className="text-xs text-muted-foreground"><b>File:</b> {r.input_file_name} ({r.input_file_size_bytes ? (r.input_file_size_bytes / 1024).toFixed(1) + " KB" : "—"})</div>
+            )}
+            {r.transcript_text && (
+              <div className="text-xs line-clamp-3"><b>Transcript:</b> {r.transcript_text}</div>
+            )}
+            {r.error_message && (
+              <div className="text-xs text-destructive line-clamp-3"><b>Error:</b> {r.error_message}</div>
+            )}
+            <details className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground">Request/Response metadata</summary>
+              <pre className="mt-1 bg-muted rounded p-2 overflow-auto max-h-40 text-[10px]">
+{JSON.stringify({ request: r.request_metadata, response: r.response_metadata, voice_id: r.voice_id, model_id: r.model_id, audio_path: r.audio_storage_path }, null, 2)}
+              </pre>
+            </details>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ---------------- ROOT PANEL ----------------
 export const ElevenLabsTestPanel = () => {
+  const [refreshToken, setRefreshToken] = useState(0);
+  const bumpRefresh = () => setRefreshToken((n) => n + 1);
+
   return (
     <Card className="p-6 space-y-4">
       <div>
         <h3 className="text-lg font-semibold">ElevenLabs Test Panel</h3>
         <p className="text-sm text-muted-foreground">
-          Verify TTS, STT, and Conversational Voice Agent end-to-end using the linked ElevenLabs API key.
+          Verify TTS, STT, and Conversational Voice Agent end-to-end. Every TTS/STT run is saved to the database for admin review.
         </p>
       </div>
       <Tabs defaultValue="tts">
@@ -291,10 +513,12 @@ export const ElevenLabsTestPanel = () => {
           <TabsTrigger value="tts">Text-to-Speech</TabsTrigger>
           <TabsTrigger value="stt">Speech-to-Text</TabsTrigger>
           <TabsTrigger value="agent">Voice Agent</TabsTrigger>
+          <TabsTrigger value="runs">Recent runs</TabsTrigger>
         </TabsList>
-        <TabsContent value="tts" className="pt-4"><TTSTest /></TabsContent>
-        <TabsContent value="stt" className="pt-4"><STTTest /></TabsContent>
+        <TabsContent value="tts" className="pt-4"><TTSTest onLogged={bumpRefresh} /></TabsContent>
+        <TabsContent value="stt" className="pt-4"><STTTest onLogged={bumpRefresh} /></TabsContent>
         <TabsContent value="agent" className="pt-4"><VoiceAgentTest /></TabsContent>
+        <TabsContent value="runs" className="pt-4"><RecentRuns refreshToken={refreshToken} /></TabsContent>
       </Tabs>
     </Card>
   );
