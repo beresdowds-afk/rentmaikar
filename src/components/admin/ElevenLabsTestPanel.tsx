@@ -588,29 +588,52 @@ function SyncedTranscriptPlayer({
             <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => jumpMatch(1)}>Next</Button>
           </>
         )}
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-6 px-2 text-xs ml-auto"
-          onClick={async () => {
-            const url = await ensureUrl();
-            if (!url) return;
-            const el = audioRef.current;
-            if (!el) return;
-            if (el.paused) { await el.play(); } else { el.pause(); }
-          }}
-          disabled={loading}
-        >
-          {loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : playing ? <Pause className="h-3 w-3 mr-1" /> : <Play className="h-3 w-3 mr-1" />}
-          {playing ? "Pause" : "Play"}
-        </Button>
+        <div className="ml-auto flex items-center gap-1">
+          <Label className="text-[10px] text-muted-foreground">Speed</Label>
+          <select
+            value={rate}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setRate(v);
+              const el = audioRef.current;
+              if (el) el.playbackRate = v;
+            }}
+            className="h-6 rounded border bg-background px-1 text-xs"
+          >
+            {[0.75, 1, 1.25, 1.5, 1.75, 2].map((s) => (
+              <option key={s} value={s}>{s}x</option>
+            ))}
+          </select>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 px-2 text-xs"
+            onClick={async () => {
+              const url = await ensureUrl();
+              if (!url) return;
+              const el = audioRef.current;
+              if (!el) return;
+              if (el.paused) { el.playbackRate = rate; await el.play(); } else { el.pause(); }
+            }}
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : playing ? <Pause className="h-3 w-3 mr-1" /> : <Play className="h-3 w-3 mr-1" />}
+            {playing ? "Pause" : "Play"}
+          </Button>
+        </div>
       </div>
       <audio
         ref={audioRef}
         src={audioUrl ?? undefined}
         controls
         className="w-full h-8"
-        onPlay={() => setPlaying(true)}
+        onLoadedMetadata={(e) => { (e.currentTarget as HTMLAudioElement).playbackRate = rate; }}
+        onPlay={(e) => { (e.currentTarget as HTMLAudioElement).playbackRate = rate; setPlaying(true); }}
+        onRateChange={(e) => {
+          // If the user changes speed via the native controls, mirror it into React state
+          const v = (e.currentTarget as HTMLAudioElement).playbackRate;
+          if (v !== rate) setRate(v);
+        }}
         onPause={() => setPlaying(false)}
         onEnded={() => { setPlaying(false); setActiveIdx(-1); }}
         onTimeUpdate={onTimeUpdate}
