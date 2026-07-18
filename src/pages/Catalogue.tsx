@@ -82,7 +82,10 @@ const getDriverHomeLocation = (country: "USA" | "Nigeria") => {
 
 const Catalogue = () => {
   const { category = "budget" } = useParams<{ category: string }>();
+  const [searchParams] = useSearchParams();
   const { country, currency, currencySymbol } = useRegion();
+  const radiusParam = Number(searchParams.get("radius"));
+  const radiusMiles = Number.isFinite(radiusParam) && radiusParam > 0 ? radiusParam : USA_DEFAULT_RADIUS_MILES;
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("nearby");
   const [sortBy, setSortBy] = useState("price-low");
