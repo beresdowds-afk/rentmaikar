@@ -207,8 +207,8 @@ export const ActiveCallPanel = ({ call, onEndCall }: ActiveCallPanelProps) => {
           </div>
         )}
 
-        </div>
       </CardContent>
     </Card>
+
   );
 };
