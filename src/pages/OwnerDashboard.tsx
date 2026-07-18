@@ -65,6 +65,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
+import { useOnboardingGate } from '@/hooks/useOnboardingGate';
 
 const VEHICLE_CATEGORY_DEFS = [
   { value: 'smart-start', label: 'Smart Start', specKey: 'budget', maxWeekly: 250 },
@@ -156,7 +157,15 @@ export default function OwnerDashboard() {
   };
 
   const authGate = useDashboardAuthGate({ allowedRoles: ['owner'], label: 'Owner Dashboard' });
+  const { checking: onboardingChecking } = useOnboardingGate('owner');
   if (authGate) return <>{authGate}</>;
+  if (onboardingChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+        Checking onboarding status…
+      </div>
+    );
+  }
 
   return (
     <VerificationGate userType="owner" bypassForAdmin={isAdminView}>

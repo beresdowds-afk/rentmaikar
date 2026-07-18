@@ -45,6 +45,7 @@ import { ProxyBillingSettings } from '@/components/driver/ProxyBillingSettings';
 import { EnablePushButton } from '@/components/notifications/EnablePushButton';
 import { installDeepLinkListener } from '@/lib/push';
 import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
+import { useOnboardingGate } from '@/hooks/useOnboardingGate';
 import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -161,7 +162,15 @@ export default function DriverDashboard() {
   };
 
   const authGate = useDashboardAuthGate({ allowedRoles: ['driver'], label: 'Driver Dashboard' });
+  const { checking: onboardingChecking } = useOnboardingGate('driver');
   if (authGate) return <>{authGate}</>;
+  if (onboardingChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+        Checking onboarding status…
+      </div>
+    );
+  }
 
   return (
     <VerificationGate userType="driver" bypassForAdmin={isAdminView}>

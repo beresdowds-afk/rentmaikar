@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, AlertCircle, User, Shield, Users, ArrowLeft, Mail, CheckCircle, RefreshCw } from 'lucide-react';
+import { Loader2, AlertCircle, User, Shield, Users, ArrowLeft, Mail, CheckCircle, RefreshCw, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
 import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
@@ -54,6 +54,8 @@ const Auth = () => {
   const [unverifiedEmail, setUnverifiedEmail] = useState<string>('');
   const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [verificationResent, setVerificationResent] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [activeTab, setActiveTab] = useState('login');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
@@ -181,14 +183,22 @@ const Auth = () => {
     setIsSubmitting(false);
   };
 
+  // Cooldown ticker for resend verification button
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown]);
+
   const handleResendVerification = async () => {
-    if (!unverifiedEmail) return;
-    
+    if (!unverifiedEmail || resendCooldown > 0 || isResendingVerification) return;
+
     setIsResendingVerification(true);
-    
+    setResendError(null);
+
     try {
       const redirectUrl = `${window.location.origin}/auth`;
-      
+
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: unverifiedEmail,
@@ -198,19 +208,27 @@ const Auth = () => {
       });
 
       if (error) {
-        toast.error('Failed to resend verification email', {
-          description: error.message,
-        });
+        const msg = /rate|too many|over_email/i.test(error.message)
+          ? 'You’re requesting emails too quickly. Please wait a minute before trying again.'
+          : error.message;
+        setResendError(msg);
+        toast.error('Could not resend verification email', { description: msg });
+        // Still enforce a short cooldown so users don't hammer the button.
+        setResendCooldown(30);
       } else {
         setVerificationResent(true);
+        setResendCooldown(60);
         toast.success('Verification email sent!', {
           description: 'Please check your inbox and spam folder.',
         });
       }
     } catch (err: any) {
+      const msg = err?.message ?? 'Unexpected error resending verification email.';
+      setResendError(msg);
       toast.error('Failed to resend verification email');
+      setResendCooldown(30);
     }
-    
+
     setIsResendingVerification(false);
   };
 
@@ -218,6 +236,8 @@ const Auth = () => {
     setShowEmailVerification(false);
     setUnverifiedEmail('');
     setVerificationResent(false);
+    setResendError(null);
+    setResendCooldown(0);
   };
 
   const handleSignup = async (data: SignupFormData) => {
@@ -335,31 +355,49 @@ const Auth = () => {
                   A new verification email has been sent! Check your inbox and spam folder.
                 </AlertDescription>
               </Alert>
-            ) : (
-              <div className="text-center space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Didn't receive the email? Check your spam folder or request a new one.
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={handleResendVerification}
-                  disabled={isResendingVerification}
-                  className="gap-2"
-                >
-                  {isResendingVerification ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4" />
-                      Resend Verification Email
-                    </>
-                  )}
-                </Button>
-              </div>
+            ) : null}
+
+            {resendError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{resendError}</AlertDescription>
+              </Alert>
             )}
+
+            <div className="text-center space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Didn't receive the email? Check your spam folder or request a new one.
+              </p>
+              <Button
+                variant="outline"
+                onClick={handleResendVerification}
+                disabled={isResendingVerification || resendCooldown > 0}
+                className="gap-2"
+                aria-live="polite"
+              >
+                {isResendingVerification ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : resendCooldown > 0 ? (
+                  <>
+                    <Clock className="h-4 w-4" />
+                    Resend available in {resendCooldown}s
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    {verificationResent ? 'Resend Again' : 'Resend Verification Email'}
+                  </>
+                )}
+              </Button>
+              {resendCooldown > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  We limit how often verification emails can be sent to protect your inbox.
+                </p>
+              )}
+            </div>
 
             <div className="pt-4 border-t border-border">
               <div className="text-sm text-muted-foreground space-y-2">
