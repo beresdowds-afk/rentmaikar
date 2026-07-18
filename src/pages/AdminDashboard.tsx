@@ -833,6 +833,7 @@ const AdminDashboard = () => {
                     <TechStackDocButton />
                   </div>
                   <PSPConfigChecklist />
+                  <TwilioTestSendPanel />
                   <SecretsManagement />
                 </div>
               )}
