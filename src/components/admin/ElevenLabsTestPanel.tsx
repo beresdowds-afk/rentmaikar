@@ -13,8 +13,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Loader2, Volume2, Mic, Square, Upload, Radio, PhoneOff, Phone, RefreshCw, Play, AlertCircle,
-  Trash2, Download, Search, Settings, Save,
+  Loader2, Volume2, Mic, Square, Upload, Radio, PhoneOff, Phone, RefreshCw, Play, Pause, AlertCircle,
+  Trash2, Download, Search, Settings, Save, ListMusic,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useElevenLabsTTS } from "@/hooks/useElevenLabsTTS";
