@@ -45,7 +45,8 @@ import { ProxyBillingSettings } from '@/components/driver/ProxyBillingSettings';
 import { EnablePushButton } from '@/components/notifications/EnablePushButton';
 import { installDeepLinkListener } from '@/lib/push';
 import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
-import { useOnboardingGate } from '@/hooks/useOnboardingGate';
+import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
+import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
 import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -162,14 +163,17 @@ export default function DriverDashboard() {
   };
 
   const authGate = useDashboardAuthGate({ allowedRoles: ['driver'], label: 'Driver Dashboard' });
-  const { checking: onboardingChecking } = useOnboardingGate('driver');
+  const { data: progress, isLoading: progressLoading } = useRegistrationProgress();
   if (authGate) return <>{authGate}</>;
-  if (onboardingChecking) {
+  if (progressLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-muted-foreground">
-        Checking onboarding status…
+        Loading your dashboard…
       </div>
     );
+  }
+  if (!isAdminView && progress && progress.access_level === 'view_only') {
+    return <ViewOnlyDashboardShell role="driver" progress={progress} />;
   }
 
   return (

@@ -636,6 +636,23 @@ export const ApplicationManagement = () => {
                 </Button>
               </>
             )}
+            {viewApp && viewApp.status === 'approved' && viewApp.user_id && (
+              <Button
+                variant="default"
+                onClick={async () => {
+                  const { error } = await supabase.rpc('grant_full_access', { _user_id: viewApp.user_id });
+                  if (error) {
+                    toast.error('Could not grant full access: ' + error.message);
+                  } else {
+                    toast.success('Full dashboard access granted');
+                    setViewApp(null);
+                    queryClient.invalidateQueries({ queryKey: ['applications'] });
+                  }
+                }}
+              >
+                <CheckCircle className="h-4 w-4 mr-1" /> Grant full dashboard access
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setViewApp(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>

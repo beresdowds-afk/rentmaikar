@@ -1,69 +1,82 @@
-Set up a PayPal payment integration for US-region transactions, leaving the live credentials as placeholders to be filled in later.
 
-## Background
-- The project already supports region-aware payments (US: PayPal, NG: Paystack, Bank transfers).
-- Currently no PayPal secrets exist and no PayPal code is in the codebase.
-- The build should follow the existing `RegionContext` pattern and the admin-mediated payment flow.
+# Staged Registration Flow (Drivers & Owners)
 
-## What will be built
+Restructure onboarding into 5 explicit stages, with a **view-only dashboard** unlocked after step 1 and full access granted only after admin approval.
 
-1. **Secrets scaffolding**
-   - Create `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` entries (empty/placeholder values) so the project knows they are required.
-   - You will fill them in later via the secrets form.
+## Stages
 
-2. **Backend edge function**
-   - `supabase/functions/paypal-create-order/index.ts`:
-     - Validates the request, creates a PayPal order via the PayPal API, and returns the order ID to the client.
-     - Uses `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` to generate an access token.
-     - Supports both PayPal sandbox (`sb-`) and live modes based on a `PAYPAL_ENV` secret or inferred from credentials.
-     - CORS headers included.
-   - `supabase/functions/paypal-capture-order/index.ts`:
-     - Captures an approved order and records the payment in the existing `payments` table.
+```text
+1. AUTH              → email + password signup, email verification
+2. ACCOUNT OPENED    → view-only dashboard (checklist + preview + profile/notifications)
+3. DOCUMENTS         → role-specific uploads (+ referees for drivers, + proxy billing when driver adds one)
+4. VERIFICATION      → Persona ID check + document review; referees attest; proxy signs consent
+5. ADMIN APPROVAL    → admin final-approves → full dashboard unlocked
+```
 
-3. **Frontend PayPal integration**
-   - Add `@paypal/react-paypal-js` to the project.
-   - Create `src/components/payments/PayPalCheckout.tsx`:
-     - Renders PayPal buttons inside the existing rental/agreement checkout flow.
-     - Consumes `RegionContext` and only renders for US/USD region.
-     - Calls the edge functions to create/capture orders.
-   - Create `src/hooks/usePayPalConfig.ts`:
-     - Returns the correct PayPal client ID and environment based on region.
+Existing approved users are **grandfathered** — flow applies only to new signups (detected via `profiles.registration_stage IS NULL`).
 
-4. **Database schema additions**
-   - Add `payment_provider` enum value or column support for `paypal`.
-   - Add a migration to record PayPal order IDs and capture status in the `payments` table, or use a dedicated `paypal_transactions` table with RLS.
-   - Include proper `GRANT` statements and RLS policies.
+## Data model (one migration)
 
-5. **Admin UI updates**
-   - Add a "PayPal" option in the payment provider selector in admin rental/agreement management.
-   - Add a read-only status badge for PayPal transactions.
+Add to `profiles`:
+- `registration_stage` enum: `auth` | `account_opened` | `documents_submitted` | `verification_pending` | `approved`
+- `stage_updated_at timestamptz`
+- `access_level` enum: `view_only` | `full` (default `view_only`; grandfathered rows backfilled to `full`)
 
-6. **Validation / safe guards**
-   - PayPal buttons only show for US region with USD currency.
-   - Edge functions return clear errors if secrets are not set.
-   - No secrets are hardcoded; the client ID may be passed from the backend but not stored in code.
+Add RPCs (SECURITY DEFINER, search_path=public):
+- `advance_registration_stage(target_stage)` — validates transition, logs to `application_audit_log`
+- `grant_full_access(user_id)` — admin-only; sets `access_level='full'` + stage `approved`
+- `get_my_registration_progress()` — returns stage, missing items, next action
+
+Trigger: when Persona verification succeeds AND required docs present AND (drivers) referees attested → auto-advance to `verification_pending` and create/refresh an admin review task.
+
+## Backend gates
+
+- Extend `useDashboardAuthGate` → add `requireFullAccess` mode; view-only users see stage checklist instead of dashboard content.
+- RLS: mutating policies on `rentals`, `price_negotiations`, `iot_device_orders`, `rent_to_own_listings` add `access_level = 'full'` check via `has_full_access(auth.uid())` SECURITY DEFINER helper.
+- Registration pages stop navigating straight to dashboards; they navigate to `/driver/dashboard` or `/owner/dashboard` which now renders in view-only mode until stage=approved.
+
+## Frontend
+
+New shared component `RegistrationProgressPanel` (checklist with 5 stages, current step highlighted, CTAs for next action).
+
+`DriverDashboard` / `OwnerDashboard`:
+- If `access_level='view_only'`: render `RegistrationProgressPanel` + preview grid (feature tiles with `Lock` badge + "Unlocks after approval") + profile editor + notification prefs. Hide all data queries.
+- If `full`: render as today.
+
+Documents step (`DriverOnboarding`, `OwnerOnboarding`) becomes stage 3 — on submit calls `advance_registration_stage('documents_submitted')` and launches Persona.
+
+Referee verification (drivers): unchanged flow, but its completion is now a prerequisite for stage advancement. Admin review dashboard shows a blocker if referees pending.
+
+Proxy billing: unchanged; remains a runtime action inside the driver dashboard (post-approval), since a proxy is optional and can be added later.
+
+Admin approval: `ApplicationManagement` gains a "Grant full dashboard access" action which calls `grant_full_access` — only enabled when Persona verified + docs complete + referees attested.
+
+## Grandfathering
+
+Migration backfills existing rows:
+```sql
+UPDATE profiles SET access_level='full', registration_stage='approved'
+WHERE user_id IN (SELECT user_id FROM user_roles WHERE role IN ('driver','owner'))
+  AND onboarding_completed_at IS NOT NULL;
+```
+
+## Files touched (approximate)
+
+- `supabase/migrations/<new>.sql` — enums, columns, RPCs, trigger, backfill, RLS helper
+- `src/hooks/useRegistrationProgress.ts` (new)
+- `src/components/registration/RegistrationProgressPanel.tsx` (new)
+- `src/components/registration/ViewOnlyDashboardShell.tsx` (new)
+- `src/pages/DriverDashboard.tsx`, `src/pages/OwnerDashboard.tsx` — branch on access_level
+- `src/pages/DriverOnboarding.tsx`, `src/pages/OwnerOnboarding.tsx` — call advance_stage, launch Persona
+- `src/pages/DriverRegistration.tsx`, `src/pages/OwnerRegistration.tsx` — redirect to view-only dashboard after signup
+- `src/components/admin/ApplicationManagement.tsx` — "Grant full access" action + gating badges
+- `src/components/verification/RefereeVerificationPanel.tsx` — surface completion in progress panel
+- `src/hooks/useOnboardingGate.ts` — replaced/extended by stage gate
+
+No changes to existing referee flow, proxy billing flow, or Persona integration beyond wiring their events into stage advancement.
 
 ## Out of scope
-- Live PayPal account claim/verification (you will do that later).
-- Webhook handling for PayPal events (can be added in a follow-up).
-- Refund/ dispute flows (to be designed after the basic checkout works).
 
-## Next steps after this build
-- You will fill in `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` with your PayPal app credentials.
-- I will test the order creation flow end-to-end and verify the payment is recorded in the database.
-
-## Files created / edited
-- New: `supabase/functions/create-paypal-order/index.ts` (updated existing stub)
-- New: `supabase/functions/capture-paypal-order/index.ts`
-- New: `supabase/functions/get-paypal-config/index.ts`
-- New: `src/components/payments/PayPalCheckout.tsx`
-- New: `src/hooks/usePayPalConfig.ts`
-- New: `src/lib/paypal-client.ts`
-- New: `supabase/migrations/20260713_add_paypal_transactions.sql`
-- Edit: `src/lib/payment-gateway.ts` (PayPal path now uses real edge functions)
-- Edit: `src/components/admin/SecretsManagement.tsx` (added `PAYPAL_MODE`)
-- Edit: `src/integrations/supabase/types.ts` (auto-regenerated)
-- Edit: `package.json` / `bun.lock` for `@paypal/react-paypal-js`
-
-## Implementation complete
-Build passes. The PayPal integration is ready for the user to provide the three backend secrets.
+- Redesigning Persona templates
+- Changing payment/billing logic
+- Modifying grandfathered users' access

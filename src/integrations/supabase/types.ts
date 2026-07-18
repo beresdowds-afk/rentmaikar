@@ -3916,6 +3916,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          access_level: Database["public"]["Enums"]["access_level_enum"]
           avatar_url: string | null
           created_at: string | null
           daily_plan_forbidden: boolean | null
@@ -3940,6 +3941,10 @@ export type Database = {
           phone_verified: boolean | null
           preferred_country: string | null
           region_mode: string | null
+          registration_stage:
+            | Database["public"]["Enums"]["registration_stage_enum"]
+            | null
+          stage_updated_at: string | null
           suspended_call_in_id: string | null
           suspended_reason: string | null
           suspended_until: string | null
@@ -3947,6 +3952,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          access_level?: Database["public"]["Enums"]["access_level_enum"]
           avatar_url?: string | null
           created_at?: string | null
           daily_plan_forbidden?: boolean | null
@@ -3971,6 +3977,10 @@ export type Database = {
           phone_verified?: boolean | null
           preferred_country?: string | null
           region_mode?: string | null
+          registration_stage?:
+            | Database["public"]["Enums"]["registration_stage_enum"]
+            | null
+          stage_updated_at?: string | null
           suspended_call_in_id?: string | null
           suspended_reason?: string | null
           suspended_until?: string | null
@@ -3978,6 +3988,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          access_level?: Database["public"]["Enums"]["access_level_enum"]
           avatar_url?: string | null
           created_at?: string | null
           daily_plan_forbidden?: boolean | null
@@ -4002,6 +4013,10 @@ export type Database = {
           phone_verified?: boolean | null
           preferred_country?: string | null
           region_mode?: string | null
+          registration_stage?:
+            | Database["public"]["Enums"]["registration_stage_enum"]
+            | null
+          stage_updated_at?: string | null
           suspended_call_in_id?: string | null
           suspended_reason?: string | null
           suspended_until?: string | null
@@ -8069,6 +8084,12 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      advance_registration_stage: {
+        Args: {
+          _target: Database["public"]["Enums"]["registration_stage_enum"]
+        }
+        Returns: Database["public"]["Enums"]["registration_stage_enum"]
+      }
       approve_application: {
         Args: { _app_id: string; _notes?: string }
         Returns: string
@@ -8184,6 +8205,7 @@ export type Database = {
           linked_user_id: string
         }[]
       }
+      get_my_registration_progress: { Args: never; Returns: Json }
       get_owner_available_balance: {
         Args: { _currency: string; _owner_id: string }
         Returns: number
@@ -8209,6 +8231,7 @@ export type Database = {
         }
         Returns: string
       }
+      grant_full_access: { Args: { _user_id: string }; Returns: undefined }
       has_active_subscription: {
         Args: { _plan_type: string; _region?: string; _user_id: string }
         Returns: boolean
@@ -8217,6 +8240,7 @@ export type Database = {
         Args: { _permission: string; _user_id: string }
         Returns: boolean
       }
+      has_full_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -8266,6 +8290,10 @@ export type Database = {
       register_push_device: {
         Args: { _device_label?: string; _platform: string; _token: string }
         Returns: string
+      }
+      revoke_full_access: {
+        Args: { _reason?: string; _user_id: string }
+        Returns: undefined
       }
       save_voice_agent_transcript: {
         Args: {
@@ -8476,6 +8504,7 @@ export type Database = {
       }
     }
     Enums: {
+      access_level_enum: "view_only" | "full"
       app_role:
         | "admin"
         | "owner"
@@ -8536,6 +8565,12 @@ export type Database = {
         | "approved"
         | "rejected"
         | "locked"
+      registration_stage_enum:
+        | "auth"
+        | "account_opened"
+        | "documents_submitted"
+        | "verification_pending"
+        | "approved"
       support_task_type:
         | "legal"
         | "iot_installation"
@@ -8687,6 +8722,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      access_level_enum: ["view_only", "full"],
       app_role: [
         "admin",
         "owner",
@@ -8748,6 +8784,13 @@ export const Constants = {
         "approved",
         "rejected",
         "locked",
+      ],
+      registration_stage_enum: [
+        "auth",
+        "account_opened",
+        "documents_submitted",
+        "verification_pending",
+        "approved",
       ],
       support_task_type: [
         "legal",
