@@ -31,9 +31,11 @@ const OwnerOnboarding = () => {
     setSubmitting(true);
     setError(null);
     try {
-      const { error: rpcError } = await supabase.rpc('complete_onboarding');
-      if (rpcError) throw rpcError;
-      toast.success('Welcome to Rentmaikar!', { description: 'Redirecting to your dashboard…' });
+      const { error: docErr } = await supabase.rpc('advance_registration_stage', { _target: 'documents_submitted' });
+      if (docErr) throw docErr;
+      const { error: verErr } = await supabase.rpc('advance_registration_stage', { _target: 'verification_pending' });
+      if (verErr) throw verErr;
+      toast.success('Submitted for verification', { description: 'Admin will review and unlock full access shortly.' });
       navigate('/owner/dashboard', { replace: true });
     } catch (err) {
       const anyErr = err as { message?: string; code?: string };
