@@ -4,9 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Phone, PhoneOff, Users, Mic, MicOff, Volume2, VolumeX, Circle } from 'lucide-react';
+import { Phone, PhoneOff, Users, Mic, MicOff, Volume2, VolumeX, Circle, FileText, Loader2 } from 'lucide-react';
 import type { VoIPCall } from '@/types/voip';
 import { formatPhoneForDisplay } from '@/types/voip';
+import { useCallTranscription } from '@/hooks/useCallTranscription';
+import { useRegion } from '@/contexts/RegionContext';
+
 
 interface ActiveCallPanelProps {
   call: VoIPCall;
