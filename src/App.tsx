@@ -254,6 +254,14 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/admin/vehicle-catalogue"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminVehicleCataloguePage />
+                      </ProtectedRoute>
+                    }
+                  />
 
 
 
