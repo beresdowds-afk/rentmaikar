@@ -12,6 +12,7 @@ import { CategoryPricing } from "@/components/admin/CategoryPricing";
 import { VehicleCategoryYearSpecs } from "@/components/admin/VehicleCategoryYearSpecs";
 
 import { SecretsManagement } from "@/components/admin/SecretsManagement";
+import { TechStackDocButton } from "@/components/admin/TechStackDocButton";
 import { PSPConfigChecklist } from "@/components/admin/PSPConfigChecklist";
 import { ApiKeyManagement } from "@/components/admin/ApiKeyManagement";
 import { WebhookManagement } from "@/components/admin/WebhookManagement";
@@ -828,6 +829,9 @@ const AdminDashboard = () => {
               )}
               {activeTab === 'secrets' && (
                 <div className="space-y-6">
+                  <div className="flex justify-end">
+                    <TechStackDocButton />
+                  </div>
                   <PSPConfigChecklist />
                   <SecretsManagement />
                 </div>
