@@ -18,8 +18,10 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Send, FileText, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import SignaturePad from '@/components/legal/SignaturePad';
+import LegalAgreementDocument from '@/components/legal/LegalAgreementDocument';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Profile {
   user_id: string;
@@ -230,7 +232,7 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -337,11 +339,41 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
               </div>
             )}
 
+            {/* Live Draft Preview */}
+            {currentNegotiation && (() => {
+              const driver = drivers.find(d => d.user_id === selectedDriver);
+              const owner = owners.find(o => o.user_id === currentNegotiation.owner_id);
+              const vehicle = vehicles.find(v => v.id === currentNegotiation.vehicle_id);
+              if (!driver || !owner || !vehicle) return null;
+              return (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Live Draft Preview</label>
+                  <ScrollArea className="h-[420px] rounded-md border bg-muted/30">
+                    <div className="scale-[0.78] origin-top-left w-[128%]">
+                      <LegalAgreementDocument
+                        driver={{ name: driver.full_name || driver.email || 'Driver', email: driver.email || '' }}
+                        owner={{ name: owner.full_name || owner.email || 'Owner', email: owner.email || '' }}
+                        vehicle={{
+                          make: vehicle.make,
+                          model: vehicle.model,
+                          year: vehicle.year,
+                          licensePlate: vehicle.license_plate,
+                          vin: vehicle.vin || undefined,
+                        }}
+                        adminWitnessSignature={adminSignature}
+                      />
+                    </div>
+                  </ScrollArea>
+                </div>
+              );
+            })()}
+
             {/* Step 3: Admin Signature */}
             <div className="space-y-2">
               <label className="text-sm font-medium">3. Administrator Witness Signature</label>
               <SignaturePad onSignatureChange={setAdminSignature} />
             </div>
+
 
             <div className="flex justify-end gap-3 pt-4">
               <Button variant="outline" onClick={() => onOpenChange(false)}>

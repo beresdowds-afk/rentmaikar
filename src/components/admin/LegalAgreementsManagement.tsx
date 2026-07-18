@@ -417,7 +417,7 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                 New Agreement
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Rental Agreement</DialogTitle>
                 <DialogDescription>
@@ -476,10 +476,40 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
                   </Select>
                 </div>
 
+                {/* Live Draft Preview */}
+                {(() => {
+                  const driver = drivers.find(d => d.user_id === selectedDriver);
+                  const owner = owners.find(o => o.user_id === selectedOwner);
+                  const vehicle = vehicles.find(v => v.id === selectedVehicle);
+                  if (!driver || !owner || !vehicle) return null;
+                  return (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Live Draft Preview</label>
+                      <div className="h-[420px] overflow-auto rounded-md border bg-muted/30">
+                        <div className="scale-[0.78] origin-top-left w-[128%]">
+                          <LegalAgreementDocument
+                            driver={{ name: driver.full_name || driver.email || 'Driver', email: driver.email || '' }}
+                            owner={{ name: owner.full_name || owner.email || 'Owner', email: owner.email || '' }}
+                            vehicle={{
+                              make: vehicle.make,
+                              model: vehicle.model,
+                              year: vehicle.year,
+                              licensePlate: vehicle.license_plate,
+                              vin: vehicle.vin || undefined,
+                            }}
+                            adminWitnessSignature={adminSignature}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Administrator Witness Signature</label>
                   <SignaturePad onSignatureChange={setAdminSignature} />
                 </div>
+
 
                 <div className="flex justify-end gap-3">
                   <Button variant="outline" onClick={() => setShowNewAgreementDialog(false)}>
