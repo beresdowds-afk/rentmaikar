@@ -13,8 +13,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Loader2, Volume2, Mic, Square, Upload, Radio, PhoneOff, Phone, RefreshCw, Play, AlertCircle,
-  Trash2, Download, Search, Settings, Save,
+  Loader2, Volume2, Mic, Square, Upload, Radio, PhoneOff, Phone, RefreshCw, Play, Pause, AlertCircle,
+  Trash2, Download, Search, Settings, Save, ListMusic,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useElevenLabsTTS } from "@/hooks/useElevenLabsTTS";
@@ -458,6 +458,173 @@ interface RunRow {
   error_message: string | null;
   created_at: string;
   user_id: string | null;
+  words: TranscriptWord[] | null;
+}
+
+// --- Synced transcript player: click a word (or a highlighted match) to seek ---
+function SyncedTranscriptPlayer({
+  words,
+  search,
+  getUrl,
+}: {
+  words: TranscriptWord[];
+  search: string;
+  getUrl: () => Promise<string | null>;
+}) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [activeIdx, setActiveIdx] = useState<number>(-1);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const wordRefs = useRef<Array<HTMLSpanElement | null>>([]);
+
+  const query = search.trim().toLowerCase();
+  const matchIdxs = useMemo(
+    () => (query ? words.map((w, i) => (w.text.toLowerCase().includes(query) ? i : -1)).filter((i) => i >= 0) : []),
+    [words, query],
+  );
+
+  const ensureUrl = useCallback(async () => {
+    if (audioUrl) return audioUrl;
+    setLoading(true);
+    try {
+      const url = await getUrl();
+      if (!url) { toast.error("No audio available for this run"); return null; }
+      setAudioUrl(url);
+      return url;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load audio");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [audioUrl, getUrl]);
+
+  const seekTo = useCallback(async (seconds: number, idx: number) => {
+    const url = await ensureUrl();
+    if (!url) return;
+    // Wait a tick for <audio src> to bind if just set
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    const el = audioRef.current;
+    if (!el) return;
+    try {
+      if (el.readyState < 1) {
+        await new Promise<void>((resolve) => {
+          const on = () => { el.removeEventListener("loadedmetadata", on); resolve(); };
+          el.addEventListener("loadedmetadata", on);
+        });
+      }
+      el.currentTime = Math.max(0, seconds);
+      await el.play();
+      setActiveIdx(idx);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Playback failed");
+    }
+  }, [ensureUrl]);
+
+  const onTimeUpdate = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    const t = el.currentTime;
+    // binary-ish linear scan — words are short lists in practice
+    let idx = -1;
+    for (let i = 0; i < words.length; i++) {
+      if (t >= words[i].start && t <= words[i].end) { idx = i; break; }
+      if (words[i].start > t) break;
+    }
+    if (idx !== activeIdx) {
+      setActiveIdx(idx);
+      const node = wordRefs.current[idx];
+      if (node && scrollerRef.current) {
+        const scroller = scrollerRef.current;
+        const nr = node.getBoundingClientRect();
+        const sr = scroller.getBoundingClientRect();
+        if (nr.top < sr.top || nr.bottom > sr.bottom) {
+          node.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
+      }
+    }
+  };
+
+  const jumpMatch = (dir: 1 | -1) => {
+    if (matchIdxs.length === 0) return;
+    const cur = matchIdxs.findIndex((i) => i > activeIdx);
+    let target: number;
+    if (dir === 1) target = cur === -1 ? matchIdxs[0] : matchIdxs[cur];
+    else {
+      const prev = [...matchIdxs].reverse().find((i) => i < activeIdx);
+      target = prev ?? matchIdxs[matchIdxs.length - 1];
+    }
+    void seekTo(words[target].start, target);
+  };
+
+  return (
+    <div className="mt-2 space-y-2 rounded-md border bg-muted/30 p-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <ListMusic className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-xs font-medium">Synced playback</span>
+        {matchIdxs.length > 0 && (
+          <>
+            <Badge variant="secondary" className="text-[10px]">{matchIdxs.length} match{matchIdxs.length === 1 ? "" : "es"} for "{search}"</Badge>
+            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => jumpMatch(-1)}>Prev</Button>
+            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => jumpMatch(1)}>Next</Button>
+          </>
+        )}
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 px-2 text-xs ml-auto"
+          onClick={async () => {
+            const url = await ensureUrl();
+            if (!url) return;
+            const el = audioRef.current;
+            if (!el) return;
+            if (el.paused) { await el.play(); } else { el.pause(); }
+          }}
+          disabled={loading}
+        >
+          {loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : playing ? <Pause className="h-3 w-3 mr-1" /> : <Play className="h-3 w-3 mr-1" />}
+          {playing ? "Pause" : "Play"}
+        </Button>
+      </div>
+      <audio
+        ref={audioRef}
+        src={audioUrl ?? undefined}
+        controls
+        className="w-full h-8"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => { setPlaying(false); setActiveIdx(-1); }}
+        onTimeUpdate={onTimeUpdate}
+      />
+      <div
+        ref={scrollerRef}
+        className="max-h-40 overflow-auto text-xs leading-6 p-1 rounded bg-background border"
+      >
+        {words.map((w, i) => {
+          const isMatch = query && w.text.toLowerCase().includes(query);
+          const isActive = i === activeIdx;
+          return (
+            <span
+              key={i}
+              ref={(el) => { wordRefs.current[i] = el; }}
+              onClick={() => seekTo(w.start, i)}
+              title={`${w.start.toFixed(2)}s${w.speaker ? ` · ${w.speaker}` : ""}`}
+              className={[
+                "cursor-pointer px-0.5 rounded transition-colors",
+                isActive ? "bg-primary text-primary-foreground" : "",
+                !isActive && isMatch ? "bg-yellow-300 text-black" : "",
+                !isActive && !isMatch ? "hover:bg-muted" : "",
+              ].join(" ")}
+            >
+              {w.text}{/\s/.test(w.text) ? "" : " "}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function highlight(text: string | null | undefined, query: string): React.ReactNode {
@@ -741,6 +908,13 @@ function RecentRuns({ refreshToken, onChanged }: { refreshToken: number; onChang
               )}
               {r.transcript_text && (
                 <div className="text-xs line-clamp-4"><b>Transcript:</b> {highlight(r.transcript_text, search)}</div>
+              )}
+              {r.words && r.words.length > 0 && r.audio_storage_path && (
+                <SyncedTranscriptPlayer
+                  words={r.words}
+                  search={search}
+                  getUrl={() => getSignedUrl(r)}
+                />
               )}
               {r.error_message && (
                 <div className="text-xs text-destructive line-clamp-3"><b>Error:</b> {highlight(r.error_message, search)}</div>
