@@ -40,6 +40,8 @@ export const CallHistory = ({ calls, onRefresh, isLoading }: CallHistoryProps) =
   const [typeFilter, setTypeFilter] = useState<'all' | 'individual' | 'group'>('all');
   const [selectedCall, setSelectedCall] = useState<VoIPCall | null>(null);
   const [isPlaybackOpen, setIsPlaybackOpen] = useState(false);
+  const [transcriptCall, setTranscriptCall] = useState<VoIPCall | null>(null);
+
 
   const filteredCalls = calls.filter(call => {
     if (regionFilter !== 'all' && call.region !== regionFilter) return false;
