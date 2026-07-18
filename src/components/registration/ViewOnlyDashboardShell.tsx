@@ -76,7 +76,7 @@ export function ViewOnlyDashboardShell({
                 <CardDescription>You can update this any time.</CardDescription>
               </CardHeader>
               <CardContent>
-                <ProfileEditor />
+                <ProfileEditor subjectRole={role} />
               </CardContent>
             </Card>
             <Card>
