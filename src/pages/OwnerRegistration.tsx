@@ -211,7 +211,13 @@ const OwnerRegistration = () => {
 
       if (error) throw error;
 
-      toast.success("Vehicle submitted for review! We'll contact you within 24-48 hours.");
+      try {
+        await supabase.rpc('advance_registration_stage', { _target: 'account_opened' });
+      } catch (e) {
+        console.warn('Could not advance registration stage:', e);
+      }
+
+      toast.success("Account created! You now have view-only access. Complete verification to unlock full features.");
       setSubmitError(null);
       navigate("/owner/dashboard");
     } catch (error) {
