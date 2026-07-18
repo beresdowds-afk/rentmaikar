@@ -909,6 +909,13 @@ function RecentRuns({ refreshToken, onChanged }: { refreshToken: number; onChang
               {r.transcript_text && (
                 <div className="text-xs line-clamp-4"><b>Transcript:</b> {highlight(r.transcript_text, search)}</div>
               )}
+              {r.words && r.words.length > 0 && r.audio_storage_path && (
+                <SyncedTranscriptPlayer
+                  words={r.words}
+                  search={search}
+                  getUrl={() => getSignedUrl(r)}
+                />
+              )}
               {r.error_message && (
                 <div className="text-xs text-destructive line-clamp-3"><b>Error:</b> {highlight(r.error_message, search)}</div>
               )}
