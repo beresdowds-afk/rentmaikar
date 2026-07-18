@@ -28,7 +28,7 @@ serve(async (req: Request) => {
 
   const authRes = await requireAuthenticatedUser(req);
   if (authRes instanceof Response) return authRes;
-  const userId = (authRes as { user: { id: string } }).user?.id ?? null;
+  const userId = (authRes as { userId: string }).userId ?? null;
 
   const startedAt = Date.now();
   let inputText = "";
