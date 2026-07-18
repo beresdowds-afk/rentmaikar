@@ -1171,6 +1171,30 @@ export type Database = {
         }
         Relationships: []
       }
+      elevenlabs_retention_settings: {
+        Row: {
+          audio_retention_days: number
+          id: string
+          transcript_retention_days: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          audio_retention_days?: number
+          id?: string
+          transcript_retention_days?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          audio_retention_days?: number
+          id?: string
+          transcript_retention_days?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       elevenlabs_test_logs: {
         Row: {
           audio_bytes: number | null
@@ -7913,6 +7937,10 @@ export type Database = {
           cascaded_ids: string[]
         }[]
       }
+      admin_delete_elevenlabs_test_log: {
+        Args: { _log_id: string }
+        Returns: undefined
+      }
       admin_review_proxy_billing: {
         Args: { _decision: string; _notes?: string; _proxy_id: string }
         Returns: {
@@ -8021,6 +8049,22 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "driver_proxy_billing_accounts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      admin_update_elevenlabs_retention: {
+        Args: { _audio_days: number; _transcript_days: number }
+        Returns: {
+          audio_retention_days: number
+          id: string
+          transcript_retention_days: number
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "elevenlabs_retention_settings"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -8212,8 +8256,25 @@ export type Database = {
         Args: { _email: string }
         Returns: boolean
       }
+      purge_expired_elevenlabs_test_logs: {
+        Args: never
+        Returns: {
+          audio_deleted: number
+          logs_deleted: number
+        }[]
+      }
       register_push_device: {
         Args: { _device_label?: string; _platform: string; _token: string }
+        Returns: string
+      }
+      save_voice_agent_transcript: {
+        Args: {
+          _agent_id: string
+          _duration_ms: number
+          _region: string
+          _transcript_text: string
+          _turns: Json
+        }
         Returns: string
       }
       sign_legal_agreement: {
