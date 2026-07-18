@@ -134,7 +134,7 @@ const Catalogue = () => {
         if (!a.isNearby && b.isNearby) return 1;
         return a.distance - b.distance;
       });
-  }, [allVehicles, country, driverHome]);
+  }, [allVehicles, country, driverHome, radiusMiles]);
 
   // Get nearby vehicles count for display
   const nearbyCount = useMemo(() => 
