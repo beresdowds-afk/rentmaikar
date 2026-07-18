@@ -3,12 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { History, RefreshCw, Phone, Users, PhoneIncoming, PhoneOutgoing, Loader2, Play, Volume2 } from 'lucide-react';
+import { History, RefreshCw, Phone, Users, PhoneIncoming, PhoneOutgoing, Loader2, Play, Volume2, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import type { VoIPCall, CallRegion } from '@/types/voip';
 import { formatPhoneForDisplay } from '@/types/voip';
 import { RecordingPlaybackModal } from './RecordingPlaybackModal';
+import { CallTranscriptDialog } from './CallTranscriptDialog';
+
 
 interface CallHistoryProps {
   calls: VoIPCall[];
