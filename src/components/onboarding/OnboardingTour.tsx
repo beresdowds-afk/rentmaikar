@@ -114,7 +114,7 @@ export const buildTourSteps = (input: Country | string): TourStep[] => {
       title: "Rent-to-Own Program 🏠",
       description: isNG
         ? "Owners can list vehicles for rent-to-own with Naira pricing. Drivers can search for listings in their Nigerian city and work toward vehicle ownership."
-        : "Owners can list vehicles for rent-to-own with USD pricing. Drivers can search for listings within a 35-mile radius and work toward vehicle ownership.",
+        : "Owners can list vehicles for rent-to-own with USD pricing. Drivers can search for listings within a 25-mile radius and work toward vehicle ownership.",
       icon: Home,
       position: "center",
     },

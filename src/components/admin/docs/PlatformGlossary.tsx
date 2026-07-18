@@ -65,7 +65,7 @@ const ENTRIES: GlossaryEntry[] = [
   { term: "Traccar", category: "IoT & Vehicles", definition: "Open-source GPS tracking platform integrated as one of the telemetry backends." },
   { term: "Immobilization", category: "IoT & Vehicles", definition: "Remote command that disables vehicle ignition. Only issued when speed=0 AND ignition=OFF for safety." },
   { term: "Telemetry", category: "IoT & Vehicles", definition: "Real-time vehicle data stream: GPS location, speed, ignition state, battery, and geofence status." },
-  { term: "Geofence", category: "IoT & Vehicles", definition: "Virtual boundary around a location. USA drivers get a 35-mile catalogue radius; Nigeria uses home-city bounds." },
+  { term: "Geofence", category: "IoT & Vehicles", definition: "Virtual boundary around a location. USA drivers get a 25-mile catalogue radius; Nigeria uses home-city bounds." },
   { term: "Recall", category: "IoT & Vehicles", definition: "Automated request for the driver to return a vehicle, typically triggered by IoT failure or compliance issue." },
   { term: "Weekly Inspection", category: "IoT & Vehicles", definition: "Owner-reviewed report with 10 specific vehicle photos on a 30-day cycle synced with rental agreements." },
   { term: "Vehicle Categories", category: "IoT & Vehicles", definition: "Three pricing tiers based on manufacture year, with region-specific ceilings." },
