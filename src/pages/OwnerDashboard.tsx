@@ -65,7 +65,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
-import { useOnboardingGate } from '@/hooks/useOnboardingGate';
+import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
+import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
 
 const VEHICLE_CATEGORY_DEFS = [
   { value: 'smart-start', label: 'Smart Start', specKey: 'budget', maxWeekly: 250 },
@@ -157,14 +158,17 @@ export default function OwnerDashboard() {
   };
 
   const authGate = useDashboardAuthGate({ allowedRoles: ['owner'], label: 'Owner Dashboard' });
-  const { checking: onboardingChecking } = useOnboardingGate('owner');
+  const { data: progress, isLoading: progressLoading } = useRegistrationProgress();
   if (authGate) return <>{authGate}</>;
-  if (onboardingChecking) {
+  if (progressLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-muted-foreground">
-        Checking onboarding status…
+        Loading your dashboard…
       </div>
     );
+  }
+  if (!isAdminView && progress && progress.access_level === 'view_only') {
+    return <ViewOnlyDashboardShell role="owner" progress={progress} />;
   }
 
   return (
