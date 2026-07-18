@@ -522,13 +522,23 @@ function SyncedTranscriptPlayer({
           el.addEventListener("loadedmetadata", on);
         });
       }
+      // Pause first so the seek isn't chased by in-flight decoded frames at the old rate
+      if (!el.paused) el.pause();
       el.currentTime = Math.max(0, seconds);
+      // Wait for the seek to actually land so playback resumes at the correct offset
+      if (el.seeking) {
+        await new Promise<void>((resolve) => {
+          const on = () => { el.removeEventListener("seeked", on); resolve(); };
+          el.addEventListener("seeked", on);
+        });
+      }
+      el.playbackRate = rate;
       await el.play();
       setActiveIdx(idx);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Playback failed");
     }
-  }, [ensureUrl]);
+  }, [ensureUrl, rate]);
 
   const onTimeUpdate = () => {
     const el = audioRef.current;
