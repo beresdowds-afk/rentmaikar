@@ -18,8 +18,10 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Send, FileText, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import SignaturePad from '@/components/legal/SignaturePad';
+import LegalAgreementDocument from '@/components/legal/LegalAgreementDocument';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Profile {
   user_id: string;
