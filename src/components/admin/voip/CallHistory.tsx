@@ -224,6 +224,14 @@ export const CallHistory = ({ calls, onRefresh, isLoading }: CallHistoryProps) =
             setSelectedCall(null);
           }}
         />
+
+        {/* Transcript Dialog */}
+        <CallTranscriptDialog
+          call={transcriptCall}
+          isOpen={!!transcriptCall}
+          onClose={() => setTranscriptCall(null)}
+        />
+
       </CardContent>
     </Card>
   );
