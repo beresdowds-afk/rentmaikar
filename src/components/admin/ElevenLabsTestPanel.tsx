@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Volume2, Mic, Square, Upload, Radio, PhoneOff, Phone, RefreshCw, Play, AlertCircle } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Loader2, Volume2, Mic, Square, Upload, Radio, PhoneOff, Phone, RefreshCw, Play, AlertCircle,
+  Trash2, Download, Search, Settings, Save,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useElevenLabsTTS } from "@/hooks/useElevenLabsTTS";
 import { useConversation } from "@elevenlabs/react";
@@ -147,12 +154,7 @@ function STTTest({ onLogged }: { onLogged: () => void }) {
           <Button asChild variant="outline">
             <span><Upload className="h-4 w-4 mr-2" />Upload audio</span>
           </Button>
-          <input
-            type="file"
-            accept="audio/*"
-            className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
+          <input type="file" accept="audio/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         </label>
         {file && <Badge variant="secondary" className="self-center">{file.name} · {(file.size / 1024).toFixed(1)} KB</Badge>}
       </div>
@@ -173,9 +175,7 @@ function STTTest({ onLogged }: { onLogged: () => void }) {
               <summary className="cursor-pointer text-muted-foreground">Word timestamps ({result.words.length})</summary>
               <div className="mt-2 max-h-48 overflow-auto text-xs font-mono">
                 {result.words.map((w, i) => (
-                  <div key={i}>
-                    [{w.start.toFixed(2)}–{w.end.toFixed(2)}] {w.speaker ? `<${w.speaker}> ` : ""}{w.text}
-                  </div>
+                  <div key={i}>[{w.start.toFixed(2)}–{w.end.toFixed(2)}] {w.speaker ? `<${w.speaker}> ` : ""}{w.text}</div>
                 ))}
               </div>
             </details>
@@ -190,24 +190,68 @@ function STTTest({ onLogged }: { onLogged: () => void }) {
 type MicPermState = "unknown" | "granted" | "denied" | "prompt";
 const MAX_RECONNECT_ATTEMPTS = 3;
 
-function VoiceAgentTest() {
+interface AgentTurn { role: "user" | "agent"; text: string; at: number }
+
+function VoiceAgentTest({ onLogged }: { onLogged: () => void }) {
   const [agentId, setAgentId] = useState("");
+  const [region, setRegion] = useState<"US" | "NG">("US");
+  const [autoSave, setAutoSave] = useState(true);
   const [connecting, setConnecting] = useState(false);
-  const [transcript, setTranscript] = useState<Array<{ role: string; text: string }>>([]);
+  const [transcript, setTranscript] = useState<AgentTurn[]>([]);
+  const transcriptRef = useRef<AgentTurn[]>([]);
+  const startedAtRef = useRef<number | null>(null);
+  const savedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [micState, setMicState] = useState<MicPermState>("unknown");
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
   const shouldReconnectRef = useRef(false);
   const reconnectTimerRef = useRef<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const transcriptEndRef = useRef<HTMLDivElement | null>(null);
+
+  const pushTurn = useCallback((role: "user" | "agent", text: string) => {
+    const turn: AgentTurn = { role, text, at: Date.now() };
+    transcriptRef.current = [...transcriptRef.current, turn];
+    setTranscript(transcriptRef.current);
+  }, []);
+
+  const saveSession = useCallback(async () => {
+    if (savedRef.current || transcriptRef.current.length === 0) return;
+    setSaving(true);
+    try {
+      const flat = transcriptRef.current
+        .map((t) => `${t.role === "agent" ? "Agent" : "You"}: ${t.text}`)
+        .join("\n");
+      const duration = startedAtRef.current ? Date.now() - startedAtRef.current : null;
+      const { error: rpcError } = await supabase.rpc("save_voice_agent_transcript", {
+        _region: region,
+        _agent_id: agentId.trim() || null,
+        _transcript_text: flat,
+        _turns: transcriptRef.current as any,
+        _duration_ms: duration,
+      });
+      if (rpcError) throw rpcError;
+      savedRef.current = true;
+      toast.success("Voice agent transcript saved");
+      onLogged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save transcript");
+    } finally {
+      setSaving(false);
+    }
+  }, [agentId, region, onLogged]);
 
   const conversation = useConversation({
     onConnect: () => {
       setReconnectAttempt(0);
       shouldReconnectRef.current = true;
+      if (!startedAtRef.current) startedAtRef.current = Date.now();
+      savedRef.current = false;
       toast.success("Voice agent connected");
     },
     onDisconnect: () => {
       toast.info("Voice agent disconnected");
+      if (autoSave) void saveSession();
       if (shouldReconnectRef.current && reconnectAttempt < MAX_RECONNECT_ATTEMPTS) {
         const attempt = reconnectAttempt + 1;
         const delay = Math.min(1000 * 2 ** (attempt - 1), 8000);
@@ -221,16 +265,23 @@ function VoiceAgentTest() {
       setError(msg);
     },
     onMessage: (msg: unknown) => {
-      const m = msg as { type?: string; user_transcription_event?: { user_transcript?: string }; agent_response_event?: { agent_response?: string } };
+      const m = msg as {
+        type?: string;
+        user_transcription_event?: { user_transcript?: string };
+        agent_response_event?: { agent_response?: string };
+      };
       if (m.type === "user_transcript" && m.user_transcription_event?.user_transcript) {
-        setTranscript((t) => [...t, { role: "user", text: m.user_transcription_event!.user_transcript! }]);
+        pushTurn("user", m.user_transcription_event.user_transcript);
       } else if (m.type === "agent_response" && m.agent_response_event?.agent_response) {
-        setTranscript((t) => [...t, { role: "agent", text: m.agent_response_event!.agent_response! }]);
+        pushTurn("agent", m.agent_response_event.agent_response);
       }
     },
   });
 
-  // Query mic permission state on mount (best-effort; not all browsers/iOS)
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [transcript]);
+
   useEffect(() => {
     const nav = navigator as Navigator & { permissions?: { query: (p: { name: PermissionName }) => Promise<PermissionStatus> } };
     if (!nav.permissions?.query) return;
@@ -239,7 +290,7 @@ function VoiceAgentTest() {
         setMicState(status.state as MicPermState);
         status.onchange = () => setMicState(status.state as MicPermState);
       })
-      .catch(() => { /* Safari/iOS may not support this */ });
+      .catch(() => {});
   }, []);
 
   useEffect(() => () => {
@@ -257,25 +308,26 @@ function VoiceAgentTest() {
       const name = (e as DOMException)?.name;
       if (name === "NotAllowedError" || name === "SecurityError") {
         setMicState("denied");
-        setError("Microphone permission denied. Enable it in your browser/device settings, then try again. On iOS: Settings → Safari → Microphone. On Android: site settings → Permissions.");
-      } else if (name === "NotFoundError") {
-        setError("No microphone was detected on this device.");
-      } else if (name === "NotReadableError") {
-        setError("Microphone is in use by another app. Close it and retry.");
-      } else {
-        setError(e instanceof Error ? e.message : "Microphone unavailable");
-      }
+        setError("Microphone permission denied. Enable it in your browser/device settings, then try again.");
+      } else if (name === "NotFoundError") setError("No microphone was detected on this device.");
+      else if (name === "NotReadableError") setError("Microphone is in use by another app. Close it and retry.");
+      else setError(e instanceof Error ? e.message : "Microphone unavailable");
       return false;
     }
   }, []);
 
   const start = useCallback(async (isReconnect = false) => {
     setError(null);
-    if (!isReconnect) setConnecting(true);
+    if (!isReconnect) {
+      setConnecting(true);
+      transcriptRef.current = [];
+      setTranscript([]);
+      startedAtRef.current = null;
+      savedRef.current = false;
+    }
     try {
       const gotMic = await requestMic();
       if (!gotMic) return;
-
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
       if (!token) throw new Error("Not signed in");
@@ -307,16 +359,13 @@ function VoiceAgentTest() {
     <div className="space-y-4">
       <Alert>
         <AlertDescription className="text-xs">
-          Create a Conversational AI agent in the ElevenLabs dashboard, then paste its Agent ID here.
-          Or save an <code>ELEVENLABS_AGENT_ID</code> secret as the default.
+          Live transcript is captured on-screen. When enabled, the full conversation is saved to <code>elevenlabs_test_logs</code> at the end of the session.
         </AlertDescription>
       </Alert>
       {micState === "denied" && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="text-xs">
-            Microphone is blocked. Enable it in browser/OS settings, then tap “Retry mic access”.
-          </AlertDescription>
+          <AlertDescription className="text-xs">Microphone is blocked. Enable it in browser/OS settings, then tap "Retry mic access".</AlertDescription>
         </Alert>
       )}
       <div className="flex gap-2 items-center flex-wrap">
@@ -328,11 +377,24 @@ function VoiceAgentTest() {
           <Badge variant="secondary" className="gap-1"><RefreshCw className="h-3 w-3 animate-spin" />Reconnecting {reconnectAttempt}/{MAX_RECONNECT_ATTEMPTS}</Badge>
         )}
       </div>
-      <div>
-        <Label>Agent ID (optional)</Label>
-        <Input value={agentId} onChange={(e) => setAgentId(e.target.value)} placeholder="agent_..." />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label>Agent ID (optional)</Label>
+          <Input value={agentId} onChange={(e) => setAgentId(e.target.value)} placeholder="agent_..." />
+        </div>
+        <div>
+          <Label>Region</Label>
+          <select className="w-full h-10 border rounded-md px-3 bg-background" value={region} onChange={(e) => setRegion(e.target.value as "US" | "NG")}>
+            <option value="US">US</option>
+            <option value="NG">NG</option>
+          </select>
+        </div>
       </div>
-      <div className="flex gap-2 items-center">
+      <label className="flex items-center gap-2 text-xs cursor-pointer">
+        <input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} className="accent-primary" />
+        Auto-save transcript to database at end of session
+      </label>
+      <div className="flex gap-2 items-center flex-wrap">
         {!isConnected ? (
           <Button onClick={() => start(false)} disabled={connecting}>
             {connecting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Phone className="h-4 w-4 mr-2" />}
@@ -344,25 +406,33 @@ function VoiceAgentTest() {
           </Button>
         )}
         {isConnected && (
-          <Badge variant="secondary" className="gap-1">
-            <Radio className="h-3 w-3" />
-            {conversation.isSpeaking ? "Agent speaking" : "Listening"}
-          </Badge>
+          <Badge variant="secondary" className="gap-1"><Radio className="h-3 w-3" />{conversation.isSpeaking ? "Agent speaking" : "Listening"}</Badge>
+        )}
+        {transcript.length > 0 && (
+          <Button size="sm" variant="outline" onClick={saveSession} disabled={saving || savedRef.current}>
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            {savedRef.current ? "Saved" : "Save transcript now"}
+          </Button>
         )}
       </div>
       {error && <Alert variant="destructive"><AlertDescription className="text-xs whitespace-pre-line">{error}</AlertDescription></Alert>}
-      {transcript.length > 0 && (
-        <Card className="p-4 max-h-72 overflow-auto space-y-2">
-          {transcript.map((m, i) => (
+      <Card className="p-4 max-h-80 overflow-auto space-y-2">
+        {transcript.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic text-center py-6">
+            {isConnected ? "Listening… speak into the microphone." : "No transcript yet. Start a conversation."}
+          </p>
+        ) : (
+          transcript.map((m, i) => (
             <div key={i} className="text-sm">
               <span className={`font-semibold ${m.role === "agent" ? "text-primary" : "text-muted-foreground"}`}>
                 {m.role === "agent" ? "Agent" : "You"}:
               </span>{" "}
               {m.text}
             </div>
-          ))}
-        </Card>
-      )}
+          ))
+        )}
+        <div ref={transcriptEndRef} />
+      </Card>
     </div>
   );
 }
@@ -390,15 +460,34 @@ interface RunRow {
   user_id: string | null;
 }
 
-function RecentRuns({ refreshToken }: { refreshToken: number }) {
+function highlight(text: string | null | undefined, query: string): React.ReactNode {
+  if (!text) return text;
+  if (!query.trim()) return text;
+  try {
+    const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "ig");
+    const parts = text.split(re);
+    return parts.map((p, i) =>
+      re.test(p) ? <mark key={i} className="bg-yellow-300 text-black rounded px-0.5">{p}</mark> : <span key={i}>{p}</span>
+    );
+  } catch {
+    return text;
+  }
+}
+
+function RecentRuns({ refreshToken, onChanged }: { refreshToken: number; onChanged: () => void }) {
   const [rows, setRows] = useState<RunRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<"all" | "tts" | "stt">("all");
+  const [search, setSearch] = useState("");
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [audioDays, setAudioDays] = useState(30);
+  const [transcriptDays, setTranscriptDays] = useState(90);
+  const [purging, setPurging] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    let q = supabase.from("elevenlabs_test_logs").select("*").order("created_at", { ascending: false }).limit(50);
+    let q = supabase.from("elevenlabs_test_logs").select("*").order("created_at", { ascending: false }).limit(200);
     if (filter !== "all") q = q.eq("kind", filter);
     const { data, error } = await q;
     if (error) toast.error(error.message);
@@ -406,22 +495,47 @@ function RecentRuns({ refreshToken }: { refreshToken: number }) {
     setLoading(false);
   }, [filter]);
 
+  const loadSettings = useCallback(async () => {
+    const { data } = await supabase.from("elevenlabs_retention_settings").select("*").limit(1).maybeSingle();
+    if (data) {
+      setAudioDays(data.audio_retention_days);
+      setTranscriptDays(data.transcript_retention_days);
+    }
+  }, []);
+
   useEffect(() => { void load(); }, [load, refreshToken]);
+  useEffect(() => { void loadSettings(); }, [loadSettings]);
+
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => {
+      const hay = [r.input_text, r.transcript_text, r.input_file_name, r.error_message, r.voice_id, r.model_id, r.language_code, r.region]
+        .filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }, [rows, search]);
+
+  const getSignedUrl = async (row: RunRow): Promise<string | null> => {
+    if (!row.audio_storage_path) return null;
+    const { data: sess } = await supabase.auth.getSession();
+    const token = sess.session?.access_token;
+    const res = await fetch(`${FUNCTIONS_BASE}/elevenlabs-test-audio-url`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ logId: row.id }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error || "Failed to sign audio URL");
+    return json.url as string;
+  };
 
   const playAudio = async (row: RunRow) => {
-    if (!row.audio_storage_path) return toast.error("No audio saved for this run");
     setPlayingId(row.id);
     try {
-      const { data: sess } = await supabase.auth.getSession();
-      const token = sess.session?.access_token;
-      const res = await fetch(`${FUNCTIONS_BASE}/elevenlabs-test-audio-url`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ logId: row.id }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Failed to load audio");
-      const audio = new Audio(json.url);
+      const url = await getSignedUrl(row);
+      if (!url) return toast.error("No audio saved for this run");
+      const audio = new Audio(url);
       await audio.play();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Playback failed");
@@ -430,9 +544,118 @@ function RecentRuns({ refreshToken }: { refreshToken: number }) {
     }
   };
 
+  const deleteRow = async (row: RunRow) => {
+    setDeletingId(row.id);
+    try {
+      const { error } = await supabase.rpc("admin_delete_elevenlabs_test_log", { _log_id: row.id });
+      if (error) throw error;
+      toast.success("Log deleted");
+      onChanged();
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const saveRetention = async () => {
+    try {
+      const { error } = await supabase.rpc("admin_update_elevenlabs_retention", {
+        _audio_days: audioDays,
+        _transcript_days: transcriptDays,
+      });
+      if (error) throw error;
+      toast.success("Retention updated");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save");
+    }
+  };
+
+  const runPurgeNow = async () => {
+    setPurging(true);
+    try {
+      const { data, error } = await supabase.rpc("purge_expired_elevenlabs_test_logs");
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      toast.success(`Purged ${row?.logs_deleted ?? 0} rows · ${row?.audio_deleted ?? 0} audio files`);
+      await load();
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Purge failed");
+    } finally {
+      setPurging(false);
+    }
+  };
+
+  const exportRows = async (fmt: "csv" | "json") => {
+    const augmented = await Promise.all(filteredRows.map(async (r) => {
+      let signed_audio_url: string | null = null;
+      if (r.audio_storage_path) {
+        try { signed_audio_url = await getSignedUrl(r); } catch { /* ignore per row */ }
+      }
+      return { ...r, signed_audio_url };
+    }));
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    let blob: Blob;
+    let name: string;
+    if (fmt === "json") {
+      blob = new Blob([JSON.stringify(augmented, null, 2)], { type: "application/json" });
+      name = `elevenlabs-test-logs-${stamp}.json`;
+    } else {
+      const headers = [
+        "id","kind","status","region","voice_id","model_id","language_code","input_file_name",
+        "input_file_size_bytes","duration_ms","audio_bytes","audio_storage_path","signed_audio_url",
+        "input_text","transcript_text","error_message","created_at","user_id",
+      ];
+      const esc = (v: unknown) => {
+        if (v == null) return "";
+        const s = String(v).replace(/"/g, '""').replace(/\r?\n/g, " ");
+        return `"${s}"`;
+      };
+      const lines = [
+        headers.join(","),
+        ...augmented.map((r) => headers.map((h) => esc((r as any)[h])).join(",")),
+      ];
+      blob = new Blob([lines.join("\n")], { type: "text/csv" });
+      name = `elevenlabs-test-logs-${stamp}.csv`;
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name; a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${augmented.length} rows`);
+  };
+
   return (
     <div className="space-y-3">
-      <div className="flex gap-2 items-center">
+      {/* Retention settings */}
+      <Card className="p-3 space-y-2 bg-muted/30">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Settings className="h-4 w-4" /> Retention policy
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
+          <div>
+            <Label className="text-xs">Audio kept for (days)</Label>
+            <Input type="number" min={1} value={audioDays} onChange={(e) => setAudioDays(Number(e.target.value))} />
+          </div>
+          <div>
+            <Label className="text-xs">Transcripts kept for (days)</Label>
+            <Input type="number" min={1} value={transcriptDays} onChange={(e) => setTranscriptDays(Number(e.target.value))} />
+          </div>
+          <Button size="sm" onClick={saveRetention} variant="outline">Save policy</Button>
+          <Button size="sm" onClick={runPurgeNow} disabled={purging} variant="secondary">
+            {purging ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Trash2 className="h-3 w-3 mr-2" />}
+            Purge expired now
+          </Button>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Automatic purge runs daily at 03:15 UTC. Audio is deleted after {audioDays} day(s); full log rows after {transcriptDays} day(s).
+        </p>
+      </Card>
+
+      {/* Filters + export */}
+      <div className="flex gap-2 items-center flex-wrap">
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value as typeof filter)}
@@ -440,56 +663,97 @@ function RecentRuns({ refreshToken }: { refreshToken: number }) {
         >
           <option value="all">All runs</option>
           <option value="tts">TTS only</option>
-          <option value="stt">STT only</option>
+          <option value="stt">STT / Agent</option>
         </select>
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="h-4 w-4 absolute left-2 top-2.5 text-muted-foreground pointer-events-none" />
+          <Input
+            className="pl-8 h-9"
+            placeholder="Search transcripts, input text, filenames, errors…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
         <Button size="sm" variant="outline" onClick={load} disabled={loading}>
           {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
           Refresh
         </Button>
-        <span className="text-xs text-muted-foreground">{rows.length} runs</span>
+        <Button size="sm" variant="outline" onClick={() => exportRows("csv")}><Download className="h-3 w-3 mr-1" />CSV</Button>
+        <Button size="sm" variant="outline" onClick={() => exportRows("json")}><Download className="h-3 w-3 mr-1" />JSON</Button>
+        <span className="text-xs text-muted-foreground">{filteredRows.length} / {rows.length} runs</span>
       </div>
+
       <div className="border rounded-md divide-y max-h-[520px] overflow-auto">
-        {rows.length === 0 && !loading && (
-          <div className="p-6 text-sm text-muted-foreground text-center">No test runs yet.</div>
-        )}
-        {rows.map((r) => (
-          <div key={r.id} className="p-3 text-sm space-y-1">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                <Badge variant={r.kind === "tts" ? "default" : "secondary"}>{r.kind.toUpperCase()}</Badge>
-                <Badge variant={r.status === "success" ? "outline" : "destructive"}>{r.status}</Badge>
-                {r.language_code && <Badge variant="secondary">{r.language_code}</Badge>}
-                {r.region && <Badge variant="secondary">{r.region}</Badge>}
-                <span className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</span>
-                {r.duration_ms != null && <span className="text-xs text-muted-foreground">{r.duration_ms}ms</span>}
-              </div>
-              {r.audio_storage_path && (
-                <Button size="sm" variant="ghost" onClick={() => playAudio(r)} disabled={playingId === r.id}>
-                  {playingId === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-                  <span className="ml-1 text-xs">Play</span>
-                </Button>
-              )}
-            </div>
-            {r.input_text && (
-              <div className="text-xs text-muted-foreground line-clamp-2"><b>Input:</b> {r.input_text}</div>
-            )}
-            {r.input_file_name && (
-              <div className="text-xs text-muted-foreground"><b>File:</b> {r.input_file_name} ({r.input_file_size_bytes ? (r.input_file_size_bytes / 1024).toFixed(1) + " KB" : "—"})</div>
-            )}
-            {r.transcript_text && (
-              <div className="text-xs line-clamp-3"><b>Transcript:</b> {r.transcript_text}</div>
-            )}
-            {r.error_message && (
-              <div className="text-xs text-destructive line-clamp-3"><b>Error:</b> {r.error_message}</div>
-            )}
-            <details className="text-xs">
-              <summary className="cursor-pointer text-muted-foreground">Request/Response metadata</summary>
-              <pre className="mt-1 bg-muted rounded p-2 overflow-auto max-h-40 text-[10px]">
-{JSON.stringify({ request: r.request_metadata, response: r.response_metadata, voice_id: r.voice_id, model_id: r.model_id, audio_path: r.audio_storage_path }, null, 2)}
-              </pre>
-            </details>
+        {filteredRows.length === 0 && !loading && (
+          <div className="p-6 text-sm text-muted-foreground text-center">
+            {search ? `No runs match "${search}".` : "No test runs yet."}
           </div>
-        ))}
+        )}
+        {filteredRows.map((r) => {
+          const meta = (r.request_metadata as { source?: string } | null) ?? {};
+          return (
+            <div key={r.id} className="p-3 text-sm space-y-1">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant={r.kind === "tts" ? "default" : "secondary"}>{r.kind.toUpperCase()}</Badge>
+                  {meta.source === "voice_agent" && <Badge variant="outline">Voice Agent</Badge>}
+                  <Badge variant={r.status === "success" ? "outline" : "destructive"}>{r.status}</Badge>
+                  {r.language_code && <Badge variant="secondary">{r.language_code}</Badge>}
+                  {r.region && <Badge variant="secondary">{r.region}</Badge>}
+                  <span className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</span>
+                  {r.duration_ms != null && <span className="text-xs text-muted-foreground">{r.duration_ms}ms</span>}
+                </div>
+                <div className="flex items-center gap-1">
+                  {r.audio_storage_path && (
+                    <Button size="sm" variant="ghost" onClick={() => playAudio(r)} disabled={playingId === r.id}>
+                      {playingId === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                      <span className="ml-1 text-xs">Play</span>
+                    </Button>
+                  )}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="ghost" className="text-destructive" disabled={deletingId === r.id}>
+                        {deletingId === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this log?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This permanently removes the log row{r.audio_storage_path ? " and its stored audio" : ""}. This cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => deleteRow(r)}>Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+              {r.input_text && (
+                <div className="text-xs text-muted-foreground line-clamp-3"><b>Input:</b> {highlight(r.input_text, search)}</div>
+              )}
+              {r.input_file_name && (
+                <div className="text-xs text-muted-foreground">
+                  <b>File:</b> {highlight(r.input_file_name, search)} ({r.input_file_size_bytes ? (r.input_file_size_bytes / 1024).toFixed(1) + " KB" : "—"})
+                </div>
+              )}
+              {r.transcript_text && (
+                <div className="text-xs line-clamp-4"><b>Transcript:</b> {highlight(r.transcript_text, search)}</div>
+              )}
+              {r.error_message && (
+                <div className="text-xs text-destructive line-clamp-3"><b>Error:</b> {highlight(r.error_message, search)}</div>
+              )}
+              <details className="text-xs">
+                <summary className="cursor-pointer text-muted-foreground">Request/Response metadata</summary>
+                <pre className="mt-1 bg-muted rounded p-2 overflow-auto max-h-40 text-[10px]">
+{JSON.stringify({ request: r.request_metadata, response: r.response_metadata, voice_id: r.voice_id, model_id: r.model_id, audio_path: r.audio_storage_path }, null, 2)}
+                </pre>
+              </details>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -505,7 +769,7 @@ export const ElevenLabsTestPanel = () => {
       <div>
         <h3 className="text-lg font-semibold">ElevenLabs Test Panel</h3>
         <p className="text-sm text-muted-foreground">
-          Verify TTS, STT, and Conversational Voice Agent end-to-end. Every TTS/STT run is saved to the database for admin review.
+          Verify TTS, STT, and Conversational Voice Agent end-to-end. Every TTS/STT run and saved voice-agent session lands in the database for admin review.
         </p>
       </div>
       <Tabs defaultValue="tts">
@@ -517,8 +781,8 @@ export const ElevenLabsTestPanel = () => {
         </TabsList>
         <TabsContent value="tts" className="pt-4"><TTSTest onLogged={bumpRefresh} /></TabsContent>
         <TabsContent value="stt" className="pt-4"><STTTest onLogged={bumpRefresh} /></TabsContent>
-        <TabsContent value="agent" className="pt-4"><VoiceAgentTest /></TabsContent>
-        <TabsContent value="runs" className="pt-4"><RecentRuns refreshToken={refreshToken} /></TabsContent>
+        <TabsContent value="agent" className="pt-4"><VoiceAgentTest onLogged={bumpRefresh} /></TabsContent>
+        <TabsContent value="runs" className="pt-4"><RecentRuns refreshToken={refreshToken} onChanged={bumpRefresh} /></TabsContent>
       </Tabs>
     </Card>
   );
