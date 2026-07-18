@@ -476,8 +476,15 @@ function SyncedTranscriptPlayer({
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [activeIdx, setActiveIdx] = useState<number>(-1);
+  const [rate, setRate] = useState<number>(1);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const wordRefs = useRef<Array<HTMLSpanElement | null>>([]);
+
+  // Keep <audio>.playbackRate in sync with selected rate whenever it changes or src rebinds
+  useEffect(() => {
+    const el = audioRef.current;
+    if (el) el.playbackRate = rate;
+  }, [rate, audioUrl]);
 
   const query = search.trim().toLowerCase();
   const matchIdxs = useMemo(
