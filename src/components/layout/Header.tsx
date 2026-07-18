@@ -23,6 +23,7 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
 
   const navLinks = [
     { href: "/", label: "Home" },
+    { href: "/catalogue/standard", label: "Catalog" },
     { href: "/catalogue/budget", label: "Budget Cars" },
     { href: "/catalogue/standard", label: "Standard Cars" },
     { href: "/catalogue/premium", label: "Premium Cars" },
