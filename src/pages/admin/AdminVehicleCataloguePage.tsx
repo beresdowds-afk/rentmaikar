@@ -544,25 +544,35 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
     </div>
   );
 
-  if (embedded) return body;
+  const dialog = (
+    <RecommendDialog
+      vehicle={recommendVehicle}
+      onClose={() => setRecommendVehicle(null)}
+      drivers={drivers ?? []}
+      selectedDriverId={selectedDriverId}
+      setSelectedDriverId={setSelectedDriverId}
+      note={note}
+      setNote={setNote}
+      submitting={submitting}
+      onSubmit={handleRecommend}
+    />
+  );
+
+  if (embedded) {
+    return (
+      <>
+        {body}
+        {dialog}
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="pt-24 pb-16">{body}</main>
       <Footer />
-
-      <RecommendDialog
-        vehicle={recommendVehicle}
-        onClose={() => setRecommendVehicle(null)}
-        drivers={drivers ?? []}
-        selectedDriverId={selectedDriverId}
-        setSelectedDriverId={setSelectedDriverId}
-        note={note}
-        setNote={setNote}
-        submitting={submitting}
-        onSubmit={handleRecommend}
-      />
+      {dialog}
     </div>
   );
 }
