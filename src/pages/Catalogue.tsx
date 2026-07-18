@@ -119,7 +119,8 @@ const Catalogue = () => {
           vehicle.coordinates || null,
           driverHome.location,
           driverHome.coordinates,
-          country
+          country,
+          radiusMiles
         );
         const nearestCity = country === "Nigeria" 
           ? getNigeriaParentCity(vehicle.location) || vehicle.location
