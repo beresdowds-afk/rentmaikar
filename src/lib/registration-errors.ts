@@ -37,12 +37,31 @@ export function classifyRegistrationError(
     anyErr?.code === '42501' ||
     anyErr?.code === 'PGRST301';
 
+  const isAlreadyRegistered =
+    lower.includes('already registered') ||
+    lower.includes('user already') ||
+    lower.includes('email address is already');
+
   const isDuplicate =
     lower.includes('already has') ||
     lower.includes('pending application') ||
     lower.includes('duplicate') ||
     anyErr?.code === '23505' ||
     lower.includes('no_pending_application_for_email');
+
+  const isWeakPassword =
+    lower.includes('password') && (lower.includes('weak') || lower.includes('at least') || lower.includes('6 characters'));
+
+  if (isAlreadyRegistered) {
+    return {
+      title: 'This email already has an account',
+      description:
+        'An account with this email already exists. Please sign in first and then submit your registration, or use a different email address.',
+      isPermissionIssue: false,
+      isDuplicate: true,
+      raw,
+    };
+  }
 
   if (isDuplicate) {
     return {
@@ -51,6 +70,17 @@ export function classifyRegistrationError(
         'We already have a pending application for this email address. Please check your inbox for our review update, or contact support if you think this is a mistake.',
       isPermissionIssue: false,
       isDuplicate: true,
+      raw,
+    };
+  }
+
+  if (isWeakPassword) {
+    return {
+      title: 'Password does not meet requirements',
+      description:
+        'Please choose a password with at least 8 characters. Include a mix of letters and numbers for better security.',
+      isPermissionIssue: false,
+      isDuplicate: false,
       raw,
     };
   }

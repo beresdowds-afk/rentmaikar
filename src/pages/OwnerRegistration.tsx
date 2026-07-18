@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { classifyRegistrationError, type FriendlyRegistrationError } from "@/lib/registration-errors";
 import { RegistrationErrorAlert } from "@/components/registration/RegistrationErrorAlert";
 import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
+import { PasswordInput } from "@/components/ui/password-input";
 
 const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   // Owner Details
@@ -155,15 +156,22 @@ const OwnerRegistration = () => {
     setSubmitError(null);
     try {
       // 1) Ensure an auth user exists for this applicant.
+      // If a different user is signed in, sign them out first so we don't
+      // link the new application to the wrong account.
       const { data: sessionData } = await supabase.auth.getSession();
-      let userId = sessionData.session?.user?.id ?? null;
+      const currentEmail = sessionData.session?.user?.email?.toLowerCase();
+      if (currentEmail && currentEmail !== data.email.toLowerCase()) {
+        await supabase.auth.signOut();
+      }
+      const { data: sessionAfter } = await supabase.auth.getSession();
+      let userId = sessionAfter.session?.user?.id ?? null;
 
       if (!userId) {
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: data.email,
           password: data.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}/auth`,
             data: {
               full_name: `${data.firstName} ${data.lastName}`.trim(),
             },
@@ -303,9 +311,8 @@ const OwnerRegistration = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input
+                  <PasswordInput
                     id="password"
-                    type="password"
                     placeholder="At least 8 characters"
                     autoComplete="new-password"
                     {...register("password")}

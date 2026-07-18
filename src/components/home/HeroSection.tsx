@@ -10,7 +10,6 @@ import { buildWhatsAppLink, buildSmsLink } from "@/lib/contact-links";
 
 import { toast } from "sonner";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
-import rentmaikarHeroBanner from "@/assets/rentmaikar-hero-banner.jpg";
 import heroCarsBg from "@/assets/hero-cars-bg.png";
 
 const WHATSAPP_PREFILL =
@@ -69,14 +68,8 @@ const HeroSection = () => {
           />
         </Link>
 
-        {/* Banner between logo and menu */}
-        <div className="flex-1 flex justify-center px-3 min-w-0">
-          <img
-            src={rentmaikarHeroBanner}
-            alt="Rent Mai Kar"
-            className="h-12 md:h-16 w-auto max-w-[220px] md:max-w-[300px] object-contain drop-shadow-lg"
-          />
-        </div>
+        {/* Spacer between logo and menu */}
+        <div className="flex-1" aria-hidden="true" />
 
         <button
           className="p-2 rounded-lg bg-black/10 hover:bg-black/20 transition-colors"
