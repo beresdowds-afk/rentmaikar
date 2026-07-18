@@ -339,11 +339,41 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
               </div>
             )}
 
+            {/* Live Draft Preview */}
+            {currentNegotiation && (() => {
+              const driver = drivers.find(d => d.user_id === selectedDriver);
+              const owner = owners.find(o => o.user_id === currentNegotiation.owner_id);
+              const vehicle = vehicles.find(v => v.id === currentNegotiation.vehicle_id);
+              if (!driver || !owner || !vehicle) return null;
+              return (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Live Draft Preview</label>
+                  <ScrollArea className="h-[420px] rounded-md border bg-muted/30">
+                    <div className="scale-[0.78] origin-top-left w-[128%]">
+                      <LegalAgreementDocument
+                        driver={{ name: driver.full_name || driver.email || 'Driver', email: driver.email || '' }}
+                        owner={{ name: owner.full_name || owner.email || 'Owner', email: owner.email || '' }}
+                        vehicle={{
+                          make: vehicle.make,
+                          model: vehicle.model,
+                          year: vehicle.year,
+                          licensePlate: vehicle.license_plate,
+                          vin: vehicle.vin || undefined,
+                        }}
+                        adminWitnessSignature={adminSignature}
+                      />
+                    </div>
+                  </ScrollArea>
+                </div>
+              );
+            })()}
+
             {/* Step 3: Admin Signature */}
             <div className="space-y-2">
               <label className="text-sm font-medium">3. Administrator Witness Signature</label>
               <SignaturePad onSignatureChange={setAdminSignature} />
             </div>
+
 
             <div className="flex justify-end gap-3 pt-4">
               <Button variant="outline" onClick={() => onOpenChange(false)}>
