@@ -4,7 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Car, FileText, DollarSign, ArrowRight, Loader2 } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { CheckCircle2, Car, FileText, DollarSign, ArrowRight, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 const steps = [
@@ -13,10 +14,14 @@ const steps = [
   { icon: DollarSign, title: 'Set up payouts', desc: 'Add your payout account so we can send earnings every Friday.' },
 ];
 
+const MAX_ATTEMPTS = 3;
+
 const OwnerOnboarding = () => {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
   const [submitting, setSubmitting] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [error, setError] = useState<{ title: string; description: string; code?: string } | null>(null);
 
   useEffect(() => {
     if (!isLoading && !user) navigate('/auth', { replace: true });
@@ -24,15 +29,47 @@ const OwnerOnboarding = () => {
 
   const finish = async () => {
     setSubmitting(true);
-    const { error } = await supabase.rpc('complete_onboarding');
-    if (error) {
-      toast.error('Could not complete onboarding', { description: error.message });
+    setError(null);
+    try {
+      const { error: rpcError } = await supabase.rpc('complete_onboarding');
+      if (rpcError) throw rpcError;
+      toast.success('Welcome to Rentmaikar!', { description: 'Redirecting to your dashboard…' });
+      navigate('/owner/dashboard', { replace: true });
+    } catch (err) {
+      const anyErr = err as { message?: string; code?: string };
+      const raw = anyErr?.message || 'Unknown error';
+      const lower = raw.toLowerCase();
+      const isAuth = lower.includes('jwt') || lower.includes('not authenticated') || anyErr?.code === 'PGRST301';
+      const isNetwork = lower.includes('fetch') || lower.includes('network');
+      const nextAttempts = attempts + 1;
+      setAttempts(nextAttempts);
+      setError({
+        title: isAuth
+          ? 'Your session expired'
+          : isNetwork
+            ? 'Connection problem'
+            : 'We couldn’t complete your onboarding',
+        description: isAuth
+          ? 'Please sign in again to finish setting up your account.'
+          : isNetwork
+            ? 'Check your internet connection and tap Retry.'
+            : nextAttempts >= MAX_ATTEMPTS
+              ? 'This keeps failing. Contact support with the code below so we can finish this for you.'
+              : 'Something went wrong on our side. Tap Retry to try again.',
+        code: raw,
+      });
+      toast.error('Could not complete onboarding', { description: raw });
       setSubmitting(false);
-      return;
     }
-    toast.success('Welcome to Rentmaikar!');
-    navigate('/owner/dashboard', { replace: true });
   };
+
+  const buttonLabel = submitting
+    ? 'Completing…'
+    : error
+      ? attempts >= MAX_ATTEMPTS
+        ? 'Try one more time'
+        : `Retry (attempt ${attempts + 1} of ${MAX_ATTEMPTS})`
+      : 'Go to my dashboard';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4 flex items-center justify-center">
@@ -56,9 +93,40 @@ const OwnerOnboarding = () => {
               </div>
             </div>
           ))}
-          <Button className="w-full" onClick={finish} disabled={submitting}>
-            {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-2" />}
-            Go to my dashboard
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>{error.title}</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>{error.description}</p>
+                {error.code && (
+                  <code className="block text-xs bg-background/50 rounded p-2 break-all">
+                    {error.code}
+                  </code>
+                )}
+                {attempts >= MAX_ATTEMPTS && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/faq')}
+                  >
+                    Contact support
+                  </Button>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <Button className="w-full" onClick={finish} disabled={submitting} aria-busy={submitting}>
+            {submitting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : error ? (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            ) : (
+              <ArrowRight className="h-4 w-4 mr-2" />
+            )}
+            {buttonLabel}
           </Button>
         </CardContent>
       </Card>
