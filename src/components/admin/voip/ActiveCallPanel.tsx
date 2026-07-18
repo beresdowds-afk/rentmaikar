@@ -21,6 +21,16 @@ export const ActiveCallPanel = ({ call, onEndCall }: ActiveCallPanelProps) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
+  const [saveVoiceLog, setSaveVoiceLog] = useState(false);
+  const { country } = useRegion();
+  const transcription = useCallTranscription({
+    callId: call.id,
+    saveVoiceLog,
+    languageCode: call.region === 'Nigeria' || country === 'Nigeria' ? 'en' : 'en',
+    speaker: 'caller',
+    segmentSeconds: 15,
+  });
+
 
   useEffect(() => {
     const startTime = call.started_at ? new Date(call.started_at).getTime() : Date.now();
