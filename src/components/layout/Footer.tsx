@@ -15,7 +15,7 @@ const FALLBACK_YEARS: Record<string, string> = {
 
 const Footer = () => {
   const { userRole } = useAuth();
-  const { country, supportEmail } = useRegion();
+  const { country, supportEmail, companyInfo } = useRegion();
   const { getForCategory, formatRange, visible: yearsVisible } = useCategoryYearSpecs(country);
   const yearsFor = (key: "budget" | "standard" | "premium") => {
     if (!yearsVisible) return "";
@@ -28,7 +28,12 @@ const Footer = () => {
   };
   
   const isUSA = country === "USA";
-  const companyInfo = isUSA ? COMPANY_INFO.USA : COMPANY_INFO.NIGERIA;
+  const fallback = isUSA ? COMPANY_INFO.USA : COMPANY_INFO.NIGERIA;
+  const company = {
+    companyName: companyInfo?.companyName || fallback.companyName,
+    phone: companyInfo?.phone || fallback.phone,
+    phoneRaw: companyInfo?.phoneRaw || fallback.phoneRaw,
+  };
   const locations = isUSA
     ? ["Washington DC, USA", "Maryland, USA", "Virginia, USA"]
     : ["Lagos, Nigeria", "Abuja, Nigeria", "Port Harcourt, Nigeria"];
