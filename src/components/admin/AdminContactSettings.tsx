@@ -531,41 +531,15 @@ export const AdminContactSettings = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-2 gap-4">
-            {companyPhones.map((company) => (
-              <div key={company.region} className="p-4 rounded-lg bg-muted space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{company.region === 'USA' ? '🇺🇸' : '🇳🇬'}</span>
-                  <div>
-                    <p className="font-semibold">{company.companyName}</p>
-                    <p className="text-xs text-muted-foreground">{company.region}</p>
-                  </div>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-mono text-xs">{company.phone}</span>
-                    </div>
-                    <CopyButton value={company.phoneRaw} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-mono text-xs">{company.email}</span>
-                    </div>
-                    <CopyButton value={company.email} />
-                  </div>
-                  {company.fullAddress && (
-                    <div className="flex items-start gap-2 pt-1 border-t border-border/50">
-                      <Building2 className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                      <span className="text-xs text-muted-foreground">{company.fullAddress}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+          {companyLoading ? (
+            <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-4">
+              {companyRows.map((row) => (
+                <CompanyInfoEditor key={row.id} row={row} onSaved={fetchCompanyInfo} />
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
