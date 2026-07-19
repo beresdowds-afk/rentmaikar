@@ -15,7 +15,7 @@ const FALLBACK_YEARS: Record<string, string> = {
 
 const Footer = () => {
   const { userRole } = useAuth();
-  const { country, supportEmail } = useRegion();
+  const { country, supportEmail, companyInfo } = useRegion();
   const { getForCategory, formatRange, visible: yearsVisible } = useCategoryYearSpecs(country);
   const yearsFor = (key: "budget" | "standard" | "premium") => {
     if (!yearsVisible) return "";
@@ -28,7 +28,12 @@ const Footer = () => {
   };
   
   const isUSA = country === "USA";
-  const companyInfo = isUSA ? COMPANY_INFO.USA : COMPANY_INFO.NIGERIA;
+  const fallback = isUSA ? COMPANY_INFO.USA : COMPANY_INFO.NIGERIA;
+  const company = {
+    companyName: companyInfo?.companyName || fallback.companyName,
+    phone: companyInfo?.phone || fallback.phone,
+    phoneRaw: companyInfo?.phoneRaw || fallback.phoneRaw,
+  };
   const locations = isUSA
     ? ["Washington DC, USA", "Maryland, USA", "Virginia, USA"]
     : ["Lagos, Nigeria", "Abuja, Nigeria", "Port Harcourt, Nigeria"];
@@ -146,12 +151,12 @@ const Footer = () => {
             <h4 className="font-display font-semibold mb-4">Contact</h4>
             <ul className="space-y-3 text-sm text-primary-foreground/70">
               <li>
-                <p className="font-medium text-primary-foreground">{companyInfo.companyName}</p>
+                <p className="font-medium text-primary-foreground">{company.companyName}</p>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4 shrink-0" />
-                <a href={`tel:${companyInfo.phoneRaw}`} className="hover:text-accent transition-colors">
-                  {companyInfo.phone}
+                <a href={`tel:${company.phoneRaw}`} className="hover:text-accent transition-colors">
+                  {company.phone}
                 </a>
               </li>
               {supportEmail && (

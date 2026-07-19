@@ -13,6 +13,19 @@ export type Country = "USA" | "Nigeria";
 export type RegionMode = "auto" | "manual";
 export type Currency = "USD" | "NGN";
 
+export interface CompanyInfo {
+  companyName: string;
+  phone: string;
+  phoneRaw: string;
+  email: string;
+  fullAddress: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode: string;
+}
+
 interface RegionConfig {
   currency: Currency;
   currencySymbol: string;
@@ -34,6 +47,7 @@ interface RegionContextType {
   whatsappNumber: string;
   smsNumber: string;
   supportEmail: string;
+  companyInfo: CompanyInfo | null;
   getCurrencyIcon: (className?: string) => React.ReactNode;
   config: RegionConfig;
 }
@@ -181,6 +195,11 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
     Record<Country, Partial<Pick<RegionConfig, "whatsappNumber" | "smsNumber" | "supportEmail">>>
   >({ USA: {}, Nigeria: {} });
 
+  const [companyInfoMap, setCompanyInfoMap] = useState<Record<Country, CompanyInfo | null>>({
+    USA: null,
+    Nigeria: null,
+  });
+
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -215,6 +234,48 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
+  // Load per-region company info (drives landing footer + admin panel)
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("platform_company_info")
+        .select("*")
+        .eq("is_active", true);
+      if (cancelled || error || !data) return;
+      const next: Record<Country, CompanyInfo | null> = { USA: null, Nigeria: null };
+      for (const row of data as Array<Record<string, unknown>>) {
+        const region = row.region === "Nigeria" ? "Nigeria" : "USA";
+        next[region] = {
+          companyName: String(row.company_name ?? ""),
+          phone: String(row.phone ?? ""),
+          phoneRaw: String(row.phone_raw ?? ""),
+          email: String(row.email ?? ""),
+          fullAddress: String(row.full_address ?? ""),
+          address: String(row.address_line ?? ""),
+          city: String(row.city ?? ""),
+          state: String(row.state ?? ""),
+          country: String(row.country_name ?? ""),
+          postalCode: String(row.postal_code ?? ""),
+        };
+      }
+      setCompanyInfoMap(next);
+    };
+    load();
+    const channel = supabase
+      .channel("platform_company_info_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "platform_company_info" },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const baseConfig = regionConfig[country];
   const overrides = contactOverrides[country];
   const config: RegionConfig = {
@@ -240,6 +301,7 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
         setRegionMode,
         isDetecting,
         ...config,
+        companyInfo: companyInfoMap[country],
         getCurrencyIcon,
         config,
       }}
