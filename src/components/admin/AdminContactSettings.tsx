@@ -300,6 +300,119 @@ const EmailConfigRow = ({ entry, onSave }: {
   );
 };
 
+interface CompanyInfoRow {
+  id: string;
+  region: string;
+  company_name: string;
+  address_line: string | null;
+  city: string | null;
+  state: string | null;
+  country_name: string | null;
+  postal_code: string | null;
+  full_address: string | null;
+  phone: string | null;
+  phone_raw: string | null;
+  email: string | null;
+  is_active: boolean;
+}
+
+const CompanyInfoEditor = ({ row, onSaved }: { row: CompanyInfoRow; onSaved: () => void }) => {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<CompanyInfoRow>(row);
+
+  useEffect(() => { setForm(row); }, [row]);
+
+  const set = (k: keyof CompanyInfoRow, v: string) => setForm(prev => ({ ...prev, [k]: v }));
+
+  const save = async () => {
+    setSaving(true);
+    const { error } = await supabase
+      .from('platform_company_info')
+      .update({
+        company_name: form.company_name,
+        address_line: form.address_line,
+        city: form.city,
+        state: form.state,
+        country_name: form.country_name,
+        postal_code: form.postal_code,
+        full_address: form.full_address,
+        phone: form.phone,
+        phone_raw: (form.phone_raw || '').replace(/[^\d+]/g, ''),
+        email: form.email,
+      })
+      .eq('id', row.id);
+    setSaving(false);
+    if (error) { toast.error('Failed to save company info'); return; }
+    toast.success('Company info updated — landing footer will refresh');
+    setEditing(false);
+    onSaved();
+  };
+
+  return (
+    <div className="p-4 rounded-lg bg-muted space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">{row.region === 'USA' ? '🇺🇸' : '🇳🇬'}</span>
+          <div>
+            <p className="font-semibold">{form.company_name || row.company_name}</p>
+            <p className="text-xs text-muted-foreground">{row.region}</p>
+          </div>
+        </div>
+        {!editing && (
+          <Button size="sm" variant="outline" onClick={() => setEditing(true)}>Edit</Button>
+        )}
+      </div>
+
+      {editing ? (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div><Label className="text-xs">Company name</Label><Input value={form.company_name || ''} onChange={e => set('company_name', e.target.value)} className="h-8" /></div>
+            <div><Label className="text-xs">Phone (display)</Label><Input value={form.phone || ''} onChange={e => set('phone', e.target.value)} className="h-8" /></div>
+            <div><Label className="text-xs">Phone (dial)</Label><Input value={form.phone_raw || ''} onChange={e => set('phone_raw', e.target.value)} placeholder="+16083843932" className="h-8" /></div>
+            <div><Label className="text-xs">Email</Label><Input value={form.email || ''} onChange={e => set('email', e.target.value)} className="h-8" /></div>
+            <div className="col-span-2"><Label className="text-xs">Address line</Label><Input value={form.address_line || ''} onChange={e => set('address_line', e.target.value)} className="h-8" /></div>
+            <div><Label className="text-xs">City</Label><Input value={form.city || ''} onChange={e => set('city', e.target.value)} className="h-8" /></div>
+            <div><Label className="text-xs">State</Label><Input value={form.state || ''} onChange={e => set('state', e.target.value)} className="h-8" /></div>
+            <div><Label className="text-xs">Country</Label><Input value={form.country_name || ''} onChange={e => set('country_name', e.target.value)} className="h-8" /></div>
+            <div><Label className="text-xs">Postal code</Label><Input value={form.postal_code || ''} onChange={e => set('postal_code', e.target.value)} className="h-8" /></div>
+            <div className="col-span-2"><Label className="text-xs">Full address (footer display)</Label><Input value={form.full_address || ''} onChange={e => set('full_address', e.target.value)} className="h-8" /></div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button size="sm" onClick={save} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => { setEditing(false); setForm(row); }}>Cancel</Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="font-mono text-xs">{form.phone || '—'}</span>
+            </div>
+            <CopyButton value={form.phone_raw || ''} />
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="font-mono text-xs">{form.email || '—'}</span>
+            </div>
+            <CopyButton value={form.email || ''} />
+          </div>
+          {form.full_address && (
+            <div className="flex items-start gap-2 pt-1 border-t border-border/50">
+              <Building2 className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+              <span className="text-xs text-muted-foreground">{form.full_address}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const AdminContactSettings = () => {
   const { settings, isLoading, updateSetting, fetchSettings: refetch } = useContactSettings();
 
@@ -307,11 +420,19 @@ export const AdminContactSettings = () => {
   const [forwardingLoading, setForwardingLoading] = useState(true);
   const [emailConfigs, setEmailConfigs] = useState<any[]>([]);
   const [emailConfigLoading, setEmailConfigLoading] = useState(true);
+  const [companyRows, setCompanyRows] = useState<CompanyInfoRow[]>([]);
+  const [companyLoading, setCompanyLoading] = useState(true);
 
   const fetchEmailConfigs = async () => {
     const { data } = await supabase.from('platform_email_config').select('*').order('key');
     if (data) setEmailConfigs(data);
     setEmailConfigLoading(false);
+  };
+
+  const fetchCompanyInfo = async () => {
+    const { data } = await supabase.from('platform_company_info').select('*').order('region');
+    if (data) setCompanyRows(data as CompanyInfoRow[]);
+    setCompanyLoading(false);
   };
 
   useEffect(() => {
@@ -325,6 +446,7 @@ export const AdminContactSettings = () => {
     };
     fetchForwarding();
     fetchEmailConfigs();
+    fetchCompanyInfo();
   }, []);
 
   const usaSettings = settings.filter(s => s.region === 'USA');
@@ -339,11 +461,6 @@ export const AdminContactSettings = () => {
       refetch();
     }
   };
-
-  const companyPhones = [
-    { region: 'USA', ...COMPANY_INFO.USA },
-    { region: 'Nigeria', ...COMPANY_INFO.NIGERIA },
-  ];
 
   if (isLoading) {
     return (
