@@ -13,6 +13,19 @@ export type Country = "USA" | "Nigeria";
 export type RegionMode = "auto" | "manual";
 export type Currency = "USD" | "NGN";
 
+export interface CompanyInfo {
+  companyName: string;
+  phone: string;
+  phoneRaw: string;
+  email: string;
+  fullAddress: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode: string;
+}
+
 interface RegionConfig {
   currency: Currency;
   currencySymbol: string;
@@ -34,6 +47,7 @@ interface RegionContextType {
   whatsappNumber: string;
   smsNumber: string;
   supportEmail: string;
+  companyInfo: CompanyInfo | null;
   getCurrencyIcon: (className?: string) => React.ReactNode;
   config: RegionConfig;
 }
