@@ -3442,6 +3442,63 @@ export type Database = {
           },
         ]
       }
+      platform_company_info: {
+        Row: {
+          address_line: string | null
+          city: string | null
+          company_name: string
+          country_name: string | null
+          created_at: string
+          email: string | null
+          full_address: string | null
+          id: string
+          is_active: boolean
+          phone: string | null
+          phone_raw: string | null
+          postal_code: string | null
+          region: string
+          state: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          address_line?: string | null
+          city?: string | null
+          company_name: string
+          country_name?: string | null
+          created_at?: string
+          email?: string | null
+          full_address?: string | null
+          id?: string
+          is_active?: boolean
+          phone?: string | null
+          phone_raw?: string | null
+          postal_code?: string | null
+          region: string
+          state?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          address_line?: string | null
+          city?: string | null
+          company_name?: string
+          country_name?: string | null
+          created_at?: string
+          email?: string | null
+          full_address?: string | null
+          id?: string
+          is_active?: boolean
+          phone?: string | null
+          phone_raw?: string | null
+          postal_code?: string | null
+          region?: string
+          state?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       platform_countries: {
         Row: {
           code: string
@@ -3912,6 +3969,13 @@ export type Database = {
             referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "price_negotiations_vehicle_owner_fk"
+            columns: ["vehicle_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id", "owner_id"]
+          },
         ]
       }
       profiles: {
@@ -3940,6 +4004,7 @@ export type Database = {
           phone_verification_expires_at: string | null
           phone_verified: boolean | null
           preferred_country: string | null
+          public_uuid: string
           region_mode: string | null
           registration_stage:
             | Database["public"]["Enums"]["registration_stage_enum"]
@@ -3976,6 +4041,7 @@ export type Database = {
           phone_verification_expires_at?: string | null
           phone_verified?: boolean | null
           preferred_country?: string | null
+          public_uuid?: string
           region_mode?: string | null
           registration_stage?:
             | Database["public"]["Enums"]["registration_stage_enum"]
@@ -4012,6 +4078,7 @@ export type Database = {
           phone_verification_expires_at?: string | null
           phone_verified?: boolean | null
           preferred_country?: string | null
+          public_uuid?: string
           region_mode?: string | null
           registration_stage?:
             | Database["public"]["Enums"]["registration_stage_enum"]
@@ -6453,6 +6520,39 @@ export type Database = {
           },
         ]
       }
+      user_uuid_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          id: string
+          metadata: Json | null
+          public_uuid: string
+          role: string | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          metadata?: Json | null
+          public_uuid: string
+          role?: string | null
+          source?: string
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          metadata?: Json | null
+          public_uuid?: string
+          role?: string | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       vehicle_category_prices: {
         Row: {
           category: string
@@ -6684,7 +6784,15 @@ export type Database = {
           updated_at?: string
           vehicle_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_incidents_vehicle_owner_fk"
+            columns: ["vehicle_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
       }
       vehicle_mqtt_credentials: {
         Row: {
@@ -7687,7 +7795,15 @@ export type Database = {
           vehicle_id?: string
           week_start_date?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "weekly_inspection_reports_vehicle_owner_fk"
+            columns: ["vehicle_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
       }
       weekly_report_settings: {
         Row: {
@@ -8237,6 +8353,10 @@ export type Database = {
         Returns: boolean
       }
       has_admin_assistant_permission: {
+        Args: { _permission: string; _user_id: string }
+        Returns: boolean
+      }
+      has_admin_privilege: {
         Args: { _permission: string; _user_id: string }
         Returns: boolean
       }
