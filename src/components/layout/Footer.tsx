@@ -151,12 +151,12 @@ const Footer = () => {
             <h4 className="font-display font-semibold mb-4">Contact</h4>
             <ul className="space-y-3 text-sm text-primary-foreground/70">
               <li>
-                <p className="font-medium text-primary-foreground">{companyInfo.companyName}</p>
+                <p className="font-medium text-primary-foreground">{company.companyName}</p>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4 shrink-0" />
-                <a href={`tel:${companyInfo.phoneRaw}`} className="hover:text-accent transition-colors">
-                  {companyInfo.phone}
+                <a href={`tel:${company.phoneRaw}`} className="hover:text-accent transition-colors">
+                  {company.phone}
                 </a>
               </li>
               {supportEmail && (
