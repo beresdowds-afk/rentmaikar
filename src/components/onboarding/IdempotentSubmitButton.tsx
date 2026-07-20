@@ -96,7 +96,7 @@ export function IdempotentSubmitButton({
     <div className="inline-flex flex-col gap-1" data-testid="idempotent-submit">
       <Button
         onClick={handle}
-        disabled={disabled || isBusy || isDone}
+        disabled={disabled || isDone}
         data-state={state}
         {...rest}
       >
