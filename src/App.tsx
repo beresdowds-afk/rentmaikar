@@ -26,6 +26,7 @@ const AppLiveSync = () => {
 import LiveAnnouncer from "@/components/LiveAnnouncer";
 import MetaPixelRouteTracker from "@/components/MetaPixelRouteTracker";
 import DocumentExpiryInAppNotifier from "@/components/notifications/DocumentExpiryInAppNotifier";
+import AudioPermissionPrimer from "@/components/AudioPermissionPrimer";
 
 // Lazy-loaded pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -91,6 +92,7 @@ const App = () => (
               <LiveAnnouncer />
               <CookieConsent />
               <MessageConsent />
+              <AudioPermissionPrimer />
               <ErrorBoundary>
                 <Suspense fallback={<PageLoader />}>
                   <main id="main-content">
