@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Mail, MessageSquare, Phone, Loader2, Save, Globe, Building2, Copy, CheckCircle, Plus, Trash2 } from 'lucide-react';
 import { useContactSettings, ContactSetting } from '@/hooks/useUnifiedInbox';
+import CompanyInfoRealtimeDebug from '@/components/admin/CompanyInfoRealtimeDebug';
 
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -542,6 +543,8 @@ export const AdminContactSettings = () => {
           )}
         </CardContent>
       </Card>
+
+      <CompanyInfoRealtimeDebug />
 
       {/* Message Forwarding Numbers */}
       <Card>
