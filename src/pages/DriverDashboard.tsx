@@ -48,6 +48,7 @@ import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
 import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
 import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
+import { PortalGate } from '@/components/onboarding/PortalGate';
 import { DriverOverviewTab } from '@/components/dashboard/DriverOverviewTab';
 import { useNavigate } from 'react-router-dom';
 import {
