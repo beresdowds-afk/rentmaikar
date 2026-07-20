@@ -240,11 +240,27 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
       setEmail(trimmedEmail);
       setPhone(normPhone);
 
+      // Analytics: which fields were updated
+      const changedFields: string[] = [];
+      if (nameChanged) changedFields.push('full_name');
+      if (emailChanged) changedFields.push('email');
+      if (phoneChanged) changedFields.push('phone');
+      trackOnboardingEvent('profile_updated', {
+        role: subjectRole === 'driver' || subjectRole === 'owner' ? subjectRole : null,
+        fields: changedFields,
+      });
+
       if (requiresReverification) {
         setEmailVerified(!emailChanged && emailVerified);
         setPhoneVerified(!phoneChanged && phoneVerified);
         setIdentityStatus('pending_reverification');
         setNeedsReverify(true);
+
+        trackOnboardingEvent('profile_reverification_triggered', {
+          role: subjectRole === 'driver' || subjectRole === 'owner' ? subjectRole : null,
+          fields: changedFields.filter((f) => f !== 'full_name'),
+          extra: { channel: 'both' },
+        });
 
         // 6. Kick off Persona re-verification (email + SMS with a hosted link).
         supabase.functions.invoke('persona-send-reverification', {
@@ -265,6 +281,7 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
       } else {
         toast.success('Profile saved.');
       }
+
     } catch (e: any) {
       toast.error(e.message ?? 'Failed to save changes');
     } finally {
