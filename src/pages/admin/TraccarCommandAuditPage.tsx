@@ -186,8 +186,42 @@ export default function TraccarCommandAuditPage() {
   }, [debouncedQ, filter, page]);
 
   useEffect(() => {
+    loadRef.current = load;
     load();
   }, [load]);
+
+  // Realtime: append/update rows as new traccar command audit entries land.
+  useEffect(() => {
+    setRealtimeStatus("connecting");
+    const channel = supabase
+      .channel("traccar-audit-live")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "iot_audit_log" },
+        (payload) => {
+          const row = payload.new as AuditRow;
+          if (!row?.action?.startsWith("traccar_command_")) return;
+          // Only reload if we're on page 0 with no active text-search so counts stay accurate.
+          if (page === 0 && !debouncedQ) {
+            loadRef.current();
+          } else {
+            setNewRowsSinceView((n) => n + 1);
+          }
+        },
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setRealtimeStatus("live");
+        else if (status === "CLOSED" || status === "CHANNEL_ERROR") setRealtimeStatus("off");
+      });
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [page, debouncedQ]);
+
+  // Reset "new rows" badge whenever we complete a fresh load.
+  useEffect(() => {
+    if (!loading) setNewRowsSinceView(0);
+  }, [loading, rows]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
