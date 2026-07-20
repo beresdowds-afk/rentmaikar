@@ -69,7 +69,7 @@ export function IdempotentSubmitButton({
     setState('submitting');
     setReason(null);
     trackOnboardingEvent('portal_cta_submitted', {
-      role: role ?? null,
+      role: (role ?? null) as 'driver' | 'owner' | null,
       portal,
       idempotencyKey: key,
     });
