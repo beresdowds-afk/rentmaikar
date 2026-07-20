@@ -79,6 +79,14 @@ export default function TraccarCommandAuditPage() {
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<EnrichedRow | null>(null);
   const [replayingId, setReplayingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmReplayOne, setConfirmReplayOne] = useState<EnrichedRow | null>(null);
+  const [confirmBulk, setConfirmBulk] = useState(false);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "live" | "off">("connecting");
+  const [newRowsSinceView, setNewRowsSinceView] = useState(0);
+  const loadRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
@@ -87,6 +95,7 @@ export default function TraccarCommandAuditPage() {
 
   useEffect(() => {
     setPage(0);
+    setSelectedIds(new Set());
   }, [debouncedQ, filter]);
 
   const load = useCallback(async () => {
