@@ -105,20 +105,27 @@ const OwnerOnboarding = () => {
               <AlertTitle>{error.title}</AlertTitle>
               <AlertDescription className="space-y-2">
                 <p>{error.description}</p>
-                {error.code && (
+                <p className="text-xs opacity-80">{error.actionable}</p>
+                {error.raw && (
                   <code className="block text-xs bg-background/50 rounded p-2 break-all">
-                    {error.code}
+                    {error.code ? `[${error.code}] ` : ''}{error.raw}
                   </code>
                 )}
-                {attempts >= MAX_ATTEMPTS && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/faq')}
-                  >
-                    Contact support
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {error.kind === 'auth' && (
+                    <Button variant="outline" size="sm" onClick={refreshAndRetry}>
+                      <LogIn className="h-3.5 w-3.5 mr-1.5" /> Refresh session & retry
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={routeToCorrectStep}>
+                    Go to the right step
                   </Button>
-                )}
+                  {attempts >= MAX_ATTEMPTS && (
+                    <Button variant="outline" size="sm" onClick={() => navigate('/faq')}>
+                      Contact support
+                    </Button>
+                  )}
+                </div>
               </AlertDescription>
             </Alert>
           )}
