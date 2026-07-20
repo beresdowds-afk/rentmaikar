@@ -86,7 +86,31 @@ export default function TraccarCommandAuditPage() {
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "live" | "off">("connecting");
   const [newRowsSinceView, setNewRowsSinceView] = useState(0);
+  // Per-row inline replay state (running/success/failed/rate-limited)
+  type ReplayState = {
+    status: "running" | "success" | "failed" | "rate_limited";
+    message?: string;
+    at: number;
+  };
+  const [replayStates, setReplayStates] = useState<Record<string, ReplayState>>({});
+  // 429 friendly handler
+  const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
+  const [nowTs, setNowTs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!rateLimitedUntil) return;
+    const t = setInterval(() => setNowTs(Date.now()), 500);
+    return () => clearInterval(t);
+  }, [rateLimitedUntil]);
+  const rateLimitRemainingSec =
+    rateLimitedUntil && rateLimitedUntil > nowTs
+      ? Math.ceil((rateLimitedUntil - nowTs) / 1000)
+      : 0;
+  const isRateLimited = rateLimitRemainingSec > 0;
+  useEffect(() => {
+    if (rateLimitedUntil && rateLimitedUntil <= nowTs) setRateLimitedUntil(null);
+  }, [nowTs, rateLimitedUntil]);
   const loadRef = useRef<() => void>(() => {});
+
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
