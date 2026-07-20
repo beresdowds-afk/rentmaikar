@@ -596,6 +596,7 @@ export default function OwnerDashboard() {
                 <Plus className="h-6 w-6 mr-2" />
                 Add Another Vehicle
               </Button>
+              </SubscriptionGate>
               </PortalGate>
             </TabsContent>
 
