@@ -524,6 +524,49 @@ export default function TraccarCommandAuditPage() {
             </Select>
           </div>
 
+          {failedRows.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed p-2 text-sm">
+              <span className="text-muted-foreground">Bulk-select failed by:</span>
+              <Select value={bulkDevice} onValueChange={setBulkDevice}>
+                <SelectTrigger className="w-[200px]"><SelectValue placeholder="Device" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any device</SelectItem>
+                  {failedDevices.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.label} · {d.count}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={bulkCommand} onValueChange={setBulkCommand}>
+                <SelectTrigger className="w-[160px]"><SelectValue placeholder="Command" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any command</SelectItem>
+                  <SelectItem value="engineStop">Immobilize</SelectItem>
+                  <SelectItem value="engineResume">Mobilize</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={bulkWindow} onValueChange={setBulkWindow}>
+                <SelectTrigger className="w-[160px]"><SelectValue placeholder="Time window" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any time</SelectItem>
+                  <SelectItem value="15m">Last 15 minutes</SelectItem>
+                  <SelectItem value="1h">Last hour</SelectItem>
+                  <SelectItem value="24h">Last 24 hours</SelectItem>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={matchingCount === 0}
+                onClick={selectFailedMatching}
+              >
+                Select {matchingCount} matching failure{matchingCount === 1 ? "" : "s"}
+              </Button>
+            </div>
+          )}
+
           <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
