@@ -365,6 +365,61 @@ export default function TraccarCommandAuditPage() {
     });
   };
 
+  // ---- Bulk selection helpers: device / command / time window ----
+  const failedRows = useMemo(
+    () => rows.filter((r) => r.response_ok === false && !!r.traccar_device_id),
+    [rows],
+  );
+  const failedDevices = useMemo(() => {
+    const map = new Map<string, { id: string; label: string; count: number }>();
+    failedRows.forEach((r) => {
+      const key = String(r.traccar_device_id);
+      const label = r.device_serial ?? `Traccar ${r.traccar_device_id}`;
+      const existing = map.get(key);
+      if (existing) existing.count++;
+      else map.set(key, { id: key, label, count: 1 });
+    });
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [failedRows]);
+  const [bulkDevice, setBulkDevice] = useState<string>("all");
+  const [bulkCommand, setBulkCommand] = useState<string>("all");
+  const [bulkWindow, setBulkWindow] = useState<string>("all");
+
+  const selectFailedMatching = () => {
+    const now = Date.now();
+    const windowMs =
+      bulkWindow === "15m" ? 15 * 60_000 :
+      bulkWindow === "1h" ? 60 * 60_000 :
+      bulkWindow === "24h" ? 24 * 60 * 60_000 :
+      bulkWindow === "7d" ? 7 * 24 * 60 * 60_000 : null;
+
+    const matches = failedRows.filter((r) => {
+      if (bulkDevice !== "all" && String(r.traccar_device_id) !== bulkDevice) return false;
+      if (bulkCommand !== "all" && r.command !== bulkCommand) return false;
+      if (windowMs != null && now - new Date(r.created_at).getTime() > windowMs) return false;
+      return true;
+    });
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      matches.forEach((r) => next.add(r.id));
+      return next;
+    });
+  };
+  const matchingCount = useMemo(() => {
+    const now = Date.now();
+    const windowMs =
+      bulkWindow === "15m" ? 15 * 60_000 :
+      bulkWindow === "1h" ? 60 * 60_000 :
+      bulkWindow === "24h" ? 24 * 60 * 60_000 :
+      bulkWindow === "7d" ? 7 * 24 * 60 * 60_000 : null;
+    return failedRows.filter((r) => {
+      if (bulkDevice !== "all" && String(r.traccar_device_id) !== bulkDevice) return false;
+      if (bulkCommand !== "all" && r.command !== bulkCommand) return false;
+      if (windowMs != null && now - new Date(r.created_at).getTime() > windowMs) return false;
+      return true;
+    }).length;
+  }, [failedRows, bulkDevice, bulkCommand, bulkWindow]);
+
   const showingFrom = total === 0 ? 0 : page * PAGE_SIZE + 1;
   const showingTo = Math.min(total, page * PAGE_SIZE + rows.length);
 
