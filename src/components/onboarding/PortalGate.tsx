@@ -117,11 +117,13 @@ export function PortalGate({
   }
 
   const meets = (() => {
-    if (!progress?.authenticated) return require === 'authenticated' ? false : false;
+    if (!progress?.authenticated) return false;
     if (require === 'authenticated') return true;
     if (require === 'email_verified') return !!progress.email_verified;
     if (require === 'documents')
       return STAGE_ORDER[progress.stage] >= STAGE_ORDER.documents_submitted;
+    if (require === 'verification')
+      return STAGE_ORDER[progress.stage] >= STAGE_ORDER.verification_pending;
     return progress.access_level === 'full' || progress.stage === 'approved';
   })();
 
