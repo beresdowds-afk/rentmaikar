@@ -62,6 +62,7 @@ const PaymentsViewerPage = lazy(() => import("./pages/admin/PaymentsViewerPage")
 const TourStepConfigPage = lazy(() => import("./pages/admin/TourStepConfigPage"));
 const TourAnalyticsPage = lazy(() => import("./pages/admin/TourAnalyticsPage"));
 const AdminVehicleCataloguePage = lazy(() => import("./pages/admin/AdminVehicleCataloguePage"));
+const UserUuidAssignmentsPage = lazy(() => import("./pages/admin/UserUuidAssignmentsPage"));
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
 const SubscriptionSuccessPage = lazy(() => import("./pages/SubscriptionSuccessPage"));
 const ProxyConsentPage = lazy(() => import("./pages/ProxyConsentPage"));
@@ -257,8 +258,16 @@ const App = () => (
                   <Route
                     path="/admin/vehicle-catalogue"
                     element={
-                      <ProtectedRoute allowedRoles={['admin']}>
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
                         <AdminVehicleCataloguePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/uuid-assignments"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
+                        <UserUuidAssignmentsPage />
                       </ProtectedRoute>
                     }
                   />

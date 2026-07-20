@@ -17,6 +17,7 @@ import {
   Server, Database, HardDrive, Router
 } from 'lucide-react';
 import { TelemetryProviderSwitch } from './TelemetryProviderSwitch';
+import TraccarLiveMap from './TraccarLiveMap';
 import { IoTSimCardsPanel } from './IoTSimCardsPanel';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -284,11 +285,19 @@ export const IoTMonitoringHub = () => {
             <Router className="h-3.5 w-3.5" />
             Providers &amp; SIMs
           </TabsTrigger>
+          <TabsTrigger value="livemap" className="gap-1.5">
+            <MapPin className="h-3.5 w-3.5" />
+            Live Map (Traccar)
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="providers" className="space-y-4">
           <TelemetryProviderSwitch />
           <IoTSimCardsPanel />
+        </TabsContent>
+
+        <TabsContent value="livemap" className="space-y-4">
+          <TraccarLiveMap />
         </TabsContent>
 
         {/* ── FLEET OVERVIEW ────────────────────────────── */}
