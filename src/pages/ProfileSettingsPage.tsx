@@ -233,6 +233,8 @@ export default function ProfileSettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          <ProfileAuditHistory />
         </div>
       </main>
       <Footer />
