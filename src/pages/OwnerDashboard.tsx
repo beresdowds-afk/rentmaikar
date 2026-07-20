@@ -428,47 +428,65 @@ export default function OwnerDashboard() {
 
 
             <TabsContent value="recalls">
-              <RecallApprovalPanel mode="owner" />
+              <PortalGate portal="Vehicle Recalls" require="approved">
+                <RecallApprovalPanel mode="owner" />
+              </PortalGate>
             </TabsContent>
 
             {/* Pickup Locations Tab */}
             <TabsContent value="pickup-locations">
-              <VehiclePickupLocation />
+              <PortalGate portal="Pickup Locations" require="documents">
+                <VehiclePickupLocation />
+              </PortalGate>
             </TabsContent>
 
 
             {/* IoT Device Tab */}
             <TabsContent value="iot-device">
-              <IoTDevicePurchase />
+              <PortalGate portal="IoT / Traccar Device" require="approved">
+                <IoTDevicePurchase />
+              </PortalGate>
             </TabsContent>
 
             {/* Inspections Tab */}
             <TabsContent value="inspections">
-              <OwnerWeeklyReportReview />
+              <PortalGate portal="Weekly Inspections" require="approved">
+                <OwnerWeeklyReportReview />
+              </PortalGate>
             </TabsContent>
 
             {/* Pricing Tab */}
             <TabsContent value="pricing">
-              <OwnerPriceNegotiation />
+              <PortalGate portal="Price Negotiation" require="approved">
+                <OwnerPriceNegotiation />
+              </PortalGate>
             </TabsContent>
 
             {/* Insurance Tab */}
             <TabsContent value="insurance" className="space-y-6">
-              <OwnerInsuranceSupport />
-              <SubscriptionPlansPanel
-                title="Optional coverage & support"
-                planTypes={["insurance", "roadside_support"]}
-              />
+              <PortalGate portal="Insurance & Roadside" require="email_verified">
+                <div className="space-y-6">
+                  <OwnerInsuranceSupport />
+                  <SubscriptionPlansPanel
+                    title="Optional coverage & support"
+                    planTypes={["insurance", "roadside_support"]}
+                  />
+                </div>
+              </PortalGate>
             </TabsContent>
 
             {/* Agreements Tab */}
             <TabsContent value="agreements" className="space-y-6">
-              <UserAgreementsList userType="owner" />
+              <PortalGate portal="Legal Agreements" require="documents">
+                <UserAgreementsList userType="owner" />
+              </PortalGate>
             </TabsContent>
 
             {/* Rent to Own Tab */}
             <TabsContent value="rent-to-own">
-              <OwnerRentToOwnListing />
+              <PortalGate portal="Rent to Own Listing" require="approved">
+                <OwnerRentToOwnListing />
+              </PortalGate>
             </TabsContent>
 
             {/* Vehicles Tab */}
