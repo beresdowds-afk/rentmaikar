@@ -5,6 +5,7 @@ import {
   type RegistrationStage,
 } from '@/hooks/useRegistrationProgress';
 import { STAGE_COMPLETION_COPY, adviseOnStageFailure } from '@/lib/onboarding-stages';
+import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 
 const STAGE_ORDER: Record<RegistrationStage, number> = {
   auth: 0,
@@ -60,6 +61,11 @@ export function useOnboardingStageToasts() {
             : undefined,
         });
       }
+      trackOnboardingEvent('onboarding_stage_completed', {
+        role: data.role,
+        stage: now,
+        extra: { previousStage: prev },
+      });
       try {
         localStorage.setItem(LS_KEY, now);
       } catch {
