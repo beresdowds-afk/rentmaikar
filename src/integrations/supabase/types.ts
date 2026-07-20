@@ -8400,6 +8400,7 @@ export type Database = {
         Args: { _email: string }
         Returns: boolean
       }
+      onboarding_diagnostics: { Args: never; Returns: Json }
       purge_expired_elevenlabs_test_logs: {
         Args: never
         Returns: {

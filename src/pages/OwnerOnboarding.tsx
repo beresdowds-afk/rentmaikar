@@ -5,8 +5,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle2, Car, FileText, DollarSign, ArrowRight, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Car, FileText, DollarSign, ArrowRight, Loader2, AlertTriangle, RefreshCw, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
+import { classifyOnboardingError, routeForStage, type ClassifiedOnboardingError } from '@/lib/onboarding-error';
 
 const steps = [
   { icon: Car, title: 'List your first vehicle', desc: 'Add photos, pricing, and specs so drivers can find your car.' },
@@ -21,7 +22,7 @@ const OwnerOnboarding = () => {
   const { user, isLoading } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [attempts, setAttempts] = useState(0);
-  const [error, setError] = useState<{ title: string; description: string; code?: string } | null>(null);
+  const [error, setError] = useState<ClassifiedOnboardingError | null>(null);
 
   useEffect(() => {
     if (!isLoading && !user) navigate('/auth', { replace: true });
@@ -38,30 +39,32 @@ const OwnerOnboarding = () => {
       toast.success('Submitted for verification', { description: 'Admin will review and unlock full access shortly.' });
       navigate('/owner/dashboard', { replace: true });
     } catch (err) {
-      const anyErr = err as { message?: string; code?: string };
-      const raw = anyErr?.message || 'Unknown error';
-      const lower = raw.toLowerCase();
-      const isAuth = lower.includes('jwt') || lower.includes('not authenticated') || anyErr?.code === 'PGRST301';
-      const isNetwork = lower.includes('fetch') || lower.includes('network');
+      const classified = classifyOnboardingError(err);
       const nextAttempts = attempts + 1;
       setAttempts(nextAttempts);
-      setError({
-        title: isAuth
-          ? 'Your session expired'
-          : isNetwork
-            ? 'Connection problem'
-            : 'We couldn’t complete your onboarding',
-        description: isAuth
-          ? 'Please sign in again to finish setting up your account.'
-          : isNetwork
-            ? 'Check your internet connection and tap Retry.'
-            : nextAttempts >= MAX_ATTEMPTS
-              ? 'This keeps failing. Contact support with the code below so we can finish this for you.'
-              : 'Something went wrong on our side. Tap Retry to try again.',
-        code: raw,
-      });
-      toast.error('Could not complete onboarding', { description: raw });
+      setError(classified);
+      toast.error(classified.title, { description: classified.raw });
       setSubmitting(false);
+    }
+  };
+
+  const refreshAndRetry = async () => {
+    try {
+      await supabase.auth.refreshSession();
+      toast.success('Session refreshed');
+    } catch {
+      // fall through — finish() will surface a fresh error
+    }
+    finish();
+  };
+
+  const routeToCorrectStep = async () => {
+    try {
+      const { data } = await supabase.rpc('get_my_registration_progress');
+      const p = (data as { role?: 'driver' | 'owner'; stage?: string }) || {};
+      navigate(routeForStage(p.role ?? 'owner', (p.stage as never) ?? null), { replace: true });
+    } catch {
+      navigate('/register/owner', { replace: true });
     }
   };
 
@@ -102,20 +105,27 @@ const OwnerOnboarding = () => {
               <AlertTitle>{error.title}</AlertTitle>
               <AlertDescription className="space-y-2">
                 <p>{error.description}</p>
-                {error.code && (
+                <p className="text-xs opacity-80">{error.actionable}</p>
+                {error.raw && (
                   <code className="block text-xs bg-background/50 rounded p-2 break-all">
-                    {error.code}
+                    {error.code ? `[${error.code}] ` : ''}{error.raw}
                   </code>
                 )}
-                {attempts >= MAX_ATTEMPTS && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/faq')}
-                  >
-                    Contact support
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {error.kind === 'auth' && (
+                    <Button variant="outline" size="sm" onClick={refreshAndRetry}>
+                      <LogIn className="h-3.5 w-3.5 mr-1.5" /> Refresh session & retry
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={routeToCorrectStep}>
+                    Go to the right step
                   </Button>
-                )}
+                  {attempts >= MAX_ATTEMPTS && (
+                    <Button variant="outline" size="sm" onClick={() => navigate('/faq')}>
+                      Contact support
+                    </Button>
+                  )}
+                </div>
               </AlertDescription>
             </Alert>
           )}
