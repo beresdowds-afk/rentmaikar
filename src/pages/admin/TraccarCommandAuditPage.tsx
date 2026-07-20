@@ -6,7 +6,24 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCw, Search, PowerOff, Power, Download, Shield } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Loader2,
+  RefreshCw,
+  Search,
+  PowerOff,
+  Power,
+  Download,
+  Shield,
+  Eye,
+  RotateCw,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface AuditRow {
@@ -28,6 +45,7 @@ interface EnrichedRow extends AuditRow {
   response_ok: boolean | null;
   response_status: number | null;
   response_body: unknown;
+  request_payload: unknown;
 }
 
 const COMMAND_LABEL: Record<string, { label: string; icon: JSX.Element; variant: "destructive" | "default" }> = {
@@ -35,28 +53,63 @@ const COMMAND_LABEL: Record<string, { label: string; icon: JSX.Element; variant:
   engineResume: { label: "Mobilize", icon: <Power className="h-3 w-3" />, variant: "default" },
 };
 
+const PAGE_SIZE = 50;
+
+type Filter = "all" | "engineStop" | "engineResume" | "success" | "failure";
+
 export default function TraccarCommandAuditPage() {
   const [rows, setRows] = useState<EnrichedRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<"all" | "engineStop" | "engineResume" | "success" | "failure">(
-    "all",
-  );
+  const [debouncedQ, setDebouncedQ] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [selected, setSelected] = useState<EnrichedRow | null>(null);
+  const [replayingId, setReplayingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedQ, filter]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from("iot_audit_log")
-      .select("*")
+      .select("*", { count: "exact" })
       .like("action", "traccar_command_%")
-      .order("created_at", { ascending: false })
-      .limit(500);
+      .order("created_at", { ascending: false });
+
+    // Server-side command filter
+    if (filter === "engineStop") query = query.eq("action", "traccar_command_engineStop");
+    else if (filter === "engineResume") query = query.eq("action", "traccar_command_engineResume");
+    // Success / failure lives inside details JSON — filter server-side via JSON key.
+    if (filter === "success") query = query.eq("details->>ok", "true");
+    else if (filter === "failure") query = query.eq("details->>ok", "false");
+
+    // Server-side text search across serial/device_id inside JSON details.
+    if (debouncedQ) {
+      const like = `%${debouncedQ}%`;
+      query = query.or(
+        `details->>serial_number.ilike.${like},details->>traccar_device_id.ilike.${like},details->>command.ilike.${like}`,
+      );
+    }
+
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    const { data, error, count } = await query.range(from, to);
     if (error) {
       toast.error(error.message);
       setLoading(false);
       return;
     }
     const base = (data ?? []) as AuditRow[];
+    setTotal(count ?? 0);
 
     const actorIds = Array.from(new Set(base.map((r) => r.performed_by).filter(Boolean))) as string[];
     const vehicleIds = Array.from(new Set(base.map((r) => r.vehicle_id).filter(Boolean))) as string[];
@@ -90,7 +143,15 @@ export default function TraccarCommandAuditPage() {
         command,
         response_ok: typeof response.ok === "boolean" ? response.ok : (details.ok ?? null),
         response_status: response.status ?? null,
-        response_body: response.body ?? null,
+        response_body: response.body ?? response ?? null,
+        request_payload:
+          details.request ?? {
+            payload: {
+              deviceId: details.traccar_device_id ?? null,
+              type: command,
+              attributes: details.attributes ?? {},
+            },
+          },
         actor_email: p ? p.email ?? p.full_name ?? null : null,
         vehicle_label: v
           ? `${v.make ?? ""} ${v.model ?? ""} · ${v.license_plate ?? ""}`.trim()
@@ -101,31 +162,13 @@ export default function TraccarCommandAuditPage() {
     });
     setRows(enriched);
     setLoading(false);
-  }, []);
+  }, [debouncedQ, filter, page]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const filtered = useMemo(() => {
-    return rows.filter((r) => {
-      if (filter === "engineStop" && r.command !== "engineStop") return false;
-      if (filter === "engineResume" && r.command !== "engineResume") return false;
-      if (filter === "success" && r.response_ok !== true) return false;
-      if (filter === "failure" && r.response_ok === true) return false;
-      if (!q.trim()) return true;
-      const needle = q.trim().toLowerCase();
-      return [
-        r.actor_email,
-        r.vehicle_label,
-        r.device_serial,
-        String(r.traccar_device_id ?? ""),
-        r.command,
-      ]
-        .filter(Boolean)
-        .some((s) => String(s).toLowerCase().includes(needle));
-    });
-  }, [rows, q, filter]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const exportCsv = () => {
     const header = [
@@ -140,7 +183,7 @@ export default function TraccarCommandAuditPage() {
       "response",
     ];
     const lines = [header.join(",")].concat(
-      filtered.map((r) =>
+      rows.map((r) =>
         [
           r.created_at,
           r.actor_email ?? r.performed_by ?? "",
@@ -165,6 +208,36 @@ export default function TraccarCommandAuditPage() {
     URL.revokeObjectURL(url);
   };
 
+  const replay = async (r: EnrichedRow) => {
+    if (!r.traccar_device_id || !r.command) {
+      toast.error("Cannot replay: missing traccar device id or command");
+      return;
+    }
+    setReplayingId(r.id);
+    try {
+      const attrs = ((r.details?.attributes ?? {}) as Record<string, unknown>) || {};
+      const { data, error } = await supabase.functions.invoke("traccar-admin", {
+        body: {
+          action: "send_command",
+          device_id: r.traccar_device_id,
+          command: r.command,
+          attributes: { ...attrs, __replay_of: r.id },
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.ok) toast.success(`Replayed ${r.command} · new attempt logged`);
+      else toast.error(`Replay failed: ${(data as any)?.body?.message ?? "provider error"}`);
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Replay failed");
+    } finally {
+      setReplayingId(null);
+    }
+  };
+
+  const showingFrom = total === 0 ? 0 : page * PAGE_SIZE + 1;
+  const showingTo = Math.min(total, page * PAGE_SIZE + rows.length);
+
   return (
     <div className="container mx-auto p-4 space-y-4">
       <Card>
@@ -175,11 +248,11 @@ export default function TraccarCommandAuditPage() {
             </CardTitle>
             <CardDescription>
               Every Immobilize / Mobilize command sent from the Live Map, with actor, timestamp,
-              device id and Traccar server response.
+              device id and full Traccar request/response payloads.
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={exportCsv} disabled={filtered.length === 0}>
+            <Button variant="outline" size="sm" onClick={exportCsv} disabled={rows.length === 0}>
               <Download className="h-4 w-4 mr-1" /> Export CSV
             </Button>
             <Button variant="outline" size="sm" onClick={load} disabled={loading}>
@@ -193,12 +266,12 @@ export default function TraccarCommandAuditPage() {
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 className="pl-8"
-                placeholder="Search actor, vehicle, serial or device id…"
+                placeholder="Search serial, traccar device id, or command…"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
             </div>
-            <Select value={filter} onValueChange={(v) => setFilter(v as any)}>
+            <Select value={filter} onValueChange={(v) => setFilter(v as Filter)}>
               <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All commands</SelectItem>
@@ -220,30 +293,32 @@ export default function TraccarCommandAuditPage() {
                   <TableHead>Vehicle</TableHead>
                   <TableHead>Device</TableHead>
                   <TableHead>Result</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6">
+                    <TableCell colSpan={7} className="text-center py-6">
                       <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> Loading…
                     </TableCell>
                   </TableRow>
                 )}
-                {!loading && filtered.length === 0 && (
+                {!loading && rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                      No commands recorded yet.
+                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                      No commands recorded for these filters.
                     </TableCell>
                   </TableRow>
                 )}
                 {!loading &&
-                  filtered.map((r) => {
+                  rows.map((r) => {
                     const meta = COMMAND_LABEL[r.command] ?? {
                       label: r.command,
                       icon: <Shield className="h-3 w-3" />,
                       variant: "default" as const,
                     };
+                    const isFailure = r.response_ok === false;
                     return (
                       <TableRow key={r.id}>
                         <TableCell className="text-xs whitespace-nowrap">
@@ -278,20 +353,42 @@ export default function TraccarCommandAuditPage() {
                         <TableCell className="text-xs">
                           {r.response_ok === true ? (
                             <Badge>OK{r.response_status ? ` · ${r.response_status}` : ""}</Badge>
-                          ) : r.response_ok === false ? (
+                          ) : isFailure ? (
                             <Badge variant="destructive">
                               FAIL{r.response_status ? ` · ${r.response_status}` : ""}
                             </Badge>
                           ) : (
                             <Badge variant="secondary">unknown</Badge>
                           )}
-                          {r.response_body != null && (
-                            <div className="mt-1 max-w-[280px] truncate text-muted-foreground font-mono">
-                              {typeof r.response_body === "string"
-                                ? r.response_body
-                                : JSON.stringify(r.response_body)}
-                            </div>
-                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setSelected(r)}
+                              title="View request/response"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {isFailure && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={replayingId === r.id || !r.traccar_device_id}
+                                onClick={() => replay(r)}
+                                title="Re-issue this command"
+                              >
+                                {replayingId === r.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <RotateCw className="h-4 w-4 mr-1" /> Replay
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -299,8 +396,96 @@ export default function TraccarCommandAuditPage() {
               </TableBody>
             </Table>
           </div>
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div>
+              Showing {showingFrom}–{showingTo} of {total}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0 || loading}
+              >
+                Previous
+              </Button>
+              <span>
+                Page {page + 1} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => (p + 1 < totalPages ? p + 1 : p))}
+                disabled={page + 1 >= totalPages || loading}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Command details</DialogTitle>
+            <DialogDescription>
+              Full Traccar request payload and server response for troubleshooting.
+            </DialogDescription>
+          </DialogHeader>
+          {selected && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <div className="text-muted-foreground">When</div>
+                  <div>{new Date(selected.created_at).toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Admin</div>
+                  <div>{selected.actor_email ?? selected.performed_by ?? "system"}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Command</div>
+                  <div>{selected.command}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Traccar device id</div>
+                  <div>{selected.traccar_device_id ?? "—"}</div>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium mb-1">Request payload</div>
+                <pre className="text-[11px] bg-muted rounded p-3 overflow-auto max-h-64">
+{JSON.stringify(selected.request_payload, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <div className="text-xs font-medium mb-1">Response body</div>
+                <pre className="text-[11px] bg-muted rounded p-3 overflow-auto max-h-64">
+{JSON.stringify(selected.response_body, null, 2)}
+                </pre>
+              </div>
+              {selected.response_ok === false && (
+                <div className="flex justify-end">
+                  <Button
+                    variant="default"
+                    disabled={replayingId === selected.id || !selected.traccar_device_id}
+                    onClick={() => replay(selected)}
+                  >
+                    {replayingId === selected.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <RotateCw className="h-4 w-4 mr-1" />
+                    )}
+                    Replay command
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

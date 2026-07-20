@@ -245,7 +245,8 @@ Deno.serve(async (req) => {
 
     if (action === "send_command") {
       if (!device_id || !command) return json({ error: "device_id and command required" }, 400);
-      const r = await traccar.sendCommand(device_id, command, attributes ?? {});
+      const attrs = attributes ?? {};
+      const r = await traccar.sendCommand(device_id, command, attrs);
       // Try to resolve the local iot_devices row/vehicle from health_details.traccar_device_id
       const { data: match } = await supa
         .from("iot_devices")
@@ -261,9 +262,15 @@ Deno.serve(async (req) => {
           ok: r.ok,
           traccar_device_id: device_id,
           command,
-          attributes: attributes ?? {},
+          attributes: attrs,
           serial_number: match?.serial_number ?? null,
+          request: {
+            endpoint: "/api/commands/send",
+            method: "POST",
+            payload: { deviceId: device_id, type: command, attributes: attrs },
+          },
           response: r,
+          replayed_from: (attributes as Record<string, unknown>)?.__replay_of ?? null,
         },
       });
       return json({ ok: r.ok, ...r });
