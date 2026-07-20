@@ -22,7 +22,7 @@ const OwnerOnboarding = () => {
   const { user, isLoading } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [attempts, setAttempts] = useState(0);
-  const [error, setError] = useState<{ title: string; description: string; code?: string } | null>(null);
+  const [error, setError] = useState<ClassifiedOnboardingError | null>(null);
 
   useEffect(() => {
     if (!isLoading && !user) navigate('/auth', { replace: true });
@@ -39,30 +39,32 @@ const OwnerOnboarding = () => {
       toast.success('Submitted for verification', { description: 'Admin will review and unlock full access shortly.' });
       navigate('/owner/dashboard', { replace: true });
     } catch (err) {
-      const anyErr = err as { message?: string; code?: string };
-      const raw = anyErr?.message || 'Unknown error';
-      const lower = raw.toLowerCase();
-      const isAuth = lower.includes('jwt') || lower.includes('not authenticated') || anyErr?.code === 'PGRST301';
-      const isNetwork = lower.includes('fetch') || lower.includes('network');
+      const classified = classifyOnboardingError(err);
       const nextAttempts = attempts + 1;
       setAttempts(nextAttempts);
-      setError({
-        title: isAuth
-          ? 'Your session expired'
-          : isNetwork
-            ? 'Connection problem'
-            : 'We couldn’t complete your onboarding',
-        description: isAuth
-          ? 'Please sign in again to finish setting up your account.'
-          : isNetwork
-            ? 'Check your internet connection and tap Retry.'
-            : nextAttempts >= MAX_ATTEMPTS
-              ? 'This keeps failing. Contact support with the code below so we can finish this for you.'
-              : 'Something went wrong on our side. Tap Retry to try again.',
-        code: raw,
-      });
-      toast.error('Could not complete onboarding', { description: raw });
+      setError(classified);
+      toast.error(classified.title, { description: classified.raw });
       setSubmitting(false);
+    }
+  };
+
+  const refreshAndRetry = async () => {
+    try {
+      await supabase.auth.refreshSession();
+      toast.success('Session refreshed');
+    } catch {
+      // fall through — finish() will surface a fresh error
+    }
+    finish();
+  };
+
+  const routeToCorrectStep = async () => {
+    try {
+      const { data } = await supabase.rpc('get_my_registration_progress');
+      const p = (data as { role?: 'driver' | 'owner'; stage?: string }) || {};
+      navigate(routeForStage(p.role ?? 'owner', (p.stage as never) ?? null), { replace: true });
+    } catch {
+      navigate('/register/owner', { replace: true });
     }
   };
 
