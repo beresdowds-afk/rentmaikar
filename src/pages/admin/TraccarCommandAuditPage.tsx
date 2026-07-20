@@ -754,15 +754,44 @@ export default function TraccarCommandAuditPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-xs">
-                          {r.response_ok === true ? (
-                            <Badge>OK{r.response_status ? ` · ${r.response_status}` : ""}</Badge>
-                          ) : isFailure ? (
-                            <Badge variant="destructive">
-                              FAIL{r.response_status ? ` · ${r.response_status}` : ""}
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">unknown</Badge>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {r.response_ok === true ? (
+                              <Badge>OK{r.response_status ? ` · ${r.response_status}` : ""}</Badge>
+                            ) : isFailure ? (
+                              <Badge variant="destructive">
+                                FAIL{r.response_status ? ` · ${r.response_status}` : ""}
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">unknown</Badge>
+                            )}
+                            {(() => {
+                              const rs = replayStates[r.id];
+                              if (!rs) return null;
+                              if (rs.status === "running")
+                                return (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                                    <Loader2 className="h-3 w-3 animate-spin" /> replaying…
+                                  </span>
+                                );
+                              if (rs.status === "success")
+                                return (
+                                  <Badge variant="secondary" className="w-fit bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px]">
+                                    replay ok
+                                  </Badge>
+                                );
+                              if (rs.status === "rate_limited")
+                                return (
+                                  <span className="text-[10px] text-amber-700 dark:text-amber-300" title={rs.message}>
+                                    rate-limited
+                                  </span>
+                                );
+                              return (
+                                <span className="text-[10px] text-destructive truncate max-w-[200px]" title={rs.message}>
+                                  replay failed{rs.message ? `: ${rs.message}` : ""}
+                                </span>
+                              );
+                            })()}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
@@ -778,21 +807,27 @@ export default function TraccarCommandAuditPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                disabled={replayingId === r.id || !r.traccar_device_id}
+                                disabled={replayingId === r.id || !r.traccar_device_id || isRateLimited}
                                 onClick={() => setConfirmReplayOne(r)}
-                                title="Re-issue this command"
+                                title={
+                                  isRateLimited
+                                    ? `Rate-limited — retry in ${rateLimitRemainingSec}s`
+                                    : "Re-issue this command"
+                                }
                               >
                                 {replayingId === r.id ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
                                   <>
-                                    <RotateCw className="h-4 w-4 mr-1" /> Replay
+                                    <RotateCw className="h-4 w-4 mr-1" />
+                                    {isRateLimited ? `${rateLimitRemainingSec}s` : "Replay"}
                                   </>
                                 )}
                               </Button>
                             )}
                           </div>
                         </TableCell>
+
                       </TableRow>
                     );
                   })}
