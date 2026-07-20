@@ -29,6 +29,7 @@ import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import { VehicleDocumentUpload } from '@/components/documents/VehicleDocumentUpload';
 import { OwnerInsuranceSupport } from '@/components/owner/OwnerInsuranceSupport';
 import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
+import { SubscriptionGate } from '@/components/subscriptions/SubscriptionGate';
 import { UnifiedBillingPanel } from '@/components/payments/UnifiedBillingPanel';
 import { OwnerOverviewTab } from '@/components/dashboard/OwnerOverviewTab';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
@@ -478,11 +479,19 @@ export default function OwnerDashboard() {
             <TabsContent value="insurance" className="space-y-6">
               <PortalGate portal="Insurance & Roadside" require="authenticated">
                 <div className="space-y-6">
-                  <OwnerInsuranceSupport />
-                  <SubscriptionPlansPanel
-                    title="Optional coverage & support"
-                    planTypes={["insurance", "roadside_support"]}
-                  />
+                  <SubscriptionGate service="insurance" label="Insurance" hideWhenRegionDisabled>
+                    <OwnerInsuranceSupport />
+                    <SubscriptionPlansPanel
+                      title="Insurance (compulsory)"
+                      planTypes={["insurance"]}
+                    />
+                  </SubscriptionGate>
+                  <SubscriptionGate service="roadside_assistance" label="Roadside Support" hideWhenRegionDisabled>
+                    <SubscriptionPlansPanel
+                      title="Roadside Support"
+                      planTypes={["roadside_support"]}
+                    />
+                  </SubscriptionGate>
                 </div>
               </PortalGate>
             </TabsContent>
@@ -519,6 +528,7 @@ export default function OwnerDashboard() {
             {/* Vehicles Tab */}
             <TabsContent value="vehicles" className="space-y-6">
               <PortalGate portal="My Vehicles" require="documents" hint="upload your ownership documents to add and manage vehicles.">
+              <SubscriptionGate service="vehicle_activation" label="Vehicle Activation">
               <div className="grid gap-6">
                 {dbVehicles.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">No vehicles listed yet. Click "Add Vehicle" to get started.</p>
@@ -587,6 +597,7 @@ export default function OwnerDashboard() {
                 <Plus className="h-6 w-6 mr-2" />
                 Add Another Vehicle
               </Button>
+              </SubscriptionGate>
               </PortalGate>
             </TabsContent>
 
