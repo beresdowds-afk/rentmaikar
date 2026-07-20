@@ -371,8 +371,17 @@ const App = () => (
 
                   <Route path="/driver/portal/:portalKey" element={<PortalRouteGuard role="driver" />} />
                   <Route path="/owner/portal/:portalKey" element={<PortalRouteGuard role="owner" />} />
+                  <Route
+                    path="/settings/profile"
+                    element={
+                      <ProtectedRoute>
+                        <ProfileSettingsPage />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route path="/onboarding-redirect" element={<OnboardingRedirect />} />
                   <Route path="/verify-email" element={<OnboardingRedirect />} />
+
 
                   <Route path="*" element={<NotFound />} />
                   </Routes>
