@@ -66,7 +66,7 @@ const endpoints = {
   },
   'rpc: update_profile_details': async (name: string) => {
     const { supabase } = await import('@/integrations/supabase/client');
-    return supabase.rpc('update_profile_details', {
+    return (supabase.rpc as any)('update_profile_details', {
       p_user_id: APPROVED_USER,
       p_full_name: name,
     });
