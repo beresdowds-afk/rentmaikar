@@ -2607,6 +2607,57 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_stage_audit: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          details: Json
+          error_class: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          new_access_level: string | null
+          new_stage: string | null
+          previous_access_level: string | null
+          previous_stage: string | null
+          rpc_name: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          error_class?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          new_access_level?: string | null
+          new_stage?: string | null
+          previous_access_level?: string | null
+          previous_stage?: string | null
+          rpc_name?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          error_class?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          new_access_level?: string | null
+          new_stage?: string | null
+          previous_access_level?: string | null
+          previous_stage?: string | null
+          rpc_name?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       opay_transactions: {
         Row: {
           amount: number
@@ -8211,6 +8262,7 @@ export type Database = {
         Returns: string
       }
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
+      classify_onboarding_error: { Args: { _msg: string }; Returns: string }
       complete_onboarding: { Args: never; Returns: string }
       consume_proxy_charge: {
         Args: { _proxy_id: string }
@@ -8407,6 +8459,16 @@ export type Database = {
           audio_deleted: number
           logs_deleted: number
         }[]
+      }
+      record_onboarding_rpc_event: {
+        Args: {
+          _details?: Json
+          _error_message?: string
+          _rpc_name: string
+          _status: string
+          _user_id: string
+        }
+        Returns: undefined
       }
       register_push_device: {
         Args: { _device_label?: string; _platform: string; _token: string }
