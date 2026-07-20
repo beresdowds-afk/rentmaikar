@@ -12,6 +12,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import PersonaVerification from '@/components/verification/PersonaVerification';
+import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
+import { Lock } from 'lucide-react';
 
 interface ProfileEditorProps {
   subjectRole: 'driver' | 'owner' | 'support_staff' | 'admin_assistant';
