@@ -29,6 +29,7 @@ import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import { VehicleDocumentUpload } from '@/components/documents/VehicleDocumentUpload';
 import { OwnerInsuranceSupport } from '@/components/owner/OwnerInsuranceSupport';
 import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
+import { UnifiedBillingPanel } from '@/components/payments/UnifiedBillingPanel';
 import { OwnerOverviewTab } from '@/components/dashboard/OwnerOverviewTab';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
@@ -412,6 +413,10 @@ export default function OwnerDashboard() {
                 Agreements
               </TabsTrigger>
               <TabsTrigger value="earnings" data-tour="owner-earnings">Earnings</TabsTrigger>
+              <TabsTrigger value="payments" className="flex items-center gap-1">
+                <Wallet className="h-4 w-4" />
+                Payments
+              </TabsTrigger>
               <TabsTrigger value="withdrawals" data-tour="owner-withdrawals">Withdrawals</TabsTrigger>
               <TabsTrigger value="documents" className="flex items-center gap-1">
                 <FileText className="h-4 w-4" />
@@ -488,6 +493,21 @@ export default function OwnerDashboard() {
                 <OwnerRentToOwnListing />
               </PortalGate>
             </TabsContent>
+
+            {/* Payments Tab */}
+            <TabsContent value="payments" className="space-y-6">
+              <PortalGate portal="Payments" require="email_verified">
+                <div className="space-y-6">
+                  <SubscriptionPlansPanel
+                    title="Owner add-ons (Insurance · Roadside Support)"
+                    planTypes={["insurance", "roadside_support"]}
+                    compact
+                  />
+                  <UnifiedBillingPanel userId={user?.id} role="owner" country={country} />
+                </div>
+              </PortalGate>
+            </TabsContent>
+
 
             {/* Vehicles Tab */}
             <TabsContent value="vehicles" className="space-y-6">
