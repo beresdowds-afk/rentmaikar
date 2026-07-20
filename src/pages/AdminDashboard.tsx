@@ -527,6 +527,8 @@ const AdminDashboard = () => {
                 onTabChange={setActiveTab}
                 storageScope="admin"
               />
+              <div className="ml-auto"><AdminNotificationsBell /></div>
+
 
             </div>
             {/* Independent Quick Access Buttons */}
