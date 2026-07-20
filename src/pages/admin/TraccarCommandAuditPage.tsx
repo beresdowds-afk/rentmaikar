@@ -688,6 +688,64 @@ export default function TraccarCommandAuditPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!confirmReplayOne}
+        onOpenChange={(o) => !o && setConfirmReplayOne(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Replay{" "}
+              {confirmReplayOne
+                ? COMMAND_LABEL[confirmReplayOne.command]?.label ?? confirmReplayOne.command
+                : ""}
+              ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This re-issues the exact same command to Traccar device{" "}
+              <span className="font-mono">{confirmReplayOne?.traccar_device_id}</span>. A new audit
+              entry will be recorded. Server-side rate limit: 20 commands per admin per minute.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const r = confirmReplayOne;
+                setConfirmReplayOne(null);
+                if (r) replay(r);
+              }}
+            >
+              Yes, replay
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmBulk} onOpenChange={setConfirmBulk}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replay {failedSelected.length} failed commands?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Each selected failure will be re-issued to Traccar in order and logged as a new audit
+              entry. The server enforces a 20/min per-admin rate limit; if it kicks in the run
+              pauses automatically. You cannot undo issued commands.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmBulk(false);
+                bulkReplay();
+              }}
+            >
+              Yes, replay {failedSelected.length}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
