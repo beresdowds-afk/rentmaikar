@@ -555,6 +555,18 @@ export default function TraccarCommandAuditPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
+          {isRateLimited && (
+            <div className="flex items-center justify-between gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>
+                  Traccar rate limit reached — pausing replays for{" "}
+                  <span className="font-mono font-semibold">{rateLimitRemainingSec}s</span>.
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground">Buttons re-enable automatically.</span>
+            </div>
+          )}
           {selectedIds.size > 0 && (
             <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
               <div>
@@ -574,19 +586,24 @@ export default function TraccarCommandAuditPage() {
                 </Button>
                 <Button
                   size="sm"
-                  disabled={failedSelected.length === 0 || bulkRunning}
+                  disabled={failedSelected.length === 0 || bulkRunning || isRateLimited}
                   onClick={() => setConfirmBulk(true)}
+                  title={isRateLimited ? `Rate-limited — retry in ${rateLimitRemainingSec}s` : undefined}
                 >
                   {bulkRunning ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-1" />
                   ) : (
                     <RotateCw className="h-4 w-4 mr-1" />
                   )}
-                  Replay {failedSelected.length} failure{failedSelected.length === 1 ? "" : "s"}
+                  {isRateLimited
+                    ? `Wait ${rateLimitRemainingSec}s`
+                    : `Replay ${failedSelected.length} failure${failedSelected.length === 1 ? "" : "s"}`}
                 </Button>
               </div>
             </div>
           )}
+
+
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[240px]">
