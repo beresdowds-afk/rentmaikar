@@ -494,6 +494,19 @@ export default function OwnerDashboard() {
               </PortalGate>
             </TabsContent>
 
+            {/* Payments Tab */}
+            <TabsContent value="payments" className="space-y-6">
+              <PortalGate portal="Payments" require="email_verified">
+                <div className="space-y-6">
+                  <SubscriptionPlansPanel
+                    title="Owner add-ons (Insurance · Roadside Support)"
+                    planTypes={["insurance", "roadside_support"]}
+                    compact
+                  />
+                  <UnifiedBillingPanel userId={user?.id} role="owner" country={country} />
+                </div>
+              </PortalGate>
+
             {/* Vehicles Tab */}
             <TabsContent value="vehicles" className="space-y-6">
               <PortalGate portal="My Vehicles" require="documents" hint="upload your ownership documents to add and manage vehicles.">
