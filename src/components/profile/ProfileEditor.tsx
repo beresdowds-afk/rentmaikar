@@ -326,7 +326,14 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
         <CardContent className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="pe-name">Full Name</Label>
+              <Label htmlFor="pe-name" className="flex items-center gap-2">
+                Full Name
+                {nameLocked && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Lock className="h-3 w-3 mr-1" /> Locked
+                  </Badge>
+                )}
+              </Label>
               <Input
                 id="pe-name"
                 value={fullName}
@@ -337,9 +344,17 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
                 maxLength={80}
                 aria-invalid={!!errors.fullName}
                 className={fieldClass('fullName')}
+                disabled={nameLocked}
+                readOnly={nameLocked}
               />
+              {nameLocked && (
+                <p className="text-xs text-muted-foreground">
+                  Your name is locked after identity verification. Contact support to change it.
+                </p>
+              )}
               {errors.fullName && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.fullName}</p>}
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="pe-email" className="flex items-center gap-2">
                 <Mail className="h-3.5 w-3.5" /> Email
