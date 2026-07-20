@@ -39,7 +39,7 @@ describe('runIdempotent', () => {
 
   it('allows retry after failure (does not cache errors)', async () => {
     const fn = vi
-      .fn<[], Promise<string>>()
+      .fn(async (): Promise<string> => 'unused')
       .mockRejectedValueOnce(new Error('boom'))
       .mockResolvedValueOnce('recovered');
     await expect(runIdempotent('k3', fn)).rejects.toThrow('boom');
