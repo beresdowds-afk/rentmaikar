@@ -29,6 +29,7 @@ import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import { VehicleDocumentUpload } from '@/components/documents/VehicleDocumentUpload';
 import { OwnerInsuranceSupport } from '@/components/owner/OwnerInsuranceSupport';
 import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
+import { OwnerOverviewTab } from '@/components/dashboard/OwnerOverviewTab';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
