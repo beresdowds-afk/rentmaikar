@@ -35,6 +35,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { DriverBehaviorLogs } from '@/components/admin/DriverBehaviorLogs';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
+import { UserIdentityCard } from '@/components/profile/UserIdentityCard';
 import { useDriverDashboard } from '@/hooks/useDriverDashboard';
 import { CallInPanel } from '@/components/driver/CallInPanel';
 import { PayPalCheckout } from '@/components/payments/PayPalCheckout';
