@@ -12,6 +12,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { UserIdentityCard } from '@/components/profile/UserIdentityCard';
+import { ReverificationBanner } from '@/components/profile/ReverificationBanner';
+import { ProfileAuditHistory } from '@/components/profile/ProfileAuditHistory';
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 import { z } from 'zod';
 
@@ -150,6 +152,11 @@ export default function ProfileSettingsPage() {
             Profile Settings
           </h1>
 
+          <ReverificationBanner
+            status={identityStatus as any}
+            pendingLocalChange={phoneChanged}
+          />
+
           <UserIdentityCard hideSettingsLink />
 
           <Card>
@@ -226,6 +233,8 @@ export default function ProfileSettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          <ProfileAuditHistory />
         </div>
       </main>
       <Footer />
