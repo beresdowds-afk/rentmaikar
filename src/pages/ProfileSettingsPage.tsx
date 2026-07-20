@@ -41,6 +41,7 @@ export default function ProfileSettingsPage() {
   const [identityStatus, setIdentityStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [nameImmutableError, setNameImmutableError] = useState<string | null>(null);
 
   const nameLocked = identityStatus === 'approved';
 
@@ -110,6 +111,7 @@ export default function ProfileSettingsPage() {
         .update(updates)
         .eq('id', user.id);
       if (error) throw error;
+      setNameImmutableError(null);
 
       const fields: string[] = [];
       if (nameChanged) fields.push('full_name');
@@ -137,7 +139,23 @@ export default function ProfileSettingsPage() {
 
       setInitial({ fullName: parsed.data.full_name, phone: newPhone ?? '' });
     } catch (err: any) {
-      toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
+      const msg = String(err?.message ?? '');
+      const isImmutable =
+        err?.code === '23514' ||
+        /locked after identity verification|full_name is immutable/i.test(msg);
+      if (isImmutable) {
+        setNameImmutableError(
+          'Your name is locked after identity verification. Contact support to make changes.',
+        );
+        setFullName(initial.fullName);
+      }
+      toast({
+        title: isImmutable ? 'Name is locked' : 'Save failed',
+        description: isImmutable
+          ? 'Contact support to change your legal name.'
+          : msg,
+        variant: 'destructive',
+      });
     } finally {
       setSaving(false);
     }
@@ -168,6 +186,25 @@ export default function ProfileSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {nameImmutableError && (
+                <Alert
+                  variant="destructive"
+                  role="alert"
+                  data-testid="name-immutable-banner"
+                >
+                  <ShieldAlert className="h-4 w-4" />
+                  <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <span>{nameImmutableError}</span>
+                    <button
+                      type="button"
+                      onClick={() => setNameImmutableError(null)}
+                      className="text-xs underline self-start sm:self-auto"
+                    >
+                      Dismiss
+                    </button>
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="full_name" className="flex items-center gap-2">
                   Full name
