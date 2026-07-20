@@ -578,7 +578,7 @@ export default function TraccarCommandAuditPage() {
                                 size="sm"
                                 variant="outline"
                                 disabled={replayingId === r.id || !r.traccar_device_id}
-                                onClick={() => replay(r)}
+                                onClick={() => setConfirmReplayOne(r)}
                                 title="Re-issue this command"
                               >
                                 {replayingId === r.id ? (
