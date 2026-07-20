@@ -40,7 +40,7 @@ import { CallInPanel } from '@/components/driver/CallInPanel';
 import { PayPalCheckout } from '@/components/payments/PayPalCheckout';
 import { PaymentMethodPicker } from '@/components/payments/PaymentMethodPicker';
 import { RentalPaymentStatusPanel } from '@/components/payments/RentalPaymentStatusPanel';
-import { DriverBillingPanel } from '@/components/driver/DriverBillingPanel';
+import { UnifiedBillingPanel } from '@/components/payments/UnifiedBillingPanel';
 import { ProxyBillingSettings } from '@/components/driver/ProxyBillingSettings';
 import { EnablePushButton } from '@/components/notifications/EnablePushButton';
 import { installDeepLinkListener } from '@/lib/push';
@@ -373,7 +373,12 @@ export default function DriverDashboard() {
                 />
               )}
 
-              <DriverBillingPanel userId={user?.id} />
+              <SubscriptionPlansPanel
+                title="Add-on payments (Training · Insurance · Roadside)"
+                planTypes={["training", "insurance", "roadside_support"]}
+                compact
+              />
+              <UnifiedBillingPanel userId={user?.id} role="driver" country={country} />
               <ProxyBillingSettings userId={user?.id} />
 
 
