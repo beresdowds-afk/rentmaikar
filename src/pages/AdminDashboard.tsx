@@ -9,6 +9,7 @@ import { SyncScheduleSettings } from "@/components/admin/SyncScheduleSettings";
 import BillingReconciliationPage from "@/pages/admin/BillingReconciliationPage";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import AdminVehicleCataloguePage from "@/pages/admin/AdminVehicleCataloguePage";
+import UserUuidAssignmentsPage from "@/pages/admin/UserUuidAssignmentsPage";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
 import { VehicleCategoryYearSpecs } from "@/components/admin/VehicleCategoryYearSpecs";
 
@@ -847,6 +848,7 @@ const AdminDashboard = () => {
               {activeTab === 'api-endpoints' && <ApiEndpointManagement />}
               {activeTab === 'security' && <AdminSecurityDashboard />}
               {activeTab === 'cron-jobs' && <CronJobManagement />}
+              {activeTab === 'uuid-assignments' && <UserUuidAssignmentsPage />}
               {activeTab === 'tax' && <TaxManagement />}
               {activeTab === 'settings' && <RegionalOperationsManagement />}
               {activeTab === 'region-autobuild' && <RegionAutoBuildWorker />}
