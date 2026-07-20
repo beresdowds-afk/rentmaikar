@@ -5070,6 +5070,7 @@ export type Database = {
           extension_approved: boolean | null
           extension_requested: boolean
           id: string
+          negotiation_id: string | null
           owner_id: string
           payment_frequency: string
           pickup_location: string | null
@@ -5078,6 +5079,10 @@ export type Database = {
           return_inspection_notes: string | null
           return_location: string | null
           return_reminder_sent: boolean
+          security_deposit_amount: number | null
+          security_deposit_currency: string | null
+          security_deposit_released_at: string | null
+          security_deposit_status: string
           start_date: string
           status: string
           updated_at: string
@@ -5093,6 +5098,7 @@ export type Database = {
           extension_approved?: boolean | null
           extension_requested?: boolean
           id?: string
+          negotiation_id?: string | null
           owner_id: string
           payment_frequency?: string
           pickup_location?: string | null
@@ -5101,6 +5107,10 @@ export type Database = {
           return_inspection_notes?: string | null
           return_location?: string | null
           return_reminder_sent?: boolean
+          security_deposit_amount?: number | null
+          security_deposit_currency?: string | null
+          security_deposit_released_at?: string | null
+          security_deposit_status?: string
           start_date?: string
           status?: string
           updated_at?: string
@@ -5116,6 +5126,7 @@ export type Database = {
           extension_approved?: boolean | null
           extension_requested?: boolean
           id?: string
+          negotiation_id?: string | null
           owner_id?: string
           payment_frequency?: string
           pickup_location?: string | null
@@ -5124,12 +5135,23 @@ export type Database = {
           return_inspection_notes?: string | null
           return_location?: string | null
           return_reminder_sent?: boolean
+          security_deposit_amount?: number | null
+          security_deposit_currency?: string | null
+          security_deposit_released_at?: string | null
+          security_deposit_status?: string
           start_date?: string
           status?: string
           updated_at?: string
           vehicle_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rentals_negotiation_id_fkey"
+            columns: ["negotiation_id"]
+            isOneToOne: false
+            referencedRelation: "price_negotiations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rentals_vehicle_id_fkey"
             columns: ["vehicle_id"]
@@ -8171,6 +8193,25 @@ export type Database = {
         Args: { _log_id: string }
         Returns: undefined
       }
+      admin_generate_next_rental_invoice: {
+        Args: { _period_end: string; _period_start: string; _rental_id: string }
+        Returns: Json
+      }
+      admin_provision_rental_from_negotiation: {
+        Args: {
+          _end_date: string
+          _negotiation_id: string
+          _payment_frequency?: string
+          _pickup_location?: string
+          _return_location?: string
+          _start_date: string
+        }
+        Returns: Json
+      }
+      admin_release_security_deposit: {
+        Args: { _reason?: string; _rental_id: string }
+        Returns: Json
+      }
       admin_review_proxy_billing: {
         Args: { _decision: string; _notes?: string; _proxy_id: string }
         Returns: {
@@ -8333,6 +8374,7 @@ export type Database = {
           extension_approved: boolean | null
           extension_requested: boolean
           id: string
+          negotiation_id: string | null
           owner_id: string
           payment_frequency: string
           pickup_location: string | null
@@ -8341,6 +8383,10 @@ export type Database = {
           return_inspection_notes: string | null
           return_location: string | null
           return_reminder_sent: boolean
+          security_deposit_amount: number | null
+          security_deposit_currency: string | null
+          security_deposit_released_at: string | null
+          security_deposit_status: string
           start_date: string
           status: string
           updated_at: string

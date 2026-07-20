@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePriceNegotiations, type PriceNegotiation, type ModificationRequest } from '@/hooks/usePriceNegotiations';
+import { ProvisionRentalDialog } from './ProvisionRentalDialog';
 
 const PRICE_CEILINGS = {
   budget: { ceiling: 250, label: 'Smart Start' },
@@ -53,6 +54,7 @@ export const AdminPriceNegotiation = () => {
   const [counterOffer, setCounterOffer] = useState<string>('');
   const [adminResponse, setAdminResponse] = useState<string>('');
   const [rejectionReason, setRejectionReason] = useState<string>('');
+  const [provisionTarget, setProvisionTarget] = useState<PriceNegotiation | null>(null);
 
   const pendingNegotiations = negotiations.filter(n => n.status === 'pending');
   const counterOfferNegotiations = negotiations.filter(n => n.status === 'counter_offer');
@@ -416,9 +418,14 @@ export const AdminPriceNegotiation = () => {
                           </TableCell>
                           <TableCell>{getStatusBadge(n.status, n.is_locked)}</TableCell>
                           <TableCell className="text-right">
-                            <Button variant="outline" size="sm" onClick={() => openReview(n)}>
-                              Modify
-                            </Button>
+                            <div className="flex justify-end gap-2">
+                              <Button variant="default" size="sm" onClick={() => setProvisionTarget(n)}>
+                                Provision rental & billing
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => openReview(n)}>
+                                Modify
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -613,6 +620,13 @@ export const AdminPriceNegotiation = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <ProvisionRentalDialog
+        negotiation={provisionTarget}
+        open={!!provisionTarget}
+        onOpenChange={(o) => { if (!o) setProvisionTarget(null); }}
+        onProvisioned={() => refetch()}
+      />
     </div>
   );
 };
