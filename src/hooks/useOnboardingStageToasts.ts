@@ -61,6 +61,11 @@ export function useOnboardingStageToasts() {
             : undefined,
         });
       }
+      trackOnboardingEvent('onboarding_stage_completed', {
+        role: data.role,
+        stage: now,
+        extra: { previousStage: prev },
+      });
       try {
         localStorage.setItem(LS_KEY, now);
       } catch {
