@@ -263,6 +263,20 @@ export default function TraccarCommandAuditPage() {
     URL.revokeObjectURL(url);
   };
 
+  const sendReplay = async (r: EnrichedRow) => {
+    const attrs = ((r.details?.attributes ?? {}) as Record<string, unknown>) || {};
+    const { data, error } = await supabase.functions.invoke("traccar-admin", {
+      body: {
+        action: "send_command",
+        device_id: r.traccar_device_id,
+        command: r.command,
+        attributes: { ...attrs, __replay_of: r.id },
+      },
+    });
+    if (error) throw error;
+    return data as { ok?: boolean; body?: any; error?: string; retry_after_seconds?: number } | null;
+  };
+
   const replay = async (r: EnrichedRow) => {
     if (!r.traccar_device_id || !r.command) {
       toast.error("Cannot replay: missing traccar device id or command");
@@ -270,24 +284,85 @@ export default function TraccarCommandAuditPage() {
     }
     setReplayingId(r.id);
     try {
-      const attrs = ((r.details?.attributes ?? {}) as Record<string, unknown>) || {};
-      const { data, error } = await supabase.functions.invoke("traccar-admin", {
-        body: {
-          action: "send_command",
-          device_id: r.traccar_device_id,
-          command: r.command,
-          attributes: { ...attrs, __replay_of: r.id },
-        },
-      });
-      if (error) throw error;
-      if ((data as any)?.ok) toast.success(`Replayed ${r.command} · new attempt logged`);
-      else toast.error(`Replay failed: ${(data as any)?.body?.message ?? "provider error"}`);
+      const data = await sendReplay(r);
+      if (data?.error === "rate_limited") {
+        toast.error(`Rate limit hit. Retry in ~${data.retry_after_seconds ?? 30}s`);
+      } else if (data?.ok) {
+        toast.success(`Replayed ${r.command} · new attempt logged`);
+      } else {
+        toast.error(`Replay failed: ${data?.body?.message ?? "provider error"}`);
+      }
       await load();
     } catch (e: any) {
       toast.error(e?.message ?? "Replay failed");
     } finally {
       setReplayingId(null);
     }
+  };
+
+  const failedSelected = useMemo(
+    () => rows.filter((r) => selectedIds.has(r.id) && r.response_ok === false && r.traccar_device_id),
+    [rows, selectedIds],
+  );
+
+  const bulkReplay = async () => {
+    if (failedSelected.length === 0) return;
+    setBulkRunning(true);
+    setBulkProgress({ done: 0, total: failedSelected.length });
+    let ok = 0;
+    let failed = 0;
+    let rateLimited = 0;
+    for (let i = 0; i < failedSelected.length; i++) {
+      const r = failedSelected[i];
+      try {
+        const data = await sendReplay(r);
+        if (data?.error === "rate_limited") {
+          rateLimited++;
+          // Back off for the remainder — server won't accept more this window.
+          const wait = Math.min(60, (data.retry_after_seconds ?? 30)) * 1000;
+          await new Promise((res) => setTimeout(res, wait));
+        } else if (data?.ok) ok++;
+        else failed++;
+      } catch {
+        failed++;
+      }
+      setBulkProgress({ done: i + 1, total: failedSelected.length });
+      // Small client-side pacing to be gentle on Traccar even inside the allowed window.
+      await new Promise((res) => setTimeout(res, 250));
+    }
+    setBulkRunning(false);
+    setBulkProgress(null);
+    setSelectedIds(new Set());
+    toast.message("Bulk replay complete", {
+      description: `${ok} ok · ${failed} failed${rateLimited ? ` · ${rateLimited} rate-limited` : ""}`,
+    });
+    await load();
+  };
+
+  const toggleRow = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const failedOnPage = useMemo(
+    () => rows.filter((r) => r.response_ok === false && !!r.traccar_device_id),
+    [rows],
+  );
+  const allFailedSelected =
+    failedOnPage.length > 0 && failedOnPage.every((r) => selectedIds.has(r.id));
+  const toggleAllFailed = (checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      failedOnPage.forEach((r) => {
+        if (checked) next.add(r.id);
+        else next.delete(r.id);
+      });
+      return next;
+    });
   };
 
   const showingFrom = total === 0 ? 0 : page * PAGE_SIZE + 1;
