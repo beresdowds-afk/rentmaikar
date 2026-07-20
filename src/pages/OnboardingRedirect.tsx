@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
 import { routeForStage } from '@/lib/onboarding-error';
 import PageSkeleton from '@/components/PageSkeleton';
+import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
+import { recordDeepLinkExpectedStage } from '@/hooks/useOnboardingProgressReconciliation';
 
 /**
  * Entry point for onboarding deep links (mobile + web). Reads current
@@ -17,14 +19,28 @@ export default function OnboardingRedirect() {
   useEffect(() => {
     if (isLoading) return;
 
-    // If a stage/step is explicitly requested via deep link, honor it.
     const step = params.get('step');
     const requestedRole = params.get('role') as 'driver' | 'owner' | null;
     const role = data?.role ?? requestedRole ?? 'driver';
+    const originParam = params.get('origin');
+    const origin =
+      originParam === 'native' || originParam === 'push' || originParam === 'email'
+        ? originParam
+        : 'web';
+
+    // Record the stage this deep link expected so the reconciliation hook
+    // can flag divergence on app resume.
+    recordDeepLinkExpectedStage(step ?? data?.stage ?? 'auth');
+
+    trackOnboardingEvent('deep_link_opened', {
+      role,
+      stage: data?.stage ?? null,
+      origin,
+      extra: { step },
+    });
 
     if (step === 'email' || !data?.email_verified) {
       const base = role === 'owner' ? '/owner/onboarding' : '/driver/onboarding';
-      // Land on the onboarding page's email step when unverified.
       navigate(`${base}?step=email`, { replace: true });
       return;
     }
