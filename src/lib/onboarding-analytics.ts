@@ -11,7 +11,8 @@ export type OnboardingAnalyticsEvent =
   | 'portal_cta_dedup_hit'
   | 'deep_link_opened'
   | 'progress_reconciled'
-  | 'progress_reconciliation_mismatch';
+  | 'progress_reconciliation_mismatch'
+  | 'progress_manual_resync';
 
 export interface OnboardingAnalyticsPayload {
   role?: 'driver' | 'owner' | null;
