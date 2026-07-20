@@ -506,6 +506,8 @@ export default function OwnerDashboard() {
                   <UnifiedBillingPanel userId={user?.id} role="owner" country={country} />
                 </div>
               </PortalGate>
+            </TabsContent>
+
 
             {/* Vehicles Tab */}
             <TabsContent value="vehicles" className="space-y-6">
