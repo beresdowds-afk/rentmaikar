@@ -71,6 +71,7 @@ export const erpTabs: PortalTab[] = [
   { value: "api-endpoints", label: "API Endpoints", icon: <Code className="h-4 w-4" /> },
   { value: "security", label: "Security", icon: <Shield className="h-4 w-4" /> },
   { value: "cron-jobs", label: "Cron Jobs", icon: <Clock className="h-4 w-4" /> },
+  { value: "uuid-assignments", label: "UUID Assignments", icon: <KeyRound className="h-4 w-4" /> },
   { value: "settings", label: "Regional Operations", icon: <Settings className="h-4 w-4" /> },
   { value: "region-autobuild", label: "Region Auto-Build", icon: <Globe className="h-4 w-4" /> },
 ];
