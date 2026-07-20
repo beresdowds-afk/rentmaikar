@@ -491,6 +491,7 @@ export default function OwnerDashboard() {
 
             {/* Vehicles Tab */}
             <TabsContent value="vehicles" className="space-y-6">
+              <PortalGate portal="My Vehicles" require="documents" hint="upload your ownership documents to add and manage vehicles.">
               <div className="grid gap-6">
                 {dbVehicles.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">No vehicles listed yet. Click "Add Vehicle" to get started.</p>
@@ -559,10 +560,12 @@ export default function OwnerDashboard() {
                 <Plus className="h-6 w-6 mr-2" />
                 Add Another Vehicle
               </Button>
+              </PortalGate>
             </TabsContent>
 
             {/* Earnings Tab */}
             <TabsContent value="earnings" className="space-y-6">
+              <PortalGate portal="Earnings" require="approved"><div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Earnings Overview</CardTitle>
@@ -669,10 +672,12 @@ export default function OwnerDashboard() {
                   </div>
                 </CardContent>
               </Card>
+              </div></PortalGate>
             </TabsContent>
 
             {/* Withdrawals Tab */}
             <TabsContent value="withdrawals" className="space-y-6">
+              <PortalGate portal="Withdrawals" require="approved" hint="complete approval before withdrawing to your bank or PayPal."><div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Withdrawal History</CardTitle>
