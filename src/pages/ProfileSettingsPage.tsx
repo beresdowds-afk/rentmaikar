@@ -111,6 +111,7 @@ export default function ProfileSettingsPage() {
         .update(updates)
         .eq('id', user.id);
       if (error) throw error;
+      setNameImmutableError(null);
 
       const fields: string[] = [];
       if (nameChanged) fields.push('full_name');
@@ -138,7 +139,23 @@ export default function ProfileSettingsPage() {
 
       setInitial({ fullName: parsed.data.full_name, phone: newPhone ?? '' });
     } catch (err: any) {
-      toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
+      const msg = String(err?.message ?? '');
+      const isImmutable =
+        err?.code === '23514' ||
+        /locked after identity verification|full_name is immutable/i.test(msg);
+      if (isImmutable) {
+        setNameImmutableError(
+          'Your name is locked after identity verification. Contact support to make changes.',
+        );
+        setFullName(initial.fullName);
+      }
+      toast({
+        title: isImmutable ? 'Name is locked' : 'Save failed',
+        description: isImmutable
+          ? 'Contact support to change your legal name.'
+          : msg,
+        variant: 'destructive',
+      });
     } finally {
       setSaving(false);
     }
