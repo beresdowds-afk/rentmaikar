@@ -31,6 +31,7 @@ const PIXEL_NAMES: Record<OnboardingAnalyticsEvent, string> = {
   deep_link_opened: 'OnboardingDeepLinkOpened',
   progress_reconciled: 'OnboardingProgressReconciled',
   progress_reconciliation_mismatch: 'OnboardingProgressMismatch',
+  progress_manual_resync: 'OnboardingProgressManualResync',
 };
 
 export function trackOnboardingEvent(
