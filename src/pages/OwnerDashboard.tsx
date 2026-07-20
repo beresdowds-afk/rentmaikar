@@ -448,28 +448,28 @@ export default function OwnerDashboard() {
 
             {/* IoT Device Tab */}
             <TabsContent value="iot-device">
-              <PortalGate portal="IoT / Traccar Device" require="approved">
+              <PortalGate portal="IoT / Traccar Device" require="verification">
                 <IoTDevicePurchase />
               </PortalGate>
             </TabsContent>
 
             {/* Inspections Tab */}
             <TabsContent value="inspections">
-              <PortalGate portal="Weekly Inspections" require="approved">
+              <PortalGate portal="Weekly Inspections" require="verification">
                 <OwnerWeeklyReportReview />
               </PortalGate>
             </TabsContent>
 
             {/* Pricing Tab */}
             <TabsContent value="pricing">
-              <PortalGate portal="Price Negotiation" require="approved">
+              <PortalGate portal="Price Negotiation" require="verification">
                 <OwnerPriceNegotiation />
               </PortalGate>
             </TabsContent>
 
             {/* Insurance Tab */}
             <TabsContent value="insurance" className="space-y-6">
-              <PortalGate portal="Insurance & Roadside" require="email_verified">
+              <PortalGate portal="Insurance & Roadside" require="authenticated">
                 <div className="space-y-6">
                   <OwnerInsuranceSupport />
                   <SubscriptionPlansPanel
@@ -482,7 +482,7 @@ export default function OwnerDashboard() {
 
             {/* Agreements Tab */}
             <TabsContent value="agreements" className="space-y-6">
-              <PortalGate portal="Legal Agreements" require="documents">
+              <PortalGate portal="Legal Agreements" require="email_verified">
                 <UserAgreementsList userType="owner" />
               </PortalGate>
             </TabsContent>
@@ -496,7 +496,7 @@ export default function OwnerDashboard() {
 
             {/* Payments Tab */}
             <TabsContent value="payments" className="space-y-6">
-              <PortalGate portal="Payments" require="email_verified">
+              <PortalGate portal="Payments" require="authenticated">
                 <div className="space-y-6">
                   <SubscriptionPlansPanel
                     title="Owner add-ons (Insurance · Roadside Support)"
