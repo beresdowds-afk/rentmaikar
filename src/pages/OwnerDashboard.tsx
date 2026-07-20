@@ -42,6 +42,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useOwnerDashboard } from '@/hooks/useOwnerDashboard';
 import { RecallApprovalPanel } from '@/components/recall/RecallApprovalPanel';
+import { PortalGate } from '@/components/onboarding/PortalGate';
 import {
   Car,
   Plus,
