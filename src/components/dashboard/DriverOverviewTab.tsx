@@ -58,38 +58,42 @@ export function DriverOverviewTab({ onNavigateTab }: Props) {
     (async () => {
       const now = new Date().toISOString();
       const in30 = new Date(Date.now() + 30 * 86_400_000).toISOString();
-      const [insp, docs, msgs, inc, train] = await Promise.all([
-        supabase
-          .from('weekly_inspection_reports')
-          .select('due_date, submitted_at')
-          .eq('driver_id', targetId)
-          .order('due_date', { ascending: true })
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from('user_documents')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', targetId)
-          .not('expires_at', 'is', null)
-          .lt('expires_at', in30)
-          .gt('expires_at', now),
-        supabase
-          .from('inbox_messages')
-          .select('id', { count: 'exact', head: true })
-          .eq('recipient_id', targetId)
-          .eq('read', false),
-        supabase
-          .from('vehicle_incidents')
-          .select('id', { count: 'exact', head: true })
-          .eq('reporter_id', targetId)
-          .in('status', ['open', 'investigating']),
-        supabase
-          .from('training_completions')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', targetId),
-      ]);
+      const client = supabase as any;
+
+      const insp = await client
+        .from('weekly_inspection_reports')
+        .select('week_start_date, submitted_at')
+        .eq('driver_id', targetId)
+        .is('submitted_at', null)
+        .order('week_start_date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      const docs = await client
+        .from('user_documents')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', targetId)
+        .not('expires_at', 'is', null)
+        .lt('expires_at', in30)
+        .gt('expires_at', now);
+      const msgs = await client
+        .from('inbox_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('recipient_id', targetId)
+        .eq('read', false);
+      const inc = await client
+        .from('vehicle_incidents')
+        .select('id', { count: 'exact', head: true })
+        .eq('reporter_id', targetId)
+        .in('status', ['reported', 'in_progress', 'acknowledged']);
+      const train = await client
+        .from('training_completions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', targetId);
+
       if (cancelled) return;
-      setInspectionDue(insp.data?.due_date ?? null);
+      const weekStart = insp?.data?.week_start_date as string | undefined;
+      // treat report as "due" 7 days after the week starts
+      setInspectionDue(weekStart ? new Date(new Date(weekStart).getTime() + 7 * 86_400_000).toISOString() : null);
       setExpiringDocs(docs.count ?? 0);
       setUnreadMessages(msgs.count ?? 0);
       setOpenIncidents(inc.count ?? 0);

@@ -62,43 +62,45 @@ export function OwnerOverviewTab({ onNavigateTab }: Props) {
     (async () => {
       const now = new Date().toISOString();
       const in30 = new Date(Date.now() + 30 * 86_400_000).toISOString();
-      const [inc, insp, recalls, docs, payout] = await Promise.all([
-        supabase
-          .from('vehicle_incidents')
-          .select('id', { count: 'exact', head: true })
-          .eq('owner_id', targetId)
-          .in('status', ['open', 'investigating']),
-        supabase
-          .from('weekly_inspection_reports')
-          .select('id', { count: 'exact', head: true })
-          .eq('owner_id', targetId)
-          .eq('owner_reviewed', false),
-        supabase
-          .from('vehicle_recalls')
-          .select('id', { count: 'exact', head: true })
-          .eq('owner_id', targetId)
-          .eq('status', 'pending'),
-        supabase
-          .from('user_documents')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', targetId)
-          .not('expires_at', 'is', null)
-          .lt('expires_at', in30)
-          .gt('expires_at', now),
-        supabase
-          .from('owner_payouts')
-          .select('created_at')
-          .eq('owner_id', targetId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
+      const client = supabase as any;
+
+      const inc = await client
+        .from('vehicle_incidents')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', targetId)
+        .in('status', ['reported', 'in_progress', 'acknowledged']);
+      const insp = await client
+        .from('weekly_inspection_reports')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', targetId)
+        .not('submitted_at', 'is', null)
+        .is('owner_reviewed_at', null);
+      const recalls = await client
+        .from('vehicle_recalls')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', targetId)
+        .eq('status', 'pending');
+      const docs = await client
+        .from('user_documents')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', targetId)
+        .not('expires_at', 'is', null)
+        .lt('expires_at', in30)
+        .gt('expires_at', now);
+      const payout = await client
+        .from('owner_payouts')
+        .select('created_at')
+        .eq('owner_id', targetId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
       if (cancelled) return;
       setOpenIncidents(inc.count ?? 0);
       setPendingInspections(insp.count ?? 0);
       setPendingRecalls(recalls.count ?? 0);
       setExpiringDocs(docs.count ?? 0);
-      setLastPayoutAt(payout.data?.created_at ?? null);
+      setLastPayoutAt(payout?.data?.created_at ?? null);
     })();
     return () => {
       cancelled = true;
