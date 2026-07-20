@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { RegionProvider } from "@/contexts/RegionContext";
 import { UserTypeProvider } from "@/contexts/UserTypeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -15,12 +15,27 @@ import PageSkeleton from "@/components/PageSkeleton";
 import SkipToContent from "@/components/SkipToContent";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useNativePush } from "@/hooks/useNativePush";
+import { useEffect } from "react";
+import { installOnboardingDeepLinkListener } from "@/lib/onboarding-deep-link";
 
 // Global background worker: keeps PWA + native mobile builds in sync with the
 // website by streaming DB changes and registering native push devices.
 const AppLiveSync = () => {
   useRealtimeSync(true);
   useNativePush();
+  return null;
+};
+
+// Native deep-link bridge: mounted inside <BrowserRouter> so it can navigate.
+const NativeDeepLinkBridge = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    let cleanup = () => {};
+    installOnboardingDeepLinkListener((p) => navigate(p)).then((fn) => {
+      cleanup = fn;
+    });
+    return () => cleanup();
+  }, [navigate]);
   return null;
 };
 import LiveAnnouncer from "@/components/LiveAnnouncer";
