@@ -121,10 +121,12 @@ describe('name immutability — service_role exception', () => {
       error: null,
     });
     const srUpdate = vi.fn(() => ({ eq: srEq }));
-    const serviceRoleClient = { from: () => ({ update: srUpdate }) };
+    const serviceRoleClient = {
+      from: (_table: string) => ({ update: srUpdate }),
+    };
 
     const res = await serviceRoleClient
-      .from()
+      .from('profiles')
       .update({ full_name: 'Legal Name Correction' })
       .eq('id', APPROVED_USER);
 
