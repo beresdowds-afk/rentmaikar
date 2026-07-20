@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
@@ -13,6 +14,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Loader2,
   RefreshCw,
@@ -23,6 +34,7 @@ import {
   Shield,
   Eye,
   RotateCw,
+  Radio,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -67,6 +79,14 @@ export default function TraccarCommandAuditPage() {
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<EnrichedRow | null>(null);
   const [replayingId, setReplayingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmReplayOne, setConfirmReplayOne] = useState<EnrichedRow | null>(null);
+  const [confirmBulk, setConfirmBulk] = useState(false);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "live" | "off">("connecting");
+  const [newRowsSinceView, setNewRowsSinceView] = useState(0);
+  const loadRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
@@ -75,6 +95,7 @@ export default function TraccarCommandAuditPage() {
 
   useEffect(() => {
     setPage(0);
+    setSelectedIds(new Set());
   }, [debouncedQ, filter]);
 
   const load = useCallback(async () => {
@@ -165,8 +186,42 @@ export default function TraccarCommandAuditPage() {
   }, [debouncedQ, filter, page]);
 
   useEffect(() => {
+    loadRef.current = load;
     load();
   }, [load]);
+
+  // Realtime: append/update rows as new traccar command audit entries land.
+  useEffect(() => {
+    setRealtimeStatus("connecting");
+    const channel = supabase
+      .channel("traccar-audit-live")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "iot_audit_log" },
+        (payload) => {
+          const row = payload.new as AuditRow;
+          if (!row?.action?.startsWith("traccar_command_")) return;
+          // Only reload if we're on page 0 with no active text-search so counts stay accurate.
+          if (page === 0 && !debouncedQ) {
+            loadRef.current();
+          } else {
+            setNewRowsSinceView((n) => n + 1);
+          }
+        },
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setRealtimeStatus("live");
+        else if (status === "CLOSED" || status === "CHANNEL_ERROR") setRealtimeStatus("off");
+      });
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [page, debouncedQ]);
+
+  // Reset "new rows" badge whenever we complete a fresh load.
+  useEffect(() => {
+    if (!loading) setNewRowsSinceView(0);
+  }, [loading, rows]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -208,6 +263,20 @@ export default function TraccarCommandAuditPage() {
     URL.revokeObjectURL(url);
   };
 
+  const sendReplay = async (r: EnrichedRow) => {
+    const attrs = ((r.details?.attributes ?? {}) as Record<string, unknown>) || {};
+    const { data, error } = await supabase.functions.invoke("traccar-admin", {
+      body: {
+        action: "send_command",
+        device_id: r.traccar_device_id,
+        command: r.command,
+        attributes: { ...attrs, __replay_of: r.id },
+      },
+    });
+    if (error) throw error;
+    return data as { ok?: boolean; body?: any; error?: string; retry_after_seconds?: number } | null;
+  };
+
   const replay = async (r: EnrichedRow) => {
     if (!r.traccar_device_id || !r.command) {
       toast.error("Cannot replay: missing traccar device id or command");
@@ -215,24 +284,85 @@ export default function TraccarCommandAuditPage() {
     }
     setReplayingId(r.id);
     try {
-      const attrs = ((r.details?.attributes ?? {}) as Record<string, unknown>) || {};
-      const { data, error } = await supabase.functions.invoke("traccar-admin", {
-        body: {
-          action: "send_command",
-          device_id: r.traccar_device_id,
-          command: r.command,
-          attributes: { ...attrs, __replay_of: r.id },
-        },
-      });
-      if (error) throw error;
-      if ((data as any)?.ok) toast.success(`Replayed ${r.command} · new attempt logged`);
-      else toast.error(`Replay failed: ${(data as any)?.body?.message ?? "provider error"}`);
+      const data = await sendReplay(r);
+      if (data?.error === "rate_limited") {
+        toast.error(`Rate limit hit. Retry in ~${data.retry_after_seconds ?? 30}s`);
+      } else if (data?.ok) {
+        toast.success(`Replayed ${r.command} · new attempt logged`);
+      } else {
+        toast.error(`Replay failed: ${data?.body?.message ?? "provider error"}`);
+      }
       await load();
     } catch (e: any) {
       toast.error(e?.message ?? "Replay failed");
     } finally {
       setReplayingId(null);
     }
+  };
+
+  const failedSelected = useMemo(
+    () => rows.filter((r) => selectedIds.has(r.id) && r.response_ok === false && r.traccar_device_id),
+    [rows, selectedIds],
+  );
+
+  const bulkReplay = async () => {
+    if (failedSelected.length === 0) return;
+    setBulkRunning(true);
+    setBulkProgress({ done: 0, total: failedSelected.length });
+    let ok = 0;
+    let failed = 0;
+    let rateLimited = 0;
+    for (let i = 0; i < failedSelected.length; i++) {
+      const r = failedSelected[i];
+      try {
+        const data = await sendReplay(r);
+        if (data?.error === "rate_limited") {
+          rateLimited++;
+          // Back off for the remainder — server won't accept more this window.
+          const wait = Math.min(60, (data.retry_after_seconds ?? 30)) * 1000;
+          await new Promise((res) => setTimeout(res, wait));
+        } else if (data?.ok) ok++;
+        else failed++;
+      } catch {
+        failed++;
+      }
+      setBulkProgress({ done: i + 1, total: failedSelected.length });
+      // Small client-side pacing to be gentle on Traccar even inside the allowed window.
+      await new Promise((res) => setTimeout(res, 250));
+    }
+    setBulkRunning(false);
+    setBulkProgress(null);
+    setSelectedIds(new Set());
+    toast.message("Bulk replay complete", {
+      description: `${ok} ok · ${failed} failed${rateLimited ? ` · ${rateLimited} rate-limited` : ""}`,
+    });
+    await load();
+  };
+
+  const toggleRow = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const failedOnPage = useMemo(
+    () => rows.filter((r) => r.response_ok === false && !!r.traccar_device_id),
+    [rows],
+  );
+  const allFailedSelected =
+    failedOnPage.length > 0 && failedOnPage.every((r) => selectedIds.has(r.id));
+  const toggleAllFailed = (checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      failedOnPage.forEach((r) => {
+        if (checked) next.add(r.id);
+        else next.delete(r.id);
+      });
+      return next;
+    });
   };
 
   const showingFrom = total === 0 ? 0 : page * PAGE_SIZE + 1;
@@ -252,6 +382,29 @@ export default function TraccarCommandAuditPage() {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            <Badge
+              variant={realtimeStatus === "live" ? "default" : "secondary"}
+              className="gap-1"
+              title={
+                realtimeStatus === "live"
+                  ? "Live: new commands appear automatically"
+                  : realtimeStatus === "connecting"
+                  ? "Connecting to realtime…"
+                  : "Realtime offline — use Refresh"
+              }
+            >
+              <Radio
+                className={`h-3 w-3 ${
+                  realtimeStatus === "live" ? "text-emerald-500 animate-pulse" : ""
+                }`}
+              />
+              {realtimeStatus === "live" ? "Live" : realtimeStatus}
+            </Badge>
+            {newRowsSinceView > 0 && (
+              <Button variant="secondary" size="sm" onClick={load}>
+                {newRowsSinceView} new · show
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={exportCsv} disabled={rows.length === 0}>
               <Download className="h-4 w-4 mr-1" /> Export CSV
             </Button>
@@ -261,6 +414,39 @@ export default function TraccarCommandAuditPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
+          {selectedIds.size > 0 && (
+            <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              <div>
+                <span className="font-medium">{selectedIds.size}</span> selected ·{" "}
+                <span className="text-muted-foreground">
+                  {failedSelected.length} replayable failure{failedSelected.length === 1 ? "" : "s"}
+                </span>
+                {bulkProgress && (
+                  <span className="ml-2 text-muted-foreground">
+                    · replaying {bulkProgress.done}/{bulkProgress.total}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                  Clear
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={failedSelected.length === 0 || bulkRunning}
+                  onClick={() => setConfirmBulk(true)}
+                >
+                  {bulkRunning ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <RotateCw className="h-4 w-4 mr-1" />
+                  )}
+                  Replay {failedSelected.length} failure{failedSelected.length === 1 ? "" : "s"}
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[240px]">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -287,6 +473,14 @@ export default function TraccarCommandAuditPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8">
+                    <Checkbox
+                      checked={allFailedSelected && failedOnPage.length > 0}
+                      onCheckedChange={(v) => toggleAllFailed(!!v)}
+                      disabled={failedOnPage.length === 0}
+                      aria-label="Select all failed on this page"
+                    />
+                  </TableHead>
                   <TableHead>When</TableHead>
                   <TableHead>Admin</TableHead>
                   <TableHead>Command</TableHead>
@@ -299,14 +493,14 @@ export default function TraccarCommandAuditPage() {
               <TableBody>
                 {loading && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6">
+                    <TableCell colSpan={8} className="text-center py-6">
                       <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> Loading…
                     </TableCell>
                   </TableRow>
                 )}
                 {!loading && rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
                       No commands recorded for these filters.
                     </TableCell>
                   </TableRow>
@@ -320,7 +514,15 @@ export default function TraccarCommandAuditPage() {
                     };
                     const isFailure = r.response_ok === false;
                     return (
-                      <TableRow key={r.id}>
+                      <TableRow key={r.id} data-state={selectedIds.has(r.id) ? "selected" : undefined}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(r.id)}
+                            onCheckedChange={(v) => toggleRow(r.id, !!v)}
+                            disabled={!isFailure || !r.traccar_device_id}
+                            aria-label="Select row"
+                          />
+                        </TableCell>
                         <TableCell className="text-xs whitespace-nowrap">
                           {new Date(r.created_at).toLocaleString()}
                         </TableCell>
@@ -376,7 +578,7 @@ export default function TraccarCommandAuditPage() {
                                 size="sm"
                                 variant="outline"
                                 disabled={replayingId === r.id || !r.traccar_device_id}
-                                onClick={() => replay(r)}
+                                onClick={() => setConfirmReplayOne(r)}
                                 title="Re-issue this command"
                               >
                                 {replayingId === r.id ? (
@@ -471,7 +673,7 @@ export default function TraccarCommandAuditPage() {
                   <Button
                     variant="default"
                     disabled={replayingId === selected.id || !selected.traccar_device_id}
-                    onClick={() => replay(selected)}
+                    onClick={() => setConfirmReplayOne(selected)}
                   >
                     {replayingId === selected.id ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -486,6 +688,64 @@ export default function TraccarCommandAuditPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!confirmReplayOne}
+        onOpenChange={(o) => !o && setConfirmReplayOne(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Replay{" "}
+              {confirmReplayOne
+                ? COMMAND_LABEL[confirmReplayOne.command]?.label ?? confirmReplayOne.command
+                : ""}
+              ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This re-issues the exact same command to Traccar device{" "}
+              <span className="font-mono">{confirmReplayOne?.traccar_device_id}</span>. A new audit
+              entry will be recorded. Server-side rate limit: 20 commands per admin per minute.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const r = confirmReplayOne;
+                setConfirmReplayOne(null);
+                if (r) replay(r);
+              }}
+            >
+              Yes, replay
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmBulk} onOpenChange={setConfirmBulk}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replay {failedSelected.length} failed commands?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Each selected failure will be re-issued to Traccar in order and logged as a new audit
+              entry. The server enforces a 20/min per-admin rate limit; if it kicks in the run
+              pauses automatically. You cannot undo issued commands.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmBulk(false);
+                bulkReplay();
+              }}
+            >
+              Yes, replay {failedSelected.length}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

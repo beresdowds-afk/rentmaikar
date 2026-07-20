@@ -7,6 +7,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { traccar, type TraccarDevice, type TraccarPosition } from "../_shared/traccar-client.ts";
+import { checkRateLimit } from "../_shared/rate-limit.ts";
 
 const Body = z.object({
   action: z.enum([
@@ -245,6 +246,20 @@ Deno.serve(async (req) => {
 
     if (action === "send_command") {
       if (!device_id || !command) return json({ error: "device_id and command required" }, 400);
+      // Server-side rate limit: cap per admin (or 'cron') to prevent replay floods.
+      if (!isCron) {
+        const rl = await checkRateLimit(actor ?? "anonymous", "traccar-admin:send_command", 20);
+        if (!rl.allowed) {
+          await audit({
+            action: `traccar_command_${command}_rate_limited`,
+            details: { traccar_device_id: device_id, retry_after_seconds: rl.retry_after_seconds },
+          });
+          return json(
+            { ok: false, error: "rate_limited", retry_after_seconds: rl.retry_after_seconds },
+            429,
+          );
+        }
+      }
       const attrs = attributes ?? {};
       const r = await traccar.sendCommand(device_id, command, attrs);
       // Try to resolve the local iot_devices row/vehicle from health_details.traccar_device_id
