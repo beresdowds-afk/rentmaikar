@@ -192,6 +192,10 @@ export default function OwnerDashboard() {
             <InstallAppBanner appName="Rentmaikar Owner" />
           </div>
 
+          <UserIdentityCard role="Owner" />
+
+
+
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
