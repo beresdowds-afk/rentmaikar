@@ -38,8 +38,10 @@ export async function installOnboardingDeepLinkListener(
 ): Promise<() => void> {
   if (!inCapacitor()) return () => {};
   try {
-    // @ts-expect-error – optional native peer, resolved at runtime only.
-    const mod = await import(/* @vite-ignore */ '@capacitor/app');
+    const modName = '@capacitor/app';
+    // Hide the specifier from Vite's static analyzer — this peer only
+    // resolves inside the native (Capacitor) runtime.
+    const mod = await (Function('m', 'return import(m)') as (m: string) => Promise<unknown>)(modName);
     const App = (mod as { App?: { addListener?: Function } }).App;
     if (!App?.addListener) return () => {};
     const handle = await App.addListener(
