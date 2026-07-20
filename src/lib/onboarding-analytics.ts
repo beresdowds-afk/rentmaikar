@@ -11,7 +11,8 @@ export type OnboardingAnalyticsEvent =
   | 'portal_cta_dedup_hit'
   | 'deep_link_opened'
   | 'progress_reconciled'
-  | 'progress_reconciliation_mismatch';
+  | 'progress_reconciliation_mismatch'
+  | 'progress_manual_resync';
 
 export interface OnboardingAnalyticsPayload {
   role?: 'driver' | 'owner' | null;
@@ -30,6 +31,7 @@ const PIXEL_NAMES: Record<OnboardingAnalyticsEvent, string> = {
   deep_link_opened: 'OnboardingDeepLinkOpened',
   progress_reconciled: 'OnboardingProgressReconciled',
   progress_reconciliation_mismatch: 'OnboardingProgressMismatch',
+  progress_manual_resync: 'OnboardingProgressManualResync',
 };
 
 export function trackOnboardingEvent(
