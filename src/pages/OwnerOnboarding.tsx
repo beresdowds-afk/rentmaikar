@@ -5,8 +5,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle2, Car, FileText, DollarSign, ArrowRight, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Car, FileText, DollarSign, ArrowRight, Loader2, AlertTriangle, RefreshCw, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
+import { classifyOnboardingError, routeForStage, type ClassifiedOnboardingError } from '@/lib/onboarding-error';
 
 const steps = [
   { icon: Car, title: 'List your first vehicle', desc: 'Add photos, pricing, and specs so drivers can find your car.' },
