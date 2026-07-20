@@ -152,6 +152,11 @@ export default function ProfileSettingsPage() {
             Profile Settings
           </h1>
 
+          <ReverificationBanner
+            status={identityStatus as any}
+            pendingLocalChange={phoneChanged}
+          />
+
           <UserIdentityCard hideSettingsLink />
 
           <Card>
