@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { Lock, ArrowRight, CheckCircle2, Circle } from 'lucide-react';
+import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 import {
   useRegistrationProgress,
   type RegistrationStage,
@@ -180,7 +181,21 @@ export function PortalGate({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button asChild size="sm" data-testid="portal-gate-continue">
+          <Button
+            asChild
+            size="sm"
+            data-testid="portal-gate-continue"
+            onClick={() =>
+              trackOnboardingEvent('deep_link_opened', {
+                role: progress?.role ?? null,
+                stage: progress?.stage ?? null,
+                portal,
+                requirement: require,
+                origin: 'web',
+                extra: { source: 'portal_gate_continue', nextPath },
+              })
+            }
+          >
             <Link to={nextPath}>
               Continue onboarding: {nextStepLabel}
               <ArrowRight className="h-4 w-4 ml-1" />

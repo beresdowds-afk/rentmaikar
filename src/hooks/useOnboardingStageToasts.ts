@@ -5,6 +5,7 @@ import {
   type RegistrationStage,
 } from '@/hooks/useRegistrationProgress';
 import { STAGE_COMPLETION_COPY, adviseOnStageFailure } from '@/lib/onboarding-stages';
+import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 
 const STAGE_ORDER: Record<RegistrationStage, number> = {
   auth: 0,
