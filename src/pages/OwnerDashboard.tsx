@@ -44,6 +44,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOwnerDashboard } from '@/hooks/useOwnerDashboard';
 import { RecallApprovalPanel } from '@/components/recall/RecallApprovalPanel';
 import { PortalGate } from '@/components/onboarding/PortalGate';
+import { OnboardingReconciliationBanner } from '@/components/onboarding/OnboardingReconciliationBanner';
 import {
   Car,
   Plus,
@@ -384,6 +385,7 @@ export default function OwnerDashboard() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <OnboardingReconciliationBanner />
             <TabsList className="flex flex-wrap w-full h-auto gap-1.5 p-1.5 justify-start bg-muted/60 rounded-lg [&>[role=tab]]:flex-none [&>[role=tab]]:h-9 [&>[role=tab]]:px-3 [&>[role=tab]]:text-xs md:[&>[role=tab]]:text-sm [&>[role=tab]]:rounded-md [&>[role=tab]]:transition-colors [&>[role=tab][data-state=active]]:bg-background [&>[role=tab][data-state=active]]:shadow-sm">
               <TabsTrigger value="overview" data-tour="owner-overview">Overview</TabsTrigger>
               <TabsTrigger value="vehicles" data-tour="owner-vehicles">My Vehicles</TabsTrigger>

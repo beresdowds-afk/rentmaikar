@@ -50,6 +50,7 @@ import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
 import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
 import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
 import { PortalGate } from '@/components/onboarding/PortalGate';
+import { OnboardingReconciliationBanner } from '@/components/onboarding/OnboardingReconciliationBanner';
 import { DriverOverviewTab } from '@/components/dashboard/DriverOverviewTab';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -278,6 +279,7 @@ export default function DriverDashboard() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <OnboardingReconciliationBanner />
             <TabsList className="flex flex-wrap w-full h-auto gap-1.5 p-1.5 justify-start bg-muted/60 rounded-lg [&>[role=tab]]:flex-none [&>[role=tab]]:h-9 [&>[role=tab]]:px-3 [&>[role=tab]]:text-xs md:[&>[role=tab]]:text-sm [&>[role=tab]]:rounded-md [&>[role=tab]]:transition-colors [&>[role=tab][data-state=active]]:bg-background [&>[role=tab][data-state=active]]:shadow-sm">
               <TabsTrigger value="overview" data-tour="driver-overview">Overview</TabsTrigger>
               <TabsTrigger value="payments" data-tour="driver-payments">Payments</TabsTrigger>
