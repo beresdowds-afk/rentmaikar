@@ -71,6 +71,9 @@ const AdminImpersonateDashboardPage = lazy(() => import("./pages/admin/AdminImpe
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
 const SubscriptionSuccessPage = lazy(() => import("./pages/SubscriptionSuccessPage"));
 const ProxyConsentPage = lazy(() => import("./pages/ProxyConsentPage"));
+const PortalRouteGuard = lazy(() => import("./components/onboarding/PortalRouteGuard"));
+const OnboardingRedirect = lazy(() => import("./pages/OnboardingRedirect"));
+import { OnboardingStageToaster } from "@/components/onboarding/OnboardingStageToaster";
 
 const queryClient = new QueryClient();
 
@@ -90,6 +93,7 @@ const App = () => (
             <BrowserRouter>
               <MetaPixelRouteTracker />
               <DocumentExpiryInAppNotifier />
+              <OnboardingStageToaster />
               <SkipToContent />
               <LiveAnnouncer />
               <CookieConsent />
@@ -329,6 +333,11 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+
+                  <Route path="/driver/portal/:portalKey" element={<PortalRouteGuard role="driver" />} />
+                  <Route path="/owner/portal/:portalKey" element={<PortalRouteGuard role="owner" />} />
+                  <Route path="/onboarding-redirect" element={<OnboardingRedirect />} />
+                  <Route path="/verify-email" element={<OnboardingRedirect />} />
 
                   <Route path="*" element={<NotFound />} />
                   </Routes>
