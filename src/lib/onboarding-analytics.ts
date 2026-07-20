@@ -12,7 +12,12 @@ export type OnboardingAnalyticsEvent =
   | 'deep_link_opened'
   | 'progress_reconciled'
   | 'progress_reconciliation_mismatch'
-  | 'progress_manual_resync';
+  | 'progress_manual_resync'
+  | 'profile_updated'
+  | 'profile_reverification_triggered'
+  | 'passport_uploaded'
+  | 'passport_replaced'
+  | 'passport_removed';
 
 export interface OnboardingAnalyticsPayload {
   role?: 'driver' | 'owner' | null;
@@ -21,6 +26,7 @@ export interface OnboardingAnalyticsPayload {
   origin?: 'web' | 'native' | 'push' | 'email' | 'unknown';
   requirement?: string;
   idempotencyKey?: string;
+  fields?: string[];
   extra?: Record<string, unknown>;
 }
 
@@ -32,7 +38,13 @@ const PIXEL_NAMES: Record<OnboardingAnalyticsEvent, string> = {
   progress_reconciled: 'OnboardingProgressReconciled',
   progress_reconciliation_mismatch: 'OnboardingProgressMismatch',
   progress_manual_resync: 'OnboardingProgressManualResync',
+  profile_updated: 'ProfileUpdated',
+  profile_reverification_triggered: 'ProfileReverificationTriggered',
+  passport_uploaded: 'PassportUploaded',
+  passport_replaced: 'PassportReplaced',
+  passport_removed: 'PassportRemoved',
 };
+
 
 export function trackOnboardingEvent(
   event: OnboardingAnalyticsEvent,
@@ -52,8 +64,10 @@ export function trackOnboardingEvent(
       portal: payload.portal,
       origin: payload.origin,
       requirement: payload.requirement,
+      fields: payload.fields,
       ...(payload.extra ?? {}),
     });
+
   } catch {
     /* analytics must never throw */
   }

@@ -21,6 +21,7 @@ import {
   extractStoragePath,
 } from '@/lib/passport-image';
 import { Link } from 'react-router-dom';
+import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 
 interface Props {
   role?: 'Driver' | 'Owner';
@@ -115,7 +116,11 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
         .update({ avatar_url: url })
         .eq('id', user.id);
       if (updErr) throw updErr;
+      const hadPrevious = !!avatarUrl;
       setAvatarUrl(url);
+      trackOnboardingEvent(hadPrevious ? 'passport_replaced' : 'passport_uploaded', {
+        extra: { size_bytes: pendingBlob.size },
+      });
       toast({ title: 'Passport picture updated' });
       closePreview();
     } catch (err: any) {
@@ -147,6 +152,7 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
         .eq('id', user.id);
       if (error) throw error;
       setAvatarUrl(null);
+      trackOnboardingEvent('passport_removed');
       toast({ title: 'Passport picture removed' });
     } catch (err: any) {
       toast({ title: 'Could not remove picture', description: err.message, variant: 'destructive' });

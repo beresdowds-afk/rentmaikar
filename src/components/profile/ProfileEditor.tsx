@@ -12,6 +12,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import PersonaVerification from '@/components/verification/PersonaVerification';
+import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
+import { Lock } from 'lucide-react';
 
 interface ProfileEditorProps {
   subjectRole: 'driver' | 'owner' | 'support_staff' | 'admin_assistant';
@@ -159,8 +161,17 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
     return next;
   };
 
+  const nameLocked = identityStatus === 'approved';
+
   const handleSave = async () => {
     if (!user || !anyChange) return;
+
+    // Names cannot be changed after identity is verified.
+    if (nameLocked && nameChanged) {
+      setErrors({ fullName: 'Name is locked after identity verification. Contact support to change it.' });
+      toast.error('Your name is locked after identity verification.');
+      return;
+    }
 
     // 1. Client-side shape validation
     const shapeErrs = validateShape();
@@ -169,6 +180,7 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
       toast.error('Please fix the highlighted fields.');
       return;
     }
+
 
     // 2. Uniqueness check for email/phone
     const uniqErrs = await checkUniqueness();
@@ -238,11 +250,27 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
       setEmail(trimmedEmail);
       setPhone(normPhone);
 
+      // Analytics: which fields were updated
+      const changedFields: string[] = [];
+      if (nameChanged) changedFields.push('full_name');
+      if (emailChanged) changedFields.push('email');
+      if (phoneChanged) changedFields.push('phone');
+      trackOnboardingEvent('profile_updated', {
+        role: subjectRole === 'driver' || subjectRole === 'owner' ? subjectRole : null,
+        fields: changedFields,
+      });
+
       if (requiresReverification) {
         setEmailVerified(!emailChanged && emailVerified);
         setPhoneVerified(!phoneChanged && phoneVerified);
         setIdentityStatus('pending_reverification');
         setNeedsReverify(true);
+
+        trackOnboardingEvent('profile_reverification_triggered', {
+          role: subjectRole === 'driver' || subjectRole === 'owner' ? subjectRole : null,
+          fields: changedFields.filter((f) => f !== 'full_name'),
+          extra: { channel: 'both' },
+        });
 
         // 6. Kick off Persona re-verification (email + SMS with a hosted link).
         supabase.functions.invoke('persona-send-reverification', {
@@ -263,6 +291,7 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
       } else {
         toast.success('Profile saved.');
       }
+
     } catch (e: any) {
       toast.error(e.message ?? 'Failed to save changes');
     } finally {
@@ -297,7 +326,14 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
         <CardContent className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="pe-name">Full Name</Label>
+              <Label htmlFor="pe-name" className="flex items-center gap-2">
+                Full Name
+                {nameLocked && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Lock className="h-3 w-3 mr-1" /> Locked
+                  </Badge>
+                )}
+              </Label>
               <Input
                 id="pe-name"
                 value={fullName}
@@ -308,9 +344,17 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
                 maxLength={80}
                 aria-invalid={!!errors.fullName}
                 className={fieldClass('fullName')}
+                disabled={nameLocked}
+                readOnly={nameLocked}
               />
+              {nameLocked && (
+                <p className="text-xs text-muted-foreground">
+                  Your name is locked after identity verification. Contact support to change it.
+                </p>
+              )}
               {errors.fullName && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.fullName}</p>}
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="pe-email" className="flex items-center gap-2">
                 <Mail className="h-3.5 w-3.5" /> Email
