@@ -189,6 +189,9 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
             ref={fileRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
+            /* On iOS/Android Capacitor WebViews this shows the camera/library
+               action sheet automatically. `capture` biases toward camera. */
+            capture="user"
             className="hidden"
             onChange={handleFile}
           />
