@@ -105,7 +105,7 @@ describe('PortalGate', () => {
         <PortalGate portal="Payments"><div /></PortalGate>,
       ),
     );
-    const link = screen.getByTestId('portal-gate-continue').querySelector('a');
+    const link = screen.getByTestId('portal-gate-continue');
     expect(link?.getAttribute('href')).toBe('/driver/onboarding?step=documents');
   });
 
@@ -121,7 +121,7 @@ describe('PortalGate', () => {
     render(
       withRouter(<PortalGate portal="Vehicles"><div /></PortalGate>),
     );
-    const link = screen.getByTestId('portal-gate-continue').querySelector('a');
+    const link = screen.getByTestId('portal-gate-continue');
     expect(link?.getAttribute('href')).toBe('/owner/onboarding?step=verification');
   });
 
@@ -131,7 +131,7 @@ describe('PortalGate', () => {
       isLoading: false,
     });
     render(withRouter(<PortalGate portal="X" require="email_verified"><div /></PortalGate>));
-    const link = screen.getByTestId('portal-gate-continue').querySelector('a');
+    const link = screen.getByTestId('portal-gate-continue');
     expect(link?.getAttribute('href')).toBe('/verify-email');
   });
 
