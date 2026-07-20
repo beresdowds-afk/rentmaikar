@@ -3,22 +3,42 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Copy, Loader2, Check } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Camera, Copy, Loader2, Check, Trash2, RefreshCw, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import {
+  validatePassportFile,
+  squareCropToBlob,
+  extractStoragePath,
+} from '@/lib/passport-image';
+import { Link } from 'react-router-dom';
 
 interface Props {
   role?: 'Driver' | 'Owner';
+  /** Hide the "Manage profile" link (e.g. when already on the profile page). */
+  hideSettingsLink?: boolean;
 }
 
-export function UserIdentityCard({ role }: Props) {
+export function UserIdentityCard({ role, hideSettingsLink }: Props) {
   const { user } = useAuth();
   const [fullName, setFullName] = useState<string>('');
   const [publicUuid, setPublicUuid] = useState<string>('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -44,39 +64,94 @@ export function UserIdentityCard({ role }: Props) {
     .slice(0, 2)
     .toUpperCase();
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePick = () => fileRef.current?.click();
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user?.id) return;
-    if (!file.type.startsWith('image/')) {
-      toast({ title: 'Invalid file', description: 'Please upload an image.', variant: 'destructive' });
+    if (!file) return;
+    const v = await validatePassportFile(file);
+    if (!v.ok) {
+      toast({ title: 'Invalid photo', description: v.error, variant: 'destructive' });
+      if (fileRef.current) fileRef.current.value = '';
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: 'File too large', description: 'Max 5MB.', variant: 'destructive' });
-      return;
+    try {
+      const blob = await squareCropToBlob(file);
+      setPendingBlob(blob);
+      setPreviewUrl(URL.createObjectURL(blob));
+      setPreviewOpen(true);
+    } catch (err: any) {
+      toast({ title: 'Could not process image', description: err.message, variant: 'destructive' });
+    } finally {
+      if (fileRef.current) fileRef.current.value = '';
     }
+  };
+
+  const closePreview = () => {
+    setPreviewOpen(false);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setPendingBlob(null);
+  };
+
+  const confirmUpload = async () => {
+    if (!pendingBlob || !user?.id) return;
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop() || 'jpg';
-      const path = `${user.id}/passport-${Date.now()}.${ext}`;
+      // Remove any previous passport picture in the user's folder first so
+      // the bucket stays tidy and we don't accumulate orphaned files.
+      await deleteExistingAvatar();
+
+      const path = `${user.id}/passport-${Date.now()}.jpg`;
       const { error: upErr } = await supabase.storage
         .from('profile-photos')
-        .upload(path, file, { upsert: true, contentType: file.type });
+        .upload(path, pendingBlob, { upsert: true, contentType: 'image/jpeg' });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from('profile-photos').getPublicUrl(path);
-      const url = pub.publicUrl;
+      // Bust CDN cache by appending a version.
+      const url = `${pub.publicUrl}?v=${Date.now()}`;
       const { error: updErr } = await supabase
         .from('profiles')
         .update({ avatar_url: url })
         .eq('id', user.id);
       if (updErr) throw updErr;
       setAvatarUrl(url);
-      toast({ title: 'Photo updated', description: 'Your passport picture has been saved.' });
+      toast({ title: 'Passport picture updated' });
+      closePreview();
     } catch (err: any) {
       toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
     } finally {
       setUploading(false);
-      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const deleteExistingAvatar = async () => {
+    if (!avatarUrl) return;
+    const path = extractStoragePath(avatarUrl.split('?')[0], 'profile-photos');
+    if (!path) return;
+    try {
+      await supabase.storage.from('profile-photos').remove([path]);
+    } catch {
+      /* best-effort */
+    }
+  };
+
+  const removeAvatar = async () => {
+    if (!user?.id) return;
+    setRemoving(true);
+    try {
+      await deleteExistingAvatar();
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: null })
+        .eq('id', user.id);
+      if (error) throw error;
+      setAvatarUrl(null);
+      toast({ title: 'Passport picture removed' });
+    } catch (err: any) {
+      toast({ title: 'Could not remove picture', description: err.message, variant: 'destructive' });
+    } finally {
+      setRemoving(false);
     }
   };
 
@@ -88,7 +163,7 @@ export function UserIdentityCard({ role }: Props) {
   };
 
   return (
-    <Card className="mb-6">
+    <Card className="mb-6" data-testid="user-identity-card">
       <CardContent className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 sm:p-6">
         <div className="relative">
           <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-2 border-primary/20">
@@ -97,9 +172,9 @@ export function UserIdentityCard({ role }: Props) {
           </Avatar>
           <button
             type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            aria-label="Upload passport picture"
+            onClick={handlePick}
+            disabled={uploading || removing}
+            aria-label={avatarUrl ? 'Replace passport picture' : 'Upload passport picture'}
             className="absolute -bottom-1 -right-1 rounded-full bg-primary text-primary-foreground p-2 shadow-md hover:bg-primary/90 disabled:opacity-60"
           >
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
@@ -107,9 +182,9 @@ export function UserIdentityCard({ role }: Props) {
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             className="hidden"
-            onChange={handleUpload}
+            onChange={handleFile}
           />
         </div>
         <div className="flex-1 text-center sm:text-left min-w-0">
@@ -118,7 +193,7 @@ export function UserIdentityCard({ role }: Props) {
             {role && <Badge variant="secondary">{role}</Badge>}
           </div>
           <p className="text-sm text-muted-foreground mt-1 break-all">{user?.email}</p>
-          <div className="mt-2 flex items-center gap-2 justify-center sm:justify-start">
+          <div className="mt-2 flex items-center gap-2 justify-center sm:justify-start flex-wrap">
             <span className="text-xs text-muted-foreground">User UUID:</span>
             <code className="text-xs bg-muted px-2 py-1 rounded font-mono break-all">
               {publicUuid || '—'}
@@ -129,13 +204,68 @@ export function UserIdentityCard({ role }: Props) {
               </Button>
             )}
           </div>
-          {!avatarUrl && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Tip: Upload a passport picture anytime — tap the camera icon.
-            </p>
-          )}
+          <div className="mt-3 flex flex-wrap gap-2 justify-center sm:justify-start">
+            <Button size="sm" variant="outline" onClick={handlePick} disabled={uploading || removing}>
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              {avatarUrl ? 'Replace photo' : 'Add passport photo'}
+            </Button>
+            {avatarUrl && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={removeAvatar}
+                disabled={removing || uploading}
+                className="text-destructive hover:text-destructive"
+              >
+                {removing ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                )}
+                Remove
+              </Button>
+            )}
+            {!hideSettingsLink && (
+              <Button asChild size="sm" variant="ghost">
+                <Link to="/settings/profile">
+                  <Settings className="h-3.5 w-3.5 mr-1" />
+                  Manage profile
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
+
+      <Dialog open={previewOpen} onOpenChange={(o) => (!o ? closePreview() : null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm passport picture</DialogTitle>
+            <DialogDescription>
+              We centered and cropped your photo to a square. It will be visible on
+              your dashboard and to admins during verification.
+            </DialogDescription>
+          </DialogHeader>
+          {previewUrl && (
+            <div className="flex justify-center py-4">
+              <img
+                src={previewUrl}
+                alt="Passport preview"
+                className="h-48 w-48 rounded-lg object-cover border"
+              />
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={closePreview} disabled={uploading}>
+              Choose another
+            </Button>
+            <Button onClick={confirmUpload} disabled={uploading}>
+              {uploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Use this photo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
