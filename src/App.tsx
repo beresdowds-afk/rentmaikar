@@ -285,6 +285,14 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/admin/onboarding-diagnostics"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <OnboardingDiagnosticsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/impersonate/:role/:userId"
                     element={
                       <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
