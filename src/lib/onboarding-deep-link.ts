@@ -38,6 +38,7 @@ export async function installOnboardingDeepLinkListener(
 ): Promise<() => void> {
   if (!inCapacitor()) return () => {};
   try {
+    // @ts-expect-error – optional native peer, resolved at runtime only.
     const mod = await import(/* @vite-ignore */ '@capacitor/app');
     const App = (mod as { App?: { addListener?: Function } }).App;
     if (!App?.addListener) return () => {};
