@@ -473,6 +473,14 @@ export default function TraccarCommandAuditPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8">
+                    <Checkbox
+                      checked={allFailedSelected && failedOnPage.length > 0}
+                      onCheckedChange={(v) => toggleAllFailed(!!v)}
+                      disabled={failedOnPage.length === 0}
+                      aria-label="Select all failed on this page"
+                    />
+                  </TableHead>
                   <TableHead>When</TableHead>
                   <TableHead>Admin</TableHead>
                   <TableHead>Command</TableHead>
@@ -485,14 +493,14 @@ export default function TraccarCommandAuditPage() {
               <TableBody>
                 {loading && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6">
+                    <TableCell colSpan={8} className="text-center py-6">
                       <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> Loading…
                     </TableCell>
                   </TableRow>
                 )}
                 {!loading && rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
                       No commands recorded for these filters.
                     </TableCell>
                   </TableRow>
