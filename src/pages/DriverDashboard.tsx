@@ -328,12 +328,23 @@ export default function DriverDashboard() {
             <TabsContent value="subscriptions" className="space-y-6">
               <PortalGate portal="Subscriptions" require="authenticated">
                 <div className="space-y-6">
-                  <SubscriptionPlansPanel
-                    title="Driver Training (required, unlocks Insurance)"
-                    planTypes={["training"]}
-                  />
-                  <SubscriptionPlansPanel title="Insurance" planTypes={["insurance"]} />
-                  <SubscriptionPlansPanel title="Roadside Support" planTypes={["roadside_support"]} />
+                  <SubscriptionGate service="driver_training" label="Driver Training" hideWhenRegionDisabled>
+                    <SubscriptionPlansPanel
+                      title="Driver Training (compulsory · unlocks Insurance)"
+                      planTypes={["training"]}
+                    />
+                  </SubscriptionGate>
+                  <SubscriptionGate
+                    service="insurance"
+                    requires="driver_training"
+                    label="Insurance"
+                    hideWhenRegionDisabled
+                  >
+                    <SubscriptionPlansPanel title="Insurance (compulsory)" planTypes={["insurance"]} />
+                  </SubscriptionGate>
+                  <SubscriptionGate service="roadside_assistance" label="Roadside Support" hideWhenRegionDisabled>
+                    <SubscriptionPlansPanel title="Roadside Support" planTypes={["roadside_support"]} />
+                  </SubscriptionGate>
                 </div>
               </PortalGate>
             </TabsContent>
