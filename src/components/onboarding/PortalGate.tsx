@@ -16,6 +16,7 @@ export type Requirement =
   | 'authenticated'
   | 'email_verified'
   | 'documents'
+  | 'verification'
   | 'approved';
 
 const STAGE_ORDER: Record<RegistrationStage, number> = {
@@ -43,6 +44,10 @@ const REQUIREMENT_COPY: Record<Requirement, { title: string; hint: string }> = {
     title: 'Upload required documents',
     hint: 'submit your identification and required documents.',
   },
+  verification: {
+    title: 'Complete identity verification',
+    hint: 'finish identity verification to unlock this portal.',
+  },
   approved: {
     title: 'Complete your onboarding',
     hint: 'finish verification and wait for admin approval.',
@@ -59,11 +64,13 @@ function buildSteps(p: RegistrationProgress | undefined): Step[] {
   const authed = !!p?.authenticated;
   const emailVerified = !!p?.email_verified;
   const docsSubmitted = !!p && STAGE_ORDER[p.stage] >= STAGE_ORDER.documents_submitted;
+  const verified = !!p && STAGE_ORDER[p.stage] >= STAGE_ORDER.verification_pending;
   const approved = !!p && (p.access_level === 'full' || p.stage === 'approved');
   return [
     { key: 'authenticated', label: 'Create your account', done: authed },
     { key: 'email_verified', label: 'Verify your email', done: emailVerified },
     { key: 'documents', label: 'Submit required documents', done: docsSubmitted },
+    { key: 'verification', label: 'Complete identity verification', done: verified },
     { key: 'approved', label: 'Await admin approval', done: approved },
   ];
 }
