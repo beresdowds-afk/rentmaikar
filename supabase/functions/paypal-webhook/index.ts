@@ -1,8 +1,14 @@
 // PayPal webhook — verifies via PayPal /v1/notifications/verify-webhook-signature,
 // updates payments/paypal_transactions, marks linked invoice paid (via DB trigger),
 // and asynchronously fires the receipt email via billing-portal.
+// Hardened for duplicate-delivery idempotency via payment_webhook_events unique index.
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  recordWebhookEvent,
+  markPaymentCompletedIdempotent,
+  withRetry,
+} from "../_shared/webhook-idempotency.ts";
 
 const PP_ENV = (Deno.env.get("PAYPAL_ENV") || "sandbox").toLowerCase();
 const PP_BASE = PP_ENV === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
@@ -56,6 +62,7 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  // deno-lint-ignore no-explicit-any
   let evt: any = {};
   try { evt = JSON.parse(raw); } catch { return new Response("bad json", { status: 400 }); }
 
@@ -65,16 +72,21 @@ Deno.serve(async (req) => {
   const resource = evt.resource ?? {};
   const orderId: string | undefined = resource.supplementary_data?.related_ids?.order_id ?? resource.id;
 
-  // Idempotent event log
-  await supabase.from("payment_webhook_events").insert({
+  // Idempotent event log — duplicate deliveries with the same PayPal event id
+  // short-circuit with 200 so PayPal stops retrying.
+  const idem = await recordWebhookEvent(supabase, {
     provider: "paypal",
-    event_type: eventType ?? null,
-    external_event_id: externalId ?? null,
+    eventType: eventType ?? null,
+    externalEventId: externalId ?? null,
     reference: orderId ?? null,
-    status: signatureValid ? "verified" : "unverified",
-    signature_valid: signatureValid,
+    signatureValid,
     payload: evt,
-  }).select("id").maybeSingle();
+  });
+  if (idem.duplicate) {
+    return new Response(JSON.stringify({ received: true, duplicate: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   if (!signatureValid) {
     return new Response(JSON.stringify({ received: true, verified: false }), {
@@ -92,17 +104,19 @@ Deno.serve(async (req) => {
       const { data: tx } = await supabase.from("paypal_transactions")
         .select("payment_id, rental_id, amount, currency").eq("order_id", orderId).maybeSingle();
       if (tx?.payment_id) {
-        // Setting status=completed fires the DB trigger which creates the receipt idempotently.
-        await supabase.from("payments").update({
-          status: "completed", processed_at: new Date().toISOString(), failure_reason: null,
-        }).eq("id", tx.payment_id);
-        // Fire receipt email
-        try {
-          await supabase.functions.invoke("billing-portal", {
-            headers: { "x-internal-secret": Deno.env.get("CRON_SECRET") ?? "" },
-            body: { action: "auto_send_receipt_for_payment", payment_id: tx.payment_id },
+        const { alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id);
+        if (!alreadyCompleted) {
+          await withRetry("paypal.receipt.email", async () => {
+            const { error } = await supabase.functions.invoke("billing-portal", {
+              headers: { "x-internal-secret": Deno.env.get("CRON_SECRET") ?? "" },
+              body: { action: "auto_send_receipt_for_payment", payment_id: tx.payment_id },
+            });
+            if (error) throw error;
           });
-        } catch (e) { console.error("[paypal-webhook] receipt email failed", e); }
+        }
+        if (idem.eventRowId) {
+          await supabase.from("payment_webhook_events").update({ payment_id: tx.payment_id }).eq("id", idem.eventRowId);
+        }
       }
     }
   } else if (eventType === "PAYMENT.CAPTURE.DENIED" || eventType === "PAYMENT.CAPTURE.REFUNDED") {
@@ -114,9 +128,10 @@ Deno.serve(async (req) => {
       const { data: tx } = await supabase.from("paypal_transactions")
         .select("payment_id").eq("order_id", orderId).maybeSingle();
       if (tx?.payment_id) {
+        // Never overwrite a completed payment via a later denial event.
         await supabase.from("payments").update({
           status, failure_reason: eventType,
-        }).eq("id", tx.payment_id);
+        }).eq("id", tx.payment_id).neq("status", "completed");
       }
     }
   }
