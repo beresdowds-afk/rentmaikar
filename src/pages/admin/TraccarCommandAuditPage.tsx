@@ -86,7 +86,31 @@ export default function TraccarCommandAuditPage() {
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "live" | "off">("connecting");
   const [newRowsSinceView, setNewRowsSinceView] = useState(0);
+  // Per-row inline replay state (running/success/failed/rate-limited)
+  type ReplayState = {
+    status: "running" | "success" | "failed" | "rate_limited";
+    message?: string;
+    at: number;
+  };
+  const [replayStates, setReplayStates] = useState<Record<string, ReplayState>>({});
+  // 429 friendly handler
+  const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
+  const [nowTs, setNowTs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!rateLimitedUntil) return;
+    const t = setInterval(() => setNowTs(Date.now()), 500);
+    return () => clearInterval(t);
+  }, [rateLimitedUntil]);
+  const rateLimitRemainingSec =
+    rateLimitedUntil && rateLimitedUntil > nowTs
+      ? Math.ceil((rateLimitedUntil - nowTs) / 1000)
+      : 0;
+  const isRateLimited = rateLimitRemainingSec > 0;
+  useEffect(() => {
+    if (rateLimitedUntil && rateLimitedUntil <= nowTs) setRateLimitedUntil(null);
+  }, [nowTs, rateLimitedUntil]);
   const loadRef = useRef<() => void>(() => {});
+
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
@@ -277,23 +301,55 @@ export default function TraccarCommandAuditPage() {
     return data as { ok?: boolean; body?: any; error?: string; retry_after_seconds?: number } | null;
   };
 
+  const applyRateLimit = (retryAfterSec: number | undefined) => {
+    const secs = Math.max(1, Math.min(300, retryAfterSec ?? 30));
+    setRateLimitedUntil(Date.now() + secs * 1000);
+  };
+
   const replay = async (r: EnrichedRow) => {
     if (!r.traccar_device_id || !r.command) {
       toast.error("Cannot replay: missing traccar device id or command");
       return;
     }
+    if (isRateLimited) {
+      toast.error(`Rate-limited — retry in ${rateLimitRemainingSec}s`);
+      return;
+    }
     setReplayingId(r.id);
+    setReplayStates((s) => ({ ...s, [r.id]: { status: "running", at: Date.now() } }));
     try {
       const data = await sendReplay(r);
       if (data?.error === "rate_limited") {
+        applyRateLimit(data.retry_after_seconds);
+        setReplayStates((s) => ({
+          ...s,
+          [r.id]: {
+            status: "rate_limited",
+            message: `Retry in ~${data.retry_after_seconds ?? 30}s`,
+            at: Date.now(),
+          },
+        }));
         toast.error(`Rate limit hit. Retry in ~${data.retry_after_seconds ?? 30}s`);
       } else if (data?.ok) {
+        setReplayStates((s) => ({
+          ...s,
+          [r.id]: { status: "success", message: "Replayed OK", at: Date.now() },
+        }));
         toast.success(`Replayed ${r.command} · new attempt logged`);
       } else {
-        toast.error(`Replay failed: ${data?.body?.message ?? "provider error"}`);
+        const msg = (data as any)?.body?.message ?? (data as any)?.error ?? "provider error";
+        setReplayStates((s) => ({
+          ...s,
+          [r.id]: { status: "failed", message: String(msg), at: Date.now() },
+        }));
+        toast.error(`Replay failed: ${msg}`);
       }
       await load();
     } catch (e: any) {
+      setReplayStates((s) => ({
+        ...s,
+        [r.id]: { status: "failed", message: e?.message ?? "error", at: Date.now() },
+      }));
       toast.error(e?.message ?? "Replay failed");
     } finally {
       setReplayingId(null);
@@ -307,6 +363,10 @@ export default function TraccarCommandAuditPage() {
 
   const bulkReplay = async () => {
     if (failedSelected.length === 0) return;
+    if (isRateLimited) {
+      toast.error(`Rate-limited — retry in ${rateLimitRemainingSec}s`);
+      return;
+    }
     setBulkRunning(true);
     setBulkProgress({ done: 0, total: failedSelected.length });
     let ok = 0;
@@ -314,30 +374,56 @@ export default function TraccarCommandAuditPage() {
     let rateLimited = 0;
     for (let i = 0; i < failedSelected.length; i++) {
       const r = failedSelected[i];
+      setReplayStates((s) => ({ ...s, [r.id]: { status: "running", at: Date.now() } }));
       try {
         const data = await sendReplay(r);
         if (data?.error === "rate_limited") {
           rateLimited++;
-          // Back off for the remainder — server won't accept more this window.
-          const wait = Math.min(60, (data.retry_after_seconds ?? 30)) * 1000;
-          await new Promise((res) => setTimeout(res, wait));
-        } else if (data?.ok) ok++;
-        else failed++;
-      } catch {
+          applyRateLimit(data.retry_after_seconds);
+          setReplayStates((s) => ({
+            ...s,
+            [r.id]: {
+              status: "rate_limited",
+              message: `Retry in ~${data.retry_after_seconds ?? 30}s`,
+              at: Date.now(),
+            },
+          }));
+          setBulkProgress({ done: i + 1, total: failedSelected.length });
+          // Stop the batch — server won't accept more this window.
+          break;
+        } else if (data?.ok) {
+          ok++;
+          setReplayStates((s) => ({
+            ...s,
+            [r.id]: { status: "success", message: "Replayed OK", at: Date.now() },
+          }));
+        } else {
+          failed++;
+          const msg = (data as any)?.body?.message ?? (data as any)?.error ?? "provider error";
+          setReplayStates((s) => ({
+            ...s,
+            [r.id]: { status: "failed", message: String(msg), at: Date.now() },
+          }));
+        }
+      } catch (e: any) {
         failed++;
+        setReplayStates((s) => ({
+          ...s,
+          [r.id]: { status: "failed", message: e?.message ?? "error", at: Date.now() },
+        }));
       }
       setBulkProgress({ done: i + 1, total: failedSelected.length });
-      // Small client-side pacing to be gentle on Traccar even inside the allowed window.
       await new Promise((res) => setTimeout(res, 250));
     }
     setBulkRunning(false);
     setBulkProgress(null);
     setSelectedIds(new Set());
     toast.message("Bulk replay complete", {
-      description: `${ok} ok · ${failed} failed${rateLimited ? ` · ${rateLimited} rate-limited` : ""}`,
+      description: `${ok} ok · ${failed} failed${rateLimited ? ` · ${rateLimited} rate-limited (paused)` : ""}`,
     });
     await load();
   };
+
 
   const toggleRow = (id: string, checked: boolean) => {
     setSelectedIds((prev) => {
@@ -469,6 +555,18 @@ export default function TraccarCommandAuditPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
+          {isRateLimited && (
+            <div className="flex items-center justify-between gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>
+                  Traccar rate limit reached — pausing replays for{" "}
+                  <span className="font-mono font-semibold">{rateLimitRemainingSec}s</span>.
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground">Buttons re-enable automatically.</span>
+            </div>
+          )}
           {selectedIds.size > 0 && (
             <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
               <div>
@@ -488,19 +586,24 @@ export default function TraccarCommandAuditPage() {
                 </Button>
                 <Button
                   size="sm"
-                  disabled={failedSelected.length === 0 || bulkRunning}
+                  disabled={failedSelected.length === 0 || bulkRunning || isRateLimited}
                   onClick={() => setConfirmBulk(true)}
+                  title={isRateLimited ? `Rate-limited — retry in ${rateLimitRemainingSec}s` : undefined}
                 >
                   {bulkRunning ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-1" />
                   ) : (
                     <RotateCw className="h-4 w-4 mr-1" />
                   )}
-                  Replay {failedSelected.length} failure{failedSelected.length === 1 ? "" : "s"}
+                  {isRateLimited
+                    ? `Wait ${rateLimitRemainingSec}s`
+                    : `Replay ${failedSelected.length} failure${failedSelected.length === 1 ? "" : "s"}`}
                 </Button>
               </div>
             </div>
           )}
+
+
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[240px]">
@@ -651,15 +754,44 @@ export default function TraccarCommandAuditPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-xs">
-                          {r.response_ok === true ? (
-                            <Badge>OK{r.response_status ? ` · ${r.response_status}` : ""}</Badge>
-                          ) : isFailure ? (
-                            <Badge variant="destructive">
-                              FAIL{r.response_status ? ` · ${r.response_status}` : ""}
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">unknown</Badge>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {r.response_ok === true ? (
+                              <Badge>OK{r.response_status ? ` · ${r.response_status}` : ""}</Badge>
+                            ) : isFailure ? (
+                              <Badge variant="destructive">
+                                FAIL{r.response_status ? ` · ${r.response_status}` : ""}
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">unknown</Badge>
+                            )}
+                            {(() => {
+                              const rs = replayStates[r.id];
+                              if (!rs) return null;
+                              if (rs.status === "running")
+                                return (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                                    <Loader2 className="h-3 w-3 animate-spin" /> replaying…
+                                  </span>
+                                );
+                              if (rs.status === "success")
+                                return (
+                                  <Badge variant="secondary" className="w-fit bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px]">
+                                    replay ok
+                                  </Badge>
+                                );
+                              if (rs.status === "rate_limited")
+                                return (
+                                  <span className="text-[10px] text-amber-700 dark:text-amber-300" title={rs.message}>
+                                    rate-limited
+                                  </span>
+                                );
+                              return (
+                                <span className="text-[10px] text-destructive truncate max-w-[200px]" title={rs.message}>
+                                  replay failed{rs.message ? `: ${rs.message}` : ""}
+                                </span>
+                              );
+                            })()}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
@@ -675,21 +807,27 @@ export default function TraccarCommandAuditPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                disabled={replayingId === r.id || !r.traccar_device_id}
+                                disabled={replayingId === r.id || !r.traccar_device_id || isRateLimited}
                                 onClick={() => setConfirmReplayOne(r)}
-                                title="Re-issue this command"
+                                title={
+                                  isRateLimited
+                                    ? `Rate-limited — retry in ${rateLimitRemainingSec}s`
+                                    : "Re-issue this command"
+                                }
                               >
                                 {replayingId === r.id ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
                                   <>
-                                    <RotateCw className="h-4 w-4 mr-1" /> Replay
+                                    <RotateCw className="h-4 w-4 mr-1" />
+                                    {isRateLimited ? `${rateLimitRemainingSec}s` : "Replay"}
                                   </>
                                 )}
                               </Button>
                             )}
                           </div>
                         </TableCell>
+
                       </TableRow>
                     );
                   })}

@@ -239,6 +239,54 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          email_opt_in: boolean
+          email_sent_at: string | null
+          id: string
+          kind: string
+          metadata: Json
+          read_at: string | null
+          recipient_id: string
+          related_access_level: string | null
+          related_stage: string | null
+          related_user_id: string | null
+          title: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          email_opt_in?: boolean
+          email_sent_at?: string | null
+          id?: string
+          kind: string
+          metadata?: Json
+          read_at?: string | null
+          recipient_id: string
+          related_access_level?: string | null
+          related_stage?: string | null
+          related_user_id?: string | null
+          title: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          email_opt_in?: boolean
+          email_sent_at?: string | null
+          id?: string
+          kind?: string
+          metadata?: Json
+          read_at?: string | null
+          recipient_id?: string
+          related_access_level?: string | null
+          related_stage?: string | null
+          related_user_id?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       admin_sessions: {
         Row: {
           created_at: string
@@ -8448,6 +8496,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      mark_all_admin_notifications_read: { Args: never; Returns: number }
       no_pending_application_for_email: {
         Args: { _email: string }
         Returns: boolean

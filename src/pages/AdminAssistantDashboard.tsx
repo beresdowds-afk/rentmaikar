@@ -40,6 +40,8 @@ import { VehiclePickupManagement } from "@/components/admin/VehiclePickupManagem
 import { ApplicationManagement } from "@/components/admin/ApplicationManagement";
 import { AdminAssistantManagement } from "@/components/admin/AdminAssistantManagement";
 import { PortalNavigation, type PortalType } from "@/components/admin/PortalNavigation";
+import { AdminNotificationsBell } from "@/components/admin/AdminNotificationsBell";
+
 import { TrainingModuleManagement } from "@/components/admin/TrainingModuleManagement";
 import { SubscriptionManagement } from "@/components/admin/SubscriptionManagement";
 import { RoadsidePartnerManagement } from "@/components/admin/RoadsidePartnerManagement";
@@ -491,6 +493,8 @@ const AdminAssistantDashboard = () => {
                 storageScope="admin-assistant"
 
               />
+              <div className="ml-auto"><AdminNotificationsBell /></div>
+
             </div>
             {/* Independent Quick Access Buttons */}
             <ScrollableStrip ariaLabel="Quick access shortcuts">
