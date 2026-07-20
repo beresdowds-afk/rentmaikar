@@ -514,7 +514,15 @@ export default function TraccarCommandAuditPage() {
                     };
                     const isFailure = r.response_ok === false;
                     return (
-                      <TableRow key={r.id}>
+                      <TableRow key={r.id} data-state={selectedIds.has(r.id) ? "selected" : undefined}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(r.id)}
+                            onCheckedChange={(v) => toggleRow(r.id, !!v)}
+                            disabled={!isFailure || !r.traccar_device_id}
+                            aria-label="Select row"
+                          />
+                        </TableCell>
                         <TableCell className="text-xs whitespace-nowrap">
                           {new Date(r.created_at).toLocaleString()}
                         </TableCell>
