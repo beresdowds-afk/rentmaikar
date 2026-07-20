@@ -107,6 +107,7 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <MetaPixelRouteTracker />
+              <NativeDeepLinkBridge />
               <DocumentExpiryInAppNotifier />
               <OnboardingStageToaster />
               <SkipToContent />
