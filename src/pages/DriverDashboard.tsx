@@ -534,7 +534,7 @@ export default function DriverDashboard() {
 
             {/* Agreements Tab */}
             <TabsContent value="agreements" className="space-y-6">
-              <PortalGate portal="Agreements" require="documents">
+              <PortalGate portal="Agreements" require="email_verified">
                 <UserAgreementsList userType="driver" />
               </PortalGate>
             </TabsContent>
