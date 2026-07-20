@@ -186,6 +186,25 @@ export default function ProfileSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {nameImmutableError && (
+                <Alert
+                  variant="destructive"
+                  role="alert"
+                  data-testid="name-immutable-banner"
+                >
+                  <ShieldAlert className="h-4 w-4" />
+                  <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <span>{nameImmutableError}</span>
+                    <button
+                      type="button"
+                      onClick={() => setNameImmutableError(null)}
+                      className="text-xs underline self-start sm:self-auto"
+                    >
+                      Dismiss
+                    </button>
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="full_name" className="flex items-center gap-2">
                   Full name
