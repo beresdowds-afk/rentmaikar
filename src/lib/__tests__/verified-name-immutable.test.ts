@@ -13,7 +13,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const eq = vi.fn();
 const update = vi.fn(() => ({ eq }));
-const from = vi.fn(() => ({ update }));
+const from = vi.fn((_table: string) => ({ update }));
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: { from: (t: string) => from(t) },
