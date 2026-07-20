@@ -421,6 +421,11 @@ export default function OwnerDashboard() {
               <TabsTrigger value="settings" data-tour="owner-settings">Settings</TabsTrigger>
             </TabsList>
 
+            <TabsContent value="overview" className="space-y-6">
+              <OwnerOverviewTab onNavigateTab={setActiveTab} />
+            </TabsContent>
+
+
             <TabsContent value="recalls">
               <RecallApprovalPanel mode="owner" />
             </TabsContent>
