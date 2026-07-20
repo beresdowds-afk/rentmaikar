@@ -1,16 +1,22 @@
-import { ReactNode } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
+import { Lock, ArrowRight, CheckCircle2, Circle } from 'lucide-react';
 import {
   useRegistrationProgress,
   type RegistrationStage,
-  type AccessLevel,
+  type RegistrationProgress,
 } from '@/hooks/useRegistrationProgress';
 
-type Requirement = 'authenticated' | 'email_verified' | 'documents' | 'approved';
+export type Requirement =
+  | 'authenticated'
+  | 'email_verified'
+  | 'documents'
+  | 'approved';
 
 const STAGE_ORDER: Record<RegistrationStage, number> = {
   auth: 0,
@@ -21,82 +27,154 @@ const STAGE_ORDER: Record<RegistrationStage, number> = {
 };
 
 interface Props {
-  /** Minimum requirement to render children. Default: 'approved' (full access). */
   require?: Requirement;
-  /** Portal name shown in the blocker copy. */
   portal: string;
-  /** Optional custom hint text. */
   hint?: string;
   children: ReactNode;
 }
 
-const REQUIREMENT_COPY: Record<Requirement, { title: string; hint: string; stage: RegistrationStage; access?: AccessLevel }> = {
-  authenticated: {
-    title: 'Sign in required',
-    hint: 'Please sign in to continue.',
-    stage: 'auth',
-  },
+const REQUIREMENT_COPY: Record<Requirement, { title: string; hint: string }> = {
+  authenticated: { title: 'Sign in required', hint: 'sign in to continue.' },
   email_verified: {
     title: 'Verify your email first',
-    hint: 'Confirm your email address to unlock this portal.',
-    stage: 'account_opened',
+    hint: 'confirm your email address to unlock this portal.',
   },
   documents: {
     title: 'Upload required documents',
-    hint: 'Submit your identification and required documents to unlock this portal.',
-    stage: 'documents_submitted',
+    hint: 'submit your identification and required documents.',
   },
   approved: {
     title: 'Complete your onboarding',
-    hint: 'Finish verification and wait for admin approval to unlock this portal.',
-    stage: 'approved',
-    access: 'full',
+    hint: 'finish verification and wait for admin approval.',
   },
 };
 
-export function PortalGate({ require = 'approved', portal, hint, children }: Props) {
-  const { data, isLoading } = useRegistrationProgress();
+interface Step {
+  key: Requirement;
+  label: string;
+  done: boolean;
+}
+
+function buildSteps(p: RegistrationProgress | undefined): Step[] {
+  const authed = !!p?.authenticated;
+  const emailVerified = !!p?.email_verified;
+  const docsSubmitted = !!p && STAGE_ORDER[p.stage] >= STAGE_ORDER.documents_submitted;
+  const approved = !!p && (p.access_level === 'full' || p.stage === 'approved');
+  return [
+    { key: 'authenticated', label: 'Create your account', done: authed },
+    { key: 'email_verified', label: 'Verify your email', done: emailVerified },
+    { key: 'documents', label: 'Submit required documents', done: docsSubmitted },
+    { key: 'approved', label: 'Await admin approval', done: approved },
+  ];
+}
+
+function nextStepPath(p: RegistrationProgress | undefined): string {
+  if (!p?.authenticated) return '/auth';
+  if (!p.email_verified) return '/verify-email';
+  const role = p.role;
+  const base = role === 'owner' ? '/owner/onboarding' : '/driver/onboarding';
+  const stageIdx = STAGE_ORDER[p.stage];
+  if (stageIdx < STAGE_ORDER.documents_submitted) return `${base}?step=documents`;
+  if (stageIdx < STAGE_ORDER.verification_pending) return `${base}?step=verification`;
+  return base;
+}
+
+export function PortalGate({
+  require = 'approved',
+  portal,
+  hint,
+  children,
+}: Props) {
+  const { data: progress, isLoading } = useRegistrationProgress();
+
+  const steps = useMemo(() => buildSteps(progress), [progress]);
+  const doneCount = steps.filter((s) => s.done).length;
+  const pct = Math.round((doneCount / steps.length) * 100);
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="py-12 flex items-center justify-center text-muted-foreground">
-          <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Checking access…
+      <Card data-testid="portal-gate-loading">
+        <CardContent className="p-6 space-y-4">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-2 w-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+          <Skeleton className="h-9 w-40" />
         </CardContent>
       </Card>
     );
   }
 
-  const req = REQUIREMENT_COPY[require];
-  const progress = data;
-
   const meets = (() => {
-    if (!progress?.authenticated) return require === 'authenticated' ? true : false;
+    if (!progress?.authenticated) return require === 'authenticated' ? false : false;
     if (require === 'authenticated') return true;
     if (require === 'email_verified') return !!progress.email_verified;
-    if (require === 'documents') return STAGE_ORDER[progress.stage] >= STAGE_ORDER['documents_submitted'];
-    // 'approved' — full access
+    if (require === 'documents')
+      return STAGE_ORDER[progress.stage] >= STAGE_ORDER.documents_submitted;
     return progress.access_level === 'full' || progress.stage === 'approved';
   })();
 
   if (meets) return <>{children}</>;
 
-  const onboardingPath = progress?.role === 'owner' ? '/owner/onboarding' : '/driver/onboarding';
+  const req = REQUIREMENT_COPY[require];
+  const nextPath = nextStepPath(progress);
+  const remaining = steps.filter((s) => !s.done);
+  const nextStepLabel = remaining[0]?.label ?? 'Continue onboarding';
 
   return (
-    <Card className="border-dashed">
+    <Card className="border-dashed" data-testid="portal-gate-blocker">
       <CardContent className="p-6 space-y-4">
         <Alert>
           <Lock className="h-4 w-4" />
           <AlertTitle>{req.title}</AlertTitle>
           <AlertDescription>
-            <span className="font-medium">{portal}</span> is locked until you {hint ?? req.hint.toLowerCase()}
+            <span className="font-medium">{portal}</span> is locked until you{' '}
+            {hint ?? req.hint}
           </AlertDescription>
         </Alert>
+
+        <div className="space-y-2" aria-label="Onboarding progress">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Onboarding progress</span>
+            <span className="font-medium">
+              {doneCount}/{steps.length} complete
+            </span>
+          </div>
+          <Progress value={pct} aria-valuenow={pct} />
+          <ul className="space-y-1 pt-2">
+            {steps.map((s) => (
+              <li
+                key={s.key}
+                className="flex items-center gap-2 text-sm"
+                data-testid={`onboarding-step-${s.key}`}
+                data-done={s.done ? 'true' : 'false'}
+              >
+                {s.done ? (
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                ) : (
+                  <Circle className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span
+                  className={
+                    s.done ? 'line-through text-muted-foreground' : 'text-foreground'
+                  }
+                >
+                  {s.label}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
         <div className="flex flex-wrap gap-2">
-          <Button asChild size="sm">
-            <Link to={onboardingPath}>
-              Continue onboarding <ArrowRight className="h-4 w-4 ml-1" />
+          <Button asChild size="sm" data-testid="portal-gate-continue">
+            <Link to={nextPath}>
+              Continue onboarding: {nextStepLabel}
+              <ArrowRight className="h-4 w-4 ml-1" />
             </Link>
           </Button>
           <Button asChild size="sm" variant="outline">
@@ -106,7 +184,12 @@ export function PortalGate({ require = 'approved', portal, hint, children }: Pro
         {progress && (
           <p className="text-xs text-muted-foreground">
             Current stage: <span className="font-mono">{progress.stage}</span>
-            {progress.application_status && <> · Application: <span className="font-mono">{progress.application_status}</span></>}
+            {progress.application_status && (
+              <>
+                {' · Application: '}
+                <span className="font-mono">{progress.application_status}</span>
+              </>
+            )}
           </p>
         )}
       </CardContent>
