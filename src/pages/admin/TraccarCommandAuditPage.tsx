@@ -382,6 +382,29 @@ export default function TraccarCommandAuditPage() {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            <Badge
+              variant={realtimeStatus === "live" ? "default" : "secondary"}
+              className="gap-1"
+              title={
+                realtimeStatus === "live"
+                  ? "Live: new commands appear automatically"
+                  : realtimeStatus === "connecting"
+                  ? "Connecting to realtime…"
+                  : "Realtime offline — use Refresh"
+              }
+            >
+              <Radio
+                className={`h-3 w-3 ${
+                  realtimeStatus === "live" ? "text-emerald-500 animate-pulse" : ""
+                }`}
+              />
+              {realtimeStatus === "live" ? "Live" : realtimeStatus}
+            </Badge>
+            {newRowsSinceView > 0 && (
+              <Button variant="secondary" size="sm" onClick={load}>
+                {newRowsSinceView} new · show
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={exportCsv} disabled={rows.length === 0}>
               <Download className="h-4 w-4 mr-1" /> Export CSV
             </Button>
@@ -391,6 +414,39 @@ export default function TraccarCommandAuditPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
+          {selectedIds.size > 0 && (
+            <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              <div>
+                <span className="font-medium">{selectedIds.size}</span> selected ·{" "}
+                <span className="text-muted-foreground">
+                  {failedSelected.length} replayable failure{failedSelected.length === 1 ? "" : "s"}
+                </span>
+                {bulkProgress && (
+                  <span className="ml-2 text-muted-foreground">
+                    · replaying {bulkProgress.done}/{bulkProgress.total}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                  Clear
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={failedSelected.length === 0 || bulkRunning}
+                  onClick={() => setConfirmBulk(true)}
+                >
+                  {bulkRunning ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <RotateCw className="h-4 w-4 mr-1" />
+                  )}
+                  Replay {failedSelected.length} failure{failedSelected.length === 1 ? "" : "s"}
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[240px]">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
