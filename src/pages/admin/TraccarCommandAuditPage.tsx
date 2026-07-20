@@ -301,23 +301,55 @@ export default function TraccarCommandAuditPage() {
     return data as { ok?: boolean; body?: any; error?: string; retry_after_seconds?: number } | null;
   };
 
+  const applyRateLimit = (retryAfterSec: number | undefined) => {
+    const secs = Math.max(1, Math.min(300, retryAfterSec ?? 30));
+    setRateLimitedUntil(Date.now() + secs * 1000);
+  };
+
   const replay = async (r: EnrichedRow) => {
     if (!r.traccar_device_id || !r.command) {
       toast.error("Cannot replay: missing traccar device id or command");
       return;
     }
+    if (isRateLimited) {
+      toast.error(`Rate-limited — retry in ${rateLimitRemainingSec}s`);
+      return;
+    }
     setReplayingId(r.id);
+    setReplayStates((s) => ({ ...s, [r.id]: { status: "running", at: Date.now() } }));
     try {
       const data = await sendReplay(r);
       if (data?.error === "rate_limited") {
+        applyRateLimit(data.retry_after_seconds);
+        setReplayStates((s) => ({
+          ...s,
+          [r.id]: {
+            status: "rate_limited",
+            message: `Retry in ~${data.retry_after_seconds ?? 30}s`,
+            at: Date.now(),
+          },
+        }));
         toast.error(`Rate limit hit. Retry in ~${data.retry_after_seconds ?? 30}s`);
       } else if (data?.ok) {
+        setReplayStates((s) => ({
+          ...s,
+          [r.id]: { status: "success", message: "Replayed OK", at: Date.now() },
+        }));
         toast.success(`Replayed ${r.command} · new attempt logged`);
       } else {
-        toast.error(`Replay failed: ${data?.body?.message ?? "provider error"}`);
+        const msg = (data as any)?.body?.message ?? (data as any)?.error ?? "provider error";
+        setReplayStates((s) => ({
+          ...s,
+          [r.id]: { status: "failed", message: String(msg), at: Date.now() },
+        }));
+        toast.error(`Replay failed: ${msg}`);
       }
       await load();
     } catch (e: any) {
+      setReplayStates((s) => ({
+        ...s,
+        [r.id]: { status: "failed", message: e?.message ?? "error", at: Date.now() },
+      }));
       toast.error(e?.message ?? "Replay failed");
     } finally {
       setReplayingId(null);
@@ -331,6 +363,10 @@ export default function TraccarCommandAuditPage() {
 
   const bulkReplay = async () => {
     if (failedSelected.length === 0) return;
+    if (isRateLimited) {
+      toast.error(`Rate-limited — retry in ${rateLimitRemainingSec}s`);
+      return;
+    }
     setBulkRunning(true);
     setBulkProgress({ done: 0, total: failedSelected.length });
     let ok = 0;
@@ -338,30 +374,56 @@ export default function TraccarCommandAuditPage() {
     let rateLimited = 0;
     for (let i = 0; i < failedSelected.length; i++) {
       const r = failedSelected[i];
+      setReplayStates((s) => ({ ...s, [r.id]: { status: "running", at: Date.now() } }));
       try {
         const data = await sendReplay(r);
         if (data?.error === "rate_limited") {
           rateLimited++;
-          // Back off for the remainder — server won't accept more this window.
-          const wait = Math.min(60, (data.retry_after_seconds ?? 30)) * 1000;
-          await new Promise((res) => setTimeout(res, wait));
-        } else if (data?.ok) ok++;
-        else failed++;
-      } catch {
+          applyRateLimit(data.retry_after_seconds);
+          setReplayStates((s) => ({
+            ...s,
+            [r.id]: {
+              status: "rate_limited",
+              message: `Retry in ~${data.retry_after_seconds ?? 30}s`,
+              at: Date.now(),
+            },
+          }));
+          setBulkProgress({ done: i + 1, total: failedSelected.length });
+          // Stop the batch — server won't accept more this window.
+          break;
+        } else if (data?.ok) {
+          ok++;
+          setReplayStates((s) => ({
+            ...s,
+            [r.id]: { status: "success", message: "Replayed OK", at: Date.now() },
+          }));
+        } else {
+          failed++;
+          const msg = (data as any)?.body?.message ?? (data as any)?.error ?? "provider error";
+          setReplayStates((s) => ({
+            ...s,
+            [r.id]: { status: "failed", message: String(msg), at: Date.now() },
+          }));
+        }
+      } catch (e: any) {
         failed++;
+        setReplayStates((s) => ({
+          ...s,
+          [r.id]: { status: "failed", message: e?.message ?? "error", at: Date.now() },
+        }));
       }
       setBulkProgress({ done: i + 1, total: failedSelected.length });
-      // Small client-side pacing to be gentle on Traccar even inside the allowed window.
       await new Promise((res) => setTimeout(res, 250));
     }
     setBulkRunning(false);
     setBulkProgress(null);
     setSelectedIds(new Set());
     toast.message("Bulk replay complete", {
-      description: `${ok} ok · ${failed} failed${rateLimited ? ` · ${rateLimited} rate-limited` : ""}`,
+      description: `${ok} ok · ${failed} failed${rateLimited ? ` · ${rateLimited} rate-limited (paused)` : ""}`,
     });
     await load();
   };
+
 
   const toggleRow = (id: string, checked: boolean) => {
     setSelectedIds((prev) => {
