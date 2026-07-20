@@ -90,6 +90,7 @@ const SubscriptionSuccessPage = lazy(() => import("./pages/SubscriptionSuccessPa
 const ProxyConsentPage = lazy(() => import("./pages/ProxyConsentPage"));
 const PortalRouteGuard = lazy(() => import("./components/onboarding/PortalRouteGuard"));
 const OnboardingRedirect = lazy(() => import("./pages/OnboardingRedirect"));
+const ProfileSettingsPage = lazy(() => import("./pages/ProfileSettingsPage"));
 import { OnboardingStageToaster } from "@/components/onboarding/OnboardingStageToaster";
 
 const queryClient = new QueryClient();
