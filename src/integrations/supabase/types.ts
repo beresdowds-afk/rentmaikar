@@ -4077,6 +4077,45 @@ export type Database = {
           },
         ]
       }
+      profile_settings_audit: {
+        Row: {
+          action: string
+          changed_by: string | null
+          created_at: string
+          field: string
+          id: string
+          metadata: Json | null
+          new_value: string | null
+          old_value: string | null
+          source: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          changed_by?: string | null
+          created_at?: string
+          field: string
+          id?: string
+          metadata?: Json | null
+          new_value?: string | null
+          old_value?: string | null
+          source?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          changed_by?: string | null
+          created_at?: string
+          field?: string
+          id?: string
+          metadata?: Json | null
+          new_value?: string | null
+          old_value?: string | null
+          source?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           access_level: Database["public"]["Enums"]["access_level_enum"]
