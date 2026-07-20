@@ -85,6 +85,7 @@ export default function OwnerDashboard() {
   const { country, currency } = useRegion();
   const { user, userRole } = useAuth();
   const isAdminView = userRole === 'admin';
+  const [activeTab, setActiveTab] = useState('overview');
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
