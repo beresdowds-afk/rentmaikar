@@ -41,6 +41,7 @@ export default function ProfileSettingsPage() {
   const [identityStatus, setIdentityStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [nameImmutableError, setNameImmutableError] = useState<string | null>(null);
 
   const nameLocked = identityStatus === 'approved';
 
