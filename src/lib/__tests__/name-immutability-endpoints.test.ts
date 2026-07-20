@@ -116,11 +116,11 @@ describe('name immutability — every non-service-role endpoint is blocked after
 // the authenticated-client suite.
 describe('name immutability — service_role exception', () => {
   it('lets a service_role client update full_name after approval', async () => {
-    const srEq = vi.fn().mockResolvedValueOnce({
+    const srEq = vi.fn(async (_col: string, _val: string) => ({
       data: [{ id: APPROVED_USER, full_name: 'Legal Name Correction' }],
-      error: null,
-    });
-    const srUpdate = vi.fn(() => ({ eq: srEq }));
+      error: null as null,
+    }));
+    const srUpdate = vi.fn((_patch: Record<string, unknown>) => ({ eq: srEq }));
     const serviceRoleClient = {
       from: (_table: string) => ({ update: srUpdate }),
     };
