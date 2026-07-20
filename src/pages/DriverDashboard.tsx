@@ -48,6 +48,7 @@ import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
 import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
 import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
+import { DriverOverviewTab } from '@/components/dashboard/DriverOverviewTab';
 import { useNavigate } from 'react-router-dom';
 import {
   Car,
@@ -75,6 +76,7 @@ import { toast } from 'sonner';
 export default function DriverDashboard() {
   const { country, currency } = useRegion();
   const { user, userRole } = useAuth();
+  const [activeTab, setActiveTab] = useState('overview');
   const isAdminView = userRole === 'admin';
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -273,7 +275,7 @@ export default function DriverDashboard() {
             </Card>
           </div>
 
-          <Tabs defaultValue="overview" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="flex flex-wrap w-full h-auto gap-1.5 p-1.5 justify-start bg-muted/60 rounded-lg [&>[role=tab]]:flex-none [&>[role=tab]]:h-9 [&>[role=tab]]:px-3 [&>[role=tab]]:text-xs md:[&>[role=tab]]:text-sm [&>[role=tab]]:rounded-md [&>[role=tab]]:transition-colors [&>[role=tab][data-state=active]]:bg-background [&>[role=tab][data-state=active]]:shadow-sm">
               <TabsTrigger value="overview" data-tour="driver-overview">Overview</TabsTrigger>
               <TabsTrigger value="payments" data-tour="driver-payments">Payments</TabsTrigger>
@@ -325,101 +327,7 @@ export default function DriverDashboard() {
 
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
-              <div className="grid lg:grid-cols-2 gap-6">
-                {/* Vehicle Details */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Car className="h-5 w-5" />
-                      Current Vehicle
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {vehicle ? (
-                      <>
-                        <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                          <img 
-                            src={vehicle.image} 
-                            alt={`${vehicle.make} ${vehicle.model}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Make & Model</p>
-                            <p className="font-medium">{vehicle.make} {vehicle.model}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Year</p>
-                            <p className="font-medium">{vehicle.year}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Plate Number</p>
-                            <p className="font-medium">{vehicle.plateNumber}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Category</p>
-                            <Badge>{vehicle.category}</Badge>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-center text-muted-foreground py-8">No active vehicle rental</p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Rental Status */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5" />
-                      Rental Status
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span>Status</span>
-                      <Badge className="bg-green-500">{rental ? 'Active' : 'No Rental'}</Badge>
-                    </div>
-                    <Separator />
-                    <div className="space-y-3">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Weekly Rate</span>
-                        <span className="font-medium">{formatCurrency(weeklyRate, currency)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Admin Fee (20%)</span>
-                        <span className="font-medium">+{formatCurrency(adminFee, currency)}</span>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between text-lg font-bold">
-                        <span>Total Weekly</span>
-                        <span className="text-primary">{formatCurrency(totalDue, currency)}</span>
-                      </div>
-                    </div>
-                    <Button 
-                      className="w-full mt-4" 
-                      onClick={() => setShowPaymentModal(true)}
-                      disabled={!rental}
-                    >
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Make Payment
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Payment Reminder */}
-              {rental && (
-                <Alert>
-                  <Bell className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Payment Reminder:</strong> Your next payment of {formatCurrency(totalDue, currency)} is due soon.
-                    {!isUSA && ' Payment via Paystack or bank transfer.'}
-                  </AlertDescription>
-                </Alert>
-              )}
+              <DriverOverviewTab onNavigateTab={setActiveTab} />
             </TabsContent>
 
             {/* Payments Tab */}
