@@ -161,8 +161,17 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
     return next;
   };
 
+  const nameLocked = identityStatus === 'approved';
+
   const handleSave = async () => {
     if (!user || !anyChange) return;
+
+    // Names cannot be changed after identity is verified.
+    if (nameLocked && nameChanged) {
+      setErrors({ fullName: 'Name is locked after identity verification. Contact support to change it.' });
+      toast.error('Your name is locked after identity verification.');
+      return;
+    }
 
     // 1. Client-side shape validation
     const shapeErrs = validateShape();
@@ -171,6 +180,7 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
       toast.error('Please fix the highlighted fields.');
       return;
     }
+
 
     // 2. Uniqueness check for email/phone
     const uniqErrs = await checkUniqueness();
