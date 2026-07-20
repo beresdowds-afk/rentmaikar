@@ -35,6 +35,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { DriverBehaviorLogs } from '@/components/admin/DriverBehaviorLogs';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
+import { UserIdentityCard } from '@/components/profile/UserIdentityCard';
 import { useDriverDashboard } from '@/hooks/useDriverDashboard';
 import { CallInPanel } from '@/components/driver/CallInPanel';
 import { PayPalCheckout } from '@/components/payments/PayPalCheckout';
@@ -195,6 +196,10 @@ export default function DriverDashboard() {
           <div className="mb-6">
             <InstallAppBanner appName="Rentmaikar Driver" />
           </div>
+
+          <UserIdentityCard role="Driver" />
+
+
 
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">

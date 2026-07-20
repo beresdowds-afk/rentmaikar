@@ -33,6 +33,7 @@ import { UnifiedBillingPanel } from '@/components/payments/UnifiedBillingPanel';
 import { OwnerOverviewTab } from '@/components/dashboard/OwnerOverviewTab';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
+import { UserIdentityCard } from '@/components/profile/UserIdentityCard';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
 
 import { VoiceCallHistory } from '@/components/voice/VoiceCallHistory';
@@ -190,6 +191,10 @@ export default function OwnerDashboard() {
           <div className="mb-6">
             <InstallAppBanner appName="Rentmaikar Owner" />
           </div>
+
+          <UserIdentityCard role="Owner" />
+
+
 
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
