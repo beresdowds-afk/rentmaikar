@@ -33,6 +33,7 @@ import { UnifiedBillingPanel } from '@/components/payments/UnifiedBillingPanel';
 import { OwnerOverviewTab } from '@/components/dashboard/OwnerOverviewTab';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
+import { UserIdentityCard } from '@/components/profile/UserIdentityCard';
 import { CallSupportButton } from '@/components/support/CallSupportButton';
 
 import { VoiceCallHistory } from '@/components/voice/VoiceCallHistory';
