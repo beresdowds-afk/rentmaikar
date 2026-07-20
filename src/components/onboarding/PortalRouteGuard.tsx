@@ -28,6 +28,8 @@ export function PortalRouteGuard({ role }: Props) {
     if (portal.require === 'email_verified') return !!data.email_verified;
     if (portal.require === 'documents')
       return ['documents_submitted', 'verification_pending', 'approved'].includes(data.stage);
+    if (portal.require === 'verification')
+      return ['verification_pending', 'approved'].includes(data.stage);
     return data.access_level === 'full' || data.stage === 'approved';
   })();
 

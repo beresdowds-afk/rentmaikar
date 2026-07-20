@@ -319,7 +319,7 @@ export default function DriverDashboard() {
             </TabsList>
 
             <TabsContent value="subscriptions" className="space-y-6">
-              <PortalGate portal="Subscriptions" require="email_verified">
+              <PortalGate portal="Subscriptions" require="authenticated">
                 <div className="space-y-6">
                   <SubscriptionPlansPanel
                     title="Driver Training (required, unlocks Insurance)"
@@ -491,7 +491,7 @@ export default function DriverDashboard() {
 
             {/* Price Negotiation Tab */}
             <TabsContent value="negotiate" className="space-y-6">
-              <PortalGate portal="Price Negotiation" require="approved">
+              <PortalGate portal="Price Negotiation" require="verification">
                 <DriverPriceNegotiation />
               </PortalGate>
             </TabsContent>
@@ -505,7 +505,7 @@ export default function DriverDashboard() {
 
             {/* Vehicle Inspection Tab - Monthly for USA, Weekly for Nigeria */}
             <TabsContent value="inspection" className="space-y-6">
-              <PortalGate portal="Inspection Report" require="approved">
+              <PortalGate portal="Inspection Report" require="verification">
                 <WeeklyInspectionReport
                   vehicleId={vehicle.id}
                   vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
@@ -517,14 +517,14 @@ export default function DriverDashboard() {
 
             {/* Rideshare Profile Tab - Weekly for all */}
             <TabsContent value="rideshare-profile" className="space-y-6">
-              <PortalGate portal="Rideshare Profile" require="approved">
+              <PortalGate portal="Rideshare Profile" require="documents">
                 <RideshareProfileUpload vehicleId={vehicle.id} />
               </PortalGate>
             </TabsContent>
 
             {/* Incidents Tab */}
             <TabsContent value="incidents" className="space-y-6">
-              <PortalGate portal="Report an Incident" require="approved">
+              <PortalGate portal="Report an Incident" require="documents">
                 <IncidentReportForm
                   vehicleId={vehicle.id}
                   vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
@@ -534,7 +534,7 @@ export default function DriverDashboard() {
 
             {/* Agreements Tab */}
             <TabsContent value="agreements" className="space-y-6">
-              <PortalGate portal="Agreements" require="documents">
+              <PortalGate portal="Agreements" require="email_verified">
                 <UserAgreementsList userType="driver" />
               </PortalGate>
             </TabsContent>
