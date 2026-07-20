@@ -48,6 +48,7 @@ import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
 import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
 import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
+import { PortalGate } from '@/components/onboarding/PortalGate';
 import { DriverOverviewTab } from '@/components/dashboard/DriverOverviewTab';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -317,12 +318,16 @@ export default function DriverDashboard() {
             </TabsList>
 
             <TabsContent value="subscriptions" className="space-y-6">
-              <SubscriptionPlansPanel
-                title="Driver Training (required, unlocks Insurance)"
-                planTypes={["training"]}
-              />
-              <SubscriptionPlansPanel title="Insurance" planTypes={["insurance"]} />
-              <SubscriptionPlansPanel title="Roadside Support" planTypes={["roadside_support"]} />
+              <PortalGate portal="Subscriptions" require="email_verified">
+                <div className="space-y-6">
+                  <SubscriptionPlansPanel
+                    title="Driver Training (required, unlocks Insurance)"
+                    planTypes={["training"]}
+                  />
+                  <SubscriptionPlansPanel title="Insurance" planTypes={["insurance"]} />
+                  <SubscriptionPlansPanel title="Roadside Support" planTypes={["roadside_support"]} />
+                </div>
+              </PortalGate>
             </TabsContent>
 
             {/* Overview Tab */}
@@ -332,6 +337,8 @@ export default function DriverDashboard() {
 
             {/* Payments Tab */}
             <TabsContent value="payments" className="space-y-6">
+              <PortalGate portal="Payments" require="approved">
+              <div className="space-y-6">
               {rental && (
                 <RentalPaymentStatusPanel
                   rentalId={rental.id}
@@ -471,44 +478,58 @@ export default function DriverDashboard() {
                 currency={currency}
                 paymentFrequency={rental?.paymentFrequency ?? 'weekly'}
               />
+              </div>
+              </PortalGate>
             </TabsContent>
 
             {/* Price Negotiation Tab */}
             <TabsContent value="negotiate" className="space-y-6">
-              <DriverPriceNegotiation />
+              <PortalGate portal="Price Negotiation" require="approved">
+                <DriverPriceNegotiation />
+              </PortalGate>
             </TabsContent>
 
             {/* Lease to Own Tab */}
             <TabsContent value="lease-to-own">
-              <RentToOwnSearch />
+              <PortalGate portal="Lease to Own" require="approved">
+                <RentToOwnSearch />
+              </PortalGate>
             </TabsContent>
 
             {/* Vehicle Inspection Tab - Monthly for USA, Weekly for Nigeria */}
             <TabsContent value="inspection" className="space-y-6">
-              <WeeklyInspectionReport
-                vehicleId={vehicle.id}
-                vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-                ownerId={null}
-                region={country}
-              />
+              <PortalGate portal="Inspection Report" require="approved">
+                <WeeklyInspectionReport
+                  vehicleId={vehicle.id}
+                  vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                  ownerId={null}
+                  region={country}
+                />
+              </PortalGate>
             </TabsContent>
 
             {/* Rideshare Profile Tab - Weekly for all */}
             <TabsContent value="rideshare-profile" className="space-y-6">
-              <RideshareProfileUpload vehicleId={vehicle.id} />
+              <PortalGate portal="Rideshare Profile" require="approved">
+                <RideshareProfileUpload vehicleId={vehicle.id} />
+              </PortalGate>
             </TabsContent>
 
             {/* Incidents Tab */}
             <TabsContent value="incidents" className="space-y-6">
-              <IncidentReportForm 
-                vehicleId={vehicle.id}
-                vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-              />
+              <PortalGate portal="Report an Incident" require="approved">
+                <IncidentReportForm
+                  vehicleId={vehicle.id}
+                  vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                />
+              </PortalGate>
             </TabsContent>
 
             {/* Agreements Tab */}
             <TabsContent value="agreements" className="space-y-6">
-              <UserAgreementsList userType="driver" />
+              <PortalGate portal="Agreements" require="documents">
+                <UserAgreementsList userType="driver" />
+              </PortalGate>
             </TabsContent>
 
             {/* Documents Tab */}

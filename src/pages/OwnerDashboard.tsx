@@ -42,6 +42,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useOwnerDashboard } from '@/hooks/useOwnerDashboard';
 import { RecallApprovalPanel } from '@/components/recall/RecallApprovalPanel';
+import { PortalGate } from '@/components/onboarding/PortalGate';
 import {
   Car,
   Plus,
@@ -427,51 +428,70 @@ export default function OwnerDashboard() {
 
 
             <TabsContent value="recalls">
-              <RecallApprovalPanel mode="owner" />
+              <PortalGate portal="Vehicle Recalls" require="approved">
+                <RecallApprovalPanel mode="owner" />
+              </PortalGate>
             </TabsContent>
 
             {/* Pickup Locations Tab */}
             <TabsContent value="pickup-locations">
-              <VehiclePickupLocation />
+              <PortalGate portal="Pickup Locations" require="documents">
+                <VehiclePickupLocation />
+              </PortalGate>
             </TabsContent>
 
 
             {/* IoT Device Tab */}
             <TabsContent value="iot-device">
-              <IoTDevicePurchase />
+              <PortalGate portal="IoT / Traccar Device" require="approved">
+                <IoTDevicePurchase />
+              </PortalGate>
             </TabsContent>
 
             {/* Inspections Tab */}
             <TabsContent value="inspections">
-              <OwnerWeeklyReportReview />
+              <PortalGate portal="Weekly Inspections" require="approved">
+                <OwnerWeeklyReportReview />
+              </PortalGate>
             </TabsContent>
 
             {/* Pricing Tab */}
             <TabsContent value="pricing">
-              <OwnerPriceNegotiation />
+              <PortalGate portal="Price Negotiation" require="approved">
+                <OwnerPriceNegotiation />
+              </PortalGate>
             </TabsContent>
 
             {/* Insurance Tab */}
             <TabsContent value="insurance" className="space-y-6">
-              <OwnerInsuranceSupport />
-              <SubscriptionPlansPanel
-                title="Optional coverage & support"
-                planTypes={["insurance", "roadside_support"]}
-              />
+              <PortalGate portal="Insurance & Roadside" require="email_verified">
+                <div className="space-y-6">
+                  <OwnerInsuranceSupport />
+                  <SubscriptionPlansPanel
+                    title="Optional coverage & support"
+                    planTypes={["insurance", "roadside_support"]}
+                  />
+                </div>
+              </PortalGate>
             </TabsContent>
 
             {/* Agreements Tab */}
             <TabsContent value="agreements" className="space-y-6">
-              <UserAgreementsList userType="owner" />
+              <PortalGate portal="Legal Agreements" require="documents">
+                <UserAgreementsList userType="owner" />
+              </PortalGate>
             </TabsContent>
 
             {/* Rent to Own Tab */}
             <TabsContent value="rent-to-own">
-              <OwnerRentToOwnListing />
+              <PortalGate portal="Rent to Own Listing" require="approved">
+                <OwnerRentToOwnListing />
+              </PortalGate>
             </TabsContent>
 
             {/* Vehicles Tab */}
             <TabsContent value="vehicles" className="space-y-6">
+              <PortalGate portal="My Vehicles" require="documents" hint="upload your ownership documents to add and manage vehicles.">
               <div className="grid gap-6">
                 {dbVehicles.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">No vehicles listed yet. Click "Add Vehicle" to get started.</p>
@@ -540,10 +560,12 @@ export default function OwnerDashboard() {
                 <Plus className="h-6 w-6 mr-2" />
                 Add Another Vehicle
               </Button>
+              </PortalGate>
             </TabsContent>
 
             {/* Earnings Tab */}
             <TabsContent value="earnings" className="space-y-6">
+              <PortalGate portal="Earnings" require="approved"><div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Earnings Overview</CardTitle>
@@ -650,10 +672,12 @@ export default function OwnerDashboard() {
                   </div>
                 </CardContent>
               </Card>
+              </div></PortalGate>
             </TabsContent>
 
             {/* Withdrawals Tab */}
             <TabsContent value="withdrawals" className="space-y-6">
+              <PortalGate portal="Withdrawals" require="approved" hint="complete approval before withdrawing to your bank or PayPal."><div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Withdrawal History</CardTitle>
@@ -727,6 +751,7 @@ export default function OwnerDashboard() {
                   <Button variant="outline">Update Bank Details</Button>
                 </CardContent>
               </Card>
+              </div></PortalGate>
             </TabsContent>
 
             {/* Settings Tab */}
