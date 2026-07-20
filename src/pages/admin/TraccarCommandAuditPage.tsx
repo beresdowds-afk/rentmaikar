@@ -673,7 +673,7 @@ export default function TraccarCommandAuditPage() {
                   <Button
                     variant="default"
                     disabled={replayingId === selected.id || !selected.traccar_device_id}
-                    onClick={() => replay(selected)}
+                    onClick={() => setConfirmReplayOne(selected)}
                   >
                     {replayingId === selected.id ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-1" />
