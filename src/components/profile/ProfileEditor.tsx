@@ -19,15 +19,19 @@ interface ProfileEditorProps {
   subjectRole: 'driver' | 'owner' | 'support_staff' | 'admin_assistant';
 }
 
-/** International E.164: '+' then 8–15 digits. */
-const PHONE_RE = /^\+\d{8,15}$/;
-/** Normalise phone: strip non-digits, prepend '+' when missing. */
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
+
+/**
+ * Normalise phone to E.164 using libphonenumber-js. Returns '' if the input
+ * is blank; returns the raw trimmed input if it cannot be parsed so the
+ * schema surfaces a proper validation error rather than silently mangling it.
+ */
 const normalizePhone = (raw: string) => {
-  const trimmed = raw.trim();
+  const trimmed = (raw ?? '').trim();
   if (!trimmed) return '';
-  const digits = trimmed.replace(/[^\d]/g, '');
-  if (!digits) return '';
-  return trimmed.startsWith('+') ? `+${digits}` : `+${digits}`;
+  const withPlus = trimmed.startsWith('+') ? trimmed : `+${trimmed.replace(/[^\d]/g, '')}`;
+  const parsed = parsePhoneNumberFromString(withPlus);
+  return parsed?.isValid() ? parsed.number : trimmed;
 };
 
 const profileSchema = z.object({
@@ -43,8 +47,14 @@ const profileSchema = z.object({
     .email('Enter a valid email address'),
   phone: z.string()
     .trim()
-    .refine((v) => v === '' || PHONE_RE.test(v), 'Use international format, e.g. +15551234567'),
+    .refine((v) => {
+      if (v === '') return true;
+      const withPlus = v.startsWith('+') ? v : `+${v.replace(/[^\d]/g, '')}`;
+      const parsed = parsePhoneNumberFromString(withPlus);
+      return !!parsed?.isValid();
+    }, 'Enter a valid international phone number (e.g. +15551234567)'),
 });
+
 
 type FieldErrors = Partial<Record<'fullName' | 'email' | 'phone', string>>;
 
