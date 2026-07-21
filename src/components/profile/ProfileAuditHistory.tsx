@@ -14,7 +14,10 @@ interface AuditEntry {
   new_value: string | null;
   source: string | null;
   created_at: string;
+  subject_name: string | null;
+  actor_name: string | null;
 }
+
 
 const FIELD_LABEL: Record<string, string> = {
   full_name: 'Name',
