@@ -30,3 +30,37 @@ export function templateForRole(role: PersonaSubjectRole | string | null | undef
   if (!role) return null;
   return (PERSONA_TEMPLATE_IDS as Record<string, string>)[role] ?? null;
 }
+
+// Canonical Persona-facing `user_role` tag. Persona routes each inquiry to the
+// correct workflow branch (driver KYC, owner KYC, referee attest, payment-proxy
+// consent, admin-assistant vetting) based on this tag/field. Keep these strings
+// stable — Persona workflow rules are wired to them.
+export const PERSONA_USER_ROLE_TAGS: Record<PersonaSubjectRole, string> = {
+  driver: "driver",
+  owner: "owner",
+  referee: "driver_referee",
+  proxy: "driver_payment_proxy",
+  admin_assistant: "admin_assistant",
+  support_staff: "support_staff",
+};
+
+export function userRoleTagForRole(
+  role: PersonaSubjectRole | string | null | undefined,
+): string | null {
+  if (!role) return null;
+  return (PERSONA_USER_ROLE_TAGS as Record<string, string>)[role] ?? null;
+}
+
+/**
+ * Attributes to merge into the Persona `data.attributes` payload so Persona's
+ * workflow engine can branch on the subject's role.
+ * - `tags`: array field Persona surfaces in workflows and the dashboard.
+ * - `fields["user-role"]`: custom inquiry field for template conditionals.
+ */
+export function personaRoleAttributes(
+  role: PersonaSubjectRole | string | null | undefined,
+): { tags: string[]; fields: Record<string, string> } {
+  const tag = userRoleTagForRole(role);
+  if (!tag) return { tags: [], fields: {} };
+  return { tags: [`user_role:${tag}`, tag], fields: { "user-role": tag } };
+}

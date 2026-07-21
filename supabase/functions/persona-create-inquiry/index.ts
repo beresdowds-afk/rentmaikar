@@ -1,7 +1,12 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
-import { templateForRole, type PersonaSubjectRole } from "../_shared/persona-templates.ts";
+import {
+  personaRoleAttributes,
+  templateForRole,
+  userRoleTagForRole,
+  type PersonaSubjectRole,
+} from "../_shared/persona-templates.ts";
 
 const Body = z.object({
   subject_type: z.enum(["self", "referee", "proxy"]),
@@ -96,6 +101,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    const roleAttrs = personaRoleAttributes(parsed.data.subject_role);
+    const userRoleTag = userRoleTagForRole(parsed.data.subject_role);
+
     // Create inquiry
     const res = await fetch(`${PERSONA_BASE}/inquiries`, {
       method: "POST",
@@ -108,8 +116,10 @@ Deno.serve(async (req) => {
         data: {
           attributes: {
             "inquiry-template-id": template_id,
-            "reference-id": `${parsed.data.subject_type}:${parsed.data.subject_ref ?? userData.user.id}`,
+            "reference-id": `${userRoleTag ?? parsed.data.subject_type}:${parsed.data.subject_ref ?? userData.user.id}`,
+            tags: roleAttrs.tags,
             fields: {
+              ...roleAttrs.fields,
               "name-first": parsed.data.fields?.name_first,
               "name-last": parsed.data.fields?.name_last,
               "email-address": parsed.data.fields?.email,
@@ -152,7 +162,7 @@ Deno.serve(async (req) => {
       inquiry_id: inquiryId,
       template_id: template_id,
       status: "pending",
-      raw_payload: body,
+      raw_payload: { user_role: userRoleTag, subject_role: parsed.data.subject_role ?? null, response: body },
     }).select().single();
     if (error) throw error;
 
