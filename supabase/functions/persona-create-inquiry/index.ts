@@ -2,6 +2,8 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import {
+  canonicalizeUserRole,
+  buildReferenceId,
   personaRoleAttributes,
   templateForRole,
   userRoleTagForRole,
@@ -85,7 +87,19 @@ Deno.serve(async (req) => {
       });
     }
     const country = normalizeCountry(parsed.data.region);
-    const { template_id, env_id } = await resolveTemplate(supa, country, parsed.data.subject_role);
+
+    // Server-side role validation: reject unknown values before touching Persona.
+    const canonicalRole = parsed.data.subject_role
+      ? canonicalizeUserRole(parsed.data.subject_role)
+      : null;
+    if (parsed.data.subject_role && !canonicalRole) {
+      return new Response(JSON.stringify({
+        error: "invalid_user_role",
+        detail: `Unrecognized subject_role: ${parsed.data.subject_role}`,
+      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const { template_id, env_id } = await resolveTemplate(supa, country, canonicalRole ?? undefined);
 
     if (!apiKey || !template_id) {
       const { data, error } = await supa.from("persona_inquiries").insert({
@@ -94,6 +108,7 @@ Deno.serve(async (req) => {
         subject_ref: parsed.data.subject_ref ?? null,
         region: country,
         status: "created",
+        raw_payload: { user_role: userRoleTagForRole(canonicalRole), subject_role: canonicalRole },
       }).select().single();
       if (error) throw error;
       return new Response(JSON.stringify({ inquiry: data, provider_configured: false }), {
@@ -101,8 +116,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    const roleAttrs = personaRoleAttributes(parsed.data.subject_role);
-    const userRoleTag = userRoleTagForRole(parsed.data.subject_role);
+    const roleAttrs = personaRoleAttributes(canonicalRole);
+    const userRoleTag = userRoleTagForRole(canonicalRole);
+    const subjectRefValue = parsed.data.subject_ref ?? userData.user.id;
+    const referenceId = canonicalRole
+      ? buildReferenceId(canonicalRole, subjectRefValue)
+      : `${parsed.data.subject_type}:${subjectRefValue}`;
 
     // Create inquiry
     const res = await fetch(`${PERSONA_BASE}/inquiries`, {
@@ -116,7 +135,7 @@ Deno.serve(async (req) => {
         data: {
           attributes: {
             "inquiry-template-id": template_id,
-            "reference-id": `${userRoleTag ?? parsed.data.subject_type}:${parsed.data.subject_ref ?? userData.user.id}`,
+            "reference-id": referenceId,
             tags: roleAttrs.tags,
             fields: {
               ...roleAttrs.fields,
@@ -162,7 +181,7 @@ Deno.serve(async (req) => {
       inquiry_id: inquiryId,
       template_id: template_id,
       status: "pending",
-      raw_payload: { user_role: userRoleTag, subject_role: parsed.data.subject_role ?? null, response: body },
+      raw_payload: { user_role: userRoleTag, subject_role: canonicalRole ?? null, reference_id: referenceId, response: body },
     }).select().single();
     if (error) throw error;
 

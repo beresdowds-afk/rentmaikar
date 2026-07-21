@@ -4,6 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 
 import {
+  buildReferenceId,
+  canonicalizeUserRole,
   personaRoleAttributes,
   templateForRole,
   userRoleTagForRole,
@@ -68,9 +70,18 @@ Deno.serve(async (req) => {
       .select("inquiry_template_id, environment_id")
       .eq("country_code", country).eq("is_active", true).maybeSingle();
 
+    // Server-side role validation: reject unknown values up front.
+    if (parsed.data.subject_role && !canonicalizeUserRole(parsed.data.subject_role)) {
+      return new Response(JSON.stringify({
+        error: "invalid_user_role",
+        detail: `Unrecognized subject_role: ${parsed.data.subject_role}`,
+      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Infer subject_role from user_roles when not explicitly provided so Persona
     // still receives a workflow tag.
-    let subjectRole: PersonaSubjectRole | undefined = parsed.data.subject_role as PersonaSubjectRole | undefined;
+    let subjectRole: PersonaSubjectRole | null =
+      canonicalizeUserRole(parsed.data.subject_role);
     if (!subjectRole) {
       const { data: roles } = await supa
         .from("user_roles").select("role").eq("user_id", profile.user_id);
@@ -82,6 +93,9 @@ Deno.serve(async (req) => {
     }
     const roleAttrs = personaRoleAttributes(subjectRole);
     const userRoleTag = userRoleTagForRole(subjectRole);
+    const referenceId = subjectRole
+      ? buildReferenceId(subjectRole, profile.user_id, { adminReverify: true })
+      : `admin-reverify:user:${profile.user_id}`;
 
     const templateId = templateForRole(subjectRole)
       ?? tmpl?.inquiry_template_id
@@ -105,7 +119,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         data: { attributes: {
           "inquiry-template-id": templateId,
-          "reference-id": `admin-reverify:${userRoleTag ?? "user"}:${profile.user_id}`,
+          "reference-id": referenceId,
           tags: roleAttrs.tags,
           fields: {
             ...roleAttrs.fields,
@@ -131,7 +145,7 @@ Deno.serve(async (req) => {
       inquiry_id: inquiryId,
       template_id: templateId,
       status: "pending",
-      raw_payload: { source: "admin_reverification", user_role: userRoleTag, subject_role: subjectRole ?? null, reason: parsed.data.reason, response: body },
+      raw_payload: { source: "admin_reverification", user_role: userRoleTag, subject_role: subjectRole ?? null, reference_id: referenceId, reason: parsed.data.reason, response: body },
     });
 
     const reason = parsed.data.reason?.trim() ?? "We need to re-verify your identity to keep your account active.";
