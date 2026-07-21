@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,7 +10,15 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, ArrowRight, FileText, Loader2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  Download,
+  FileText,
+  Loader2,
+  RefreshCw,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 type AgreementRegion = 'USA' | 'Nigeria';
@@ -27,6 +35,14 @@ interface LegalAgreementTemplate {
   updated_at: string;
 }
 
+interface AcceptanceReceipt {
+  templateId: string;
+  title: string;
+  version: string;
+  region: AgreementRegion;
+  acceptedAt: string;
+}
+
 const AGREEMENT_TYPE = 'vehicle_rental';
 
 const OnboardingLegalAgreement = () => {
@@ -40,6 +56,10 @@ const OnboardingLegalAgreement = () => {
   const [error, setError] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [previousAcceptedVersion, setPreviousAcceptedVersion] = useState<string | null>(null);
+  const [reAcceptRequired, setReAcceptRequired] = useState(false);
+  const [receipt, setReceipt] = useState<AcceptanceReceipt | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/auth', { replace: true });
@@ -50,6 +70,7 @@ const OnboardingLegalAgreement = () => {
     const load = async () => {
       setLoading(true);
       setError(null);
+      setReceipt(null);
       const { data, error: err } = await (supabase as any)
         .from('legal_agreement_templates')
         .select('*')
@@ -60,52 +81,128 @@ const OnboardingLegalAgreement = () => {
         .limit(1);
 
       if (cancelled) return;
-      setLoading(false);
       if (err) {
+        setLoading(false);
         setError(err.message);
         return;
       }
       const latest = (data ?? [])[0] as LegalAgreementTemplate | undefined;
       if (!latest) {
+        setLoading(false);
         setError(`No approved ${region} legal agreement template is published yet.`);
         return;
       }
       setTemplate(latest);
+
+      // Check whether the user needs to (re-)accept the latest active version.
+      if (user) {
+        const { data: needData } = await (supabase as any).rpc(
+          'needs_latest_agreement_acceptance',
+          { _agreement_type: AGREEMENT_TYPE, _region: region },
+        );
+        const row = Array.isArray(needData) ? needData[0] : needData;
+        const acceptedTemplateId: string | null = row?.accepted_template_id ?? null;
+        const needs: boolean = row?.needs ?? true;
+
+        if (!cancelled && acceptedTemplateId && acceptedTemplateId !== latest.id) {
+          const { data: prev } = await (supabase as any)
+            .from('legal_agreement_templates')
+            .select('version')
+            .eq('id', acceptedTemplateId)
+            .maybeSingle();
+          if (!cancelled && prev) setPreviousAcceptedVersion(prev.version as string);
+        }
+        if (!cancelled) setReAcceptRequired(Boolean(needs && acceptedTemplateId));
+      }
+      setLoading(false);
     };
     load();
     return () => {
       cancelled = true;
     };
-  }, [region]);
+  }, [region, user]);
 
-  const rendered = useMemo(() => {
-    if (!template) return '';
-    // Simple placeholder substitution for onboarding preview: leave unresolved
-    // tokens visible so users understand what will personalize at signing time.
-    return template.content;
-  }, [template]);
+  const rendered = useMemo(() => template?.content ?? '', [template]);
 
   const handleAccept = async () => {
     if (!template || !user) return;
     setSubmitting(true);
     try {
+      const { error: insErr } = await (supabase as any)
+        .from('legal_agreement_acceptances')
+        .insert({
+          user_id: user.id,
+          template_id: template.id,
+          template_key: template.template_key,
+          agreement_type: template.agreement_type,
+          region: template.region,
+          version: template.version,
+          title: template.title,
+          user_agent: navigator.userAgent,
+        });
+      // Unique(user_id, template_id) — repeated accepts are treated as success.
+      if (insErr && !/duplicate|unique/i.test(insErr.message)) {
+        throw insErr;
+      }
+
       const { error: rpcErr } = await supabase.rpc('advance_registration_stage', {
         _target: 'documents_submitted',
       });
-      // Non-fatal: stage may already be past this point.
       if (rpcErr && !/already/i.test(rpcErr.message)) {
         console.warn('Stage advance warning:', rpcErr.message);
       }
-      toast.success('Agreement acknowledged', {
-        description: `You accepted "${template.title}" v${template.version}.`,
+
+      setReceipt({
+        templateId: template.id,
+        title: template.title,
+        version: template.version,
+        region: template.region,
+        acceptedAt: new Date().toISOString(),
       });
-      navigate('/onboarding-redirect', { replace: true });
+      setReAcceptRequired(false);
+      setPreviousAcceptedVersion(null);
+      toast.success('Agreement accepted', {
+        description: `Saved "${template.title}" v${template.version}.`,
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       toast.error('Could not record acceptance', { description: message });
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleDownloadPdf = () => {
+    if (!template) return;
+    // Use the browser print pipeline to save the rendered agreement as PDF —
+    // avoids shipping a heavy PDF library and honours the CMS content verbatim.
+    const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=1000');
+    if (!w) {
+      toast.error('Pop-up blocked', {
+        description: 'Allow pop-ups for Rentmaikar to save a PDF copy.',
+      });
+      return;
+    }
+    const safeTitle = template.title.replace(/[<>]/g, '');
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${safeTitle} v${template.version}</title>
+      <style>
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:780px;margin:32px auto;padding:0 24px;color:#111;}
+        header{border-bottom:1px solid #e5e7eb;padding-bottom:12px;margin-bottom:20px;}
+        h1{font-size:22px;margin:0;}
+        .meta{color:#4b5563;font-size:13px;margin-top:4px;}
+        pre{white-space:pre-wrap;font-family:inherit;font-size:14px;line-height:1.55;}
+        footer{margin-top:32px;font-size:11px;color:#6b7280;border-top:1px solid #e5e7eb;padding-top:8px;}
+        @media print { body{margin:0;} }
+      </style></head><body>
+      <header>
+        <h1>${safeTitle}</h1>
+        <div class="meta">Version ${template.version} · Region: ${template.region} · Retrieved ${new Date().toLocaleString()}</div>
+      </header>
+      <pre>${template.content.replace(/</g, '&lt;')}</pre>
+      <footer>Rentmaikar rental agreement — for reference. A personalized signable copy is generated when a vehicle is matched to you.</footer>
+      <script>window.onload=()=>{window.focus();window.print();}</script>
+      </body></html>`);
+    w.document.close();
   };
 
   return (
@@ -121,6 +218,18 @@ const OnboardingLegalAgreement = () => {
           </p>
         </div>
 
+        {reAcceptRequired && previousAcceptedVersion && (
+          <Alert>
+            <RefreshCw className="h-4 w-4" />
+            <AlertTitle>Updated agreement — re-acceptance required</AlertTitle>
+            <AlertDescription>
+              You previously accepted version {previousAcceptedVersion}. A newer version
+              {template ? ` (v${template.version})` : ''} is now active for {region} and must
+              be re-accepted before you can continue.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Card>
           <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -132,9 +241,13 @@ const OnboardingLegalAgreement = () => {
               </CardDescription>
             </div>
             {template && (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Badge variant="default">Active</Badge>
                 <Badge variant="secondary">v{template.version}</Badge>
+                <Button size="sm" variant="outline" onClick={handleDownloadPdf}>
+                  <Download className="h-4 w-4 mr-1" />
+                  Download PDF
+                </Button>
               </div>
             )}
           </CardHeader>
@@ -156,12 +269,14 @@ const OnboardingLegalAgreement = () => {
               </Alert>
             )}
 
-            {!loading && template && (
+            {!loading && template && !receipt && (
               <>
                 <ScrollArea className="h-[420px] rounded-md border bg-card p-4">
-                  <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                    {rendered}
-                  </pre>
+                  <div ref={contentRef}>
+                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                      {rendered}
+                    </pre>
+                  </div>
                 </ScrollArea>
 
                 <div className="flex items-start gap-3 rounded-md border p-3">
@@ -186,10 +301,44 @@ const OnboardingLegalAgreement = () => {
                     ) : (
                       <ArrowRight className="h-4 w-4 mr-2" />
                     )}
-                    Accept & continue
+                    Accept &amp; continue
                   </Button>
                 </div>
               </>
+            )}
+
+            {receipt && (
+              <div
+                data-testid="acceptance-receipt"
+                className="rounded-md border border-green-500/40 bg-green-500/5 p-5 space-y-3"
+              >
+                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                  <CheckCircle2 className="h-5 w-5" />
+                  <h2 className="text-lg font-semibold">Acceptance recorded</h2>
+                </div>
+                <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <dt className="text-muted-foreground">Template</dt>
+                    <dd className="font-medium">{receipt.title}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Version</dt>
+                    <dd className="font-medium">v{receipt.version} · {receipt.region}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Effective</dt>
+                    <dd className="font-medium">{new Date(receipt.acceptedAt).toLocaleString()}</dd>
+                  </div>
+                </dl>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={handleDownloadPdf}>
+                    <Download className="h-4 w-4 mr-1" /> Download signed copy
+                  </Button>
+                  <Button onClick={() => navigate('/onboarding-redirect', { replace: true })}>
+                    Continue onboarding <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
