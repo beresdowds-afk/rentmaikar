@@ -150,10 +150,18 @@ export function LegalAgreementTemplateManagement() {
           <h2 className="text-2xl font-bold">Legal Agreement Templates</h2>
           <p className="text-muted-foreground">Manage reusable legal agreement content by country and version.</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Template
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link to="/admin/legal-templates/preview" target="_blank" rel="noopener noreferrer">
+              <Eye className="mr-2 h-4 w-4" />
+              Preview latest as user
+            </Link>
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Template
+          </Button>
+        </div>
       </div>
 
       <Card>
