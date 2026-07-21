@@ -7,6 +7,7 @@ import { HologramDashboard } from "@/components/admin/HologramDashboard";
 import { TraccarDashboard } from "@/components/admin/TraccarDashboard";
 import { SyncScheduleSettings } from "@/components/admin/SyncScheduleSettings";
 import BillingReconciliationPage from "@/pages/admin/BillingReconciliationPage";
+import TourStepConfigPage from "@/pages/admin/TourStepConfigPage";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import AdminVehicleCataloguePage from "@/pages/admin/AdminVehicleCataloguePage";
 import UserUuidAssignmentsPage from "@/pages/admin/UserUuidAssignmentsPage";
