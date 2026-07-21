@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Edit, FileText, Loader2, Plus, Save } from 'lucide-react';
+import { Edit, Eye, FileText, GitBranch, Loader2, Plus, Save } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 type AgreementRegion = 'USA' | 'Nigeria';
