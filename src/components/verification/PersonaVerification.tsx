@@ -14,7 +14,9 @@ interface Props {
   buttonLabel?: string;
 }
 
-const PERSONA_SDK_URL = "https://cdn.withpersona.com/dist/persona-v5.1.4.js";
+const PERSONA_SDK_URL = "https://cdn.withpersona.com/dist/persona-v5.5.0.js";
+const PERSONA_SDK_INTEGRITY =
+  "sha384-UK+a2yEU9KOzEmsgI4IlkrXWE4AekM/iAgWF60Zuyule702g7qaQ2nYccO3tnT0A";
 
 function loadPersonaSdk(): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -28,7 +30,9 @@ function loadPersonaSdk(): Promise<any> {
     const s = document.createElement("script");
     s.src = PERSONA_SDK_URL;
     s.async = true;
-    s.onload = () => resolve((window as any).Persona);
+    s.crossOrigin = "anonymous";
+    s.integrity = PERSONA_SDK_INTEGRITY;
+    s.onload = () => resolve((window as any).Persona));
     s.onerror = reject;
     document.head.appendChild(s);
   });
