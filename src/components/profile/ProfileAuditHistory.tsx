@@ -55,7 +55,7 @@ export function ProfileAuditHistory() {
     (async () => {
       const { data } = await supabase
         .from('profile_settings_audit')
-        .select('id, field, action, old_value, new_value, source, created_at')
+        .select('id, field, action, old_value, new_value, source, created_at, subject_name, actor_name')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(25);
