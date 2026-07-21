@@ -101,7 +101,7 @@ Deno.test("Persona POST body includes correct tags + reference-id per role", () 
     const subjectRef = `subject-${c.canonical}`;
     const body = {
       data: { attributes: {
-        "inquiry-template-id": "ctmpl_test",
+        "inquiry-template-id": "itmpl_test",
         "reference-id": buildReferenceId(c.canonical, subjectRef),
         tags: attrs.tags,
         fields: {
