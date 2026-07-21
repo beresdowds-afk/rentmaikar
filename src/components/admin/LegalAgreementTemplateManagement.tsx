@@ -317,6 +317,34 @@ export function LegalAgreementTemplateManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!previewTemplate} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{previewTemplate?.title}</DialogTitle>
+            <DialogDescription>
+              {previewTemplate && (
+                <span className="flex flex-wrap items-center gap-2">
+                  <Badge variant={previewTemplate.is_active ? 'default' : 'secondary'}>
+                    {previewTemplate.is_active ? 'Active' : 'Draft'}
+                  </Badge>
+                  <Badge variant="outline">v{previewTemplate.version}</Badge>
+                  <Badge variant="outline">{previewTemplate.region}</Badge>
+                  <span className="text-xs text-muted-foreground">
+                    Updated {new Date(previewTemplate.updated_at).toLocaleString()}
+                  </span>
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed rounded border bg-card p-4 max-h-[60vh] overflow-auto">
+            {previewTemplate?.content}
+          </pre>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewTemplate(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
