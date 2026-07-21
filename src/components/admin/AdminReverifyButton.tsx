@@ -63,7 +63,22 @@ export default function AdminReverifyButton({ userId, userName }: Props) {
                 <div className="flex items-center gap-2"><RadioGroupItem value="email" id="email" /><Label htmlFor="email">Email</Label></div>
                 <div className="flex items-center gap-2"><RadioGroupItem value="sms" id="sms" /><Label htmlFor="sms">SMS</Label></div>
               </RadioGroup>
+            <div>
+              <Label>Persona workflow (user_role)</Label>
+              <Select value={subjectRole} onValueChange={(v) => setSubjectRole(v as any)}>
+                <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto-detect from user roles</SelectItem>
+                  <SelectItem value="driver">Driver</SelectItem>
+                  <SelectItem value="owner">Owner</SelectItem>
+                  <SelectItem value="referee">Driver's referee</SelectItem>
+                  <SelectItem value="proxy">Driver's payment proxy</SelectItem>
+                  <SelectItem value="admin_assistant">Admin assistant</SelectItem>
+                  <SelectItem value="support_staff">Support staff</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+          </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
