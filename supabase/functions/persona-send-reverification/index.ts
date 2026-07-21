@@ -68,7 +68,21 @@ Deno.serve(async (req) => {
       .select("inquiry_template_id, environment_id")
       .eq("country_code", country).eq("is_active", true).maybeSingle();
 
-    const templateId = templateForRole(parsed.data.subject_role as PersonaSubjectRole | undefined)
+    // Infer subject_role from user_roles when not explicitly provided so Persona
+    // still receives a workflow tag.
+    let subjectRole: PersonaSubjectRole | undefined = parsed.data.subject_role as PersonaSubjectRole | undefined;
+    if (!subjectRole) {
+      const { data: roles } = await supa
+        .from("user_roles").select("role").eq("user_id", profile.user_id);
+      const set = new Set((roles ?? []).map((r: any) => String(r.role)));
+      if (set.has("admin_assistant")) subjectRole = "admin_assistant";
+      else if (set.has("owner")) subjectRole = "owner";
+      else if (set.has("driver")) subjectRole = "driver";
+    }
+    const roleAttrs = personaRoleAttributes(subjectRole);
+    const userRoleTag = userRoleTagForRole(subjectRole);
+
+    const templateId = templateForRole(subjectRole)
       ?? tmpl?.inquiry_template_id
       ?? Deno.env.get(country === "NG" ? "PERSONA_TEMPLATE_ID_NG" : "PERSONA_TEMPLATE_ID_US")
       ?? Deno.env.get("PERSONA_TEMPLATE_ID");
@@ -90,8 +104,10 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         data: { attributes: {
           "inquiry-template-id": templateId,
-          "reference-id": `admin-reverify:${profile.user_id}`,
+          "reference-id": `admin-reverify:${userRoleTag ?? "user"}:${profile.user_id}`,
+          tags: roleAttrs.tags,
           fields: {
+            ...roleAttrs.fields,
             "email-address": profile.email,
             "phone-number": profile.phone,
           },
