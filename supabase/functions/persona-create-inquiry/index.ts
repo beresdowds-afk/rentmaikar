@@ -6,9 +6,11 @@ import {
   buildReferenceId,
   personaRoleAttributes,
   templateForRole,
+  resolveTemplateForRoleWithDb,
   userRoleTagForRole,
   type PersonaSubjectRole,
 } from "../_shared/persona-templates.ts";
+
 
 const Body = z.object({
   subject_type: z.enum(["self", "referee", "proxy"]),
