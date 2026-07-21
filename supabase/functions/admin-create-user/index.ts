@@ -71,8 +71,9 @@ serve(async (req) => {
     }
 
     const admin = createClient(supabaseUrl, serviceKey);
-
+console.log("STEP 1 Role check");
     // Check caller is admin directly (service role bypasses has_role() guard
+   console.log("STEP 2 Create auth user");
     // because auth.uid() is NULL when called with the service key).
     const { data: callerRoles, error: callerRoleErr } = await admin
       .from("user_roles")
@@ -91,7 +92,7 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
+console.log("STEP 3 Insert role");
     const body = (await req.json()) as CreateUserBody;
     const { email, full_name, role } = body;
     if (!email || !full_name || !role) {
@@ -162,17 +163,25 @@ serve(async (req) => {
     const { error: roleErr } = await admin
       .from("user_roles")
       .insert({ user_id: newUserId, role });
-    if (roleErr) console.error("role insert failed:", roleErr);
+    if(roleErr){
+    throw roleErr;
+}("role insert failed:", roleErr);
 
     await admin
-      .from("profiles")
-      .update({
-        is_active: true,
-        full_name,
-        phone: normalizedPhone,
-      })
-      .eq("user_id", newUserId);
+    console.log("STEP 4 Create profile");
+    const { error: profileError } = await admin
+  .from("profiles")
+  .upsert({
+      user_id: newUserId,
+      email,
+      full_name,
+      phone: normalizedPhone,
+      is_active: true,
+  });
 
+if (profileError) {
+    throw profileError;
+}
     const siteUrl =
       req.headers.get("origin") ||
       Deno.env.get("SITE_URL") ||
@@ -183,10 +192,13 @@ serve(async (req) => {
       email,
       options: { redirectTo: `${siteUrl}/reset-password` },
     });
+    console.log("STEP 5 Generate reset link");
     const resetLink = linkData?.properties?.action_link || `${siteUrl}/auth`;
 
     // Fire the standard reset-password email.
-    let emailSent = false;
+   
+    console.log("STEP 6 Send email")
+      ;let emailSent = false;
     let emailError: string | null = null;
     try {
       const { error: resetErr } = await admin.auth.resetPasswordForEmail(
@@ -222,7 +234,7 @@ serve(async (req) => {
     } catch (e) {
       console.error("welcome email failed:", e);
     }
-
+console.log("STEP 7 Send SMS");
     let smsSent = false;
     let smsError: string | null = null;
     if (normalizedPhone) {
@@ -262,7 +274,14 @@ serve(async (req) => {
     ].join("\n");
 
     // Audit log — includes admin id, created user id, and notification flags.
-    await admin.from("role_audit_log").insert({
+   console.log("STEP 8 Audit");
+    const {error:auditError}=await admin
+.from("role_audit_log")
+.insert({...});
+
+if(auditError){
+    console.error(auditError);
+}
       actor_id: userData.user.id,
       target_user_id: newUserId,
       action: "created",
@@ -306,7 +325,7 @@ serve(async (req) => {
   } catch (err: any) {
     console.error("admin-create-user error:", err);
     return new Response(
-      JSON.stringify({ error: err?.message || "Unknown error" }),
+      JSON.stringify({ error: err?.message || stack:err.stack }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
