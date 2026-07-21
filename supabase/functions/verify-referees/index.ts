@@ -30,6 +30,8 @@ function normaliseReferees(app: any): Referee[] {
 
 async function createPersonaInquiry(apiKey: string | undefined, templateId: string | undefined, r: Referee, referenceId: string) {
   if (!apiKey || !templateId) return { inquiry_id: null as string | null, raw: null as any };
+  const { personaRoleAttributes } = await import("../_shared/persona-templates.ts");
+  const roleAttrs = personaRoleAttributes("referee");
   const res = await fetch("https://withpersona.com/api/v1/inquiries", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "Persona-Version": "2023-01-05" },
@@ -38,7 +40,9 @@ async function createPersonaInquiry(apiKey: string | undefined, templateId: stri
         attributes: {
           "inquiry-template-id": templateId,
           "reference-id": referenceId,
+          tags: roleAttrs.tags,
           fields: {
+            ...roleAttrs.fields,
             "name-first": (r.full_name ?? r.name ?? "").split(/\s+/)[0],
             "name-last": (r.full_name ?? r.name ?? "").split(/\s+/).slice(1).join(" "),
             "email-address": r.email,
