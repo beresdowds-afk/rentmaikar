@@ -101,6 +101,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    const roleAttrs = personaRoleAttributes(parsed.data.subject_role);
+    const userRoleTag = userRoleTagForRole(parsed.data.subject_role);
+
     // Create inquiry
     const res = await fetch(`${PERSONA_BASE}/inquiries`, {
       method: "POST",
@@ -113,8 +116,10 @@ Deno.serve(async (req) => {
         data: {
           attributes: {
             "inquiry-template-id": template_id,
-            "reference-id": `${parsed.data.subject_type}:${parsed.data.subject_ref ?? userData.user.id}`,
+            "reference-id": `${userRoleTag ?? parsed.data.subject_type}:${parsed.data.subject_ref ?? userData.user.id}`,
+            tags: roleAttrs.tags,
             fields: {
+              ...roleAttrs.fields,
               "name-first": parsed.data.fields?.name_first,
               "name-last": parsed.data.fields?.name_last,
               "email-address": parsed.data.fields?.email,
