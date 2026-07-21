@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
       inquiry_id: inquiryId,
       template_id: template_id,
       status: "pending",
-      raw_payload: { user_role: userRoleTag, subject_role: parsed.data.subject_role ?? null, response: body },
+      raw_payload: { user_role: userRoleTag, subject_role: canonicalRole ?? null, reference_id: referenceId, response: body },
     }).select().single();
     if (error) throw error;
 
