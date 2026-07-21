@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ShieldAlert, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -13,16 +14,24 @@ interface Props {
   userName?: string;
 }
 
+type SubjectRole = "driver" | "owner" | "support_staff" | "admin_assistant" | "referee" | "proxy";
+
 export default function AdminReverifyButton({ userId, userName }: Props) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [channel, setChannel] = useState<"email" | "sms" | "both">("both");
+  const [subjectRole, setSubjectRole] = useState<SubjectRole | "auto">("auto");
   const [loading, setLoading] = useState(false);
 
   async function send() {
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("persona-send-reverification", {
-      body: { user_id: userId, reason, channel },
+      body: {
+        user_id: userId,
+        reason,
+        channel,
+        ...(subjectRole !== "auto" ? { subject_role: subjectRole } : {}),
+      },
     });
     setLoading(false);
     if (error) return toast.error(error.message);
@@ -31,6 +40,7 @@ export default function AdminReverifyButton({ userId, userName }: Props) {
     setOpen(false);
     setReason("");
   }
+
 
   return (
     <>
@@ -53,7 +63,22 @@ export default function AdminReverifyButton({ userId, userName }: Props) {
                 <div className="flex items-center gap-2"><RadioGroupItem value="email" id="email" /><Label htmlFor="email">Email</Label></div>
                 <div className="flex items-center gap-2"><RadioGroupItem value="sms" id="sms" /><Label htmlFor="sms">SMS</Label></div>
               </RadioGroup>
+            <div>
+              <Label>Persona workflow (user_role)</Label>
+              <Select value={subjectRole} onValueChange={(v) => setSubjectRole(v as any)}>
+                <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto-detect from user roles</SelectItem>
+                  <SelectItem value="driver">Driver</SelectItem>
+                  <SelectItem value="owner">Owner</SelectItem>
+                  <SelectItem value="referee">Driver's referee</SelectItem>
+                  <SelectItem value="proxy">Driver's payment proxy</SelectItem>
+                  <SelectItem value="admin_assistant">Admin assistant</SelectItem>
+                  <SelectItem value="support_staff">Support staff</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+          </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
