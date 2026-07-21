@@ -114,6 +114,26 @@ export function LegalAgreementTemplateManagement() {
     setDialogOpen(true);
   };
 
+  // Draft a new version by cloning an existing template with an incremented
+  // version tag — leaves the original in place so admins can compare / roll back.
+  const openNewVersion = (template: LegalAgreementTemplate) => {
+    setEditing(null);
+    const bumped = /^(\d+)\.(\d+)$/.exec(template.version);
+    const nextVersion = bumped ? `${bumped[1]}.${Number(bumped[2]) + 1}` : `${template.version}.1`;
+    setForm({
+      template_key: template.template_key,
+      agreement_type: template.agreement_type,
+      region: template.region,
+      title: template.title,
+      version: nextVersion,
+      content: template.content,
+      is_active: false,
+    });
+    setDialogOpen(true);
+  };
+
+  const [previewTemplate, setPreviewTemplate] = useState<LegalAgreementTemplate | null>(null);
+
   const saveTemplate = async () => {
     if (!form.template_key.trim() || !form.agreement_type.trim() || !form.title.trim() || !form.version.trim() || !form.content.trim()) {
       toast.error('Template key, type, title, version, and content are required');
