@@ -66,8 +66,9 @@ export default function ProfileSettingsPage() {
       const { data } = await supabase
         .from('profiles')
         .select('full_name, phone, identity_verification_status, identity_verified_at')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .maybeSingle();
+
       if (data) {
         const fn = data.full_name ?? '';
         const ph = data.phone ?? '';
