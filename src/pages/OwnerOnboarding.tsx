@@ -64,7 +64,7 @@ const OwnerOnboarding = () => {
       const p = (data as { role?: 'driver' | 'owner'; stage?: string }) || {};
       navigate(routeForStage(p.role ?? 'owner', (p.stage as never) ?? null), { replace: true });
     } catch {
-      navigate('/register/owner', { replace: true });
+      navigate('/owner/register', { replace: true });
     }
   };
 

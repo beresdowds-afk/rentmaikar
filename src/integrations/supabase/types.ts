@@ -2462,6 +2462,51 @@ export type Database = {
         }
         Relationships: []
       }
+      legal_agreement_templates: {
+        Row: {
+          agreement_type: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          region: string
+          template_key: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+          version: string
+        }
+        Insert: {
+          agreement_type?: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          region: string
+          template_key: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: string
+        }
+        Update: {
+          agreement_type?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          region?: string
+          template_key?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       legal_agreements: {
         Row: {
           admin_witness_id: string | null

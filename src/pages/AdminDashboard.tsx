@@ -7,6 +7,7 @@ import { HologramDashboard } from "@/components/admin/HologramDashboard";
 import { TraccarDashboard } from "@/components/admin/TraccarDashboard";
 import { SyncScheduleSettings } from "@/components/admin/SyncScheduleSettings";
 import BillingReconciliationPage from "@/pages/admin/BillingReconciliationPage";
+import TourStepConfigPage from "@/pages/admin/TourStepConfigPage";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import AdminVehicleCataloguePage from "@/pages/admin/AdminVehicleCataloguePage";
 import UserUuidAssignmentsPage from "@/pages/admin/UserUuidAssignmentsPage";
@@ -45,6 +46,7 @@ import LegalAgreementsManagement from "@/components/admin/LegalAgreementsManagem
 import { RentToOwnManagement } from "@/components/admin/RentToOwnManagement";
 import { FAQManagement } from "@/components/admin/FAQManagement";
 import { PolicyManagement } from "@/components/admin/PolicyManagement";
+import { LegalAgreementTemplateManagement } from "@/components/admin/LegalAgreementTemplateManagement";
 import { AdminUnifiedInbox } from "@/components/admin/AdminUnifiedInbox";
 import { AdminContactSettings } from "@/components/admin/AdminContactSettings";
 import { AdminSupportTaskManagement } from "@/components/admin/AdminSupportTaskManagement";
@@ -725,12 +727,20 @@ const AdminDashboard = () => {
                   <TabsList>
                     <TabsTrigger value="faq">FAQ Management</TabsTrigger>
                     <TabsTrigger value="policies">Policy Versions</TabsTrigger>
+                    <TabsTrigger value="legal-templates">Legal Agreements</TabsTrigger>
+                    <TabsTrigger value="tour-guides">Tour Guides</TabsTrigger>
                   </TabsList>
                   <TabsContent value="faq">
                     <FAQManagement />
                   </TabsContent>
                   <TabsContent value="policies">
                     <PolicyManagement />
+                  </TabsContent>
+                  <TabsContent value="legal-templates">
+                    <LegalAgreementTemplateManagement />
+                  </TabsContent>
+                  <TabsContent value="tour-guides">
+                    <TourStepConfigPage />
                   </TabsContent>
                 </Tabs>
               )}

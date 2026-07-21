@@ -78,7 +78,7 @@ export function routeForStage(
   stage: RegistrationStage | null,
 ): string {
   if (!role) return '/auth';
-  const registration = role === 'driver' ? '/register/driver' : '/register/owner';
+  const registration = role === 'driver' ? '/driver/register' : '/owner/register';
   const dashboard = role === 'driver' ? '/driver/dashboard' : '/owner/dashboard';
   switch (stage) {
     case 'auth':

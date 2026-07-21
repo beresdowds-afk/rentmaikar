@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { RegionProvider } from "@/contexts/RegionContext";
 import { UserTypeProvider } from "@/contexts/UserTypeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -131,6 +131,10 @@ const App = () => (
                   <Route path="/m/call-in/:type" element={<ProtectedRoute><MobileCallIn /></ProtectedRoute>} />
                   <Route path="/driver/register" element={<DriverRegistration />} />
                   <Route path="/owner/register" element={<OwnerRegistration />} />
+                  <Route path="/register/driver" element={<Navigate to="/driver/register" replace />} />
+                  <Route path="/register/owner" element={<Navigate to="/owner/register" replace />} />
+                  <Route path="/driver/signup" element={<Navigate to="/driver/register" replace />} />
+                  <Route path="/owner/signup" element={<Navigate to="/owner/register" replace />} />
                   <Route 
                     path="/driver/registration" 
                     element={
