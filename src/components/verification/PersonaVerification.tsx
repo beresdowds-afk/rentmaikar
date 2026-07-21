@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 interface Props {
   subject?: "self" | "referee";
-  subjectRole?: "driver" | "referee" | "owner" | "support_staff" | "admin_assistant";
+  subjectRole?: "driver" | "referee" | "owner" | "support_staff" | "admin_assistant" | "proxy";
   subjectRef?: string;
   fields?: Record<string, string>;
   onComplete?: (inquiryId: string | null) => void;
