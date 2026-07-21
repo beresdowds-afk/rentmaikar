@@ -104,9 +104,15 @@ export function ProfileAuditHistory() {
                     {e.source}
                   </Badge>
                 )}
+                {e.actor_name && e.actor_name !== e.subject_name && (
+                  <span className="text-[11px] text-muted-foreground italic">
+                    by {e.actor_name}
+                  </span>
+                )}
                 <span className="ml-auto text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(e.created_at), { addSuffix: true })}
                 </span>
+
               </li>
             ))}
           </ul>
