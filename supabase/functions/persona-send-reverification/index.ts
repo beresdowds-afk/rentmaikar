@@ -76,6 +76,7 @@ Deno.serve(async (req) => {
         .from("user_roles").select("role").eq("user_id", profile.user_id);
       const set = new Set((roles ?? []).map((r: any) => String(r.role)));
       if (set.has("admin_assistant")) subjectRole = "admin_assistant";
+      else if (set.has("support_staff")) subjectRole = "support_staff";
       else if (set.has("owner")) subjectRole = "owner";
       else if (set.has("driver")) subjectRole = "driver";
     }
