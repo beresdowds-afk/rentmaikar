@@ -1,0 +1,7 @@
+architecture/
+|
+|-- rentmaikar-system-overview.md
+|-- traccar-emqx-integration.md
+|-- resident-orchestrator.md
+|-- aws-data-lake-plan.md
+|-- security-model.md
