@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
       inquiry_id: inquiryId,
       template_id: templateId,
       status: "pending",
-      raw_payload: { source: "admin_reverification", user_role: userRoleTag, subject_role: subjectRole ?? null, reason: parsed.data.reason, response: body },
+      raw_payload: { source: "admin_reverification", user_role: userRoleTag, subject_role: subjectRole ?? null, reference_id: referenceId, reason: parsed.data.reason, response: body },
     });
 
     const reason = parsed.data.reason?.trim() ?? "We need to re-verify your identity to keep your account active.";
