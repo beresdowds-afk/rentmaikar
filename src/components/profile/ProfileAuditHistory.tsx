@@ -14,7 +14,10 @@ interface AuditEntry {
   new_value: string | null;
   source: string | null;
   created_at: string;
+  subject_name: string | null;
+  actor_name: string | null;
 }
+
 
 const FIELD_LABEL: Record<string, string> = {
   full_name: 'Name',
@@ -52,7 +55,7 @@ export function ProfileAuditHistory() {
     (async () => {
       const { data } = await supabase
         .from('profile_settings_audit')
-        .select('id, field, action, old_value, new_value, source, created_at')
+        .select('id, field, action, old_value, new_value, source, created_at, subject_name, actor_name')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(25);
@@ -101,9 +104,15 @@ export function ProfileAuditHistory() {
                     {e.source}
                   </Badge>
                 )}
+                {e.actor_name && e.actor_name !== e.subject_name && (
+                  <span className="text-[11px] text-muted-foreground italic">
+                    by {e.actor_name}
+                  </span>
+                )}
                 <span className="ml-auto text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(e.created_at), { addSuffix: true })}
                 </span>
+
               </li>
             ))}
           </ul>

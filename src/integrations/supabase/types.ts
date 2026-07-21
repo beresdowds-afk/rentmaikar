@@ -3592,6 +3592,36 @@ export type Database = {
           },
         ]
       }
+      persona_template_config: {
+        Row: {
+          created_at: string
+          environment_id: string | null
+          notes: string | null
+          subject_role: string
+          template_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          environment_id?: string | null
+          notes?: string | null
+          subject_role: string
+          template_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          environment_id?: string | null
+          notes?: string | null
+          subject_role?: string
+          template_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       platform_cities: {
         Row: {
           center_lat: number | null
@@ -4178,6 +4208,7 @@ export type Database = {
       profile_settings_audit: {
         Row: {
           action: string
+          actor_name: string | null
           changed_by: string | null
           created_at: string
           field: string
@@ -4186,10 +4217,12 @@ export type Database = {
           new_value: string | null
           old_value: string | null
           source: string | null
+          subject_name: string | null
           user_id: string
         }
         Insert: {
           action: string
+          actor_name?: string | null
           changed_by?: string | null
           created_at?: string
           field: string
@@ -4198,10 +4231,12 @@ export type Database = {
           new_value?: string | null
           old_value?: string | null
           source?: string | null
+          subject_name?: string | null
           user_id: string
         }
         Update: {
           action?: string
+          actor_name?: string | null
           changed_by?: string | null
           created_at?: string
           field?: string
@@ -4210,6 +4245,7 @@ export type Database = {
           new_value?: string | null
           old_value?: string | null
           source?: string | null
+          subject_name?: string | null
           user_id?: string
         }
         Relationships: []

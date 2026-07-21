@@ -33,6 +33,32 @@ export function templateForRole(role: PersonaSubjectRole | string | null | undef
   return (PERSONA_TEMPLATE_IDS as Record<string, string>)[role] ?? null;
 }
 
+/**
+ * DB-first resolver. Reads `persona_template_config` (per-role overrides
+ * managed from the admin UI) and falls back to the compiled-in defaults.
+ * Returns both the resolved template id and, if set on the row, an
+ * environment id override.
+ */
+export async function resolveTemplateForRoleWithDb(
+  supa: { from: (t: string) => any },
+  role: PersonaSubjectRole | string | null | undefined,
+): Promise<{ template_id: string | null; environment_id: string | null }> {
+  const canonical = canonicalizeUserRole(role as string | null | undefined);
+  if (!canonical) return { template_id: null, environment_id: null };
+  try {
+    const { data } = await supa
+      .from("persona_template_config")
+      .select("template_id, environment_id")
+      .eq("subject_role", canonical)
+      .maybeSingle();
+    if (data?.template_id) {
+      return { template_id: data.template_id, environment_id: data.environment_id ?? null };
+    }
+  } catch (_e) { /* fall through to default */ }
+  return { template_id: templateForRole(canonical), environment_id: null };
+}
+
+
 // Canonical Persona-facing `user_role` tag. Persona routes each inquiry to the
 // correct workflow branch (driver KYC, owner KYC, referee attest, payment-proxy
 // consent, admin-assistant vetting) based on this tag/field. Keep these strings

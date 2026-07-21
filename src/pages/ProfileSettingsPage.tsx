@@ -16,6 +16,7 @@ import { ReverificationBanner } from '@/components/profile/ReverificationBanner'
 import { ProfileAuditHistory } from '@/components/profile/ProfileAuditHistory';
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 import { z } from 'zod';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 const nameSchema = z.object({
   full_name: z
@@ -28,10 +29,23 @@ const nameSchema = z.object({
     .trim()
     .max(30)
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .refine((v) => {
+      if (!v) return true;
+      const withPlus = v.startsWith('+') ? v : `+${v.replace(/[^\d]/g, '')}`;
+      return !!parsePhoneNumberFromString(withPlus)?.isValid();
+    }, 'Enter a valid international phone number (e.g. +15551234567)'),
 });
 
 const normalize = (v: string | null | undefined) => (v ?? '').trim();
+const normalizePhoneE164 = (raw: string | null | undefined) => {
+  const t = (raw ?? '').trim();
+  if (!t) return '';
+  const withPlus = t.startsWith('+') ? t : `+${t.replace(/[^\d]/g, '')}`;
+  const parsed = parsePhoneNumberFromString(withPlus);
+  return parsed?.isValid() ? parsed.number : t;
+};
+
 
 export default function ProfileSettingsPage() {
   const { user } = useAuth();
@@ -52,8 +66,9 @@ export default function ProfileSettingsPage() {
       const { data } = await supabase
         .from('profiles')
         .select('full_name, phone, identity_verification_status, identity_verified_at')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .maybeSingle();
+
       if (data) {
         const fn = data.full_name ?? '';
         const ph = data.phone ?? '';
@@ -94,7 +109,7 @@ export default function ProfileSettingsPage() {
     }
     setSaving(true);
     try {
-      const newPhone = parsed.data.phone || null;
+      const newPhone = parsed.data.phone ? normalizePhoneE164(parsed.data.phone) : null;
       const updates: Record<string, any> = {
         full_name: parsed.data.full_name,
         phone: newPhone,
@@ -109,7 +124,8 @@ export default function ProfileSettingsPage() {
       const { error } = await supabase
         .from('profiles')
         .update(updates)
-        .eq('id', user.id);
+        .eq('user_id', user.id);
+
       if (error) throw error;
       setNameImmutableError(null);
 
