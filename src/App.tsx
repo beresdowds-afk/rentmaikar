@@ -156,6 +156,7 @@ const App = () => (
                   <Route path="/driver/onboarding" element={<DriverOnboarding />} />
                   <Route path="/owner/dashboard" element={<OwnerDashboard />} />
                   <Route path="/owner/onboarding" element={<OwnerOnboarding />} />
+                  <Route path="/onboarding/legal-agreement" element={<OnboardingLegalAgreement />} />
                   <Route path="/catalogue/:category" element={<Catalogue />} />
                   <Route 
                     path="/api-docs" 
