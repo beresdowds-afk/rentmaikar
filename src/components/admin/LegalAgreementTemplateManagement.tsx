@@ -241,10 +241,20 @@ export function LegalAgreementTemplateManagement() {
                       <Badge variant={template.is_active ? 'default' : 'secondary'}>{template.is_active ? 'Active' : 'Draft'}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => openEdit(template)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => setPreviewTemplate(template)}>
+                          <Eye className="mr-1 h-4 w-4" />
+                          Preview
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => openNewVersion(template)}>
+                          <GitBranch className="mr-1 h-4 w-4" />
+                          New version
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => openEdit(template)}>
+                          <Edit className="mr-1 h-4 w-4" />
+                          Edit
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
