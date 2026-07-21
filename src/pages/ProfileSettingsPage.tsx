@@ -16,6 +16,7 @@ import { ReverificationBanner } from '@/components/profile/ReverificationBanner'
 import { ProfileAuditHistory } from '@/components/profile/ProfileAuditHistory';
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 import { z } from 'zod';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 const nameSchema = z.object({
   full_name: z
@@ -28,10 +29,23 @@ const nameSchema = z.object({
     .trim()
     .max(30)
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .refine((v) => {
+      if (!v) return true;
+      const withPlus = v.startsWith('+') ? v : `+${v.replace(/[^\d]/g, '')}`;
+      return !!parsePhoneNumberFromString(withPlus)?.isValid();
+    }, 'Enter a valid international phone number (e.g. +15551234567)'),
 });
 
 const normalize = (v: string | null | undefined) => (v ?? '').trim();
+const normalizePhoneE164 = (raw: string | null | undefined) => {
+  const t = (raw ?? '').trim();
+  if (!t) return '';
+  const withPlus = t.startsWith('+') ? t : `+${t.replace(/[^\d]/g, '')}`;
+  const parsed = parsePhoneNumberFromString(withPlus);
+  return parsed?.isValid() ? parsed.number : t;
+};
+
 
 export default function ProfileSettingsPage() {
   const { user } = useAuth();
