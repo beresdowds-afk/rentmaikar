@@ -90,6 +90,7 @@ const SubscriptionSuccessPage = lazy(() => import("./pages/SubscriptionSuccessPa
 const ProxyConsentPage = lazy(() => import("./pages/ProxyConsentPage"));
 const PortalRouteGuard = lazy(() => import("./components/onboarding/PortalRouteGuard"));
 const OnboardingRedirect = lazy(() => import("./pages/OnboardingRedirect"));
+const OnboardingLegalAgreement = lazy(() => import("./pages/OnboardingLegalAgreement"));
 const ProfileSettingsPage = lazy(() => import("./pages/ProfileSettingsPage"));
 import { OnboardingStageToaster } from "@/components/onboarding/OnboardingStageToaster";
 
@@ -155,6 +156,7 @@ const App = () => (
                   <Route path="/driver/onboarding" element={<DriverOnboarding />} />
                   <Route path="/owner/dashboard" element={<OwnerDashboard />} />
                   <Route path="/owner/onboarding" element={<OwnerOnboarding />} />
+                  <Route path="/onboarding/legal-agreement" element={<OnboardingLegalAgreement />} />
                   <Route path="/catalogue/:category" element={<Catalogue />} />
                   <Route 
                     path="/api-docs" 
