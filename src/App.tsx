@@ -78,6 +78,7 @@ const AdminDocumentFailuresPage = lazy(() => import("./pages/admin/AdminDocument
 const AuditLogPage = lazy(() => import("./pages/admin/AuditLogPage"));
 const PaymentsViewerPage = lazy(() => import("./pages/admin/PaymentsViewerPage"));
 const TourStepConfigPage = lazy(() => import("./pages/admin/TourStepConfigPage"));
+const AdminLegalTemplatePreviewPage = lazy(() => import("./pages/admin/AdminLegalTemplatePreviewPage"));
 const TourAnalyticsPage = lazy(() => import("./pages/admin/TourAnalyticsPage"));
 const AdminVehicleCataloguePage = lazy(() => import("./pages/admin/AdminVehicleCataloguePage"));
 const UserUuidAssignmentsPage = lazy(() => import("./pages/admin/UserUuidAssignmentsPage"));
@@ -295,6 +296,14 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <TourStepConfigPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/legal-templates/preview"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminLegalTemplatePreviewPage />
                       </ProtectedRoute>
                     }
                   />

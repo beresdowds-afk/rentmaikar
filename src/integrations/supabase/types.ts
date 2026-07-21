@@ -2462,6 +2462,59 @@ export type Database = {
         }
         Relationships: []
       }
+      legal_agreement_acceptances: {
+        Row: {
+          accepted_at: string
+          agreement_type: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          region: string
+          template_id: string
+          template_key: string
+          title: string
+          user_agent: string | null
+          user_id: string
+          version: string
+        }
+        Insert: {
+          accepted_at?: string
+          agreement_type: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          region: string
+          template_id: string
+          template_key: string
+          title: string
+          user_agent?: string | null
+          user_id: string
+          version: string
+        }
+        Update: {
+          accepted_at?: string
+          agreement_type?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          region?: string
+          template_id?: string
+          template_key?: string
+          title?: string
+          user_agent?: string | null
+          user_id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_agreement_acceptances_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "legal_agreement_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       legal_agreement_templates: {
         Row: {
           agreement_type: string
@@ -6270,6 +6323,48 @@ export type Database = {
         }
         Relationships: []
       }
+      tour_step_config_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          changed_at: string
+          config_id: string | null
+          country: string
+          id: string
+          new_is_active: boolean | null
+          new_steps: Json | null
+          previous_is_active: boolean | null
+          previous_steps: Json | null
+          tour_name: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          changed_at?: string
+          config_id?: string | null
+          country: string
+          id?: string
+          new_is_active?: boolean | null
+          new_steps?: Json | null
+          previous_is_active?: boolean | null
+          previous_steps?: Json | null
+          tour_name: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          changed_at?: string
+          config_id?: string | null
+          country?: string
+          id?: string
+          new_is_active?: boolean | null
+          new_steps?: Json | null
+          previous_is_active?: boolean | null
+          previous_steps?: Json | null
+          tour_name?: string
+        }
+        Relationships: []
+      }
       tour_step_configs: {
         Row: {
           country: string
@@ -8627,6 +8722,14 @@ export type Database = {
         Returns: undefined
       }
       mark_all_admin_notifications_read: { Args: never; Returns: number }
+      needs_latest_agreement_acceptance: {
+        Args: { _agreement_type: string; _region: string }
+        Returns: {
+          accepted_template_id: string
+          latest_template_id: string
+          needs: boolean
+        }[]
+      }
       no_pending_application_for_email: {
         Args: { _email: string }
         Returns: boolean

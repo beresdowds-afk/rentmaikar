@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Edit, FileText, Loader2, Plus, Save } from 'lucide-react';
+import { Edit, Eye, FileText, GitBranch, Loader2, Plus, Save } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 type AgreementRegion = 'USA' | 'Nigeria';
@@ -113,6 +114,26 @@ export function LegalAgreementTemplateManagement() {
     setDialogOpen(true);
   };
 
+  // Draft a new version by cloning an existing template with an incremented
+  // version tag — leaves the original in place so admins can compare / roll back.
+  const openNewVersion = (template: LegalAgreementTemplate) => {
+    setEditing(null);
+    const bumped = /^(\d+)\.(\d+)$/.exec(template.version);
+    const nextVersion = bumped ? `${bumped[1]}.${Number(bumped[2]) + 1}` : `${template.version}.1`;
+    setForm({
+      template_key: template.template_key,
+      agreement_type: template.agreement_type,
+      region: template.region,
+      title: template.title,
+      version: nextVersion,
+      content: template.content,
+      is_active: false,
+    });
+    setDialogOpen(true);
+  };
+
+  const [previewTemplate, setPreviewTemplate] = useState<LegalAgreementTemplate | null>(null);
+
   const saveTemplate = async () => {
     if (!form.template_key.trim() || !form.agreement_type.trim() || !form.title.trim() || !form.version.trim() || !form.content.trim()) {
       toast.error('Template key, type, title, version, and content are required');
@@ -149,10 +170,18 @@ export function LegalAgreementTemplateManagement() {
           <h2 className="text-2xl font-bold">Legal Agreement Templates</h2>
           <p className="text-muted-foreground">Manage reusable legal agreement content by country and version.</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Template
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link to="/admin/legal-templates/preview" target="_blank" rel="noopener noreferrer">
+              <Eye className="mr-2 h-4 w-4" />
+              Preview latest as user
+            </Link>
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Template
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -212,10 +241,20 @@ export function LegalAgreementTemplateManagement() {
                       <Badge variant={template.is_active ? 'default' : 'secondary'}>{template.is_active ? 'Active' : 'Draft'}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => openEdit(template)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => setPreviewTemplate(template)}>
+                          <Eye className="mr-1 h-4 w-4" />
+                          Preview
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => openNewVersion(template)}>
+                          <GitBranch className="mr-1 h-4 w-4" />
+                          New version
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => openEdit(template)}>
+                          <Edit className="mr-1 h-4 w-4" />
+                          Edit
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -275,6 +314,34 @@ export function LegalAgreementTemplateManagement() {
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Save Template
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!previewTemplate} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{previewTemplate?.title}</DialogTitle>
+            <DialogDescription>
+              {previewTemplate && (
+                <span className="flex flex-wrap items-center gap-2">
+                  <Badge variant={previewTemplate.is_active ? 'default' : 'secondary'}>
+                    {previewTemplate.is_active ? 'Active' : 'Draft'}
+                  </Badge>
+                  <Badge variant="outline">v{previewTemplate.version}</Badge>
+                  <Badge variant="outline">{previewTemplate.region}</Badge>
+                  <span className="text-xs text-muted-foreground">
+                    Updated {new Date(previewTemplate.updated_at).toLocaleString()}
+                  </span>
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed rounded border bg-card p-4 max-h-[60vh] overflow-auto">
+            {previewTemplate?.content}
+          </pre>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewTemplate(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
