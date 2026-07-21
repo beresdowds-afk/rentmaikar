@@ -43,12 +43,21 @@ async function resolveTemplate(
   country: string,
   subjectRole?: PersonaSubjectRole,
 ): Promise<{ template_id: string | null; env_id: string | null }> {
-  // 1. Universal per-role template (highest priority, region-agnostic)
-  const roleTpl = templateForRole(subjectRole ?? null);
   const envId = Deno.env.get("PERSONA_ENVIRONMENT_ID") ?? null;
+
+  // 1. DB-managed per-role template (admin-editable via persona_template_config)
+  if (subjectRole) {
+    const dbCfg = await resolveTemplateForRoleWithDb(supa, subjectRole);
+    if (dbCfg.template_id) {
+      return { template_id: dbCfg.template_id, env_id: dbCfg.environment_id ?? envId };
+    }
+  }
+
+  // 2. Compiled-in per-role default
+  const roleTpl = templateForRole(subjectRole ?? null);
   if (roleTpl) return { template_id: roleTpl, env_id: envId };
 
-  // 2. DB region template
+  // 3. DB region template
   const { data } = await supa
     .from("persona_region_templates")
     .select("inquiry_template_id, environment_id, is_active")
@@ -58,7 +67,8 @@ async function resolveTemplate(
   if (data?.inquiry_template_id) {
     return { template_id: data.inquiry_template_id, env_id: data.environment_id ?? envId };
   }
-  // 3. Env fallbacks
+
+  // 4. Env fallbacks
   const envKey = country === "NG" ? "PERSONA_TEMPLATE_ID_NG" : "PERSONA_TEMPLATE_ID_US";
   return {
     template_id: Deno.env.get(envKey)
@@ -68,6 +78,7 @@ async function resolveTemplate(
     env_id: envId,
   };
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
