@@ -54,8 +54,6 @@ export function userRoleTagForRole(
 /**
  * Attributes to merge into the Persona `data.attributes` payload so Persona's
  * workflow engine can branch on the subject's role.
- * - `tags`: array field Persona surfaces in workflows and the dashboard.
- * - `fields["user-role"]`: custom inquiry field for template conditionals.
  */
 export function personaRoleAttributes(
   role: PersonaSubjectRole | string | null | undefined,
@@ -63,4 +61,71 @@ export function personaRoleAttributes(
   const tag = userRoleTagForRole(role);
   if (!tag) return { tags: [], fields: {} };
   return { tags: [`user_role:${tag}`, tag], fields: { "user-role": tag } };
+}
+
+// -----------------------------------------------------------------------------
+// Server-side normalization + reference-id parsing
+// -----------------------------------------------------------------------------
+
+const ROLE_ALIASES: Record<string, PersonaSubjectRole> = {
+  driver: "driver",
+  drivers: "driver",
+  owner: "owner",
+  owners: "owner",
+  referee: "referee",
+  driver_referee: "referee",
+  "driver-referee": "referee",
+  proxy: "proxy",
+  driver_payment_proxy: "proxy",
+  "driver-payment-proxy": "proxy",
+  payment_proxy: "proxy",
+  admin_assistant: "admin_assistant",
+  "admin-assistant": "admin_assistant",
+  assistant: "admin_assistant",
+  support_staff: "support_staff",
+  "support-staff": "support_staff",
+  support: "support_staff",
+};
+
+/** Normalize any incoming role value to a canonical PersonaSubjectRole. */
+export function canonicalizeUserRole(
+  raw: string | null | undefined,
+): PersonaSubjectRole | null {
+  if (!raw) return null;
+  const key = String(raw).trim().toLowerCase().replace(/\s+/g, "_");
+  return ROLE_ALIASES[key] ?? null;
+}
+
+/**
+ * Parse a Persona `reference-id` of the shape `<role>:<subject_ref>` or
+ * `admin-reverify:<role>:<subject_ref>` and return the canonical role.
+ */
+export function parseReferenceIdRole(
+  referenceId: string | null | undefined,
+): { role: PersonaSubjectRole | null; prefix: string | null; rest: string | null } {
+  if (!referenceId) return { role: null, prefix: null, rest: null };
+  const parts = String(referenceId).split(":");
+  if (parts.length < 2) return { role: null, prefix: null, rest: null };
+  const start = parts[0] === "admin-reverify" ? 1 : 0;
+  const prefix = parts[start] ?? null;
+  const rest = parts.slice(start + 1).join(":") || null;
+  return { role: canonicalizeUserRole(prefix), prefix, rest };
+}
+
+/**
+ * Build a validated reference-id. Throws if the role cannot be canonicalized —
+ * callers should catch and return 400 so we never send unexpected values.
+ */
+export function buildReferenceId(
+  role: PersonaSubjectRole | string | null | undefined,
+  subjectRef: string,
+  opts: { adminReverify?: boolean } = {},
+): string {
+  const canonical = canonicalizeUserRole(role as string | null | undefined);
+  if (!canonical) {
+    throw new Error(`persona: unrecognized user_role "${role ?? ""}"`);
+  }
+  const tag = PERSONA_USER_ROLE_TAGS[canonical];
+  const prefix = opts.adminReverify ? `admin-reverify:${tag}` : tag;
+  return `${prefix}:${subjectRef}`;
 }
