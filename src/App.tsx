@@ -300,6 +300,14 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/admin/legal-templates/preview"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminLegalTemplatePreviewPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/tour-analytics"
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
