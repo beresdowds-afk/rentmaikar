@@ -109,7 +109,7 @@ export default function ProfileSettingsPage() {
     }
     setSaving(true);
     try {
-      const newPhone = parsed.data.phone || null;
+      const newPhone = parsed.data.phone ? normalizePhoneE164(parsed.data.phone) : null;
       const updates: Record<string, any> = {
         full_name: parsed.data.full_name,
         phone: newPhone,
@@ -124,7 +124,8 @@ export default function ProfileSettingsPage() {
       const { error } = await supabase
         .from('profiles')
         .update(updates)
-        .eq('id', user.id);
+        .eq('user_id', user.id);
+
       if (error) throw error;
       setNameImmutableError(null);
 
