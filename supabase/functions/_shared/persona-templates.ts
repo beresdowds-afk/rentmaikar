@@ -21,10 +21,10 @@ export const PERSONA_TEMPLATE_IDS: Record<PersonaSubjectRole, string> = {
   driver: "itmpl_As49Kz1t61PoxLPDXCPBzcbHXZhrzW",
   referee: "itmpl_As49Kz1ryTH3yu3AVUJiwa2CuSgscY",
   owner: "itmpl_As49Kz1CuM9iVGdfhwWvR8AZe7ShLA",
-  // Admin Assistant and Support Staff use the Owner template until dedicated
-  // templates are created; they still carry a distinct user-role tag.
-  support_staff: "itmpl_As49Kz1CuM9iVGdfhwWvR8AZe7ShLA",
-  admin_assistant: "itmpl_As49Kz1CuM9iVGdfhwWvR8AZe7ShLA",
+  // Support Staff shares the Driver payment proxy template.
+  support_staff: "itmpl_As49Kz1dvgymYmjWVUYM27nivb2bco",
+  // Admin Assistant shares the Driver referee template.
+  admin_assistant: "itmpl_As49Kz1ryTH3yu3AVUJiwa2CuSgscY",
   proxy: "itmpl_As49Kz1dvgymYmjWVUYM27nivb2bco",
 };
 
