@@ -3,13 +3,18 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 
-import { templateForRole, type PersonaSubjectRole } from "../_shared/persona-templates.ts";
+import {
+  personaRoleAttributes,
+  templateForRole,
+  userRoleTagForRole,
+  type PersonaSubjectRole,
+} from "../_shared/persona-templates.ts";
 
 const Body = z.object({
   user_id: z.string().uuid(),
   reason: z.string().max(500).optional(),
   channel: z.enum(["email", "sms", "both"]).default("both"),
-  subject_role: z.enum(["driver", "referee", "owner", "support_staff", "admin_assistant"]).optional(),
+  subject_role: z.enum(["driver", "referee", "owner", "support_staff", "admin_assistant", "proxy"]).optional(),
 });
 
 const PERSONA_BASE = "https://withpersona.com/api/v1";
