@@ -32,7 +32,7 @@ function loadPersonaSdk(): Promise<any> {
     s.async = true;
     s.crossOrigin = "anonymous";
     s.integrity = PERSONA_SDK_INTEGRITY;
-    s.onload = () => resolve((window as any).Persona));
+    s.onload = () => resolve((window as any).Persona);
     s.onerror = reject;
     document.head.appendChild(s);
   });
