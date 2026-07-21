@@ -14,16 +14,24 @@ interface Props {
   userName?: string;
 }
 
+type SubjectRole = "driver" | "owner" | "support_staff" | "admin_assistant" | "referee" | "proxy";
+
 export default function AdminReverifyButton({ userId, userName }: Props) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [channel, setChannel] = useState<"email" | "sms" | "both">("both");
+  const [subjectRole, setSubjectRole] = useState<SubjectRole | "auto">("auto");
   const [loading, setLoading] = useState(false);
 
   async function send() {
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("persona-send-reverification", {
-      body: { user_id: userId, reason, channel },
+      body: {
+        user_id: userId,
+        reason,
+        channel,
+        ...(subjectRole !== "auto" ? { subject_role: subjectRole } : {}),
+      },
     });
     setLoading(false);
     if (error) return toast.error(error.message);
@@ -32,6 +40,7 @@ export default function AdminReverifyButton({ userId, userName }: Props) {
     setOpen(false);
     setReason("");
   }
+
 
   return (
     <>
