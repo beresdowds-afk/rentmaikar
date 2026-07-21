@@ -357,6 +357,14 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/admin/persona-inquiries"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
+                        <AdminPersonaInquiriesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/impersonate/:role/:userId"
                     element={
                       <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
