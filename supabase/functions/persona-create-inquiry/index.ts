@@ -1,7 +1,12 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
-import { templateForRole, type PersonaSubjectRole } from "../_shared/persona-templates.ts";
+import {
+  personaRoleAttributes,
+  templateForRole,
+  userRoleTagForRole,
+  type PersonaSubjectRole,
+} from "../_shared/persona-templates.ts";
 
 const Body = z.object({
   subject_type: z.enum(["self", "referee", "proxy"]),
