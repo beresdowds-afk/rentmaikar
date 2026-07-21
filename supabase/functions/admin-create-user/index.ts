@@ -141,6 +141,8 @@ console.log("STEP 3 Insert role");
     const tempPassword = generateTempPassword();
     const { data: created, error: createErr } =
       await admin.auth.admin.createUser({
+        console.log("Created user:", created?.user?.id);
+console.log("Create error:", createErr);
         email,
         password: tempPassword,
         email_confirm: true,
@@ -163,11 +165,10 @@ console.log("STEP 3 Insert role");
     const { error: roleErr } = await admin
       .from("user_roles")
       .insert({ user_id: newUserId, role });
-    if(roleErr){
+    if(roleErr)console.log("Role assigned successfully");{console.error("Role insert failed:", roleErr);
     throw roleErr;
 }("role insert failed:", roleErr);
 
-    await admin
     console.log("STEP 4 Create profile");
     const { error: profileError } = await admin
   .from("profiles")
@@ -177,12 +178,14 @@ console.log("STEP 3 Insert role");
       full_name,
       phone: normalizedPhone,
       is_active: true,
-  });
+  },{onConflict: "user_id",
+    );
 
-if (profileError) {
+if (profileError) {console.error("Profile upsert failed:", profileError);
     throw profileError;
 }
-    const siteUrl =
+  console.log("Profile created successfully");
+const siteUrl =
       req.headers.get("origin") ||
       Deno.env.get("SITE_URL") ||
       "https://rentmaikar.com";
@@ -277,7 +280,19 @@ console.log("STEP 7 Send SMS");
    console.log("STEP 8 Audit");
     const {error:auditError}=await admin
 .from("role_audit_log")
-.insert({...});
+.insert({actor_id: userData.user.id,
+    target_user_id: newUserId,
+    action: "created",
+    new_role: role,
+    notes: JSON.stringify({
+      summary: `Created by administrator ${userData.user.email || userData.user.id}. Pending password reset.`,
+      email,
+      phone: normalizedPhone,
+      email_sent: emailSent,
+      sms_sent: smsSent,
+      email_error: emailError,
+      sms_error: smsError,
+    }),});
 
 if(auditError){
     console.error(auditError);
@@ -325,7 +340,9 @@ if(auditError){
   } catch (err: any) {
     console.error("admin-create-user error:", err);
     return new Response(
-      JSON.stringify({ error: err?.message || stack:err.stack }),
+      JSON.stringify({ success: false,
+  error: err?.message || "Unknown error",
+  stack: err?.stack }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
