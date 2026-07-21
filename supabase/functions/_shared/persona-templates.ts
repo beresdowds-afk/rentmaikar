@@ -1,6 +1,7 @@
-// Universal Persona verification template IDs. Applied to every region.
-// The three templates encapsulate the identity + proof-of-address checks
-// tailored to each subject type; region no longer selects a template.
+// Per-role Persona inquiry template IDs. Applied to every region.
+// Each user role maps to a dedicated inquiry template that Persona uses to
+// branch the correct workflow (Driver, Owner, Referee, Proxy, Admin Assistant,
+// Support Staff).
 //
 // Priority when resolving a template:
 //   1. subject_role -> universal template ID (below)
@@ -17,13 +18,14 @@ export type PersonaSubjectRole =
   | "proxy";
 
 export const PERSONA_TEMPLATE_IDS: Record<PersonaSubjectRole, string> = {
-  driver: "ctmpl_As49Kz1UKtAYYEW9dPZmEeFiM12ty1",
-  referee: "ctmpl_As49Kz14uVkobxDdh5gP4rYWavgfqs",
-  owner: "ctmpl_As49Kz1JwTcfM32GH38WQda8xGy1Zs",
-  support_staff: "ctmpl_As49Kz1JwTcfM32GH38WQda8xGy1Zs",
-  admin_assistant: "ctmpl_As49Kz1JwTcfM32GH38WQda8xGy1Zs",
-  // Proxy re-uses the referee template (same identity + address check profile)
-  proxy: "ctmpl_As49Kz14uVkobxDdh5gP4rYWavgfqs",
+  driver: "itmpl_As49Kz1t61PoxLPDXCPBzcbHXZhrzW",
+  referee: "itmpl_As49Kz1ryTH3yu3AVUJiwa2CuSgscY",
+  owner: "itmpl_As49Kz1CuM9iVGdfhwWvR8AZe7ShLA",
+  // Admin Assistant and Support Staff use the Owner template until dedicated
+  // templates are created; they still carry a distinct user-role tag.
+  support_staff: "itmpl_As49Kz1CuM9iVGdfhwWvR8AZe7ShLA",
+  admin_assistant: "itmpl_As49Kz1CuM9iVGdfhwWvR8AZe7ShLA",
+  proxy: "itmpl_As49Kz1dvgymYmjWVUYM27nivb2bco",
 };
 
 export function templateForRole(role: PersonaSubjectRole | string | null | undefined): string | null {
