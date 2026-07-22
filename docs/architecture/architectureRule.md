@@ -15,6 +15,7 @@ RentMaikar/
 │   │   ├── HologramResponsibilities.md
 │   │   ├── PersonaResponsiblities.md
 │   │   └── architectureRule.md
-├── src/
+|   |   ├── IdentityVerificationArchitecture
 ├── supabase/
-└── ...
+└── src/
+|___ ...
