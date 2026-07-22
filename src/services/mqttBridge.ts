@@ -20,7 +20,7 @@ export function receiveMQTTMessage(
 
    vehicleId,
 
-   source:"mqtt",
+   source:"mqtt" as const,
 
    eventType:
    "telemetry",
