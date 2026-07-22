@@ -2,7 +2,7 @@ import {
   VehicleEvent,
   VehicleState,
   AnalyticsEvent
-} from "./types";
+} from "./resident-ochestrator/types";
 
 class ResidentOrchestrator {
 
