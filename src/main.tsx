@@ -4,6 +4,8 @@ import App from "./App.tsx";
 import "./index.css";
 import { initErrorMonitoring } from "./lib/error-monitor";
 import { registerPWA } from "./pwa/register";
+import "./services";
+import "./plugins";
 
 // Initialize error monitoring before rendering
 initErrorMonitoring();
