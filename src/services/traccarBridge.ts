@@ -11,7 +11,7 @@ export function receiveTraccarEvent(
    vehicleId:
    String(payload.deviceId),
 
-   source:"traccar",
+   source:"traccar" as const,
 
    eventType:
    payload.type || "position",
