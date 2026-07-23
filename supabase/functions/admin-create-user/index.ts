@@ -153,26 +153,19 @@ serve(async (req) => {
       Deno.env.get("SITE_URL") ||
       "https://rentmaikar.com";
 
-    const { data: linkData } = await admin.auth.admin.generateLink({
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: "recovery",
       email,
       options: { redirectTo: `${siteUrl}/reset-password` },
     });
+    if (linkErr) console.error("generateLink failed:", linkErr);
     const resetLink = linkData?.properties?.action_link || `${siteUrl}/auth`;
 
+    // Single branded email via our template — do NOT also call
+    // resetPasswordForEmail (that would trigger the auth-email-hook and
+    // deliver a second, redundant reset email).
     let emailSent = false;
     let emailError: string | null = null;
-    try {
-      const { error: resetErr } = await admin.auth.resetPasswordForEmail(
-        email,
-        { redirectTo: `${siteUrl}/reset-password` },
-      );
-      if (resetErr) throw resetErr;
-      emailSent = true;
-    } catch (e) {
-      emailError = (e as Error)?.message || "reset email failed";
-      console.error("reset email failed:", e);
-    }
 
     try {
       await admin.functions.invoke("send-outbound-email", {
