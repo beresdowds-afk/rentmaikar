@@ -88,6 +88,8 @@ const OnboardingAuditTimelinePage = lazy(() => import("./pages/admin/OnboardingA
 const AdminImpersonateDashboardPage = lazy(() => import("./pages/admin/AdminImpersonateDashboardPage"));
 const AdminPersonaInquiriesPage = lazy(() => import("./pages/admin/AdminPersonaInquiriesPage"));
 const AdminPersonaTemplatesPage = lazy(() => import("./pages/admin/AdminPersonaTemplatesPage"));
+const OrchestratorPage = lazy(() => import("./pages/admin/OrchestratorPage"));
+
 
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
 const SubscriptionSuccessPage = lazy(() => import("./pages/SubscriptionSuccessPage"));
