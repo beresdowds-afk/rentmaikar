@@ -272,64 +272,11 @@ const Auth = () => {
           </CardHeader>
 
           <CardContent className="space-y-4">
-            <Alert className="border-warning/50 bg-warning/10">
-              <Mail className="h-4 w-4 text-warning" />
-              <AlertDescription className="text-warning-foreground">
-                We sent a verification link to <strong>{unverifiedEmail}</strong>. 
-                Please check your inbox and click the link to verify your account.
-              </AlertDescription>
-            </Alert>
-
-            {verificationResent ? (
-              <Alert className="border-green-200 bg-green-50">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800">
-                  A new verification email has been sent! Check your inbox and spam folder.
-                </AlertDescription>
-              </Alert>
-            ) : null}
-
-            {resendError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{resendError}</AlertDescription>
-              </Alert>
-            )}
-
-            <div className="text-center space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Didn't receive the email? Check your spam folder or request a new one.
-              </p>
-              <Button
-                variant="outline"
-                onClick={handleResendVerification}
-                disabled={isResendingVerification || resendCooldown > 0}
-                className="gap-2"
-                aria-live="polite"
-              >
-                {isResendingVerification ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : resendCooldown > 0 ? (
-                  <>
-                    <Clock className="h-4 w-4" />
-                    Resend available in {resendCooldown}s
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4" />
-                    {verificationResent ? 'Resend Again' : 'Resend Verification Email'}
-                  </>
-                )}
-              </Button>
-              {resendCooldown > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  We limit how often verification emails can be sent to protect your inbox.
-                </p>
-              )}
-            </div>
+            <EmailVerification
+              email={unverifiedEmail}
+              showAsCard={false}
+              redirectTo={`${window.location.origin}/auth`}
+            />
 
             <div className="pt-4 border-t border-border">
               <div className="text-sm text-muted-foreground space-y-2">
@@ -343,6 +290,7 @@ const Auth = () => {
               </div>
             </div>
           </CardContent>
+
           
           <CardFooter>
             <Button 
