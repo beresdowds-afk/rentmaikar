@@ -13,11 +13,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, AlertCircle, User, Shield, Users, ArrowLeft, Mail, CheckCircle, RefreshCw, Clock } from 'lucide-react';
+import { Loader2, AlertCircle, User, Users, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
 import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
 import { PasswordInput } from '@/components/ui/password-input';
+import { EmailVerification } from '@/components/auth/EmailVerification';
+import { ROLE_HOME, ROLE_ONBOARDING, type AppRole } from '@/lib/role-home';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -52,14 +54,10 @@ const Auth = () => {
   const [error, setError] = useState<string | null>(null);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string>('');
-  const [isResendingVerification, setIsResendingVerification] = useState(false);
-  const [verificationResent, setVerificationResent] = useState(false);
-  const [resendError, setResendError] = useState<string | null>(null);
-  const [resendCooldown, setResendCooldown] = useState(0);
   const [activeTab, setActiveTab] = useState('login');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
-  
+
   // 2FA state
   const [show2FA, setShow2FA] = useState(false);
   const [twoFAUserId, setTwoFAUserId] = useState<string>('');
@@ -75,28 +73,15 @@ const Auth = () => {
     if (!user || authLoading || !twoFactorVerified || show2FA) return;
     if (userRole === null) return; // still hydrating role
 
-    const roleHome: Record<string, string> = {
-      admin: '/admin',
-      admin_assistant: '/admin-assistant',
-      owner: '/owner/dashboard',
-      driver: '/driver/dashboard',
-      legal_support: '/support/legal',
-      iot_support: '/support/iot',
-      vehicle_support: '/support/vehicle',
-    };
-
-    const onboardingRoute: Record<string, string> = {
-      driver: '/driver/onboarding',
-      owner: '/owner/onboarding',
-    };
-
     const finishRedirect = (target: string) => {
-      const isRoleHomeRoute = Object.values(roleHome).includes(from);
+      const isRoleHomeRoute = Object.values(ROLE_HOME).includes(from);
       navigate(isRoleHomeRoute && from !== '/' ? from : target, { replace: true });
     };
 
+    const onboardingTarget = ROLE_ONBOARDING[userRole as AppRole];
+
     // First-login redirect for driver/owner → role-specific onboarding
-    if (onboardingRoute[userRole]) {
+    if (onboardingTarget) {
       supabase
         .from('profiles')
         .select('onboarding_completed_at')
@@ -104,15 +89,15 @@ const Auth = () => {
         .maybeSingle()
         .then(({ data }) => {
           if (!data?.onboarding_completed_at) {
-            navigate(onboardingRoute[userRole], { replace: true });
+            navigate(onboardingTarget, { replace: true });
           } else {
-            finishRedirect(roleHome[userRole]);
+            finishRedirect(ROLE_HOME[userRole as AppRole]);
           }
         });
       return;
     }
 
-    finishRedirect(roleHome[userRole] ?? from ?? '/');
+    finishRedirect(ROLE_HOME[userRole as AppRole] ?? from ?? '/');
   }, [user, authLoading, userRole, navigate, from, twoFactorVerified, show2FA]);
 
   const loginForm = useForm<LoginFormData>({
