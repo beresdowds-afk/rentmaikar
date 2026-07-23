@@ -133,24 +133,32 @@ const ResetPassword = () => {
             <div className="mx-auto w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center mb-4">
               <AlertCircle className="w-6 h-6 text-destructive" />
             </div>
-            <CardTitle className="text-2xl font-display">Invalid Reset Link</CardTitle>
+            <CardTitle className="text-2xl font-display">Reset Link Expired</CardTitle>
             <CardDescription>
               This password reset link is invalid or has expired.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Password reset links expire after 1 hour. Please request a new reset link.
+                Password reset links expire <strong>1 hour</strong> after they are sent, and can only be used once.
               </AlertDescription>
             </Alert>
+            <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1 text-muted-foreground">
+              <p className="font-medium text-foreground">Next steps:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Go back to the login page.</li>
+                <li>Tap <strong>Forgot password?</strong> and enter your email again.</li>
+                <li>Use the newest email — older links stop working.</li>
+              </ol>
+            </div>
           </CardContent>
-          <CardFooter>
-            <Button 
-              className="w-full" 
-              onClick={() => navigate('/auth')}
-            >
+          <CardFooter className="flex flex-col gap-2">
+            <Button className="w-full" onClick={() => navigate('/auth?forgot=1')}>
+              Request a new reset link
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => navigate('/auth')}>
               Back to Login
             </Button>
           </CardFooter>
