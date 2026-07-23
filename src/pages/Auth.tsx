@@ -140,7 +140,6 @@ const Auth = () => {
       } else if (error.message.includes('Email not confirmed') || error.message.includes('email_not_confirmed')) {
         setUnverifiedEmail(data.email);
         setShowEmailVerification(true);
-        setVerificationResent(false);
       } else {
         setError(error.message);
       }
@@ -168,61 +167,9 @@ const Auth = () => {
     setIsSubmitting(false);
   };
 
-  // Cooldown ticker for resend verification button
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const t = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(t);
-  }, [resendCooldown]);
-
-  const handleResendVerification = async () => {
-    if (!unverifiedEmail || resendCooldown > 0 || isResendingVerification) return;
-
-    setIsResendingVerification(true);
-    setResendError(null);
-
-    try {
-      const redirectUrl = `${window.location.origin}/auth`;
-
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: unverifiedEmail,
-        options: {
-          emailRedirectTo: redirectUrl,
-        },
-      });
-
-      if (error) {
-        const msg = /rate|too many|over_email/i.test(error.message)
-          ? 'You’re requesting emails too quickly. Please wait a minute before trying again.'
-          : error.message;
-        setResendError(msg);
-        toast.error('Could not resend verification email', { description: msg });
-        // Still enforce a short cooldown so users don't hammer the button.
-        setResendCooldown(30);
-      } else {
-        setVerificationResent(true);
-        setResendCooldown(60);
-        toast.success('Verification email sent!', {
-          description: 'Please check your inbox and spam folder.',
-        });
-      }
-    } catch (err: any) {
-      const msg = err?.message ?? 'Unexpected error resending verification email.';
-      setResendError(msg);
-      toast.error('Failed to resend verification email');
-      setResendCooldown(30);
-    }
-
-    setIsResendingVerification(false);
-  };
-
   const handleBackFromVerification = () => {
     setShowEmailVerification(false);
     setUnverifiedEmail('');
-    setVerificationResent(false);
-    setResendError(null);
-    setResendCooldown(0);
   };
 
   const handleSignup = async (data: SignupFormData) => {
