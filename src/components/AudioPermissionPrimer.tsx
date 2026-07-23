@@ -1,43 +1,50 @@
 import { useEffect, useRef } from "react";
+import { ensureMediaPermissions } from "@/lib/media-permissions";
 
 /**
- * Requests microphone/audio access on the first user gesture so drivers can
- * play training audio and every user can join VoIP calls without extra clicks.
- * - Runs a single time per session (or until granted).
- * - Silent on failure: user can retry from a call/training screen.
+ * Requests microphone/speaker access on the first user gesture so training
+ * playback and in-app calls work without extra clicks.
+ *
+ * Behavior: silently probes on mount, then re-attempts on each user gesture
+ * until permission is granted. Once granted we stop listening. If the user
+ * denies, we back off silently — feature-specific screens (training, calls)
+ * will prompt again via ensureMediaPermissions when the user opts in.
  */
 export default function AudioPermissionPrimer() {
-  const askedRef = useRef(false);
+  const grantedRef = useRef(false);
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
-    const KEY = "rentmaikar_audio_primed";
     if (typeof window === "undefined") return;
-    if (sessionStorage.getItem(KEY) === "1") return;
 
-    const request = async () => {
-      if (askedRef.current) return;
-      askedRef.current = true;
+    const tryGrant = async (silent: boolean) => {
+      if (grantedRef.current || inFlightRef.current) return;
+      inFlightRef.current = true;
       try {
-        if (!navigator.mediaDevices?.getUserMedia) return;
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach((t) => t.stop());
-        sessionStorage.setItem(KEY, "1");
-      } catch {
-        // Deny or unsupported — leave for feature-specific prompts.
+        const ok = await ensureMediaPermissions({ silent });
+        if (ok) {
+          grantedRef.current = true;
+          cleanup();
+        }
       } finally {
-        cleanup();
+        inFlightRef.current = false;
       }
     };
 
-    const cleanup = () => {
-      window.removeEventListener("pointerdown", request);
-      window.removeEventListener("keydown", request);
-      window.removeEventListener("touchstart", request);
+    const onGesture = () => {
+      void tryGrant(false);
     };
 
-    window.addEventListener("pointerdown", request, { once: true });
-    window.addEventListener("keydown", request, { once: true });
-    window.addEventListener("touchstart", request, { once: true });
+    const cleanup = () => {
+      window.removeEventListener("pointerdown", onGesture);
+      window.removeEventListener("keydown", onGesture);
+      window.removeEventListener("touchstart", onGesture);
+    };
+
+    void tryGrant(true);
+    window.addEventListener("pointerdown", onGesture);
+    window.addEventListener("keydown", onGesture);
+    window.addEventListener("touchstart", onGesture);
 
     return cleanup;
   }, []);

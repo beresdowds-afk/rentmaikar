@@ -9,6 +9,7 @@ import { Phone, PhoneCall, Loader2, X, Clock } from 'lucide-react';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { useRegion } from '@/contexts/RegionContext';
 import { format } from 'date-fns';
+import { ensureMediaPermissions } from '@/lib/media-permissions';
 
 interface VoiceCallButtonProps {
   userRole: 'driver' | 'owner';
@@ -37,6 +38,9 @@ export const VoiceCallButton = ({
 
   const handleRequest = async () => {
     setIsSubmitting(true);
+    // Ensure mic/speaker access before the call is queued so audio works
+    // the moment support connects.
+    await ensureMediaPermissions();
     const result = await requestCall(targetRole, targetId, reason || undefined);
     setIsSubmitting(false);
     if (result) {
