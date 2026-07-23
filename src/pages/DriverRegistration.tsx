@@ -163,6 +163,9 @@ const DriverRegistration = () => {
       let userId = sessionAfter.session?.user?.id ?? null;
 
       if (!userId) {
+        if (!data.password || data.password.length < 8) {
+          throw new Error("Please choose a password with at least 8 characters to create your account.");
+        }
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: data.email,
           password: data.password,
