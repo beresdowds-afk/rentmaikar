@@ -133,9 +133,11 @@ export function PortalGate({
   if (meets) return <>{children}</>;
 
   const req = REQUIREMENT_COPY[require];
-  const nextPath = nextStepPath(progress);
+  // Prefer the server-sourced next step; fall back to the local computation.
+  const nextPath = machine?.next_href ?? nextStepPath(progress);
   const remaining = steps.filter((s) => !s.done);
-  const nextStepLabel = remaining[0]?.label ?? 'Continue onboarding';
+  const nextStepLabel =
+    (machine && machine.labels[machine.next_step]) ?? remaining[0]?.label ?? 'Continue onboarding';
 
   return (
     <Card className="border-dashed" data-testid="portal-gate-blocker">
