@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { VehicleLocation, mqttTracker } from '@/lib/mqtt-client';
+import { receiveMQTTMessage } from '@/services/mqttBridge';
+
 
 interface UseVehicleTrackingOptions {
   vehicleId?: string;
