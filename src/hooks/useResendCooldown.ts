@@ -77,8 +77,8 @@ export function useResendCooldown(
       const prev = read(channel, id);
       const attempts = (prev?.attempts ?? 0) + 1;
       try {
-        const result = await fn();
-        const server = result?.retryAfterSec;
+        const result = (await fn()) as { retryAfterSec?: number } | void;
+        const server = result && typeof result === 'object' ? result.retryAfterSec : undefined;
         const cooldown = server ?? DEFAULT_COOLDOWN[channel];
         write(channel, id, { lastSentAt: Date.now(), cooldownSec: cooldown, attempts });
         setRemaining(cooldown);
