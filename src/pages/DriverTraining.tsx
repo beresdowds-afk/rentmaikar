@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
 import SyncedScriptPlayer from "@/components/training/SyncedScriptPlayer";
+import { ensureMediaPermissions } from "@/lib/media-permissions";
 
 interface TrainingModule {
   id: string;
@@ -42,6 +43,9 @@ const DriverTraining = () => {
 
   useEffect(() => {
     fetchData();
+    // Training modules rely on TTS playback + optional voice interactions —
+    // request mic/speaker access up front so audio starts without extra taps.
+    void ensureMediaPermissions();
   }, [country]);
 
   // Cancel any lingering speech when leaving a module
