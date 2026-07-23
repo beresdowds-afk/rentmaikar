@@ -345,6 +345,15 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/admin/orchestrator"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <OrchestratorPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
                     path="/admin/onboarding-diagnostics"
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
