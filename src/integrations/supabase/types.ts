@@ -4270,6 +4270,7 @@ export type Database = {
           notification_sms: boolean | null
           notification_whatsapp: boolean | null
           onboarding_completed_at: string | null
+          onboarding_state: Json
           payment_proxy_verified: boolean
           payments_suspended: boolean
           persona_verified: boolean
@@ -4311,6 +4312,7 @@ export type Database = {
           notification_sms?: boolean | null
           notification_whatsapp?: boolean | null
           onboarding_completed_at?: string | null
+          onboarding_state?: Json
           payment_proxy_verified?: boolean
           payments_suspended?: boolean
           persona_verified?: boolean
@@ -4352,6 +4354,7 @@ export type Database = {
           notification_sms?: boolean | null
           notification_whatsapp?: boolean | null
           onboarding_completed_at?: string | null
+          onboarding_state?: Json
           payment_proxy_verified?: boolean
           payments_suspended?: boolean
           persona_verified?: boolean
@@ -8739,6 +8742,7 @@ export type Database = {
         }[]
       }
       get_my_registration_progress: { Args: never; Returns: Json }
+      get_onboarding_next_step: { Args: never; Returns: Json }
       get_owner_available_balance: {
         Args: { _currency: string; _owner_id: string }
         Returns: number
@@ -8862,6 +8866,7 @@ export type Database = {
         }
         Returns: string
       }
+      set_onboarding_last_visited: { Args: { _step: string }; Returns: Json }
       sign_legal_agreement: {
         Args: { _agreement_id: string; _signature: string }
         Returns: {
