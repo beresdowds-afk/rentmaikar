@@ -391,6 +391,7 @@ const OwnerRegistration = () => {
                         type="tel"
                         placeholder="(202) 555-0123"
                         className="pl-10"
+                        autoComplete="tel-national"
                         {...register("phoneNumber")}
                       />
                     </div>
