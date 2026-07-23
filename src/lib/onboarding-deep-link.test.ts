@@ -21,8 +21,7 @@ describe('onboarding-deep-link cold-start resume', () => {
   beforeEach(() => {
     localStorage.clear();
     // Ensure we are treated as the web runtime (not Capacitor).
-    // @ts-expect-error – runtime-injected global.
-    delete (window as any).Capacitor;
+    delete (window as unknown as { Capacitor?: unknown }).Capacitor;
   });
 
   it('rememberOnboardingPath persists a well-formed entry', () => {
