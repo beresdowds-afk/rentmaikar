@@ -89,7 +89,7 @@ const DriverRegistration = () => {
     handleSubmit,
     setValue,
     watch,
-    reset,
+    
     formState: { errors, isSubmitting },
   } = useForm<DriverFormData>({
     resolver: zodResolver(driverSchema),
