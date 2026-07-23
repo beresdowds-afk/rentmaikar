@@ -15,8 +15,11 @@ class ResidentOrchestrator {
 
   subscribe(listener: Listener) {
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
+
 
   getAllStates(): VehicleState[] {
     return Array.from(this.vehicleStates.values());
