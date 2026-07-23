@@ -91,7 +91,6 @@ export function RoleManagement() {
   
   // New user form state
   const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserFullName, setNewUserFullName] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
   const [newUserRole, setNewUserRole] = useState<AppRole>('admin_assistant');
@@ -292,7 +291,6 @@ export function RoleManagement() {
 
       // Reset input fields but keep the dialog open to display result.
       setNewUserEmail('');
-      setNewUserPassword('');
       setNewUserFullName('');
       setNewUserPhone('');
       setNewUserRole('admin_assistant');
