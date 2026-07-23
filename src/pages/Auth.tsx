@@ -354,6 +354,8 @@ const Auth = () => {
                     id="forgot-email"
                     type="email"
                     placeholder="you@example.com"
+                    autoComplete="email"
+                    autoFocus
                     {...forgotPasswordForm.register('email')}
                     disabled={isSubmitting}
                   />
@@ -433,6 +435,8 @@ const Auth = () => {
                     id="login-email"
                     type="email"
                     placeholder="you@example.com"
+                    autoComplete="email"
+                    autoFocus
                     {...loginForm.register('email')}
                     disabled={isSubmitting}
                   />
@@ -501,6 +505,8 @@ const Auth = () => {
                     id="signup-name"
                     type="text"
                     placeholder="John Doe"
+                    autoComplete="name"
+                    autoFocus
                     {...signupForm.register('fullName')}
                     disabled={isSubmitting}
                   />
@@ -515,6 +521,7 @@ const Auth = () => {
                     id="signup-email"
                     type="email"
                     placeholder="you@example.com"
+                    autoComplete="email"
                     {...signupForm.register('email')}
                     disabled={isSubmitting}
                   />
