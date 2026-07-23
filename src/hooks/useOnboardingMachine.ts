@@ -62,8 +62,7 @@ export function useOnboardingMachine() {
 
 export async function setOnboardingLastVisited(step: string) {
   try {
-    // @ts-expect-error rpc name may not be in generated types yet
-    await supabase.rpc('set_onboarding_last_visited', { _step: step });
+    await (supabase.rpc as any)('set_onboarding_last_visited', { _step: step });
   } catch {
     /* best-effort */
   }
