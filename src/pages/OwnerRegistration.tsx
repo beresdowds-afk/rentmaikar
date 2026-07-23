@@ -119,6 +119,25 @@ const OwnerRegistration = () => {
     },
   });
 
+  // Prefill from existing session so signed-in owners don't retype identity.
+  useEffect(() => {
+    if (!user) return;
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const fullName = String(meta.full_name ?? '').trim();
+    const [first, ...rest] = fullName.split(/\s+/);
+    if (first) setValue('firstName', first);
+    if (rest.length) setValue('lastName', rest.join(' '));
+    if (user.email) setValue('email', user.email);
+    (async () => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('phone')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (profile?.phone) setValue('phoneNumber', profile.phone.replace(/^\+?\d{1,3}/, ''));
+    })();
+  }, [user, setValue]);
+
   const selectedCountry = watch("country");
   const selectedYear = watch("vehicleYear");
   const cities = selectedCountry === "usa" ? usaCities : nigeriaCities;
