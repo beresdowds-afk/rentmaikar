@@ -11,13 +11,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Shield } from "lucide-react";
 import orchestrator from "@/services/residentOrchestrator";
 import pluginManager from "@/plugins/pluginManager";
 import { receiveTraccarEvent } from "@/services/traccarBridge";
 import { receiveMQTTMessage } from "@/services/mqttBridge";
 import type { VehicleState, AnalyticsEvent } from "@/services/resident-ochestrator/types";
+import { useAuth } from "@/contexts/AuthContext";
+import TelemetryHealthCard from "@/components/admin/TelemetryHealthCard";
+import AdminAuditLogViewer from "@/components/admin/AdminAuditLogViewer";
+import OrchestratorE2ETestPanel from "@/components/admin/OrchestratorE2ETestPanel";
 
 export default function OrchestratorPage() {
+  const { userRole } = useAuth();
+  const isAdmin = userRole === "admin";
   const [states, setStates] = useState<VehicleState[]>(orchestrator.getAllStates());
   const [analytics, setAnalytics] = useState<AnalyticsEvent[]>(orchestrator.getRecentAnalytics());
   const [plugins, setPlugins] = useState(pluginManager.getPlugins());
@@ -26,11 +33,13 @@ export default function OrchestratorPage() {
     const unsub = orchestrator.subscribe(() => {
       setStates(orchestrator.getAllStates());
       setAnalytics(orchestrator.getRecentAnalytics());
+      setPlugins(pluginManager.getPlugins());
     });
     return unsub;
   }, []);
 
   const togglePlugin = async (id: string, enable: boolean) => {
+    if (!isAdmin) return;
     if (enable) await pluginManager.activate(id);
     else await pluginManager.deactivate(id);
     setPlugins(pluginManager.getPlugins());
@@ -58,21 +67,35 @@ export default function OrchestratorPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Resident Orchestrator</h1>
-        <p className="text-muted-foreground">
-          Unified view of Traccar + MQTT vehicle telemetry, analytics events, and installed plugins.
-        </p>
+      <div className="flex items-start justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-3xl font-bold">Resident Orchestrator</h1>
+          <p className="text-muted-foreground">
+            Unified view of Traccar + MQTT vehicle telemetry, analytics events, and installed plugins.
+          </p>
+        </div>
+        {!isAdmin && (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Shield className="h-3 w-3" /> Read-only (admin required for controls)
+          </Badge>
+        )}
       </div>
 
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={injectDemoTraccar}>
-          Inject demo Traccar event
-        </Button>
-        <Button variant="outline" onClick={injectDemoMQTT}>
-          Inject demo MQTT event
-        </Button>
-      </div>
+      <TelemetryHealthCard />
+
+      {isAdmin && (
+        <>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={injectDemoTraccar}>
+              Inject demo Traccar event
+            </Button>
+            <Button variant="outline" onClick={injectDemoMQTT}>
+              Inject demo MQTT event
+            </Button>
+          </div>
+          <OrchestratorE2ETestPanel />
+        </>
+      )}
 
       <Card>
         <CardHeader>
@@ -147,7 +170,9 @@ export default function OrchestratorPage() {
               <div key={p.id} className="flex items-center justify-between border rounded p-3">
                 <div>
                   <p className="font-medium">{p.name}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{p.id}</p>
+                  <p className="text-xs text-muted-foreground font-mono">
+                    {p.id} · {p.callCount} events processed
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={p.enabled ? "default" : "outline"}>
@@ -155,6 +180,7 @@ export default function OrchestratorPage() {
                   </Badge>
                   <Switch
                     checked={p.enabled}
+                    disabled={!isAdmin}
                     onCheckedChange={(v) => togglePlugin(p.id, v)}
                   />
                 </div>
@@ -163,6 +189,8 @@ export default function OrchestratorPage() {
           </div>
         </CardContent>
       </Card>
+
+      {isAdmin && <AdminAuditLogViewer />}
     </div>
   );
 }
