@@ -4270,13 +4270,16 @@ export type Database = {
           notification_sms: boolean | null
           notification_whatsapp: boolean | null
           onboarding_completed_at: string | null
+          payment_proxy_verified: boolean
           payments_suspended: boolean
+          persona_verified: boolean
           phone: string | null
           phone_verification_code: string | null
           phone_verification_expires_at: string | null
           phone_verified: boolean | null
           preferred_country: string | null
           public_uuid: string
+          referee_verified: boolean
           region_mode: string | null
           registration_stage:
             | Database["public"]["Enums"]["registration_stage_enum"]
@@ -4308,13 +4311,16 @@ export type Database = {
           notification_sms?: boolean | null
           notification_whatsapp?: boolean | null
           onboarding_completed_at?: string | null
+          payment_proxy_verified?: boolean
           payments_suspended?: boolean
+          persona_verified?: boolean
           phone?: string | null
           phone_verification_code?: string | null
           phone_verification_expires_at?: string | null
           phone_verified?: boolean | null
           preferred_country?: string | null
           public_uuid?: string
+          referee_verified?: boolean
           region_mode?: string | null
           registration_stage?:
             | Database["public"]["Enums"]["registration_stage_enum"]
@@ -4346,13 +4352,16 @@ export type Database = {
           notification_sms?: boolean | null
           notification_whatsapp?: boolean | null
           onboarding_completed_at?: string | null
+          payment_proxy_verified?: boolean
           payments_suspended?: boolean
+          persona_verified?: boolean
           phone?: string | null
           phone_verification_code?: string | null
           phone_verification_expires_at?: string | null
           phone_verified?: boolean | null
           preferred_country?: string | null
           public_uuid?: string
+          referee_verified?: boolean
           region_mode?: string | null
           registration_stage?:
             | Database["public"]["Enums"]["registration_stage_enum"]
@@ -6889,6 +6898,39 @@ export type Database = {
           role?: string | null
           source?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      vehicle_analytics_events: {
+        Row: {
+          category: string
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json
+          severity: string
+          source: string
+          vehicle_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json
+          severity?: string
+          source?: string
+          vehicle_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          severity?: string
+          source?: string
+          vehicle_id?: string
         }
         Relationships: []
       }
