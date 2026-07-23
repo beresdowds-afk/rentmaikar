@@ -1,40 +1,18 @@
-import orchestrator
-from "./residentOrchestrator";
+import orchestrator from "./residentOrchestrator";
 
+/**
+ * Bridge MQTT telemetry messages into the Resident Orchestrator.
+ * Expected topic shape: rentmaikar/vehicle/{vehicleId}/...
+ */
+export function receiveMQTTMessage(topic: string, message: Record<string, unknown>) {
+  const parts = topic.split("/");
+  const vehicleId = parts[2] ?? String(message?.vehicleId ?? "unknown");
 
-export function receiveMQTTMessage(
- topic:string,
- message:any
-){
-
-
- const parts =
- topic.split("/");
-
-
- const vehicleId =
- parts[2];
-
-
- const event={
-
-   vehicleId,
-
-   source:"mqtt" as const,
-
-   eventType:
-   "telemetry",
-
-   timestamp:
-   new Date()
-   .toISOString(),
-
-   payload:message
-
- };
-
-
- return orchestrator
- .processEvent(event);
-
+  return orchestrator.processEvent({
+    vehicleId,
+    source: "mqtt",
+    eventType: parts[3] ?? "telemetry",
+    timestamp: new Date().toISOString(),
+    payload: message ?? {},
+  });
 }

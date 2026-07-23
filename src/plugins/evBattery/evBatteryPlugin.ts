@@ -1,51 +1,22 @@
-import {
-RentMaikarPlugin
-}
-from "../pluginTypes";
+import { RentMaikarPlugin } from "../pluginTypes";
 
+export const EVBatteryPlugin: RentMaikarPlugin = {
+  id: "evBattery",
+  name: "EV Battery Telemetry",
+  enabled: false,
 
-export const EVBatteryPlugin:
-RentMaikarPlugin={
+  async initialize() {
+    console.log("[plugin:evBattery] enabled");
+  },
 
+  async deactivate() {
+    console.log("[plugin:evBattery] disabled");
+  },
 
-id:"evBattery",
-
-name:"EV Battery Telemetry",
-
-enabled:false,
-
-
-async initialize(){
-
-console.log(
-"EV battery monitoring enabled"
-);
-
-},
-
-
-async deactivate(){
-
-console.log(
-"EV battery monitoring disabled"
-);
-
-},
-
-
-async processEvent(event){
-
-if(
-event.type==="battery"
-){
-
-console.log(
-"Battery telemetry",
-event.payload
-);
-
-}
-
-}
-
+  async processEvent(event) {
+    const payload = event.payload as Record<string, unknown> | undefined;
+    if (payload && typeof payload.battery === "number") {
+      console.log("[plugin:evBattery] battery=", payload.battery, "vehicle=", event.vehicleId);
+    }
+  },
 };

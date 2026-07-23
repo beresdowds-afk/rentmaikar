@@ -1,31 +1,17 @@
-import orchestrator
-from "./residentOrchestrator";
+import orchestrator from "./residentOrchestrator";
 
-
-export function receiveTraccarEvent(
- payload:any
-){
-
- const event={
-
-   vehicleId:
-   String(payload.deviceId),
-
-   source:"traccar" as const,
-
-   eventType:
-   payload.type || "position",
-
-   timestamp:
-   new Date()
-   .toISOString(),
-
-   payload
-
- };
-
-
- return orchestrator
- .processEvent(event);
-
+/**
+ * Bridge a Traccar position or event payload into the Resident Orchestrator.
+ */
+export function receiveTraccarEvent(payload: Record<string, unknown>) {
+  return orchestrator.processEvent({
+    vehicleId: String(payload.deviceId ?? payload.vehicleId ?? "unknown"),
+    source: "traccar",
+    eventType: (payload.type as string) || "position",
+    timestamp:
+      (payload.fixTime as string) ||
+      (payload.serverTime as string) ||
+      new Date().toISOString(),
+    payload,
+  });
 }
