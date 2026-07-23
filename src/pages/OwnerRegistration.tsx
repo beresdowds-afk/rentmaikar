@@ -316,45 +316,58 @@ const OwnerRegistration = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" placeholder="Doe" {...register("lastName")} />
+                    <Input id="lastName" placeholder="Doe" autoComplete="family-name" {...register("lastName")} />
                     {errors.lastName && (
                       <p className="text-destructive text-sm">{errors.lastName.message}</p>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="john@example.com"
-                      className="pl-10"
-                      {...register("email")}
-                    />
+                {alreadySignedIn ? (
+                  <div className="rounded-lg border border-border bg-muted/50 p-4 text-sm">
+                    <p className="font-medium text-foreground">Signed in as {user?.email}</p>
+                    <p className="text-muted-foreground mt-1">
+                      We'll link this listing to your existing account, so you don't need
+                      to re-enter your email or password.
+                    </p>
                   </div>
-                  {errors.email && (
-                    <p className="text-destructive text-sm">{errors.email.message}</p>
-                  )}
-                </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="john@example.com"
+                          className="pl-10"
+                          autoComplete="email"
+                          {...register("email")}
+                        />
+                      </div>
+                      {errors.email && (
+                        <p className="text-destructive text-sm">{errors.email.message}</p>
+                      )}
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <PasswordInput
-                    id="password"
-                    placeholder="At least 8 characters"
-                    autoComplete="new-password"
-                    {...register("password")}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    You'll use this password to sign in to your owner dashboard after approval.
-                  </p>
-                  {errors.password && (
-                    <p className="text-destructive text-sm">{errors.password.message}</p>
-                  )}
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password</Label>
+                      <PasswordInput
+                        id="password"
+                        placeholder="At least 8 characters"
+                        autoComplete="new-password"
+                        {...register("password")}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        You'll use this password to sign in to your owner dashboard after approval.
+                      </p>
+                      {errors.password && (
+                        <p className="text-destructive text-sm">{errors.password.message}</p>
+                      )}
+                    </div>
+                  </>
+                )}
 
 
                 <div className="space-y-2">
