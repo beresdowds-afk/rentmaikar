@@ -60,7 +60,7 @@ import { useOnboardingMachine } from './useOnboardingMachine';
 
 describe('useOnboardingMachine', () => {
   beforeEach(() => {
-    h.capturedHandlers = {};
+    for (const k of Object.keys(h.capturedHandlers)) delete h.capturedHandlers[k];
     h.rpcMock.mockReset();
     h.removeChannelMock.mockReset();
     h.authStateHandlers.length = 0;
