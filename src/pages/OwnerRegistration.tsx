@@ -21,13 +21,14 @@ import { classifyRegistrationError, type FriendlyRegistrationError } from "@/lib
 import { RegistrationErrorAlert } from "@/components/registration/RegistrationErrorAlert";
 import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
 import { PasswordInput } from "@/components/ui/password-input";
+import { useAuth } from "@/contexts/AuthContext";
 
 const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   // Owner Details
   firstName: z.string().min(2, "First name is required").max(50, "First name too long"),
   lastName: z.string().min(2, "Last name is required").max(50, "Last name too long"),
   email: z.string().email("Invalid email address").max(255, "Email too long"),
-  password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password too long"),
+  password: z.string().max(72, "Password too long").optional().or(z.literal("")),
   phoneCountry: z.enum(["us", "ng"]),
   phoneNumber: z.string().min(10, "Phone number is required").max(15, "Phone number too long"),
   
@@ -86,11 +87,13 @@ const years = Array.from({ length: 11 }, (_, i) => (currentYear - 10 + i).toStri
 
 const OwnerRegistration = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { currencySymbol } = useRegion();
   const [currentCountry, setCurrentCountry] = useState<"usa" | "nigeria">("usa");
   const [submitError, setSubmitError] = useState<FriendlyRegistrationError | null>(null);
   const [lastFormData, setLastFormData] = useState<OwnerFormData | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
+  const alreadySignedIn = !!user;
   
   const {
     register,
