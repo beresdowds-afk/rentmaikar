@@ -458,6 +458,12 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
             <PersonaVerification
               subject="self"
               subjectRole={subjectRole}
+              fields={{
+                'name-first': fullName.split(' ')[0] ?? '',
+                'name-last': fullName.split(' ').slice(1).join(' '),
+                'email-address': email,
+                'phone-number': phone,
+              }}
               onComplete={() => {
                 toast.success('Verification submitted for review.');
                 load();
