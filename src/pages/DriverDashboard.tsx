@@ -201,6 +201,10 @@ export default function DriverDashboard() {
 
           <UserIdentityCard role="Driver" />
 
+          <div className="my-4">
+            <OnboardingChecklist />
+          </div>
+
 
 
           {/* Header */}
