@@ -1,8 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
-
-type AppRole = 'admin' | 'admin_assistant' | 'owner' | 'driver' | 'legal_support' | 'iot_support' | 'vehicle_support';
+import { ROLE_HOME, type AppRole } from '@/lib/role-home';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -52,17 +51,7 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
       return <Navigate to="/" replace />;
     }
     if (!allowedRoles.includes(userRole)) {
-      // Send user to their own home dashboard rather than the landing page
-      const roleHome: Record<AppRole, string> = {
-        admin: '/admin',
-        admin_assistant: '/admin-assistant',
-        owner: '/owner/dashboard',
-        driver: '/driver/dashboard',
-        legal_support: '/support/legal',
-        iot_support: '/support/iot',
-        vehicle_support: '/support/vehicle',
-      };
-      return <Navigate to={roleHome[userRole]} replace />;
+      return <Navigate to={ROLE_HOME[userRole] ?? '/'} replace />;
     }
   }
 

@@ -37,28 +37,45 @@ export const TwoFactorSetup = () => {
     if (!user) return;
     const fetchSettings = async () => {
       setIsLoading(true);
-      // Check if role is mandatory
       setIsMandatory(mandatoryRoles.includes(userRole || ''));
 
-      const { data } = await supabase
-        .from('two_factor_settings')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const [{ data }, { data: profile }] = await Promise.all([
+        supabase
+          .from('two_factor_settings')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+        supabase
+          .from('profiles')
+          .select('phone')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+      ]);
+
+      const applyPhone = (raw: string) => {
+        if (raw.startsWith('+1')) {
+          setCountryCode('us');
+          setPhoneNumber(raw.slice(2));
+        } else if (raw.startsWith('+234')) {
+          setCountryCode('ng');
+          setPhoneNumber(raw.slice(4));
+        } else {
+          setPhoneNumber(raw.replace(/^\+/, ''));
+        }
+      };
 
       if (data) {
         setIsEnabled(data.is_enabled);
         if (data.phone_number) {
           setExistingPhone(data.phone_number);
-          if (data.phone_number.startsWith('+1')) {
-            setCountryCode('us');
-            setPhoneNumber(data.phone_number.slice(2));
-          } else if (data.phone_number.startsWith('+234')) {
-            setCountryCode('ng');
-            setPhoneNumber(data.phone_number.slice(4));
-          }
+          applyPhone(data.phone_number);
+        } else if (profile?.phone) {
+          // Prefill from the user's verified profile phone so they don't retype.
+          applyPhone(profile.phone);
         }
         setChannel((data.preferred_channel as Channel) || 'sms');
+      } else if (profile?.phone) {
+        applyPhone(profile.phone);
       }
       setIsLoading(false);
     };

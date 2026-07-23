@@ -6,15 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-
-type AppRole =
-  | 'admin'
-  | 'admin_assistant'
-  | 'owner'
-  | 'driver'
-  | 'legal_support'
-  | 'iot_support'
-  | 'vehicle_support';
+import { ROLE_HOME, type AppRole } from '@/lib/role-home';
 
 interface GateArgs {
   allowedRoles: AppRole[];
@@ -84,15 +76,6 @@ export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNo
   }
 
   if (userRole && !effectiveAllowed.includes(userRole)) {
-    const roleHome: Record<AppRole, string> = {
-      admin: '/admin',
-      admin_assistant: '/admin-assistant',
-      owner: '/owner/dashboard',
-      driver: '/driver/dashboard',
-      legal_support: '/support/legal',
-      iot_support: '/support/iot',
-      vehicle_support: '/support/vehicle',
-    };
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -111,7 +94,7 @@ export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNo
                 Please head to your own workspace instead.
               </p>
               <Button asChild>
-                <Link to={roleHome[userRole]}>Go to my dashboard</Link>
+                <Link to={ROLE_HOME[userRole]}>Go to my dashboard</Link>
               </Button>
             </CardContent>
           </Card>

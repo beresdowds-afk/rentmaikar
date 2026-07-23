@@ -1,48 +1,70 @@
-# Orchestrator hardening, telemetry health, audit viewer, hero refresh
+# Streamline Driver Registration, Onboarding, Verification & Auth
 
-## 1. Verify Traccar → MQTT → pluginManager → vehicle_analytics_events E2E
-- Add an in-app **Test Panel** to `/admin/orchestrator` that injects Traccar and MQTT events and then reads back the newly-written `vehicle_analytics_events` rows for `demo-vehicle-1`, showing pass/fail per stage:
-  1. Traccar bridge fires → orchestrator state updated
-  2. MQTT bridge fires → orchestrator state updated
-  3. `pluginManager.process` invoked on active plugins (asserted via plugin call counter)
-  4. Row present in `vehicle_analytics_events` within 3s (queried via supabase)
-- Add a Vitest integration test `src/services/__tests__/orchestrator-e2e.test.ts` that mocks supabase and asserts the same flow.
+Audit found ~16 redundancies across `Auth`, `DriverRegistration`, `DriverOnboarding`, verification gates, and progress hooks. Below are the concrete changes grouped by priority. Approve and I'll execute in this order.
 
-## 2. Role-based access control on `/admin/orchestrator`
-- Route is currently only wrapped in `ProtectedRoute`. Wrap it with `allowedRoles={['admin']}` and additionally check `has_admin_assistant_permission('orchestrator_access')` for assistants.
-- Hide demo injectors and plugin toggles unless `userRole === 'admin'` (assistants get read-only view).
+## P0 — Remove duplicate gates and re-collected data
 
-## 3. Telemetry health indicator + stall alert
-- Track `lastTraccarEventAt` and `lastMqttEventAt` inside `residentOrchestrator`.
-- New `TelemetryHealthCard` on `/admin/orchestrator`: green/amber/red badges per feed, configurable stall window (default 5 min, admin-adjustable via slider stored in `localStorage`).
-- When a feed exceeds the window, show a toast and insert an `admin_notifications` row of type `telemetry_stall` (once per stall cycle).
+1. **Retire `VerificationGate` full-page block on the driver dashboard.**
+   Today `DriverDashboard` is wrapped by `VerificationGate` (all‑or‑nothing) AND by `PortalGate` per tab (staged). They contradict each other and defeat the "view-only access after signup" promise. Drive all gating through `useRegistrationProgress` + `PortalGate` only. `VerificationGate` becomes a lightweight banner on the Overview tab that surfaces the next unmet requirement.
 
-## 4. Admin audit log viewer
-- New card section on `/admin/orchestrator` (and route `/admin/audit-log` for a full-page view) listing recent `admin_audit_log` entries.
-- Filters: user (email search), action type (dropdown from distinct actions), date range.
-- Paginated (25/page), read-only, admin-only.
+2. **Consolidate the three email-verification UIs.**
+   `Auth.tsx`, `EmailVerification.tsx`, and `VerificationGate.tsx` each hand-roll resend/cooldown against `supabase.auth.resend`. Make `EmailVerification` the single source of truth and have `Auth.tsx` reuse it in the "check your inbox" state.
 
-## 5. Plugin toggle live test
-- Add a **Run plugin toggle test** button that:
-  1. Records baseline plugin call count
-  2. Disables a plugin, injects event, asserts call count unchanged
-  3. Re-enables, injects event, asserts call count incremented
-  4. Reports pass/fail inline
-- Add `getCallCount()` to `pluginManager` for observability.
+3. **Stop re-collecting name/email/password in `DriverRegistration` when already signed in.**
+   When a user hits `/driver/registration` with an active session, hide email/password/name inputs and prefill from the session/profile. New signups from `/auth` (role=driver) are routed straight into the application form with the session already established — one path, not two.
 
-## 6. Hero background refresh
-- Regenerate `src/assets/hero-cars-bg.png` from the current Hero component context (fresh image, no historical reference).
-- Delete the existing `hero-cars-bg.png` asset first so no cached editor pointer remains, then generate a new one at the same path. HeroSection import path stays the same, so preview and deployed site render identically.
+4. **Prefill Persona with existing profile fields.**
+   `PersonaVerification` currently only sends `region`/`subject_role`. Pass `fields={{ name, phone, address }}` from the profile so drivers don't re-type identity data.
 
-## Technical details
-- No DB schema changes required — `admin_audit_log`, `admin_notifications`, and `vehicle_analytics_events` already exist.
-- Files to touch:
-  - `src/pages/admin/OrchestratorPage.tsx` (RBAC gating, health card, audit card, E2E + toggle test panels)
-  - `src/plugins/pluginManager.ts` (call counter, `getCallCount`)
-  - `src/services/residentOrchestrator.ts` (`lastTraccarEventAt`, `lastMqttEventAt`, getters)
-  - `src/App.tsx` (`allowedRoles={['admin']}` on orchestrator route, new `/admin/audit-log` route)
-  - `src/components/admin/TelemetryHealthCard.tsx` (new)
-  - `src/components/admin/AdminAuditLogViewer.tsx` (new)
-  - `src/components/admin/OrchestratorE2ETestPanel.tsx` (new)
-  - `src/services/__tests__/orchestrator-e2e.test.ts` (new)
-  - `src/assets/hero-cars-bg.png` (regenerated)
+## P1 — Fewer gates, fewer refetches, cleaner stage ordering
+
+5. **Unify the five gate components.**
+   Extract one `ROLE_HOME` map and one `meetsRequirement(progress, requirement)` helper shared by `PortalGate` + `PortalRouteGuard`. Route auth+role gating through `ProtectedRoute` only; delete `DashboardAuthGate` duplication.
+
+6. **Kill the focus/visibility re-invalidation storm.**
+   `useOnboardingProgressReconciliation` invalidates the progress query on every focus/visibility change, triggering the RPC across every mounted consumer. Replace with React Query's built-in `refetchOnWindowFocus` + a 30 s stale window.
+
+7. **Merge the two sequential RPCs in `DriverOnboarding.finish()`.**
+   Combine `advance_registration_stage('documents_submitted')` and `('verification_pending')` into one RPC/transaction and navigate optimistically; reconcile via progress query.
+
+8. **Insert the legal-agreement step into the canonical stage order.**
+   Add `legal_accepted` between `account_opened` and `documents_submitted` in `onboarding-stages.ts` + `routeForStage`, so `OnboardingRedirect`/`PortalGate` route drivers there deterministically instead of it being an orphan URL.
+
+9. **Reuse `useRegistrationProgress` in `Auth.tsx` post-login redirect.**
+   Removes an extra blocking `profiles` query on every login.
+
+10. **Add `autoFocus` + proper `autoComplete` on all auth/registration inputs.**
+    (`email`, `current-password`, `new-password`, `tel`, `one-time-code`.) One-line-per-field fix that measurably reduces friction, especially on mobile.
+
+11. **Prefill 2FA phone from `profiles.phone`.**
+    `TwoFactorSetup` should not re-ask for a number already captured during registration.
+
+## P2 — Dead code & polish
+
+12. Delete the legacy no-op `useOnboardingGate.ts` (already commented as legacy).
+13. Fix order-dependent branches in `registration-errors.ts` so `isAlreadyRegistered` is checked before `isDuplicate`.
+14. Disable "Re-run verification" in `RefereeVerificationPanel` until at least one invite is sent.
+15. Merge `lib/onboarding-error.ts` and `lib/onboarding-stages.ts` into one `lib/onboarding/` module.
+16. Ensure `OnboardingReconciliationBanner` is actually mounted on gated dashboards (currently appears unmounted).
+
+## Technical notes
+
+- Backend: one new RPC `advance_registration_stages(text[])` (P1‑7) applied as a single migration with `GRANT EXECUTE TO authenticated`.
+- No schema changes required beyond that RPC and adding `legal_accepted` to the stage enum/lookup (P1‑8).
+- All UI changes are additive/removals — no data migration.
+- Tests: extend `useRegistrationProgress.test.tsx` and `PortalGate.test.tsx` to cover the merged gate helper; add an integration test that a freshly signed-up driver sees the dashboard immediately (view-only) instead of a hard block.
+
+## Out of scope
+
+- Design overhaul of any page.
+- Persona template changes (already covered by `AdminPersonaTemplatesPage`).
+- Payment/subscription gating (`SubscriptionGate`) — orthogonal to onboarding flow.
+
+## Rollout order
+
+1. P0-1 → P0-2 → P0-3 → P0-4 (biggest UX wins, no schema)
+2. P1-5 → P1-6 → P1-9 → P1-10 → P1-11
+3. P1-7 + P1-8 together (requires the one migration)
+4. P2 cleanup
+
+Approve to proceed, or tell me which items to drop / reorder.

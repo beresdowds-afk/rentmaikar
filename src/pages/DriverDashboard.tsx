@@ -28,7 +28,7 @@ import { CallSupportButton } from '@/components/support/CallSupportButton';
 import { VoiceCallButton } from '@/components/voice/VoiceCallButton';
 import { VoiceCallHistory } from '@/components/voice/VoiceCallHistory';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
-import { VerificationGate } from '@/components/onboarding/VerificationGate';
+
 import { ProfileEditor } from '@/components/profile/ProfileEditor';
 import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -184,7 +184,7 @@ export default function DriverDashboard() {
   }
 
   return (
-    <VerificationGate userType="driver" bypassForAdmin={isAdminView}>
+    <>
       <div className="min-h-screen bg-background">
         <Header />
         
@@ -600,6 +600,6 @@ export default function DriverDashboard() {
         <SupportChatWidget />
         <CallSupportButton userType="driver" variant="floating" />
       </div>
-    </VerificationGate>
+    </>
   );
 }

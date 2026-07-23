@@ -13,11 +13,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, AlertCircle, User, Shield, Users, ArrowLeft, Mail, CheckCircle, RefreshCw, Clock } from 'lucide-react';
+import { Loader2, AlertCircle, User, Users, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
 import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
 import { PasswordInput } from '@/components/ui/password-input';
+import { EmailVerification } from '@/components/auth/EmailVerification';
+import { ROLE_HOME, ROLE_ONBOARDING, type AppRole } from '@/lib/role-home';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -52,14 +54,10 @@ const Auth = () => {
   const [error, setError] = useState<string | null>(null);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string>('');
-  const [isResendingVerification, setIsResendingVerification] = useState(false);
-  const [verificationResent, setVerificationResent] = useState(false);
-  const [resendError, setResendError] = useState<string | null>(null);
-  const [resendCooldown, setResendCooldown] = useState(0);
   const [activeTab, setActiveTab] = useState('login');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
-  
+
   // 2FA state
   const [show2FA, setShow2FA] = useState(false);
   const [twoFAUserId, setTwoFAUserId] = useState<string>('');
@@ -75,28 +73,15 @@ const Auth = () => {
     if (!user || authLoading || !twoFactorVerified || show2FA) return;
     if (userRole === null) return; // still hydrating role
 
-    const roleHome: Record<string, string> = {
-      admin: '/admin',
-      admin_assistant: '/admin-assistant',
-      owner: '/owner/dashboard',
-      driver: '/driver/dashboard',
-      legal_support: '/support/legal',
-      iot_support: '/support/iot',
-      vehicle_support: '/support/vehicle',
-    };
-
-    const onboardingRoute: Record<string, string> = {
-      driver: '/driver/onboarding',
-      owner: '/owner/onboarding',
-    };
-
     const finishRedirect = (target: string) => {
-      const isRoleHomeRoute = Object.values(roleHome).includes(from);
+      const isRoleHomeRoute = Object.values(ROLE_HOME).includes(from);
       navigate(isRoleHomeRoute && from !== '/' ? from : target, { replace: true });
     };
 
+    const onboardingTarget = ROLE_ONBOARDING[userRole as AppRole];
+
     // First-login redirect for driver/owner → role-specific onboarding
-    if (onboardingRoute[userRole]) {
+    if (onboardingTarget) {
       supabase
         .from('profiles')
         .select('onboarding_completed_at')
@@ -104,15 +89,15 @@ const Auth = () => {
         .maybeSingle()
         .then(({ data }) => {
           if (!data?.onboarding_completed_at) {
-            navigate(onboardingRoute[userRole], { replace: true });
+            navigate(onboardingTarget, { replace: true });
           } else {
-            finishRedirect(roleHome[userRole]);
+            finishRedirect(ROLE_HOME[userRole as AppRole]);
           }
         });
       return;
     }
 
-    finishRedirect(roleHome[userRole] ?? from ?? '/');
+    finishRedirect(ROLE_HOME[userRole as AppRole] ?? from ?? '/');
   }, [user, authLoading, userRole, navigate, from, twoFactorVerified, show2FA]);
 
   const loginForm = useForm<LoginFormData>({
@@ -155,7 +140,6 @@ const Auth = () => {
       } else if (error.message.includes('Email not confirmed') || error.message.includes('email_not_confirmed')) {
         setUnverifiedEmail(data.email);
         setShowEmailVerification(true);
-        setVerificationResent(false);
       } else {
         setError(error.message);
       }
@@ -183,61 +167,9 @@ const Auth = () => {
     setIsSubmitting(false);
   };
 
-  // Cooldown ticker for resend verification button
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const t = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(t);
-  }, [resendCooldown]);
-
-  const handleResendVerification = async () => {
-    if (!unverifiedEmail || resendCooldown > 0 || isResendingVerification) return;
-
-    setIsResendingVerification(true);
-    setResendError(null);
-
-    try {
-      const redirectUrl = `${window.location.origin}/auth`;
-
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: unverifiedEmail,
-        options: {
-          emailRedirectTo: redirectUrl,
-        },
-      });
-
-      if (error) {
-        const msg = /rate|too many|over_email/i.test(error.message)
-          ? 'You’re requesting emails too quickly. Please wait a minute before trying again.'
-          : error.message;
-        setResendError(msg);
-        toast.error('Could not resend verification email', { description: msg });
-        // Still enforce a short cooldown so users don't hammer the button.
-        setResendCooldown(30);
-      } else {
-        setVerificationResent(true);
-        setResendCooldown(60);
-        toast.success('Verification email sent!', {
-          description: 'Please check your inbox and spam folder.',
-        });
-      }
-    } catch (err: any) {
-      const msg = err?.message ?? 'Unexpected error resending verification email.';
-      setResendError(msg);
-      toast.error('Failed to resend verification email');
-      setResendCooldown(30);
-    }
-
-    setIsResendingVerification(false);
-  };
-
   const handleBackFromVerification = () => {
     setShowEmailVerification(false);
     setUnverifiedEmail('');
-    setVerificationResent(false);
-    setResendError(null);
-    setResendCooldown(0);
   };
 
   const handleSignup = async (data: SignupFormData) => {
@@ -340,64 +272,11 @@ const Auth = () => {
           </CardHeader>
 
           <CardContent className="space-y-4">
-            <Alert className="border-warning/50 bg-warning/10">
-              <Mail className="h-4 w-4 text-warning" />
-              <AlertDescription className="text-warning-foreground">
-                We sent a verification link to <strong>{unverifiedEmail}</strong>. 
-                Please check your inbox and click the link to verify your account.
-              </AlertDescription>
-            </Alert>
-
-            {verificationResent ? (
-              <Alert className="border-green-200 bg-green-50">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800">
-                  A new verification email has been sent! Check your inbox and spam folder.
-                </AlertDescription>
-              </Alert>
-            ) : null}
-
-            {resendError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{resendError}</AlertDescription>
-              </Alert>
-            )}
-
-            <div className="text-center space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Didn't receive the email? Check your spam folder or request a new one.
-              </p>
-              <Button
-                variant="outline"
-                onClick={handleResendVerification}
-                disabled={isResendingVerification || resendCooldown > 0}
-                className="gap-2"
-                aria-live="polite"
-              >
-                {isResendingVerification ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : resendCooldown > 0 ? (
-                  <>
-                    <Clock className="h-4 w-4" />
-                    Resend available in {resendCooldown}s
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4" />
-                    {verificationResent ? 'Resend Again' : 'Resend Verification Email'}
-                  </>
-                )}
-              </Button>
-              {resendCooldown > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  We limit how often verification emails can be sent to protect your inbox.
-                </p>
-              )}
-            </div>
+            <EmailVerification
+              email={unverifiedEmail}
+              showAsCard={false}
+              redirectTo={`${window.location.origin}/auth`}
+            />
 
             <div className="pt-4 border-t border-border">
               <div className="text-sm text-muted-foreground space-y-2">
@@ -411,6 +290,7 @@ const Auth = () => {
               </div>
             </div>
           </CardContent>
+
           
           <CardFooter>
             <Button 
@@ -474,6 +354,8 @@ const Auth = () => {
                     id="forgot-email"
                     type="email"
                     placeholder="you@example.com"
+                    autoComplete="email"
+                    autoFocus
                     {...forgotPasswordForm.register('email')}
                     disabled={isSubmitting}
                   />
@@ -553,6 +435,8 @@ const Auth = () => {
                     id="login-email"
                     type="email"
                     placeholder="you@example.com"
+                    autoComplete="email"
+                    autoFocus
                     {...loginForm.register('email')}
                     disabled={isSubmitting}
                   />
@@ -621,6 +505,8 @@ const Auth = () => {
                     id="signup-name"
                     type="text"
                     placeholder="John Doe"
+                    autoComplete="name"
+                    autoFocus
                     {...signupForm.register('fullName')}
                     disabled={isSubmitting}
                   />
@@ -635,6 +521,7 @@ const Auth = () => {
                     id="signup-email"
                     type="email"
                     placeholder="you@example.com"
+                    autoComplete="email"
                     {...signupForm.register('email')}
                     disabled={isSubmitting}
                   />

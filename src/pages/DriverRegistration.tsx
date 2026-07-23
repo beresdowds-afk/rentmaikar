@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,12 +17,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { classifyRegistrationError, type FriendlyRegistrationError } from "@/lib/registration-errors";
 import { RegistrationErrorAlert } from "@/components/registration/RegistrationErrorAlert";
 import { PasswordInput } from "@/components/ui/password-input";
+import { useAuth } from "@/contexts/AuthContext";
 
 const driverSchema = z.object({
   firstName: z.string().min(2, "First name is required").max(50, "First name too long"),
   lastName: z.string().min(2, "Last name is required").max(50, "Last name too long"),
   email: z.string().email("Invalid email address").max(255, "Email too long"),
-  password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password too long"),
+  // Password is optional when the visitor is already signed in.
+  password: z.string().max(72, "Password too long").optional().or(z.literal("")),
   phoneCountry: z.enum(["us", "ng"]),
   phoneNumber: z.string().min(10, "Phone number is required").max(15, "Phone number too long"),
   country: z.enum(["usa", "nigeria"]),
@@ -73,16 +75,21 @@ const ridesharePlatforms = [
 
 const DriverRegistration = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState<FriendlyRegistrationError | null>(null);
   const [lastFormData, setLastFormData] = useState<DriverFormData | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
-  
+  // When the user is already authenticated, hide identity fields (email +
+  // password) and reuse the session so we don't create a duplicate account.
+  const alreadySignedIn = !!user;
+
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    
     formState: { errors, isSubmitting },
   } = useForm<DriverFormData>({
     resolver: zodResolver(driverSchema),
@@ -107,6 +114,27 @@ const DriverRegistration = () => {
       agreeFees: false,
     },
   });
+
+  // Prefill from an existing session so returning drivers don't retype
+  // their email/name/phone.
+  useEffect(() => {
+    if (!user) return;
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const fullName = String(meta.full_name ?? '').trim();
+    const [first, ...rest] = fullName.split(/\s+/);
+    if (first) setValue('firstName', first);
+    if (rest.length) setValue('lastName', rest.join(' '));
+    if (user.email) setValue('email', user.email);
+    // Best-effort phone prefill from profiles.
+    (async () => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('phone')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (profile?.phone) setValue('phoneNumber', profile.phone.replace(/^\+?\d{1,3}/, ''));
+    })();
+  }, [user, setValue]);
 
   const selectedCountry = watch("country");
   const cities = selectedCountry === "usa" ? usaCities : nigeriaCities;
@@ -135,6 +163,9 @@ const DriverRegistration = () => {
       let userId = sessionAfter.session?.user?.id ?? null;
 
       if (!userId) {
+        if (!data.password || data.password.length < 8) {
+          throw new Error("Please choose a password with at least 8 characters to create your account.");
+        }
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: data.email,
           password: data.password,
@@ -258,6 +289,8 @@ const DriverRegistration = () => {
                     <Input
                       id="firstName"
                       placeholder="John"
+                      autoComplete="given-name"
+                      autoFocus
                       {...register("firstName")}
                     />
                     {errors.firstName && (
@@ -269,6 +302,7 @@ const DriverRegistration = () => {
                     <Input
                       id="lastName"
                       placeholder="Doe"
+                      autoComplete="family-name"
                       {...register("lastName")}
                     />
                     {errors.lastName && (
@@ -277,38 +311,51 @@ const DriverRegistration = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="john@example.com"
-                      className="pl-10"
-                      {...register("email")}
-                    />
+                {alreadySignedIn ? (
+                  <div className="rounded-lg border border-border bg-muted/50 p-4 text-sm">
+                    <p className="font-medium text-foreground">Signed in as {user?.email}</p>
+                    <p className="text-muted-foreground mt-1">
+                      We'll link this application to your existing account, so you don't need
+                      to re-enter your email or password.
+                    </p>
                   </div>
-                  {errors.email && (
-                    <p className="text-destructive text-sm">{errors.email.message}</p>
-                  )}
-                </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="john@example.com"
+                          className="pl-10"
+                          autoComplete="email"
+                          {...register("email")}
+                        />
+                      </div>
+                      {errors.email && (
+                        <p className="text-destructive text-sm">{errors.email.message}</p>
+                      )}
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <PasswordInput
-                    id="password"
-                    placeholder="At least 8 characters"
-                    autoComplete="new-password"
-                    {...register("password")}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    You'll use this password to sign in to your driver dashboard after approval.
-                  </p>
-                  {errors.password && (
-                    <p className="text-destructive text-sm">{errors.password.message}</p>
-                  )}
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password</Label>
+                      <PasswordInput
+                        id="password"
+                        placeholder="At least 8 characters"
+                        autoComplete="new-password"
+                        {...register("password")}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        You'll use this password to sign in to your driver dashboard after approval.
+                      </p>
+                      {errors.password && (
+                        <p className="text-destructive text-sm">{errors.password.message}</p>
+                      )}
+                    </div>
+                  </>
+                )}
 
 
                 <div className="space-y-2">
@@ -332,6 +379,7 @@ const DriverRegistration = () => {
                         type="tel"
                         placeholder="(202) 555-0123"
                         className="pl-10"
+                        autoComplete="tel-national"
                         {...register("phoneNumber")}
                       />
                     </div>
