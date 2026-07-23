@@ -95,6 +95,7 @@ export function PortalGate({
   children,
 }: Props) {
   const { data: progress, isLoading } = useRegistrationProgress();
+  const { data: machine } = useOnboardingMachine();
 
   const steps = useMemo(() => buildSteps(progress), [progress]);
   const doneCount = steps.filter((s) => s.done).length;
