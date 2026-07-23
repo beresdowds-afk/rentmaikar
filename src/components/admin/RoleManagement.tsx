@@ -15,7 +15,6 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminAssistantManagement } from './AdminAssistantManagement';
-import { PasswordInput } from '@/components/ui/password-input';
 import { SplitPane } from '@/components/ui/split-pane';
 
 type AppRole = 'admin' | 'admin_assistant' | 'owner' | 'driver' | 'legal_support' | 'iot_support' | 'vehicle_support';
@@ -92,7 +91,6 @@ export function RoleManagement() {
   
   // New user form state
   const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserFullName, setNewUserFullName] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
   const [newUserRole, setNewUserRole] = useState<AppRole>('admin_assistant');
@@ -293,7 +291,6 @@ export function RoleManagement() {
 
       // Reset input fields but keep the dialog open to display result.
       setNewUserEmail('');
-      setNewUserPassword('');
       setNewUserFullName('');
       setNewUserPhone('');
       setNewUserRole('admin_assistant');

@@ -153,29 +153,24 @@ serve(async (req) => {
       Deno.env.get("SITE_URL") ||
       "https://rentmaikar.com";
 
-    const { data: linkData } = await admin.auth.admin.generateLink({
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: "recovery",
       email,
       options: { redirectTo: `${siteUrl}/reset-password` },
     });
+    if (linkErr) console.error("generateLink failed:", linkErr);
     const resetLink = linkData?.properties?.action_link || `${siteUrl}/auth`;
+
+    // Single branded email via our template — do NOT also call
+    // resetPasswordForEmail (that would trigger the auth-email-hook and
+    // deliver a second, redundant reset email).
+    let emailSent = false;
+    let emailError: string | null = null;
 
     let emailSent = false;
     let emailError: string | null = null;
     try {
-      const { error: resetErr } = await admin.auth.resetPasswordForEmail(
-        email,
-        { redirectTo: `${siteUrl}/reset-password` },
-      );
-      if (resetErr) throw resetErr;
-      emailSent = true;
-    } catch (e) {
-      emailError = (e as Error)?.message || "reset email failed";
-      console.error("reset email failed:", e);
-    }
-
-    try {
-      await admin.functions.invoke("send-outbound-email", {
+      const { error: sendErr } = await admin.functions.invoke("send-outbound-email", {
         body: {
           action: "send",
           to: email,
@@ -185,11 +180,14 @@ serve(async (req) => {
           data: {
             name: full_name,
             resetLink,
-            note: `An administrator created your Rentmaikar ${role.replace("_", " ")} account. Please sign in as soon as possible and set your password using the "Forgot password" flow.`,
+            note: `An administrator created your Rentmaikar ${role.replace("_", " ")} account. Please sign in as soon as possible and set your password using this link.`,
           },
         },
       });
+      if (sendErr) throw sendErr;
+      emailSent = true;
     } catch (e) {
+      emailError = (e as Error)?.message || "welcome email failed";
       console.error("welcome email failed:", e);
     }
 
