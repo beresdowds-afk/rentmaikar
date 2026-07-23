@@ -1,188 +1,142 @@
 import {
   VehicleEvent,
   VehicleState,
-  AnalyticsEvent
+  AnalyticsEvent,
 } from "./resident-ochestrator/types";
+import pluginManager from "@/plugins/pluginManager";
+import { supabase } from "@/integrations/supabase/client";
+
+type Listener = (state: VehicleState, events: AnalyticsEvent[]) => void;
 
 class ResidentOrchestrator {
+  private vehicleStates: Map<string, VehicleState> = new Map();
+  private recentAnalytics: AnalyticsEvent[] = [];
+  private listeners: Set<Listener> = new Set();
 
-  private vehicleStates:
-    Map<string, VehicleState> = new Map();
+  subscribe(listener: Listener) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
 
+  getAllStates(): VehicleState[] {
+    return Array.from(this.vehicleStates.values());
+  }
 
-  processEvent(event: VehicleEvent) {
+  getRecentAnalytics(limit = 50): AnalyticsEvent[] {
+    return this.recentAnalytics.slice(-limit).reverse();
+  }
 
+  async processEvent(event: VehicleEvent) {
     const state =
-      this.vehicleStates.get(event.vehicleId)
-      ||
-      {
-        vehicleId:event.vehicleId,
-        lastUpdate:event.timestamp
+      this.vehicleStates.get(event.vehicleId) || {
+        vehicleId: event.vehicleId,
+        lastUpdate: event.timestamp,
       };
 
-
-    if(event.source==="traccar"){
-      this.processTraccar(state,event);
-    }
-
-
-    if(event.source==="mqtt"){
-      this.processMQTT(state,event);
-    }
-
+    if (event.source === "traccar") this.processTraccar(state, event);
+    if (event.source === "mqtt") this.processMQTT(state, event);
 
     state.lastUpdate = event.timestamp;
+    this.vehicleStates.set(event.vehicleId, state);
 
+    const analytics = this.runAnalytics(state, event);
+    this.listeners.forEach((l) => {
+      try {
+        l(state, analytics);
+      } catch (e) {
+        console.warn("orchestrator listener error", e);
+      }
+    });
 
-    this.vehicleStates.set(
-      event.vehicleId,
-      state
-    );
-
-
-    this.runAnalytics(state);
+    // Fan out to plugins (non-blocking)
+    pluginManager
+      .process({
+        type: event.eventType,
+        vehicleId: event.vehicleId,
+        source: event.source,
+        timestamp: event.timestamp,
+        payload: event.payload,
+      })
+      .catch((e) => console.warn("plugin dispatch failed", e));
 
     return state;
   }
 
-
-
-  private processTraccar(
-    state:VehicleState,
-    event:VehicleEvent
-  ){
-
-    const data=event.payload;
-
-
-    if(data.latitude)
-      state.latitude=data.latitude;
-
-
-    if(data.longitude)
-      state.longitude=data.longitude;
-
-
-    if(data.speed)
-      state.speed=data.speed;
-
-
-    if(data.ignition!==undefined)
-      state.ignition=data.ignition;
-
+  private processTraccar(state: VehicleState, event: VehicleEvent) {
+    const data = event.payload as Record<string, unknown>;
+    if (typeof data.latitude === "number") state.latitude = data.latitude;
+    if (typeof data.longitude === "number") state.longitude = data.longitude;
+    if (typeof data.speed === "number") state.speed = data.speed;
+    if (typeof data.ignition === "boolean") state.ignition = data.ignition;
   }
 
-
-
-  private processMQTT(
-    state:VehicleState,
-    event:VehicleEvent
-  ){
-
-    const data=event.payload;
-
-
-    if(data.battery)
-      state.battery=data.battery;
-
-
-    if(data.fuel)
-      state.fuel=data.fuel;
-
-
-    if(data.temperature)
-      state.temperature=data.temperature;
-
-
+  private processMQTT(state: VehicleState, event: VehicleEvent) {
+    const data = event.payload as Record<string, unknown>;
+    if (typeof data.battery === "number") state.battery = data.battery;
+    if (typeof data.fuel === "number") state.fuel = data.fuel;
+    if (typeof data.temperature === "number") state.temperature = data.temperature;
   }
 
+  private runAnalytics(state: VehicleState, event: VehicleEvent): AnalyticsEvent[] {
+    const events: AnalyticsEvent[] = [];
 
-
-  private runAnalytics(
-    state:VehicleState
-  ){
-
-    const events:AnalyticsEvent[]=[];
-
-
-    if(
-      state.speed &&
-      state.speed > 120
-    ){
-
+    if (state.speed && state.speed > 120) {
       events.push({
-        vehicleId:state.vehicleId,
-        category:"driver_behavior",
-        data:{
-          type:"speed_violation",
-          speed:state.speed
-        }
+        vehicleId: state.vehicleId,
+        category: "driver_behavior",
+        data: { type: "speed_violation", speed: state.speed, severity: "warning" },
       });
-
     }
 
-
-    if(
-      state.temperature &&
-      state.temperature > 100
-    ){
-
+    if (state.temperature && state.temperature > 100) {
       events.push({
-        vehicleId:state.vehicleId,
-        category:"maintenance",
-        data:{
-          type:"engine_temperature"
-        }
+        vehicleId: state.vehicleId,
+        category: "maintenance",
+        data: { type: "engine_temperature", temperature: state.temperature, severity: "critical" },
       });
-
     }
 
+    if (typeof state.battery === "number" && state.battery < 15) {
+      events.push({
+        vehicleId: state.vehicleId,
+        category: "maintenance",
+        data: { type: "low_battery", battery: state.battery, severity: "warning" },
+      });
+    }
 
-    this.publishAnalytics(events);
-
-  }
-
-
-
-  private publishAnalytics(
-    events:AnalyticsEvent[]
-  ){
-
-    events.forEach(event=>{
-
-      console.log(
-        "AI ANALYTICS EVENT",
-        event
+    if (events.length) {
+      this.recentAnalytics.push(...events);
+      if (this.recentAnalytics.length > 200) {
+        this.recentAnalytics = this.recentAnalytics.slice(-200);
+      }
+      this.persistAnalytics(events, event).catch((e) =>
+        console.warn("persist analytics failed", e),
       );
+    }
 
-      /*
-       Future connection:
-
-       - AI Engine
-       - AWS Athena
-       - S3 Data Lake
-       - Notification Service
-
-      */
-
-    });
-
+    return events;
   }
 
-
-
-  getVehicleState(
-    vehicleId:string
-  ){
-
-    return this.vehicleStates.get(
-      vehicleId
-    );
-
+  private async persistAnalytics(events: AnalyticsEvent[], src: VehicleEvent) {
+    try {
+      const rows = events.map((e) => ({
+        vehicle_id: e.vehicleId,
+        category: e.category,
+        event_type: (e.data as Record<string, unknown>).type as string ?? "unknown",
+        severity: ((e.data as Record<string, unknown>).severity as string) ?? "info",
+        source: src.source,
+        payload: e.data,
+      }));
+      await supabase.from("vehicle_analytics_events" as never).insert(rows as never);
+    } catch (e) {
+      console.warn("orchestrator: supabase insert skipped", e);
+    }
   }
 
-
+  getVehicleState(vehicleId: string) {
+    return this.vehicleStates.get(vehicleId);
+  }
 }
 
-
-export default new ResidentOrchestrator();
+const orchestrator = new ResidentOrchestrator();
+export default orchestrator;
