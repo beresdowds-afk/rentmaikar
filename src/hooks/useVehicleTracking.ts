@@ -39,12 +39,15 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       if (vehicleId) {
         mqttTracker.subscribeToVehicle(vehicleId, (location) => {
           setLocations(prev => new Map(prev).set(location.vehicleId, location));
+          receiveMQTTMessage(`rentmaikar/vehicle/${location.vehicleId}/telemetry`, location as unknown as Record<string, unknown>);
         });
       } else {
         mqttTracker.subscribeToAllVehicles((location) => {
           setLocations(prev => new Map(prev).set(location.vehicleId, location));
+          receiveMQTTMessage(`rentmaikar/vehicle/${location.vehicleId}/telemetry`, location as unknown as Record<string, unknown>);
         });
       }
+
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Connection failed'));
     } finally {
