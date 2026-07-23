@@ -12,6 +12,8 @@ class ResidentOrchestrator {
   private vehicleStates: Map<string, VehicleState> = new Map();
   private recentAnalytics: AnalyticsEvent[] = [];
   private listeners: Set<Listener> = new Set();
+  private lastTraccarEventAt: number | null = null;
+  private lastMqttEventAt: number | null = null;
 
   subscribe(listener: Listener) {
     this.listeners.add(listener);
@@ -29,6 +31,13 @@ class ResidentOrchestrator {
     return this.recentAnalytics.slice(-limit).reverse();
   }
 
+  getFeedHealth() {
+    return {
+      lastTraccarEventAt: this.lastTraccarEventAt,
+      lastMqttEventAt: this.lastMqttEventAt,
+    };
+  }
+
   async processEvent(event: VehicleEvent) {
     const state =
       this.vehicleStates.get(event.vehicleId) || {
@@ -36,8 +45,14 @@ class ResidentOrchestrator {
         lastUpdate: event.timestamp,
       };
 
-    if (event.source === "traccar") this.processTraccar(state, event);
-    if (event.source === "mqtt") this.processMQTT(state, event);
+    if (event.source === "traccar") {
+      this.processTraccar(state, event);
+      this.lastTraccarEventAt = Date.now();
+    }
+    if (event.source === "mqtt") {
+      this.processMQTT(state, event);
+      this.lastMqttEventAt = Date.now();
+    }
 
     state.lastUpdate = event.timestamp;
     this.vehicleStates.set(event.vehicleId, state);
