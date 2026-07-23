@@ -60,14 +60,14 @@ import { useOnboardingMachine } from './useOnboardingMachine';
 
 describe('useOnboardingMachine', () => {
   beforeEach(() => {
-    capturedHandlers = {};
-    rpcMock.mockReset();
-    removeChannelMock.mockReset();
-    authStateHandlers.length = 0;
+    h.capturedHandlers = {};
+    h.rpcMock.mockReset();
+    h.removeChannelMock.mockReset();
+    h.authStateHandlers.length = 0;
   });
 
   it('recomputes next_href when a realtime profile change fires', async () => {
-    rpcMock
+    h.rpcMock
       .mockResolvedValueOnce({
         data: { next_step: 'documents', next_href: '/driver/onboarding?step=documents', percent: 40 },
         error: null,
@@ -80,35 +80,35 @@ describe('useOnboardingMachine', () => {
     const { result } = renderHook(() => useOnboardingMachine(), { wrapper: wrapper() });
 
     await waitFor(() => expect(result.current.data?.next_step).toBe('documents'));
-    expect(rpcMock).toHaveBeenCalledTimes(1);
+    expect(h.rpcMock).toHaveBeenCalledTimes(1);
 
     // Simulate a realtime UPDATE on public.profiles for this user.
     await act(async () => {
-      capturedHandlers['profiles']?.({ eventType: 'UPDATE' });
+      h.capturedHandlers['profiles']?.({ eventType: 'UPDATE' });
     });
 
     await waitFor(() => expect(result.current.data?.next_step).toBe('verification'));
-    expect(rpcMock).toHaveBeenCalledTimes(2);
+    expect(h.rpcMock).toHaveBeenCalledTimes(2);
   });
 
   it('refetches when the tab becomes visible again', async () => {
-    rpcMock.mockResolvedValue({ data: { next_step: 'documents', next_href: '/x' }, error: null });
+    h.rpcMock.mockResolvedValue({ data: { next_step: 'documents', next_href: '/x' }, error: null });
     renderHook(() => useOnboardingMachine(), { wrapper: wrapper() });
-    await waitFor(() => expect(rpcMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(h.rpcMock).toHaveBeenCalledTimes(1));
 
     Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
     await act(async () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
-    await waitFor(() => expect(rpcMock.mock.calls.length).toBeGreaterThanOrEqual(2));
+    await waitFor(() => expect(h.rpcMock.mock.calls.length).toBeGreaterThanOrEqual(2));
   });
 
   it('tears down the realtime channel on unmount', async () => {
-    rpcMock.mockResolvedValue({ data: {}, error: null });
+    h.rpcMock.mockResolvedValue({ data: {}, error: null });
     const { unmount } = renderHook(() => useOnboardingMachine(), { wrapper: wrapper() });
-    await waitFor(() => expect(rpcMock).toHaveBeenCalled());
+    await waitFor(() => expect(h.rpcMock).toHaveBeenCalled());
     unmount();
-    expect(removeChannelMock).toHaveBeenCalledTimes(1);
+    expect(h.removeChannelMock).toHaveBeenCalledTimes(1);
   });
 });
