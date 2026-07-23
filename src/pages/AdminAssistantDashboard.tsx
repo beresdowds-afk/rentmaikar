@@ -574,8 +574,20 @@ const AdminAssistantDashboard = () => {
             }}
           />
 
+          {!activeTabAllowed && (
+            <Card className="p-8 text-center border-dashed">
+              <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                <Lock className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-1">You don't have access to this section</h3>
+              <p className="text-sm text-muted-foreground">
+                Ask an administrator to grant the required permission from Role Management &rarr; Admin Assistants.
+              </p>
+            </Card>
+          )}
+
           {/* Support Portal */}
-          {portalView === 'support' && (
+          {activeTabAllowed && portalView === 'support' && (
             <div className="space-y-6">
               {activeTab === 'task-portal' && <AdminTaskPortal />}
               {activeTab === 'inbox' && <AdminUnifiedInbox />}
@@ -591,7 +603,7 @@ const AdminAssistantDashboard = () => {
           )}
 
           {/* CRM Portal */}
-          {portalView === 'crm' && (
+          {activeTabAllowed && portalView === 'crm' && (
             <div className="space-y-6">
               {activeTab === 'applications' && <ApplicationManagement />}
               {activeTab === 'attestation-review' && <NegativeAttestationReviewPanel />}
