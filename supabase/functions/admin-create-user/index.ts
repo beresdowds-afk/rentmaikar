@@ -167,8 +167,10 @@ serve(async (req) => {
     let emailSent = false;
     let emailError: string | null = null;
 
+    let emailSent = false;
+    let emailError: string | null = null;
     try {
-      await admin.functions.invoke("send-outbound-email", {
+      const { error: sendErr } = await admin.functions.invoke("send-outbound-email", {
         body: {
           action: "send",
           to: email,
@@ -178,11 +180,14 @@ serve(async (req) => {
           data: {
             name: full_name,
             resetLink,
-            note: `An administrator created your Rentmaikar ${role.replace("_", " ")} account. Please sign in as soon as possible and set your password using the "Forgot password" flow.`,
+            note: `An administrator created your Rentmaikar ${role.replace("_", " ")} account. Please sign in as soon as possible and set your password using this link.`,
           },
         },
       });
+      if (sendErr) throw sendErr;
+      emailSent = true;
     } catch (e) {
+      emailError = (e as Error)?.message || "welcome email failed";
       console.error("welcome email failed:", e);
     }
 
