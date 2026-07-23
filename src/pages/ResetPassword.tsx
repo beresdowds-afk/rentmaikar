@@ -27,6 +27,7 @@ const ResetPassword = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [redirectSeconds, setRedirectSeconds] = useState(5);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isValidSession, setIsValidSession] = useState<boolean | null>(null);
@@ -94,12 +95,17 @@ const ResetPassword = () => {
       } else {
         setIsSuccess(true);
         toast.success('Password updated successfully!');
-        
-        // Sign out and redirect to login after 3 seconds
+
+        // 5-second visible countdown, then sign out and route to login.
+        setRedirectSeconds(5);
+        const tick = setInterval(() => {
+          setRedirectSeconds((s) => (s > 0 ? s - 1 : 0));
+        }, 1000);
         setTimeout(async () => {
+          clearInterval(tick);
           await supabase.auth.signOut();
           navigate('/auth', { replace: true });
-        }, 3000);
+        }, 5000);
       }
     } catch (err: any) {
       setError(err.message);
@@ -181,18 +187,29 @@ const ResetPassword = () => {
               Your password has been successfully reset.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Alert className="border-green-200 bg-green-50">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
-                You will be redirected to the login page in a few seconds...
+                Redirecting you to the login page in <strong>{redirectSeconds}s</strong>...
               </AlertDescription>
             </Alert>
+            <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1 text-muted-foreground">
+              <p className="font-medium text-foreground">What happens next:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>You'll be signed out from every device (including this one) for security.</li>
+                <li>Log in with your email and the new password you just set.</li>
+                <li>If you use two-factor authentication, you'll still need your 2FA code.</li>
+              </ol>
+            </div>
           </CardContent>
           <CardFooter>
-            <Button 
-              className="w-full" 
-              onClick={() => navigate('/auth')}
+            <Button
+              className="w-full"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate('/auth', { replace: true });
+              }}
             >
               Go to Login Now
             </Button>
