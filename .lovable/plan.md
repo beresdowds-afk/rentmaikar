@@ -1,82 +1,48 @@
+## What's already in place
 
-# Staged Registration Flow (Drivers & Owners)
+The recently uploaded GitHub files fall into two groups:
 
-Restructure onboarding into 5 explicit stages, with a **view-only dashboard** unlocked after step 1 and full access granted only after admin approval.
+**Docs (rules — no code to run):** `architecture/*.md`, `docs/architecture/*.md` — Hologram/Persona separation, verification rules, orchestrator design.
 
-## Stages
+**Code (already compiles and boots):** `src/services/residentOrchestrator.ts`, `traccarBridge.ts`, `mqttBridge.ts`, `resident-ochestrator/types.ts`, `src/plugins/{pluginManager,pluginTypes}.ts`, `evBattery`, `obd`, and `index.ts`. These are imported by `src/main.tsx` and typecheck clean.
 
-```text
-1. AUTH              → email + password signup, email verification
-2. ACCOUNT OPENED    → view-only dashboard (checklist + preview + profile/notifications)
-3. DOCUMENTS         → role-specific uploads (+ referees for drivers, + proxy billing when driver adds one)
-4. VERIFICATION      → Persona ID check + document review; referees attest; proxy signs consent
-5. ADMIN APPROVAL    → admin final-approves → full dashboard unlocked
-```
+What's missing is that nothing in the running app actually *feeds* the orchestrator or *shows* its output, and the plugin manager has no admin surface.
 
-Existing approved users are **grandfathered** — flow applies only to new signups (detected via `profiles.registration_stage IS NULL`).
+## Plan
 
-## Data model (one migration)
+### 1. Feed real telemetry into the Resident Orchestrator
+- Call `receiveTraccarEvent(...)` from `useVehicleTracking` whenever a Traccar position/event arrives.
+- Call `receiveMQTTMessage(topic, payload)` from the MQTT client path in `src/lib/emqx-config.ts` / vehicle telemetry subscriber.
+- Persist orchestrator `AnalyticsEvent`s to a new `vehicle_analytics_events` table (severity, type, vehicle_id, payload) so alerts survive reloads.
 
-Add to `profiles`:
-- `registration_stage` enum: `auth` | `account_opened` | `documents_submitted` | `verification_pending` | `approved`
-- `stage_updated_at timestamptz`
-- `access_level` enum: `view_only` | `full` (default `view_only`; grandfathered rows backfilled to `full`)
+### 2. Plugin lifecycle wiring
+- Route every orchestrator event through `pluginManager.process(event)` so `evBattery`/`obd`/future plugins actually see traffic.
+- Normalize plugin event shape to `{ type, payload, vehicleId, source, timestamp }` and update the two example plugins to match.
 
-Add RPCs (SECURITY DEFINER, search_path=public):
-- `advance_registration_stage(target_stage)` — validates transition, logs to `application_audit_log`
-- `grant_full_access(user_id)` — admin-only; sets `access_level='full'` + stage `approved`
-- `get_my_registration_progress()` — returns stage, missing items, next action
+### 3. Admin surface for orchestrator + plugins
+- New page `src/pages/admin/OrchestratorPage.tsx`: live vehicle state table (from `orchestrator.getVehicleState`), recent analytics events, plugin list with enable/disable toggles calling `pluginManager.activate/deactivate`.
+- Add nav entry under Fleet Connectivity → "Resident Orchestrator" (admin only).
 
-Trigger: when Persona verification succeeds AND required docs present AND (drivers) referees attested → auto-advance to `verification_pending` and create/refresh an admin review task.
+### 4. Enforce Hologram/Persona separation rules from the docs
+- Audit for any code path where Persona modules touch Hologram tables/functions or vice versa; add an ESLint boundary rule (`no-restricted-imports`) that forbids `src/integrations/persona/**` from importing `src/integrations/hologram/**` and the reverse.
+- Add a short README at `src/integrations/persona/README.md` and `src/integrations/hologram/README.md` linking to the rule docs.
 
-## Backend gates
+### 5. Verification-state independence (from IdentityVerificationArchitecture.md)
+- Ensure `profiles` exposes independent booleans: `email_verified`, `phone_verified`, `persona_verified`, `referee_verified`, `payment_proxy_verified`. Add any missing columns via one migration and backfill from existing state.
+- No auto-completion between them (add a DB trigger that blocks writes flipping `persona_verified` from an email/phone code path).
 
-- Extend `useDashboardAuthGate` → add `requireFullAccess` mode; view-only users see stage checklist instead of dashboard content.
-- RLS: mutating policies on `rentals`, `price_negotiations`, `iot_device_orders`, `rent_to_own_listings` add `access_level = 'full'` check via `has_full_access(auth.uid())` SECURITY DEFINER helper.
-- Registration pages stop navigating straight to dashboards; they navigate to `/driver/dashboard` or `/owner/dashboard` which now renders in view-only mode until stage=approved.
+### 6. Database
+One migration adds:
+- `vehicle_analytics_events` (vehicle_id, category, event_type, payload jsonb, severity, created_at) + GRANTs + RLS (admins read all; owners read their vehicles).
+- Any missing verification columns on `profiles`.
 
-## Frontend
+### 7. Verification
+- `tsgo --noEmit`, existing vitest suite, and a new unit test that feeds a synthetic Traccar position through the orchestrator and asserts `vehicle_analytics_events` was inserted and plugins fired.
 
-New shared component `RegistrationProgressPanel` (checklist with 5 stages, current step highlighted, CTAs for next action).
+## Technical notes
+- No changes to auto-generated files (`src/integrations/supabase/{client,types}.ts`, `.env`, `supabase/config.toml`).
+- Orchestrator remains in-memory for live state; only analytics events persist.
+- No rewrites of Traccar or Hologram edge functions — this is purely additive per `resident-ochestrator.md` rule #1 ("Preserve Existing Systems").
+- Scope explicitly excludes rebuilding the full Hologram eSIM marketplace and Persona template refactors described in the docs — those are separate multi-turn efforts and already partially exist. Say the word and I'll plan them next.
 
-`DriverDashboard` / `OwnerDashboard`:
-- If `access_level='view_only'`: render `RegistrationProgressPanel` + preview grid (feature tiles with `Lock` badge + "Unlocks after approval") + profile editor + notification prefs. Hide all data queries.
-- If `full`: render as today.
-
-Documents step (`DriverOnboarding`, `OwnerOnboarding`) becomes stage 3 — on submit calls `advance_registration_stage('documents_submitted')` and launches Persona.
-
-Referee verification (drivers): unchanged flow, but its completion is now a prerequisite for stage advancement. Admin review dashboard shows a blocker if referees pending.
-
-Proxy billing: unchanged; remains a runtime action inside the driver dashboard (post-approval), since a proxy is optional and can be added later.
-
-Admin approval: `ApplicationManagement` gains a "Grant full dashboard access" action which calls `grant_full_access` — only enabled when Persona verified + docs complete + referees attested.
-
-## Grandfathering
-
-Migration backfills existing rows:
-```sql
-UPDATE profiles SET access_level='full', registration_stage='approved'
-WHERE user_id IN (SELECT user_id FROM user_roles WHERE role IN ('driver','owner'))
-  AND onboarding_completed_at IS NOT NULL;
-```
-
-## Files touched (approximate)
-
-- `supabase/migrations/<new>.sql` — enums, columns, RPCs, trigger, backfill, RLS helper
-- `src/hooks/useRegistrationProgress.ts` (new)
-- `src/components/registration/RegistrationProgressPanel.tsx` (new)
-- `src/components/registration/ViewOnlyDashboardShell.tsx` (new)
-- `src/pages/DriverDashboard.tsx`, `src/pages/OwnerDashboard.tsx` — branch on access_level
-- `src/pages/DriverOnboarding.tsx`, `src/pages/OwnerOnboarding.tsx` — call advance_stage, launch Persona
-- `src/pages/DriverRegistration.tsx`, `src/pages/OwnerRegistration.tsx` — redirect to view-only dashboard after signup
-- `src/components/admin/ApplicationManagement.tsx` — "Grant full access" action + gating badges
-- `src/components/verification/RefereeVerificationPanel.tsx` — surface completion in progress panel
-- `src/hooks/useOnboardingGate.ts` — replaced/extended by stage gate
-
-No changes to existing referee flow, proxy billing flow, or Persona integration beyond wiring their events into stage advancement.
-
-## Out of scope
-
-- Redesigning Persona templates
-- Changing payment/billing logic
-- Modifying grandfathered users' access
+Approve and I'll implement steps 1–7 in one pass.

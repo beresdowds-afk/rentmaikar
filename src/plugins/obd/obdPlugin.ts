@@ -1,52 +1,21 @@
-import {
-RentMaikarPlugin
-}
-from "../pluginTypes";
+import { RentMaikarPlugin } from "../pluginTypes";
 
+export const OBDPlugin: RentMaikarPlugin = {
+  id: "obd",
+  name: "OBD-II Vehicle Diagnostics",
+  enabled: false,
 
-export const OBDPlugin:
-RentMaikarPlugin={
+  async initialize() {
+    console.log("[plugin:obd] enabled");
+  },
 
+  async deactivate() {
+    console.log("[plugin:obd] disabled");
+  },
 
-id:"obd",
-
-name:"OBD-II Vehicle Diagnostics",
-
-enabled:false,
-
-
-async initialize(){
-
-console.log(
-"OBD-II plugin activated"
-);
-
-},
-
-
-async deactivate(){
-
-console.log(
-"OBD-II plugin disabled"
-);
-
-},
-
-
-async processEvent(event){
-
-if(
-event.type==="obd"
-){
-
-console.log(
-"OBD DATA",
-event.payload
-);
-
-}
-
-
-}
-
+  async processEvent(event) {
+    if (event.type === "obd") {
+      console.log("[plugin:obd] diagnostics", event.payload);
+    }
+  },
 };
