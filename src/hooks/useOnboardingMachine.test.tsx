@@ -11,31 +11,32 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 // ---- Mocks --------------------------------------------------------------
-const rpcMock = vi.fn();
-const removeChannelMock = vi.fn();
-let capturedHandlers: Record<string, (payload: unknown) => void> = {};
-
-function makeChannel() {
-  const chain: any = {
-    on: vi.fn((_event: string, cfg: { table: string }, cb: (p: unknown) => void) => {
-      capturedHandlers[cfg.table] = cb;
-      return chain;
-    }),
-    subscribe: vi.fn(() => chain),
+const h = vi.hoisted(() => {
+  const rpcMock = vi.fn();
+  const removeChannelMock = vi.fn();
+  const capturedHandlers: Record<string, (payload: unknown) => void> = {};
+  const authStateHandlers: Array<() => void> = [];
+  const makeChannel = () => {
+    const chain: any = {
+      on: vi.fn((_e: string, cfg: { table: string }, cb: (p: unknown) => void) => {
+        capturedHandlers[cfg.table] = cb;
+        return chain;
+      }),
+      subscribe: vi.fn(() => chain),
+    };
+    return chain;
   };
-  return chain;
-}
-
-const authStateHandlers: Array<() => void> = [];
+  return { rpcMock, removeChannelMock, capturedHandlers, authStateHandlers, makeChannel };
+});
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
-    rpc: (...args: unknown[]) => rpcMock(...args),
-    channel: vi.fn(() => makeChannel()),
-    removeChannel: removeChannelMock,
+    rpc: (...args: unknown[]) => h.rpcMock(...args),
+    channel: vi.fn(() => h.makeChannel()),
+    removeChannel: h.removeChannelMock,
     auth: {
       onAuthStateChange: (cb: () => void) => {
-        authStateHandlers.push(cb);
+        h.authStateHandlers.push(cb);
         return { data: { subscription: { unsubscribe: vi.fn() } } };
       },
     },
