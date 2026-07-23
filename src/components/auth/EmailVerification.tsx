@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Mail, CheckCircle, Loader2, RefreshCw, AlertTriangle, Clock } from 'lucide-react';
+import { Mail, CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { ResendButton } from '@/components/auth/ResendButton';
 
 interface EmailVerificationProps {
   /** Override the email to verify. Defaults to the signed-in user's email. */
@@ -15,61 +16,52 @@ interface EmailVerificationProps {
   showAsCard?: boolean;
   /** Redirect target for the verification link. Defaults to origin. */
   redirectTo?: string;
+  /** When true, silently auto-confirm if the current session is already verified. */
+  autoSkipIfVerified?: boolean;
 }
 
 /**
- * Shared email-verification UI. Reused by dashboards (needing profile.email
- * confirmation) and the sign-in flow (blocked on unverified email).
- * Keeping a single implementation avoids drift between call sites.
+ * Shared email-verification UI. Auto-skips when the current user's email is
+ * already confirmed (either via Supabase session or profile flag) unless the
+ * caller opts out. Cooldown is delegated to `ResendButton`.
  */
 export const EmailVerification = ({
   email: emailOverride,
   onVerified,
   showAsCard = true,
   redirectTo,
+  autoSkipIfVerified = true,
 }: EmailVerificationProps) => {
   const { user } = useAuth();
   const email = emailOverride ?? user?.email ?? '';
   const [isLoading, setIsLoading] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
-  const [countdown, setCountdown] = useState(0);
 
   useEffect(() => {
-    if (!emailOverride && user) setIsEmailVerified(user.email_confirmed_at !== null);
-  }, [user, emailOverride]);
+    if (emailOverride) return;
+    let cancelled = false;
+    const check = async () => {
+      const { data } = await supabase.auth.getUser();
+      const verified = !!data.user?.email_confirmed_at;
+      if (cancelled) return;
+      setIsEmailVerified(verified);
+      if (verified && autoSkipIfVerified) onVerified?.();
+    };
+    void check();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, emailOverride, autoSkipIfVerified, onVerified]);
 
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [countdown]);
-
-  const handleResendVerification = async () => {
-    if (!email || countdown > 0) return;
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-        options: { emailRedirectTo: redirectTo ?? window.location.origin },
-      });
-      if (error) {
-        const msg = /rate|too many|over_email/i.test(error.message)
-          ? "You're requesting emails too quickly. Please wait a minute before trying again."
-          : error.message;
-        toast.error('Could not resend verification email', { description: msg });
-        setCountdown(30);
-      } else {
-        setCountdown(60);
-        toast.success('Verification email sent! Check your inbox.');
-      }
-    } catch (err: any) {
-      toast.error('Failed to send verification email. Please try again.');
-      setCountdown(30);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleResend = async () => {
+    if (!email) return;
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: redirectTo ?? window.location.origin },
+    });
+    if (error) throw error;
+    toast.success('Verification email sent! Check your inbox.');
   };
 
   const handleCheckStatus = async () => {
@@ -91,6 +83,7 @@ export const EmailVerification = ({
       setIsLoading(false);
     }
   };
+
 
   const content = (
     <div className="space-y-4">
