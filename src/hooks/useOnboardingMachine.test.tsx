@@ -84,7 +84,7 @@ describe('useOnboardingMachine', () => {
 
     // Simulate a realtime UPDATE on public.profiles for this user.
     await act(async () => {
-      h.capturedHandlers['profiles']?.({ eventType: 'UPDATE' });
+      console.log("HANDLERS:", Object.keys(h.capturedHandlers)); h.capturedHandlers["profiles"]?.({ eventType: "UPDATE" });
     });
 
     await waitFor(() => expect(result.current.data?.next_step).toBe('verification'));
