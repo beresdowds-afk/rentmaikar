@@ -94,7 +94,7 @@ export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNo
                 Please head to your own workspace instead.
               </p>
               <Button asChild>
-                <Link to={roleHome[userRole]}>Go to my dashboard</Link>
+                <Link to={ROLE_HOME[userRole]}>Go to my dashboard</Link>
               </Button>
             </CardContent>
           </Card>
