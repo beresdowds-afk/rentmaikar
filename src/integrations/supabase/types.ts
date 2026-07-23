@@ -4287,6 +4287,7 @@ export type Database = {
           suspended_until: string | null
           updated_at: string | null
           user_id: string
+          username: string | null
         }
         Insert: {
           access_level?: Database["public"]["Enums"]["access_level_enum"]
@@ -4324,6 +4325,7 @@ export type Database = {
           suspended_until?: string | null
           updated_at?: string | null
           user_id: string
+          username?: string | null
         }
         Update: {
           access_level?: Database["public"]["Enums"]["access_level_enum"]
@@ -4361,6 +4363,7 @@ export type Database = {
           suspended_until?: string | null
           updated_at?: string | null
           user_id?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -8404,6 +8407,13 @@ export type Database = {
           cascaded_ids: string[]
         }[]
       }
+      admin_create_staff_role: {
+        Args: {
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       admin_delete_elevenlabs_test_log: {
         Args: { _log_id: string }
         Returns: undefined
@@ -8566,6 +8576,10 @@ export type Database = {
         Returns: string
       }
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
+      check_unique_credentials: {
+        Args: { p_email: string; p_phone: string; p_username: string }
+        Returns: boolean
+      }
       classify_onboarding_error: { Args: { _msg: string }; Returns: string }
       complete_onboarding: { Args: never; Returns: string }
       consume_proxy_charge: {
