@@ -189,6 +189,9 @@ const OwnerRegistration = () => {
       let userId = sessionAfter.session?.user?.id ?? null;
 
       if (!userId) {
+        if (!data.password || data.password.length < 8) {
+          throw new Error("Please choose a password with at least 8 characters to create your account.");
+        }
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: data.email,
           password: data.password,
@@ -306,7 +309,7 @@ const OwnerRegistration = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" placeholder="John" {...register("firstName")} />
+                    <Input id="firstName" placeholder="John" autoComplete="given-name" autoFocus {...register("firstName")} />
                     {errors.firstName && (
                       <p className="text-destructive text-sm">{errors.firstName.message}</p>
                     )}
