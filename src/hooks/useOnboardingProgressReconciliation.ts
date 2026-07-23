@@ -46,18 +46,25 @@ export function useOnboardingProgressReconciliation(): ReconciliationResult {
   const [actual, setActual] = useState<RegistrationStage | null>(null);
 
   useEffect(() => {
+    // Debounce revalidation so tab switches / focus events don't trigger a
+    // flood of network calls. React Query already handles refetchOnWindowFocus,
+    // so we only need to force-invalidate on the coarser mobile-resume event
+    // and on explicit visibility changes at most every 30 seconds.
+    let lastTrigger = 0;
+    const MIN_INTERVAL_MS = 30_000;
     const trigger = () => {
+      const now = Date.now();
+      if (now - lastTrigger < MIN_INTERVAL_MS) return;
+      lastTrigger = now;
       qc.invalidateQueries({ queryKey: ['registration-progress'] });
     };
     const onVisibility = () => {
       if (document.visibilityState === 'visible') trigger();
     };
-    window.addEventListener('focus', trigger);
     document.addEventListener('visibilitychange', onVisibility);
 
     let capCleanup: (() => void) | null = null;
     (async () => {
-      // Capacitor App resume (mobile).
       try {
         // @ts-expect-error – Capacitor global is only present in native.
         if (!window.Capacitor?.isNativePlatform?.()) return;
@@ -72,7 +79,6 @@ export function useOnboardingProgressReconciliation(): ReconciliationResult {
     })();
 
     return () => {
-      window.removeEventListener('focus', trigger);
       document.removeEventListener('visibilitychange', onVisibility);
       capCleanup?.();
     };
