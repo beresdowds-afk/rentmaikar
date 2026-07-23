@@ -600,6 +600,6 @@ export default function DriverDashboard() {
         <SupportChatWidget />
         <CallSupportButton userType="driver" variant="floating" />
       </div>
-    </VerificationGate>
+    </>
   );
 }
