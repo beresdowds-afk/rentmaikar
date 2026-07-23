@@ -66,6 +66,15 @@ const Auth = () => {
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
+  // Deep-link support: `/auth?forgot=1` opens the forgot-password view directly
+  // (used from the "Request a new reset link" button on the ResetPassword page).
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('forgot') === '1') {
+      setShowForgotPassword(true);
+    }
+  }, [location.search]);
+
   // Redirect authenticated users (only if 2FA is verified or not required)
   // IMPORTANT: wait until userRole has hydrated before navigating, otherwise
   // admin_assistant / support users race past the role check and land on `/`.
