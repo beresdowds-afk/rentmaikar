@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAssistantPermissions } from "@/hooks/useAssistantPermissions";
+import { Lock } from "lucide-react";
 import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, Eye, CreditCard, Wallet, Mail, Loader2, RefreshCw, TrendingUp, HelpCircle, Inbox, Phone, Headphones } from "lucide-react";
 import { CallCenterPage } from "@/components/admin/voip/CallCenterPage";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
@@ -176,18 +178,47 @@ const AdminAssistantDashboard = () => {
   const [portalView, setPortalView] = useState<PortalType>('support');
   const [activeTab, setActiveTab] = useState<string>('inbox');
 
-  const EXCLUDED_TABS = [
-    // ERP: infrastructure/admin-only
+  // Base admin-only tabs assistants may never see.
+  const BASE_EXCLUDED_TABS = useMemo<string[]>(() => [
+    // ERP infrastructure/admin-only
     'hardware', 'mqtt-credentials', 'fees', 'secrets', 'api-keys',
     'webhooks', 'api-endpoints', 'security', 'settings', 'region-autobuild',
     'category-year-specs',
-
-    // Support: portal
+    // Support portal
     'task-portal',
-    // CRM: assistant-management is admin-only
+    // CRM assistant-management is admin-only
     'admin-assistants',
-  ];
-  const EXCLUDED_PORTALS: PortalType[] = ['docs'];
+  ], []);
+
+  // Role-based dynamic exclusions from admin_assistant_permissions.
+  const {
+    forbiddenTabs: rbacForbidden,
+    canAccessTab,
+    isFullAdmin,
+    isAssistant,
+    loading: permsLoading,
+  } = useAssistantPermissions();
+
+  const EXCLUDED_TABS = useMemo(
+    () => Array.from(new Set([...BASE_EXCLUDED_TABS, ...rbacForbidden])),
+    [BASE_EXCLUDED_TABS, rbacForbidden],
+  );
+  const EXCLUDED_PORTALS: PortalType[] = ['docs', ...(!isFullAdmin && !isAssistant ? (['marketing'] as PortalType[]) : [])];
+
+  // Fallback: if the active tab is no longer permitted (e.g. permissions were
+  // revoked), bounce the user to the first tab they still have access to.
+  useEffect(() => {
+    if (permsLoading) return;
+    if (canAccessTab(activeTab)) return;
+    const fallback = ['inbox', 'expiry-notifications', 'contacts', 'approvals']
+      .find((t) => canAccessTab(t));
+    if (fallback) {
+      setActiveTab(fallback);
+      setPortalView('support');
+    }
+  }, [activeTab, canAccessTab, permsLoading]);
+
+  const activeTabAllowed = permsLoading || canAccessTab(activeTab);
   const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
 
   // Calculate converted values
