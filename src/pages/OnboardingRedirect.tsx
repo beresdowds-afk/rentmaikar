@@ -1,58 +1,53 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
-import { routeForStage } from '@/lib/onboarding-error';
+import { useOnboardingMachine } from '@/hooks/useOnboardingMachine';
 import PageSkeleton from '@/components/PageSkeleton';
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 import { recordDeepLinkExpectedStage } from '@/hooks/useOnboardingProgressReconciliation';
 
 /**
- * Entry point for onboarding deep links (mobile + web). Reads current
- * registration progress and routes to the correct next step. Also handles
- * the `/verify-email` route which is our stable public deep link target.
+ * Entry point for onboarding deep links. Delegates the "where to next?"
+ * decision to the server-sourced onboarding state machine so gating logic
+ * lives in one place. Honors `?force=1` to re-visit a step deliberately.
  */
 export default function OnboardingRedirect() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { data, isLoading } = useRegistrationProgress();
+  const { data: progress } = useRegistrationProgress();
+  const { data: machine, isLoading } = useOnboardingMachine();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !machine) return;
 
     const step = params.get('step');
-    const requestedRole = params.get('role') as 'driver' | 'owner' | null;
-    const role = data?.role ?? requestedRole ?? 'driver';
+    const force = params.get('force') === '1';
     const originParam = params.get('origin');
     const origin =
       originParam === 'native' || originParam === 'push' || originParam === 'email'
         ? originParam
         : 'web';
 
-    // Record the stage this deep link expected so the reconciliation hook
-    // can flag divergence on app resume.
-    recordDeepLinkExpectedStage(step ?? data?.stage ?? 'auth');
-
+    recordDeepLinkExpectedStage(step ?? progress?.stage ?? machine.next_step);
     trackOnboardingEvent('deep_link_opened', {
-      role,
-      stage: data?.stage ?? null,
+      role: machine.role,
+      stage: progress?.stage ?? null,
       origin,
-      extra: { step },
+      extra: { step, next_step: machine.next_step },
     });
 
-    if (step === 'email' || !data?.email_verified) {
-      const base = role === 'owner' ? '/owner/onboarding' : '/driver/onboarding';
-      navigate(`${base}?step=email`, { replace: true });
-      return;
-    }
-
-    if (step === 'documents' || step === 'verification') {
+    // If a specific step is requested (and forced) honor it; otherwise let
+    // the state machine skip past anything already completed.
+    if (step && force) {
+      const role = machine.role ?? 'driver';
       const base = role === 'owner' ? '/owner/onboarding' : '/driver/onboarding';
       navigate(`${base}?step=${step}`, { replace: true });
       return;
     }
 
-    navigate(routeForStage(role, data?.stage ?? null), { replace: true });
-  }, [data, isLoading, navigate, params]);
+    navigate(machine.next_href || '/', { replace: true });
+  }, [machine, isLoading, navigate, params, progress?.stage]);
 
   return <PageSkeleton />;
 }
+
