@@ -742,7 +742,7 @@ const AdminAssistantDashboard = () => {
           )}
 
           {/* ERP Portal */}
-          {portalView === 'erp' && (
+          {activeTabAllowed && portalView === 'erp' && (
             <div className="space-y-6">
               {activeTab === 'tracking' && (
                 <Card className="p-6">
@@ -847,7 +847,7 @@ const AdminAssistantDashboard = () => {
           )}
 
           {/* Marketing Portal */}
-          {portalView === 'marketing' && (
+          {activeTabAllowed && portalView === 'marketing' && (
             <div className="space-y-6">
               {activeTab === 'campaigns' && <SocialMediaManagement />}
               {activeTab === 'facebook' && <SocialMediaManagement />}
@@ -858,7 +858,7 @@ const AdminAssistantDashboard = () => {
           )}
 
           {/* Docs Portal */}
-          {portalView === 'docs' && (
+          {activeTabAllowed && portalView === 'docs' && (
             <div className="space-y-6">
               {activeTab === 'messaging-docs' && <MessagingDocs />}
               {activeTab === 'email-docs' && <EmailDocs />}
