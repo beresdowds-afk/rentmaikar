@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Shield, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
+import { Loader2, Shield, ArrowLeft, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
+import { ResendButton } from '@/components/auth/ResendButton';
 
 interface TwoFactorChallengeProps {
   userId: string;
