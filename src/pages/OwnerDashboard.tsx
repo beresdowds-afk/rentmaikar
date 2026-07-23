@@ -196,6 +196,10 @@ export default function OwnerDashboard() {
 
           <UserIdentityCard role="Owner" />
 
+          <div className="my-4">
+            <OnboardingChecklist />
+          </div>
+
 
 
           {/* Header */}

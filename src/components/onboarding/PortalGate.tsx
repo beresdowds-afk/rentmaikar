@@ -12,6 +12,7 @@ import {
   type RegistrationStage,
   type RegistrationProgress,
 } from '@/hooks/useRegistrationProgress';
+import { useOnboardingMachine } from '@/hooks/useOnboardingMachine';
 
 export type Requirement =
   | 'authenticated'
