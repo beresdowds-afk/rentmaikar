@@ -47,6 +47,7 @@ import { useOwnerDashboard } from '@/hooks/useOwnerDashboard';
 import { RecallApprovalPanel } from '@/components/recall/RecallApprovalPanel';
 import { PortalGate } from '@/components/onboarding/PortalGate';
 import { OnboardingReconciliationBanner } from '@/components/onboarding/OnboardingReconciliationBanner';
+import { OnboardingChecklist } from '@/components/onboarding/OnboardingChecklist';
 import {
   Car,
   Plus,
@@ -194,6 +195,10 @@ export default function OwnerDashboard() {
           </div>
 
           <UserIdentityCard role="Owner" />
+
+          <div className="my-4">
+            <OnboardingChecklist />
+          </div>
 
 
 

@@ -12,6 +12,7 @@ import {
   type RegistrationStage,
   type RegistrationProgress,
 } from '@/hooks/useRegistrationProgress';
+import { useOnboardingMachine } from '@/hooks/useOnboardingMachine';
 
 export type Requirement =
   | 'authenticated'
@@ -94,6 +95,7 @@ export function PortalGate({
   children,
 }: Props) {
   const { data: progress, isLoading } = useRegistrationProgress();
+  const { data: machine } = useOnboardingMachine();
 
   const steps = useMemo(() => buildSteps(progress), [progress]);
   const doneCount = steps.filter((s) => s.done).length;
@@ -131,9 +133,11 @@ export function PortalGate({
   if (meets) return <>{children}</>;
 
   const req = REQUIREMENT_COPY[require];
-  const nextPath = nextStepPath(progress);
+  // Prefer the server-sourced next step; fall back to the local computation.
+  const nextPath = machine?.next_href ?? nextStepPath(progress);
   const remaining = steps.filter((s) => !s.done);
-  const nextStepLabel = remaining[0]?.label ?? 'Continue onboarding';
+  const nextStepLabel =
+    (machine && machine.labels[machine.next_step]) ?? remaining[0]?.label ?? 'Continue onboarding';
 
   return (
     <Card className="border-dashed" data-testid="portal-gate-blocker">

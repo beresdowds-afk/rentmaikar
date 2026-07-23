@@ -1,70 +1,95 @@
-# Streamline Driver Registration, Onboarding, Verification & Auth
 
-Audit found ~16 redundancies across `Auth`, `DriverRegistration`, `DriverOnboarding`, verification gates, and progress hooks. Below are the concrete changes grouped by priority. Approve and I'll execute in this order.
+## Goals
 
-## P0 — Remove duplicate gates and re-collected data
+1. Skip email verification when it's already done.
+2. Resumable onboarding checklist for drivers and owners that auto-saves and deep-links back to the last incomplete step.
+3. Single server-sourced onboarding state machine that decides the next screen — retire remaining ad-hoc gating logic.
+4. Global resend cooldown for verification emails, SMS OTPs, and 2FA codes with clear UI countdown.
 
-1. **Retire `VerificationGate` full-page block on the driver dashboard.**
-   Today `DriverDashboard` is wrapped by `VerificationGate` (all‑or‑nothing) AND by `PortalGate` per tab (staged). They contradict each other and defeat the "view-only access after signup" promise. Drive all gating through `useRegistrationProgress` + `PortalGate` only. `VerificationGate` becomes a lightweight banner on the Overview tab that surfaces the next unmet requirement.
+---
 
-2. **Consolidate the three email-verification UIs.**
-   `Auth.tsx`, `EmailVerification.tsx`, and `VerificationGate.tsx` each hand-roll resend/cooldown against `supabase.auth.resend`. Make `EmailVerification` the single source of truth and have `Auth.tsx` reuse it in the "check your inbox" state.
+## 1. Verification-flow smart redirect
 
-3. **Stop re-collecting name/email/password in `DriverRegistration` when already signed in.**
-   When a user hits `/driver/registration` with an active session, hide email/password/name inputs and prefill from the session/profile. New signups from `/auth` (role=driver) are routed straight into the application form with the session already established — one path, not two.
+**File:** `src/components/auth/EmailVerification.tsx`, `src/pages/Auth.tsx`, `src/pages/DriverRegistration.tsx`, `src/pages/OwnerRegistration.tsx`
 
-4. **Prefill Persona with existing profile fields.**
-   `PersonaVerification` currently only sends `region`/`subject_role`. Pass `fields={{ name, phone, address }}` from the profile so drivers don't re-type identity data.
+- On mount, check `supabase.auth.getUser()` — if `email_confirmed_at` is set OR `profile.email_verified_at` is set, immediately call `advanceOnboarding()` (see §3) and route to the next required step instead of showing the verification screen.
+- Same treatment for the 2FA screen: if `two_factor_settings.verified_at` exists and the current session already has an `aal2` claim, skip.
+- Add a `?force=1` escape hatch for admin/QA to re-run a step deliberately.
 
-## P1 — Fewer gates, fewer refetches, cleaner stage ordering
+---
 
-5. **Unify the five gate components.**
-   Extract one `ROLE_HOME` map and one `meetsRequirement(progress, requirement)` helper shared by `PortalGate` + `PortalRouteGuard`. Route auth+role gating through `ProtectedRoute` only; delete `DashboardAuthGate` duplication.
+## 2. Resumable onboarding checklist
 
-6. **Kill the focus/visibility re-invalidation storm.**
-   `useOnboardingProgressReconciliation` invalidates the progress query on every focus/visibility change, triggering the RPC across every mounted consumer. Replace with React Query's built-in `refetchOnWindowFocus` + a 30 s stale window.
+**New file:** `src/components/onboarding/OnboardingChecklist.tsx`
 
-7. **Merge the two sequential RPCs in `DriverOnboarding.finish()`.**
-   Combine `advance_registration_stage('documents_submitted')` and `('verification_pending')` into one RPC/transaction and navigate optimistically; reconcile via progress query.
+Renders the ordered list of steps for the current role (driver / owner), each with status pill (`done`, `in_progress`, `locked`, `todo`), ETA, and a "Resume" CTA on the first non-done item.
 
-8. **Insert the legal-agreement step into the canonical stage order.**
-   Add `legal_accepted` between `account_opened` and `documents_submitted` in `onboarding-stages.ts` + `routeForStage`, so `OnboardingRedirect`/`PortalGate` route drivers there deterministically instead of it being an orphan URL.
+**New hook:** `src/hooks/useOnboardingChecklist.ts`
+- Reads `profile.onboarding_state` (JSONB, see §3) plus computed step definitions.
+- Persists `last_visited_step` on every route change via `upsert` into `profiles.onboarding_state` (debounced 2s).
+- Returns `{ steps, currentStep, resumeHref, percentComplete }`.
 
-9. **Reuse `useRegistrationProgress` in `Auth.tsx` post-login redirect.**
-   Removes an extra blocking `profiles` query on every login.
+Mount the checklist on `/driver/dashboard` and `/owner/dashboard` above the KPI hero. Also render as the empty state inside `PortalGate` when a portal is locked, so users see the exact prerequisite and a one-click "Resume onboarding".
 
-10. **Add `autoFocus` + proper `autoComplete` on all auth/registration inputs.**
-    (`email`, `current-password`, `new-password`, `tel`, `one-time-code`.) One-line-per-field fix that measurably reduces friction, especially on mobile.
+---
 
-11. **Prefill 2FA phone from `profiles.phone`.**
-    `TwoFactorSetup` should not re-ask for a number already captured during registration.
+## 3. Single onboarding state machine (server-sourced)
 
-## P2 — Dead code & polish
+**Migration:** new columns / helpers on `profiles`
+- `onboarding_state jsonb not null default '{}'::jsonb` — stores `{ last_visited_step, completed_steps: text[], updated_at }`.
 
-12. Delete the legacy no-op `useOnboardingGate.ts` (already commented as legacy).
-13. Fix order-dependent branches in `registration-errors.ts` so `isAlreadyRegistered` is checked before `isDuplicate`.
-14. Disable "Re-run verification" in `RefereeVerificationPanel` until at least one invite is sent.
-15. Merge `lib/onboarding-error.ts` and `lib/onboarding-stages.ts` into one `lib/onboarding/` module.
-16. Ensure `OnboardingReconciliationBanner` is actually mounted on gated dashboards (currently appears unmounted).
+**New Postgres function:** `public.get_onboarding_next_step(_user_id uuid) returns jsonb`
+Returns:
+```json
+{ "role": "driver", "next_step": "phone_verification", "next_href": "/verify-phone",
+  "completed": ["email_verification","identity"], "percent": 42, "blocked_reason": null }
+```
+Uses a single source of truth:
+- email → `auth.users.email_confirmed_at`
+- phone → `profiles.phone_verified_at`
+- 2fa → `two_factor_settings.verified_at`
+- identity → `persona_inquiries.status = 'completed'`
+- role-specific registration → `applications.status`
+- legal → `legal_agreement_acceptances`
+- training → `training_completions` (drivers only)
+- vehicle registration → `vehicles` count (owners only)
+
+**New hook:** `src/hooks/useOnboardingMachine.ts` — thin wrapper calling the RPC via `react-query`, refetch on `AUTH_STATE_CHANGE` and after any mutation that could advance state.
+
+**Refactor:** replace scattered checks in `PortalGate`, `PortalRouteGuard`, `useDashboardAuthGate`, `ReverificationBanner`, and each registration page to consume `useOnboardingMachine()` instead of duplicating step logic. Delete the local step-order arrays. Retire `useOnboardingProgressReconciliation` in favor of the RPC.
+
+---
+
+## 4. Resend cooldown for verification / 2FA / OTP
+
+**New hook:** `src/hooks/useResendCooldown.ts`
+- Keys cooldowns by channel + identifier in `localStorage` (e.g. `resend:email:foo@bar.com`) with `lastSentAt` and `cooldownSec` (30s email, 60s SMS, 60s 2FA by default; honor `Retry-After` from 429 responses).
+- Returns `{ remaining, canSend, trigger(fn) }` where `trigger` wraps the send call, applies exponential backoff on repeated 429s (30→60→120→300s cap), and surfaces a toast on error.
+
+**New component:** `src/components/auth/ResendButton.tsx` — button + inline countdown ("Resend in 0:23"), disabled state, aria-live announcement for accessibility.
+
+Wire into:
+- `EmailVerification.tsx` (Supabase `resend`)
+- `PhoneVerification` flow (Termii / Twilio OTP)
+- `TwoFactorSetup.tsx` and any 2FA challenge screen
+- Password-reset email screen
+
+Server-side already returns 429 with `Retry-After` from prior rate-limit work — the hook just consumes it.
+
+---
 
 ## Technical notes
 
-- Backend: one new RPC `advance_registration_stages(text[])` (P1‑7) applied as a single migration with `GRANT EXECUTE TO authenticated`.
-- No schema changes required beyond that RPC and adding `legal_accepted` to the stage enum/lookup (P1‑8).
-- All UI changes are additive/removals — no data migration.
-- Tests: extend `useRegistrationProgress.test.tsx` and `PortalGate.test.tsx` to cover the merged gate helper; add an integration test that a freshly signed-up driver sees the dashboard immediately (view-only) instead of a hard block.
+- All new RLS: none (functions are `security definer` and only read own row via `auth.uid()`).
+- The `get_onboarding_next_step` function is `stable` and safe to call from React Query with a 15s stale time; invalidate on auth state change and after each verification success.
+- Registration pages already prefill from session (recent driver/owner refactor) — the new machine will drive their "next" button target instead of hard-coded routes.
+- Delete: `src/hooks/useOnboardingGate.ts` remnants (already partly removed), local `stepOrder` arrays inside PortalGate/PortalRouteGuard.
 
-## Out of scope
+---
 
-- Design overhaul of any page.
-- Persona template changes (already covered by `AdminPersonaTemplatesPage`).
-- Payment/subscription gating (`SubscriptionGate`) — orthogonal to onboarding flow.
+## Deliverables
 
-## Rollout order
-
-1. P0-1 → P0-2 → P0-3 → P0-4 (biggest UX wins, no schema)
-2. P1-5 → P1-6 → P1-9 → P1-10 → P1-11
-3. P1-7 + P1-8 together (requires the one migration)
-4. P2 cleanup
-
-Approve to proceed, or tell me which items to drop / reorder.
+- 1 migration (onboarding_state column + `get_onboarding_next_step` function + grants)
+- New: `useOnboardingMachine`, `useOnboardingChecklist`, `useResendCooldown`, `OnboardingChecklist`, `ResendButton`
+- Refactored: `PortalGate`, `PortalRouteGuard`, `EmailVerification`, `TwoFactorSetup`, `Auth`, driver + owner dashboards, driver + owner registration pages
+- Removed duplicated step-order / gating logic across the above files

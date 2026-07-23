@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Shield, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
+import { Loader2, Shield, ArrowLeft, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
+import { ResendButton } from '@/components/auth/ResendButton';
 
 interface TwoFactorChallengeProps {
   userId: string;
@@ -159,16 +160,20 @@ export const TwoFactorChallenge = ({ userId, phone, channel, onVerified, onCance
               </Button>
 
               <div className="text-center">
-                {countdown > 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Resend code in {countdown}s
-                  </p>
-                ) : (
-                  <Button variant="link" onClick={sendCode} disabled={isSending} className="gap-2">
-                    <RefreshCw className="h-4 w-4" />
-                    Resend Code
-                  </Button>
-                )}
+                <ResendButton
+                  channel="2fa"
+                  identifier={phone}
+                  onResend={async () => {
+                    const { data, error } = await supabase.functions.invoke('send-2fa-code', {
+                      body: { action: 'send_code', user_id: userId, phone, channel },
+                    });
+                    if (error) throw error;
+                    if (!data?.success) throw new Error(data?.error ?? 'Failed to resend');
+                    toast.success(`Verification code sent via ${channel.toUpperCase()}`);
+                  }}
+                  variant="link"
+                  label="Resend code"
+                />
               </div>
             </>
           )}
