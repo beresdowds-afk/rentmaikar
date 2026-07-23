@@ -105,23 +105,13 @@ export const EmailVerification = ({
           </Alert>
 
           <div className="flex gap-2">
-            <Button
-              onClick={handleResendVerification}
-              disabled={isLoading || countdown > 0}
-              variant="outline"
-              size="sm"
+            <ResendButton
+              channel="email"
+              identifier={email}
+              onResend={handleResend}
+              label="Resend email"
               className="flex-1"
-              aria-live="polite"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : countdown > 0 ? (
-                <Clock className="h-4 w-4 mr-2" />
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
-              )}
-              {countdown > 0 ? `Resend in ${countdown}s` : 'Resend Email'}
-            </Button>
+            />
 
             <Button onClick={handleCheckStatus} disabled={isLoading} size="sm" className="flex-1">
               {isLoading ? (
