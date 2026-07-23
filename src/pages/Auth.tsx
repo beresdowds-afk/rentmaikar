@@ -330,12 +330,22 @@ const Auth = () => {
               <Alert className="border-green-200 bg-green-50">
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <AlertDescription className="text-green-800">
-                  We've sent a password reset link to <strong>{forgotPasswordForm.getValues('email')}</strong>. 
-                  Please check your inbox and click the link to reset your password.
+                  We've sent a password reset link to <strong>{forgotPasswordForm.getValues('email')}</strong>.
                 </AlertDescription>
               </Alert>
-              <p className="text-sm text-muted-foreground text-center">
-                Didn't receive the email? Check your spam folder or try again.
+              <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-2">
+                <p className="font-medium text-foreground">What happens next:</p>
+                <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                  <li>Open the email and tap <strong>Reset password</strong>.</li>
+                  <li>Choose a new password (min. 6 characters, different from the old one).</li>
+                  <li>You'll be signed out on all devices and asked to log in again.</li>
+                </ol>
+                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
+                  ⏱ The reset link expires in <strong>1 hour</strong>. If it expires, request a new one from this page.
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Didn't receive the email? Check your spam folder, then try again in a minute.
               </p>
             </CardContent>
           ) : (
