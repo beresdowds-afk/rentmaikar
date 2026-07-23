@@ -1,48 +1,48 @@
-## What's already in place
+# Orchestrator hardening, telemetry health, audit viewer, hero refresh
 
-The recently uploaded GitHub files fall into two groups:
+## 1. Verify Traccar → MQTT → pluginManager → vehicle_analytics_events E2E
+- Add an in-app **Test Panel** to `/admin/orchestrator` that injects Traccar and MQTT events and then reads back the newly-written `vehicle_analytics_events` rows for `demo-vehicle-1`, showing pass/fail per stage:
+  1. Traccar bridge fires → orchestrator state updated
+  2. MQTT bridge fires → orchestrator state updated
+  3. `pluginManager.process` invoked on active plugins (asserted via plugin call counter)
+  4. Row present in `vehicle_analytics_events` within 3s (queried via supabase)
+- Add a Vitest integration test `src/services/__tests__/orchestrator-e2e.test.ts` that mocks supabase and asserts the same flow.
 
-**Docs (rules — no code to run):** `architecture/*.md`, `docs/architecture/*.md` — Hologram/Persona separation, verification rules, orchestrator design.
+## 2. Role-based access control on `/admin/orchestrator`
+- Route is currently only wrapped in `ProtectedRoute`. Wrap it with `allowedRoles={['admin']}` and additionally check `has_admin_assistant_permission('orchestrator_access')` for assistants.
+- Hide demo injectors and plugin toggles unless `userRole === 'admin'` (assistants get read-only view).
 
-**Code (already compiles and boots):** `src/services/residentOrchestrator.ts`, `traccarBridge.ts`, `mqttBridge.ts`, `resident-ochestrator/types.ts`, `src/plugins/{pluginManager,pluginTypes}.ts`, `evBattery`, `obd`, and `index.ts`. These are imported by `src/main.tsx` and typecheck clean.
+## 3. Telemetry health indicator + stall alert
+- Track `lastTraccarEventAt` and `lastMqttEventAt` inside `residentOrchestrator`.
+- New `TelemetryHealthCard` on `/admin/orchestrator`: green/amber/red badges per feed, configurable stall window (default 5 min, admin-adjustable via slider stored in `localStorage`).
+- When a feed exceeds the window, show a toast and insert an `admin_notifications` row of type `telemetry_stall` (once per stall cycle).
 
-What's missing is that nothing in the running app actually *feeds* the orchestrator or *shows* its output, and the plugin manager has no admin surface.
+## 4. Admin audit log viewer
+- New card section on `/admin/orchestrator` (and route `/admin/audit-log` for a full-page view) listing recent `admin_audit_log` entries.
+- Filters: user (email search), action type (dropdown from distinct actions), date range.
+- Paginated (25/page), read-only, admin-only.
 
-## Plan
+## 5. Plugin toggle live test
+- Add a **Run plugin toggle test** button that:
+  1. Records baseline plugin call count
+  2. Disables a plugin, injects event, asserts call count unchanged
+  3. Re-enables, injects event, asserts call count incremented
+  4. Reports pass/fail inline
+- Add `getCallCount()` to `pluginManager` for observability.
 
-### 1. Feed real telemetry into the Resident Orchestrator
-- Call `receiveTraccarEvent(...)` from `useVehicleTracking` whenever a Traccar position/event arrives.
-- Call `receiveMQTTMessage(topic, payload)` from the MQTT client path in `src/lib/emqx-config.ts` / vehicle telemetry subscriber.
-- Persist orchestrator `AnalyticsEvent`s to a new `vehicle_analytics_events` table (severity, type, vehicle_id, payload) so alerts survive reloads.
+## 6. Hero background refresh
+- Regenerate `src/assets/hero-cars-bg.png` from the current Hero component context (fresh image, no historical reference).
+- Delete the existing `hero-cars-bg.png` asset first so no cached editor pointer remains, then generate a new one at the same path. HeroSection import path stays the same, so preview and deployed site render identically.
 
-### 2. Plugin lifecycle wiring
-- Route every orchestrator event through `pluginManager.process(event)` so `evBattery`/`obd`/future plugins actually see traffic.
-- Normalize plugin event shape to `{ type, payload, vehicleId, source, timestamp }` and update the two example plugins to match.
-
-### 3. Admin surface for orchestrator + plugins
-- New page `src/pages/admin/OrchestratorPage.tsx`: live vehicle state table (from `orchestrator.getVehicleState`), recent analytics events, plugin list with enable/disable toggles calling `pluginManager.activate/deactivate`.
-- Add nav entry under Fleet Connectivity → "Resident Orchestrator" (admin only).
-
-### 4. Enforce Hologram/Persona separation rules from the docs
-- Audit for any code path where Persona modules touch Hologram tables/functions or vice versa; add an ESLint boundary rule (`no-restricted-imports`) that forbids `src/integrations/persona/**` from importing `src/integrations/hologram/**` and the reverse.
-- Add a short README at `src/integrations/persona/README.md` and `src/integrations/hologram/README.md` linking to the rule docs.
-
-### 5. Verification-state independence (from IdentityVerificationArchitecture.md)
-- Ensure `profiles` exposes independent booleans: `email_verified`, `phone_verified`, `persona_verified`, `referee_verified`, `payment_proxy_verified`. Add any missing columns via one migration and backfill from existing state.
-- No auto-completion between them (add a DB trigger that blocks writes flipping `persona_verified` from an email/phone code path).
-
-### 6. Database
-One migration adds:
-- `vehicle_analytics_events` (vehicle_id, category, event_type, payload jsonb, severity, created_at) + GRANTs + RLS (admins read all; owners read their vehicles).
-- Any missing verification columns on `profiles`.
-
-### 7. Verification
-- `tsgo --noEmit`, existing vitest suite, and a new unit test that feeds a synthetic Traccar position through the orchestrator and asserts `vehicle_analytics_events` was inserted and plugins fired.
-
-## Technical notes
-- No changes to auto-generated files (`src/integrations/supabase/{client,types}.ts`, `.env`, `supabase/config.toml`).
-- Orchestrator remains in-memory for live state; only analytics events persist.
-- No rewrites of Traccar or Hologram edge functions — this is purely additive per `resident-ochestrator.md` rule #1 ("Preserve Existing Systems").
-- Scope explicitly excludes rebuilding the full Hologram eSIM marketplace and Persona template refactors described in the docs — those are separate multi-turn efforts and already partially exist. Say the word and I'll plan them next.
-
-Approve and I'll implement steps 1–7 in one pass.
+## Technical details
+- No DB schema changes required — `admin_audit_log`, `admin_notifications`, and `vehicle_analytics_events` already exist.
+- Files to touch:
+  - `src/pages/admin/OrchestratorPage.tsx` (RBAC gating, health card, audit card, E2E + toggle test panels)
+  - `src/plugins/pluginManager.ts` (call counter, `getCallCount`)
+  - `src/services/residentOrchestrator.ts` (`lastTraccarEventAt`, `lastMqttEventAt`, getters)
+  - `src/App.tsx` (`allowedRoles={['admin']}` on orchestrator route, new `/admin/audit-log` route)
+  - `src/components/admin/TelemetryHealthCard.tsx` (new)
+  - `src/components/admin/AdminAuditLogViewer.tsx` (new)
+  - `src/components/admin/OrchestratorE2ETestPanel.tsx` (new)
+  - `src/services/__tests__/orchestrator-e2e.test.ts` (new)
+  - `src/assets/hero-cars-bg.png` (regenerated)
