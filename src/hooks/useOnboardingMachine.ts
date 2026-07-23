@@ -53,8 +53,7 @@ export function useOnboardingMachine() {
     enabled: !!user,
     staleTime: 15_000,
     queryFn: async (): Promise<OnboardingMachineState> => {
-      // @ts-expect-error rpc name may not be in generated types yet
-      const { data, error } = await supabase.rpc('get_onboarding_next_step');
+      const { data, error } = await (supabase.rpc as any)('get_onboarding_next_step');
       if (error) throw error;
       return { ...DEFAULT, ...(data as Partial<OnboardingMachineState>) };
     },
