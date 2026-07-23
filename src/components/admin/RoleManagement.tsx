@@ -15,7 +15,6 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminAssistantManagement } from './AdminAssistantManagement';
-import { PasswordInput } from '@/components/ui/password-input';
 import { SplitPane } from '@/components/ui/split-pane';
 
 type AppRole = 'admin' | 'admin_assistant' | 'owner' | 'driver' | 'legal_support' | 'iot_support' | 'vehicle_support';
