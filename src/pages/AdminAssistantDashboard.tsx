@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAssistantPermissions } from "@/hooks/useAssistantPermissions";
+import { Lock } from "lucide-react";
 import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, Eye, CreditCard, Wallet, Mail, Loader2, RefreshCw, TrendingUp, HelpCircle, Inbox, Phone, Headphones } from "lucide-react";
 import { CallCenterPage } from "@/components/admin/voip/CallCenterPage";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
@@ -176,18 +178,47 @@ const AdminAssistantDashboard = () => {
   const [portalView, setPortalView] = useState<PortalType>('support');
   const [activeTab, setActiveTab] = useState<string>('inbox');
 
-  const EXCLUDED_TABS = [
-    // ERP: infrastructure/admin-only
+  // Base admin-only tabs assistants may never see.
+  const BASE_EXCLUDED_TABS = useMemo<string[]>(() => [
+    // ERP infrastructure/admin-only
     'hardware', 'mqtt-credentials', 'fees', 'secrets', 'api-keys',
     'webhooks', 'api-endpoints', 'security', 'settings', 'region-autobuild',
     'category-year-specs',
-
-    // Support: portal
+    // Support portal
     'task-portal',
-    // CRM: assistant-management is admin-only
+    // CRM assistant-management is admin-only
     'admin-assistants',
-  ];
-  const EXCLUDED_PORTALS: PortalType[] = ['docs'];
+  ], []);
+
+  // Role-based dynamic exclusions from admin_assistant_permissions.
+  const {
+    forbiddenTabs: rbacForbidden,
+    canAccessTab,
+    isFullAdmin,
+    isAssistant,
+    loading: permsLoading,
+  } = useAssistantPermissions();
+
+  const EXCLUDED_TABS = useMemo(
+    () => Array.from(new Set([...BASE_EXCLUDED_TABS, ...rbacForbidden])),
+    [BASE_EXCLUDED_TABS, rbacForbidden],
+  );
+  const EXCLUDED_PORTALS: PortalType[] = ['docs', ...(!isFullAdmin && !isAssistant ? (['marketing'] as PortalType[]) : [])];
+
+  // Fallback: if the active tab is no longer permitted (e.g. permissions were
+  // revoked), bounce the user to the first tab they still have access to.
+  useEffect(() => {
+    if (permsLoading) return;
+    if (canAccessTab(activeTab)) return;
+    const fallback = ['inbox', 'expiry-notifications', 'contacts', 'approvals']
+      .find((t) => canAccessTab(t));
+    if (fallback) {
+      setActiveTab(fallback);
+      setPortalView('support');
+    }
+  }, [activeTab, canAccessTab, permsLoading]);
+
+  const activeTabAllowed = permsLoading || canAccessTab(activeTab);
   const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
 
   // Calculate converted values
@@ -543,8 +574,20 @@ const AdminAssistantDashboard = () => {
             }}
           />
 
+          {!activeTabAllowed && (
+            <Card className="p-8 text-center border-dashed">
+              <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                <Lock className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-1">You don't have access to this section</h3>
+              <p className="text-sm text-muted-foreground">
+                Ask an administrator to grant the required permission from Role Management &rarr; Admin Assistants.
+              </p>
+            </Card>
+          )}
+
           {/* Support Portal */}
-          {portalView === 'support' && (
+          {activeTabAllowed && portalView === 'support' && (
             <div className="space-y-6">
               {activeTab === 'task-portal' && <AdminTaskPortal />}
               {activeTab === 'inbox' && <AdminUnifiedInbox />}
@@ -560,7 +603,7 @@ const AdminAssistantDashboard = () => {
           )}
 
           {/* CRM Portal */}
-          {portalView === 'crm' && (
+          {activeTabAllowed && portalView === 'crm' && (
             <div className="space-y-6">
               {activeTab === 'applications' && <ApplicationManagement />}
               {activeTab === 'attestation-review' && <NegativeAttestationReviewPanel />}
@@ -699,7 +742,7 @@ const AdminAssistantDashboard = () => {
           )}
 
           {/* ERP Portal */}
-          {portalView === 'erp' && (
+          {activeTabAllowed && portalView === 'erp' && (
             <div className="space-y-6">
               {activeTab === 'tracking' && (
                 <Card className="p-6">
@@ -804,7 +847,7 @@ const AdminAssistantDashboard = () => {
           )}
 
           {/* Marketing Portal */}
-          {portalView === 'marketing' && (
+          {activeTabAllowed && portalView === 'marketing' && (
             <div className="space-y-6">
               {activeTab === 'campaigns' && <SocialMediaManagement />}
               {activeTab === 'facebook' && <SocialMediaManagement />}
@@ -815,7 +858,7 @@ const AdminAssistantDashboard = () => {
           )}
 
           {/* Docs Portal */}
-          {portalView === 'docs' && (
+          {activeTabAllowed && portalView === 'docs' && (
             <div className="space-y-6">
               {activeTab === 'messaging-docs' && <MessagingDocs />}
               {activeTab === 'email-docs' && <EmailDocs />}
