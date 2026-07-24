@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Shield, Phone, CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { PhoneNumberInput } from '@/components/ui/phone-number-input';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 type CountryCode = 'us' | 'ng';
 type Channel = 'sms' | 'whatsapp';
@@ -52,40 +54,24 @@ export const TwoFactorSetup = () => {
           .maybeSingle(),
       ]);
 
-      const applyPhone = (raw: string) => {
-        if (raw.startsWith('+1')) {
-          setCountryCode('us');
-          setPhoneNumber(raw.slice(2));
-        } else if (raw.startsWith('+234')) {
-          setCountryCode('ng');
-          setPhoneNumber(raw.slice(4));
-        } else {
-          setPhoneNumber(raw.replace(/^\+/, ''));
-        }
-      };
-
       if (data) {
         setIsEnabled(data.is_enabled);
         if (data.phone_number) {
           setExistingPhone(data.phone_number);
-          applyPhone(data.phone_number);
+          setPhoneNumber(data.phone_number);
         } else if (profile?.phone) {
-          // Prefill from the user's verified profile phone so they don't retype.
-          applyPhone(profile.phone);
+          setPhoneNumber(profile.phone);
         }
         setChannel((data.preferred_channel as Channel) || 'sms');
       } else if (profile?.phone) {
-        applyPhone(profile.phone);
+        setPhoneNumber(profile.phone);
       }
       setIsLoading(false);
     };
     fetchSettings();
   }, [user, userRole]);
 
-  const getFullPhone = () => {
-    const prefix = countryCodes[countryCode].prefix;
-    return `${prefix}${phoneNumber.replace(/\D/g, '')}`;
-  };
+  const getFullPhone = () => phoneNumber;
 
   const handleSave = async () => {
     if (!user) return;
