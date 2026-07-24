@@ -1119,20 +1119,14 @@ export function RoleManagement() {
                   <Label htmlFor="phone">
                     Phone (optional, for SMS notification)
                   </Label>
-                  <Input
+                  <PhoneNumberInput
                     id="phone"
-                    type="tel"
-                    inputMode="tel"
-                    placeholder="+15551234567"
                     value={newUserPhone}
-                    onChange={(e) => {
-                      const formatted = formatPhone(e.target.value);
+                    onChange={(v) => {
+                      const formatted = formatPhone(v);
                       setNewUserPhone(formatted);
                       setPhoneError(validatePhone(formatted));
                     }}
-                    onBlur={() =>
-                      setPhoneError(validatePhone(newUserPhone))
-                    }
                     aria-invalid={!!phoneError}
                   />
                   {phoneError ? (

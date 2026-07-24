@@ -594,12 +594,10 @@ export function IoTDevicePurchase() {
                 />
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number (for delivery)</Label>
-                  <Input
+                  <PhoneNumberInput
                     id="phone"
-                    type="tel"
-                    placeholder="Enter phone number"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={setPhone}
                   />
                 </div>
               </div>

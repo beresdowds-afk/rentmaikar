@@ -962,11 +962,9 @@ export const AdminSupportTaskManagement = () => {
 
                     <div className="space-y-2">
                       <Label>Phone (Optional)</Label>
-                      <Input
-                        type="tel"
-                        placeholder="+234..."
+                      <PhoneNumberInput
                         value={newStaff.phone}
-                        onChange={(e) => setNewStaff(prev => ({ ...prev, phone: e.target.value }))}
+                        onChange={(v) => setNewStaff(prev => ({ ...prev, phone: v }))}
                       />
                     </div>
                   </div>
