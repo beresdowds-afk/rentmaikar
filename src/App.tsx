@@ -14,6 +14,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import PageSkeleton from "@/components/PageSkeleton";
 import SkipToContent from "@/components/SkipToContent";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { useApplicationApprovalNotifier } from "@/hooks/useApplicationApprovalNotifier";
 import { useNativePush } from "@/hooks/useNativePush";
 import { useEffect } from "react";
 import { installOnboardingDeepLinkListener } from "@/lib/onboarding-deep-link";
@@ -22,6 +23,7 @@ import { installOnboardingDeepLinkListener } from "@/lib/onboarding-deep-link";
 // website by streaming DB changes and registering native push devices.
 const AppLiveSync = () => {
   useRealtimeSync(true);
+  useApplicationApprovalNotifier();
   useNativePush();
   return null;
 };

@@ -1,9 +1,11 @@
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Info } from "lucide-react";
 import { PaystackCheckout } from "./PaystackCheckout";
 import { OpayCheckout } from "./OpayCheckout";
 import { PayPalCheckout } from "./PayPalCheckout";
-import { getCheckoutPSPs, resolveCountryCode, getRegionCurrency } from "@/lib/psp-support";
+import { getCheckoutPSPs, resolveCountryCode, getRegionCurrency, type CheckoutPSP } from "@/lib/psp-support";
 
 interface PaymentMethodPickerProps {
   country: string;
@@ -32,14 +34,22 @@ export function PaymentMethodPicker({
   const psps = getCheckoutPSPs(country);
   const currency = getRegionCurrency(country);
   const cc = resolveCountryCode(country);
-  const defaultPSP = preferredPSP && psps.includes(preferredPSP) ? preferredPSP : psps[0];
+  // Auto-select with graceful fallback: if the caller's preferred PSP isn't
+  // supported in this region (e.g. PayPal outside the US, Paystack in the US),
+  // fall back to the first regionally-supported provider and surface why.
+  const preferredUnavailable = !!preferredPSP && !psps.includes(preferredPSP);
+  const defaultPSP: CheckoutPSP | undefined =
+    preferredPSP && psps.includes(preferredPSP) ? preferredPSP : psps[0];
 
   if (psps.length === 0) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Payment methods</CardTitle>
-          <CardDescription>No payment provider is enabled for your region yet.</CardDescription>
+          <CardDescription>
+            No payment provider is enabled for your region ({cc}) yet. Please
+            try again shortly or contact support.
+          </CardDescription>
         </CardHeader>
       </Card>
     );
@@ -54,7 +64,19 @@ export function PaymentMethodPicker({
           {" — "}pick a provider available in your region.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {preferredUnavailable && (
+          <Alert data-testid="psp-fallback-notice">
+            <Info className="h-4 w-4" />
+            <AlertTitle>Provider changed for your region</AlertTitle>
+            <AlertDescription>
+              {psplabels[preferredPSP!] ?? preferredPSP} isn't available in{" "}
+              {cc}. We've selected{" "}
+              <strong>{defaultPSP ? psplabels[defaultPSP] : "an alternative"}</strong>{" "}
+              instead so you can complete your payment.
+            </AlertDescription>
+          </Alert>
+        )}
         <Tabs defaultValue={defaultPSP} key={defaultPSP} className="w-full" data-testid="payment-method-picker">
           <TabsList className="w-full" style={{ display: "grid", gridTemplateColumns: `repeat(${psps.length}, minmax(0,1fr))` }}>
             {psps.map((p) => (
