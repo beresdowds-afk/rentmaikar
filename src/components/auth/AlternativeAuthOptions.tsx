@@ -47,6 +47,18 @@ export function AlternativeAuthOptions({ defaultRole = 'driver' as Role }) {
     try {
       const result = await lovable.auth.signInWithOAuth('google', {
         redirect_uri: window.location.origin,
+        extraParams: {
+          // Minimum scopes per Google OAuth policy:
+          // - openid       → Google Subject ID (sub) + verified email status (email_verified)
+          // - email        → email address
+          // - profile      → full name + profile photo (picture)
+          // No additional Google API scopes are requested.
+          scope: 'openid email profile',
+          // Ensure Google shows the consent screen so users know what
+          // RentMaikar is receiving (name, email, photo, verified status, sub).
+          prompt: 'consent select_account',
+          include_granted_scopes: 'true',
+        },
       });
       if (result.error) {
         const friendly = friendlyGoogleError(result.error.message);
