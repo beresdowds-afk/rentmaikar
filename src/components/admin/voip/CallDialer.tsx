@@ -161,19 +161,13 @@ export const CallDialer = ({ onInitiateCall, groups, isLoading }: CallDialerProp
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-sm">
-                    {prefix}
-                  </span>
-                  <Input
-                    id="phone"
-                    placeholder="Enter phone number"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-                    className="rounded-l-none"
-                    maxLength={10}
-                  />
-                </div>
+                <PhoneNumberInput
+                  id="phone"
+                  value={phoneNumber}
+                  onChange={setPhoneNumber}
+                  defaultCountry={region === 'Nigeria' ? 'NG' : 'US'}
+                  placeholder="Enter phone number"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="name">Display Name (Optional)</Label>
