@@ -776,6 +776,48 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_event_log: {
+        Row: {
+          created_at: string
+          email: string | null
+          error_code: string | null
+          event_type: string
+          id: string
+          ip_address: string | null
+          metadata: Json
+          provider: string | null
+          success: boolean
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          error_code?: string | null
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          provider?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          error_code?: string | null
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          provider?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       communication_providers: {
         Row: {
           country_code_prefix: string
@@ -8699,6 +8741,15 @@ export type Database = {
         Returns: string
       }
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
+      check_auth_rate_limit: {
+        Args: {
+          _endpoint: string
+          _identifier: string
+          _max_requests?: number
+          _window_seconds?: number
+        }
+        Returns: boolean
+      }
       check_unique_credentials: {
         Args: { p_email: string; p_phone: string; p_username: string }
         Returns: boolean
@@ -8886,6 +8937,17 @@ export type Database = {
           _target_table?: string
         }
         Returns: string
+      }
+      log_auth_event: {
+        Args: {
+          _email?: string
+          _error_code?: string
+          _event_type: string
+          _metadata?: Json
+          _provider?: string
+          _success?: boolean
+        }
+        Returns: undefined
       }
       log_permission_denied: {
         Args: {
