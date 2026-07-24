@@ -12,6 +12,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Phone, MessageSquare, CheckCircle, Loader2, RefreshCw, Shield } from 'lucide-react';
 import { toast } from 'sonner';
+import { PhoneNumberInput } from '@/components/ui/phone-number-input';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 interface PhoneVerificationProps {
   onVerified?: () => void;
@@ -54,15 +56,9 @@ export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerifi
         setIsPhoneVerified(data.phone_verified || false);
         setExistingPhone(data.phone || null);
         if (data.phone) {
-          // Extract number without country code for display
-          const phone = data.phone;
-          if (phone.startsWith('+1')) {
-            setCountryCode('us');
-            setPhoneNumber(phone.slice(2));
-          } else if (phone.startsWith('+234')) {
-            setCountryCode('ng');
-            setPhoneNumber(phone.slice(4));
-          }
+          setPhoneNumber(data.phone);
+          if (data.phone.startsWith('+234')) setCountryCode('ng');
+          else if (data.phone.startsWith('+1')) setCountryCode('us');
         }
       }
     };
@@ -78,15 +74,12 @@ export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerifi
     }
   }, [countdown]);
 
-  const getFullPhoneNumber = () => {
-    const prefix = countryCodes[countryCode].prefix;
-    const cleanNumber = phoneNumber.replace(/\D/g, '');
-    return `${prefix}${cleanNumber}`;
-  };
+  const getFullPhoneNumber = () => phoneNumber;
 
   const handleSendCode = async () => {
-    if (!phoneNumber || phoneNumber.length < 10) {
-      toast.error('Please enter a valid phone number');
+    const parsed = parsePhoneNumberFromString(phoneNumber || '');
+    if (!parsed?.isValid()) {
+      toast.error('Please enter a valid phone number with country code');
       return;
     }
 
