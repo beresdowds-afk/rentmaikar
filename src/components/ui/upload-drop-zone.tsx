@@ -77,6 +77,7 @@ export function UploadDropZone({
         <input
           ref={fileInputRef}
           type="file"
+          multiple={multiple}
           accept={accept}
           className="hidden"
           onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
@@ -85,6 +86,7 @@ export function UploadDropZone({
         <input
           ref={cameraInputRef}
           type="file"
+          multiple={multiple}
           accept="image/*"
           capture="environment"
           className="hidden"
@@ -132,6 +134,7 @@ export function UploadDropZone({
       <input
         ref={fileInputRef}
         type="file"
+          multiple={multiple}
         accept={accept}
         className="hidden"
         onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
@@ -139,6 +142,7 @@ export function UploadDropZone({
       <input
         ref={cameraInputRef}
         type="file"
+          multiple={multiple}
         accept="image/*"
         capture="environment"
         className="hidden"
