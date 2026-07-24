@@ -10,7 +10,9 @@ interface UploadDropZoneProps {
   disabled?: boolean;
   isUploading?: boolean;
   progress?: number;
-  onFileSelected: (file: File) => void;
+  onFileSelected?: (file: File) => void;
+  onFilesSelected?: (files: File[]) => void;
+  multiple?: boolean;
   className?: string;
   compact?: boolean;
   label?: string;
@@ -29,6 +31,8 @@ export function UploadDropZone({
   isUploading = false,
   progress = 0,
   onFileSelected,
+  onFilesSelected,
+  multiple = false,
   className,
   compact = false,
   label = 'Upload',
@@ -43,24 +47,28 @@ export function UploadDropZone({
       return false;
     }
     const allowed = accept.split(',').map(s => s.trim());
-    if (allowed.length && !allowed.includes(file.type)) {
+    const wildcard = allowed.some(a => a.endsWith('/*') && file.type.startsWith(a.replace('/*', '/')));
+    if (allowed.length && !allowed.includes(file.type) && !wildcard) {
       toast.error(`Unsupported file type: ${file.type}`);
       return false;
     }
     return true;
   };
 
-  const handleFile = (file: File | undefined | null) => {
-    if (!file) return;
-    if (!validate(file)) return;
-    onFileSelected(file);
+  const handleFiles = (files: FileList | File[] | null | undefined) => {
+    if (!files || (files as FileList).length === 0) return;
+    const arr = Array.from(files as FileList).filter(validate);
+    if (arr.length === 0) return;
+    if (multiple && onFilesSelected) return onFilesSelected(arr);
+    if (onFileSelected) return onFileSelected(arr[0]);
+    if (onFilesSelected) return onFilesSelected(arr);
   };
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     if (disabled) return;
-    handleFile(e.dataTransfer.files?.[0]);
+    handleFiles(e.dataTransfer.files);
   };
 
   if (compact) {
@@ -69,18 +77,20 @@ export function UploadDropZone({
         <input
           ref={fileInputRef}
           type="file"
+          multiple={multiple}
           accept={accept}
           className="hidden"
-          onChange={e => { handleFile(e.target.files?.[0]); e.target.value = ''; }}
+          onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
           disabled={disabled}
         />
         <input
           ref={cameraInputRef}
           type="file"
+          multiple={multiple}
           accept="image/*"
           capture="environment"
           className="hidden"
-          onChange={e => { handleFile(e.target.files?.[0]); e.target.value = ''; }}
+          onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
           disabled={disabled}
         />
         <Button
@@ -124,17 +134,19 @@ export function UploadDropZone({
       <input
         ref={fileInputRef}
         type="file"
+          multiple={multiple}
         accept={accept}
         className="hidden"
-        onChange={e => { handleFile(e.target.files?.[0]); e.target.value = ''; }}
+        onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
       />
       <input
         ref={cameraInputRef}
         type="file"
+          multiple={multiple}
         accept="image/*"
         capture="environment"
         className="hidden"
-        onChange={e => { handleFile(e.target.files?.[0]); e.target.value = ''; }}
+        onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
       />
       <div className="flex flex-col items-center gap-2">
         {isUploading ? (

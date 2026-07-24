@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRegion } from "@/contexts/RegionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import PersonaFieldsFallbackDialog, { type PersonaFieldKey, type PersonaFallbackValues } from "./PersonaFieldsFallbackDialog";
 
 interface Props {
   subject?: "self" | "referee";
@@ -59,6 +60,9 @@ export default function PersonaVerification({
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [fallbackOpen, setFallbackOpen] = useState(false);
+  const [missingFields, setMissingFields] = useState<PersonaFieldKey[]>([]);
+  const [pendingFields, setPendingFields] = useState<Record<string, string>>({});
 
   useEffect(() => { loadPersonaSdk().catch(() => {/* fallback to hosted */}); }, []);
 
@@ -81,12 +85,13 @@ export default function PersonaVerification({
     return out;
   }
 
-  async function start() {
+  const REQUIRED: PersonaFieldKey[] = ["name_first", "name_last", "email"];
+
+  async function launchInquiry(finalFields: Record<string, string>) {
     setLoading(true);
     try {
-      const resolvedFields = await resolveFields();
       const { data, error } = await supabase.functions.invoke("persona-create-inquiry", {
-        body: { subject_type: subject, subject_role: subjectRole, subject_ref: subjectRef, region: country, fields: resolvedFields },
+        body: { subject_type: subject, subject_role: subjectRole, subject_ref: subjectRef, region: country, fields: finalFields },
       });
       if (error) throw error;
 
@@ -113,9 +118,7 @@ export default function PersonaVerification({
             toast.success(`Verification submitted (${status})`);
             onComplete?.(id ?? inquiryId);
           },
-          onCancel: () => {
-            toast.info("Verification cancelled");
-          },
+          onCancel: () => toast.info("Verification cancelled"),
           onError: (e: any) => {
             console.error("[persona]", e);
             toast.error("Verification error — opening hosted flow");
@@ -134,6 +137,51 @@ export default function PersonaVerification({
     }
   }
 
+  async function notifyPending(phone: string | undefined, channels: { sms: boolean; whatsapp: boolean }) {
+    if (!phone || (!channels.sms && !channels.whatsapp)) return;
+    try {
+      await supabase.functions.invoke("send-sms-notification", {
+        body: {
+          to: phone,
+          type: "verification_code",
+          message: "Your Rentmaikar identity verification is in progress. We'll notify you when it's complete.",
+          channels: [
+            ...(channels.sms ? ["sms"] : []),
+            ...(channels.whatsapp ? ["whatsapp"] : []),
+          ],
+        },
+      });
+    } catch (e) {
+      console.warn("[persona] notify failed", e);
+    }
+  }
+
+  async function start() {
+    setLoading(true);
+    try {
+      const resolved = await resolveFields();
+      const missing = REQUIRED.filter((k) => !(resolved as any)[k]);
+      if (missing.length > 0) {
+        setPendingFields(resolved);
+        setMissingFields(missing);
+        setFallbackOpen(true);
+        setLoading(false);
+        return;
+      }
+      await launchInquiry(resolved);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not start verification");
+      setLoading(false);
+    }
+  }
+
+  async function handleFallbackConfirm(v: PersonaFallbackValues) {
+    setFallbackOpen(false);
+    const merged = { ...pendingFields, ...Object.fromEntries(Object.entries(v.fields).filter(([, val]) => !!val)) };
+    await notifyPending(merged.phone, v.notify);
+    await launchInquiry(merged as Record<string, string>);
+  }
+
   if (done) {
     return (
       <Button variant="outline" disabled className="gap-2">
@@ -143,9 +191,18 @@ export default function PersonaVerification({
   }
 
   return (
-    <Button onClick={start} disabled={loading} variant="default">
-      {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-      {buttonLabel ?? "Verify identity with Persona"}
-    </Button>
+    <>
+      <Button onClick={start} disabled={loading} variant="default">
+        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+        {buttonLabel ?? "Verify identity with Persona"}
+      </Button>
+      <PersonaFieldsFallbackDialog
+        open={fallbackOpen}
+        onOpenChange={setFallbackOpen}
+        missing={missingFields}
+        initial={pendingFields as any}
+        onConfirm={handleFallbackConfirm}
+      />
+    </>
   );
 }

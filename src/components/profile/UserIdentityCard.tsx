@@ -171,8 +171,19 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
   return (
     <Card className="mb-6" data-testid="user-identity-card">
       <CardContent className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 sm:p-6">
-        <div className="relative">
-          <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-2 border-primary/20">
+        <div
+          className="relative"
+          onDragOver={(e) => { e.preventDefault(); }}
+          onDrop={async (e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files?.[0];
+            if (!file) return;
+            const evt = { target: { files: [file] as unknown as FileList, value: '' } } as unknown as React.ChangeEvent<HTMLInputElement>;
+            await handleFile(evt);
+          }}
+          title="Drag & drop a photo, or click to pick / take one"
+        >
+          <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-2 border-primary/20 border-dashed">
             {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
             <AvatarFallback className="text-xl font-semibold">{initials}</AvatarFallback>
           </Avatar>
@@ -189,8 +200,6 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
             ref={fileRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            /* On iOS/Android Capacitor WebViews this shows the camera/library
-               action sheet automatically. `capture` biases toward camera. */
             capture="user"
             className="hidden"
             onChange={handleFile}
