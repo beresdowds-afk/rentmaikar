@@ -379,31 +379,25 @@ const OwnerRegistration = () => {
 
 
                 <div className="space-y-2">
-                  <Label>Phone Number</Label>
-                  <div className="flex gap-2">
-                    <Select
-                      defaultValue="us"
-                      onValueChange={(value) => setValue("phoneCountry", value as "us" | "ng")}
-                    >
-                      <SelectTrigger className="w-28">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="us">🇺🇸 +1</SelectItem>
-                        <SelectItem value="ng">🇳🇬 +234</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="relative flex-1">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <Input
-                        type="tel"
-                        placeholder="(202) 555-0123"
-                        className="pl-10"
-                        autoComplete="tel-national"
-                        {...register("phoneNumber")}
+                  <Label htmlFor="owner-phone">Phone Number</Label>
+                  <Controller
+                    control={control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                      <PhoneNumberInput
+                        id="owner-phone"
+                        defaultCountry={currentCountry === 'nigeria' ? 'NG' : 'US'}
+                        value={field.value}
+                        onChange={(v) => {
+                          field.onChange(v);
+                          const parsed = parsePhoneNumberFromString(v || "");
+                          if (parsed?.country === "NG") setValue("phoneCountry", "ng");
+                          else if (parsed?.country === "US") setValue("phoneCountry", "us");
+                        }}
+                        aria-invalid={!!errors.phoneNumber}
                       />
-                    </div>
-                  </div>
+                    )}
+                  />
                   {errors.phoneNumber && (
                     <p className="text-destructive text-sm">{errors.phoneNumber.message}</p>
                   )}
