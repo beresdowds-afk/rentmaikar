@@ -56,16 +56,37 @@ export default function PersonaVerification({
   buttonLabel,
 }: Props) {
   const { country } = useRegion();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
   useEffect(() => { loadPersonaSdk().catch(() => {/* fallback to hosted */}); }, []);
 
+  async function resolveFields(): Promise<Record<string, string>> {
+    if (fields && Object.keys(fields).length > 0) return fields;
+    if (!user) return {};
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, email, phone")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const { name_first, name_last } = splitName(profile?.full_name ?? (user.user_metadata as any)?.full_name);
+    const out: Record<string, string> = {};
+    if (name_first) out.name_first = name_first;
+    if (name_last) out.name_last = name_last;
+    const email = profile?.email ?? user.email ?? undefined;
+    if (email) out.email = email;
+    const phone = profile?.phone ?? user.phone ?? undefined;
+    if (phone) out.phone = phone;
+    return out;
+  }
+
   async function start() {
     setLoading(true);
     try {
+      const resolvedFields = await resolveFields();
       const { data, error } = await supabase.functions.invoke("persona-create-inquiry", {
-        body: { subject_type: subject, subject_role: subjectRole, subject_ref: subjectRef, region: country, fields },
+        body: { subject_type: subject, subject_role: subjectRole, subject_ref: subjectRef, region: country, fields: resolvedFields },
       });
       if (error) throw error;
 
