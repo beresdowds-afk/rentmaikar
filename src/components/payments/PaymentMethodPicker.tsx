@@ -64,7 +64,19 @@ export function PaymentMethodPicker({
           {" — "}pick a provider available in your region.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {preferredUnavailable && (
+          <Alert data-testid="psp-fallback-notice">
+            <Info className="h-4 w-4" />
+            <AlertTitle>Provider changed for your region</AlertTitle>
+            <AlertDescription>
+              {psplabels[preferredPSP!] ?? preferredPSP} isn't available in{" "}
+              {cc}. We've selected{" "}
+              <strong>{defaultPSP ? psplabels[defaultPSP] : "an alternative"}</strong>{" "}
+              instead so you can complete your payment.
+            </AlertDescription>
+          </Alert>
+        )}
         <Tabs defaultValue={defaultPSP} key={defaultPSP} className="w-full" data-testid="payment-method-picker">
           <TabsList className="w-full" style={{ display: "grid", gridTemplateColumns: `repeat(${psps.length}, minmax(0,1fr))` }}>
             {psps.map((p) => (
