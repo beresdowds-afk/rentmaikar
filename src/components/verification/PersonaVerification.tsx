@@ -60,6 +60,9 @@ export default function PersonaVerification({
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [fallbackOpen, setFallbackOpen] = useState(false);
+  const [missingFields, setMissingFields] = useState<PersonaFieldKey[]>([]);
+  const [pendingFields, setPendingFields] = useState<Record<string, string>>({});
 
   useEffect(() => { loadPersonaSdk().catch(() => {/* fallback to hosted */}); }, []);
 
