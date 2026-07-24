@@ -137,18 +137,56 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
   }, [regionMode]);
 
   // Sync with the signed-in user's profile preference.
+  // Owners/drivers (and any non-admin role) are locked to their registration
+  // region — their dashboard must not flip when they travel. Only admins and
+  // admin assistants may freely switch regions.
   useEffect(() => {
     let cancelled = false;
     const syncProfile = async (userId: string) => {
       try {
-        const { data } = await supabase
-          .from("profiles")
-          .select("preferred_country, region_mode")
-          .eq("user_id", userId)
-          .maybeSingle();
-        if (cancelled || !data) return;
-        const pc = data.preferred_country as Country | null;
-        const rm = data.region_mode as RegionMode | null;
+        const [{ data: profile }, { data: roles }] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("preferred_country, region_mode")
+            .eq("user_id", userId)
+            .maybeSingle(),
+          supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", userId),
+        ]);
+        if (cancelled) return;
+
+        const roleList = (roles ?? []).map((r: { role: string }) => r.role);
+        const isAdminLike =
+          roleList.includes("admin") || roleList.includes("admin_assistant");
+
+        const pc = (profile?.preferred_country ?? null) as Country | null;
+        const rm = (profile?.region_mode ?? null) as RegionMode | null;
+
+        if (!isAdminLike) {
+          // Lock to registration region. If profile has no region yet
+          // (first sign-in after registration), pin the current detected
+          // country as their permanent region.
+          let locked: Country | null = pc;
+          if (!locked) {
+            locked = getStoredCountry() ?? country;
+            supabase
+              .from("profiles")
+              .update({ preferred_country: locked, region_mode: "manual" })
+              .eq("user_id", userId)
+              .then(() => {});
+          }
+          setRegionModeState("manual");
+          persistMode("manual");
+          if (locked === "USA" || locked === "Nigeria") {
+            setCountryState(locked);
+            persistCountry(locked);
+          }
+          return;
+        }
+
+        // Admins keep their stored preference and switching ability.
         if (rm === "auto" || rm === "manual") {
           setRegionModeState(rm);
           persistMode(rm);
@@ -173,7 +211,9 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
       cancelled = true;
       sub.subscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   // Persist manual selections back to profile if signed in.
   useEffect(() => {
