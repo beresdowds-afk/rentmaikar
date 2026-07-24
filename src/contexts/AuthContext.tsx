@@ -89,14 +89,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Log an authentication event via the SECURITY DEFINER RPC. Never trusts
+  // client-supplied user_id — the RPC derives it from auth.uid() on the server.
+  const logAuthEvent = async (
+    eventType: string,
+    opts: { email?: string; provider?: string; success?: boolean; errorCode?: string; metadata?: Record<string, unknown> } = {}
+  ) => {
+    try {
+      await supabase.rpc('log_auth_event', {
+        _event_type: eventType,
+        _email: opts.email ?? null,
+        _provider: opts.provider ?? null,
+        _success: opts.success ?? true,
+        _error_code: opts.errorCode ?? null,
+        _metadata: (opts.metadata ?? {}) as any,
+      });
+    } catch {
+      // Never let logging failures break auth.
+    }
+  };
+
   useEffect(() => {
-    // Set up auth state listener FIRST
+    // Set up auth state listener FIRST — synchronous state, deferred side effects.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
-        // Defer role fetching to avoid deadlock
+
         if (session?.user) {
           setIsRoleLoading(true);
           setTimeout(() => {
@@ -111,8 +130,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setTwoFactorStatus(null);
           setTwoFactorVerified(false);
         }
-        
+
         setIsLoading(false);
+
+        // Server-side auth event journal. Supabase rotates refresh tokens on
+        // TOKEN_REFRESHED and mints new sessions on SIGNED_IN, which is our
+        // defense against session fixation; we simply record the transitions.
+        setTimeout(() => {
+          if (event === 'SIGNED_IN') {
+            const provider = (session?.user?.app_metadata as any)?.provider ?? 'email';
+            logAuthEvent('sign_in_success', {
+              email: session?.user?.email ?? undefined,
+              provider,
+              metadata: { providers: (session?.user?.app_metadata as any)?.providers },
+            });
+          } else if (event === 'SIGNED_OUT') {
+            logAuthEvent('sign_out');
+          } else if (event === 'TOKEN_REFRESHED') {
+            logAuthEvent('token_refreshed', { metadata: { silent: true } });
+          } else if (event === 'USER_UPDATED') {
+            logAuthEvent('user_updated');
+          } else if (event === 'PASSWORD_RECOVERY') {
+            logAuthEvent('password_recovery_started');
+          }
+        }, 0);
       }
     );
 
@@ -120,19 +161,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
         setIsRoleLoading(true);
         fetchUserRole(session.user.id).then((role) => {
           setUserRole(role);
           setIsRoleLoading(false);
         });
-        // For existing sessions, assume 2FA was previously verified
         setTwoFactorVerified(true);
       } else {
         setIsRoleLoading(false);
       }
-      
+
       setIsLoading(false);
     });
 
@@ -142,33 +182,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signUp = async (email: string, password: string, fullName: string, role: AppRole) => {
     try {
       const redirectUrl = `${window.location.origin}/`;
-      
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: redirectUrl,
-          data: {
-            full_name: fullName,
-          },
+          data: { full_name: fullName },
         },
       });
 
       if (error) {
-        return { error };
+        // Do NOT leak whether the email is already registered — return a
+        // generic message. Real diagnostics live in auth_event_log.
+        await logAuthEvent('sign_up_failure', { email, errorCode: error.message });
+        const generic = /already|registered|exists/i.test(error.message)
+          ? new Error('If this email is available, an account has been created. Please check your inbox.')
+          : error;
+        return { error: generic };
       }
 
-      // Assign role to user
       if (data.user) {
         const { error: roleError } = await supabase
           .from('user_roles')
           .insert({ user_id: data.user.id, role });
-        
-        if (roleError) {
-          console.error('Error assigning role:', roleError);
-        }
+        if (roleError) console.error('Error assigning role:', roleError);
       }
 
+      await logAuthEvent('sign_up_success', { email, metadata: { role } });
       return { error: null };
     } catch (err) {
       return { error: err as Error };
@@ -177,18 +218,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
+      const normalized = email.trim().toLowerCase();
+
+      // Server-side rate limit: 5 attempts / 5 minutes per email.
+      const { data: allowed, error: rlError } = await supabase.rpc('check_auth_rate_limit', {
+        _identifier: `signin:${normalized}`,
+        _endpoint: 'auth.signin',
+        _max_requests: 5,
+        _window_seconds: 300,
+      });
+      if (!rlError && allowed === false) {
+        await logAuthEvent('sign_in_rate_limited', { email: normalized, success: false });
+        return { error: new Error('Too many sign-in attempts. Please wait a few minutes and try again.') };
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalized,
         password,
       });
 
       if (error) {
-        return { error };
+        await logAuthEvent('sign_in_failure', {
+          email: normalized,
+          success: false,
+          errorCode: error.message,
+        });
+        // Generic error text — avoid account enumeration.
+        return { error: new Error('Invalid email or password.') };
       }
 
-      // Don't mark 2FA as verified yet — the Auth page will handle the challenge
+      // 2FA challenge handled by the Auth page.
       setTwoFactorVerified(false);
-
       return { error: null, userId: data.user?.id };
     } catch (err) {
       return { error: err as Error };
@@ -203,6 +263,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setTwoFactorStatus(null);
     setTwoFactorVerified(false);
   };
+
 
   const hasRole = (role: AppRole) => {
     return userRole === role;

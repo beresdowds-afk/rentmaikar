@@ -248,27 +248,52 @@ const Auth = () => {
     setIsSubmitting(true);
     setError(null);
 
+    const normalized = data.email.trim().toLowerCase();
+
     try {
-      const redirectUrl = `${window.location.origin}/reset-password`;
-      
-      const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: redirectUrl,
+      // Rate-limit reset requests: 3 per email per 15 minutes.
+      const { data: allowed } = await supabase.rpc('check_auth_rate_limit', {
+        _identifier: `reset:${normalized}`,
+        _endpoint: 'auth.reset_password',
+        _max_requests: 3,
+        _window_seconds: 900,
       });
 
-      if (error) {
-        setError(error.message);
+      if (allowed !== false) {
+        const redirectUrl = `${window.location.origin}/reset-password`;
+        const { error } = await supabase.auth.resetPasswordForEmail(normalized, {
+          redirectTo: redirectUrl,
+        });
+        // Log outcome server-side without revealing it to the caller.
+        await supabase.rpc('log_auth_event', {
+          _event_type: error ? 'password_reset_failure' : 'password_reset_requested',
+          _email: normalized,
+          _success: !error,
+          _error_code: error?.message ?? null,
+          _metadata: {} as any,
+        });
       } else {
-        setResetEmailSent(true);
-        toast.success('Password reset email sent!', {
-          description: 'Check your inbox for the reset link.',
+        await supabase.rpc('log_auth_event', {
+          _event_type: 'password_reset_rate_limited',
+          _email: normalized,
+          _success: false,
+          _metadata: {} as any,
         });
       }
+
+      // Always respond generically to prevent account enumeration.
+      setResetEmailSent(true);
+      toast.success('If an account exists for that email, a reset link has been sent.', {
+        description: 'Check your inbox and spam folder.',
+      });
     } catch (err: any) {
-      setError(err.message);
+      // Still respond generically even on unexpected errors.
+      setResetEmailSent(true);
     }
 
     setIsSubmitting(false);
   };
+
 
   const handleBackToLogin = () => {
     setShowForgotPassword(false);
