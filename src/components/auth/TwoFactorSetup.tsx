@@ -75,8 +75,9 @@ export const TwoFactorSetup = () => {
 
   const handleSave = async () => {
     if (!user) return;
-    if (!phoneNumber || phoneNumber.length < 7) {
-      toast.error('Please enter a valid phone number');
+    const parsed = parsePhoneNumberFromString(phoneNumber || '');
+    if (!parsed?.isValid()) {
+      toast.error('Please enter a valid phone number with country code');
       return;
     }
     setIsSaving(true);
