@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import PersonaVerification from '@/components/verification/PersonaVerification';
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 import { Lock } from 'lucide-react';
+import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 
 interface ProfileEditorProps {
   subjectRole: 'driver' | 'owner' | 'support_staff' | 'admin_assistant';
@@ -398,15 +399,11 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
                   <Badge variant="outline" className="text-xs">Unverified</Badge>
                 )}
               </Label>
-              <Input
+              <PhoneNumberInput
                 id="pe-phone"
-                type="tel"
                 value={phone}
-                onChange={(e) => { setPhone(e.target.value); if (errors.phone) setErrors(x => ({ ...x, phone: undefined })); }}
-                placeholder="+15551234567"
+                onChange={(v) => { setPhone(v); if (errors.phone) setErrors(x => ({ ...x, phone: undefined })); }}
                 autoComplete="tel"
-                inputMode="tel"
-                maxLength={20}
                 aria-invalid={!!errors.phone}
                 className={fieldClass('phone')}
               />
