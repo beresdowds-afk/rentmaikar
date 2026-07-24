@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Shield, Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRegion } from "@/contexts/RegionContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 interface Props {
@@ -12,6 +13,13 @@ interface Props {
   fields?: Record<string, string>;
   onComplete?: (inquiryId: string | null) => void;
   buttonLabel?: string;
+}
+
+function splitName(full?: string | null): { name_first?: string; name_last?: string } {
+  if (!full) return {};
+  const parts = full.trim().split(/\s+/);
+  if (parts.length === 1) return { name_first: parts[0] };
+  return { name_first: parts.slice(0, -1).join(" "), name_last: parts.slice(-1)[0] };
 }
 
 const PERSONA_SDK_URL = "https://cdn.withpersona.com/dist/persona-v5.5.0.js";
@@ -48,16 +56,37 @@ export default function PersonaVerification({
   buttonLabel,
 }: Props) {
   const { country } = useRegion();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
   useEffect(() => { loadPersonaSdk().catch(() => {/* fallback to hosted */}); }, []);
 
+  async function resolveFields(): Promise<Record<string, string>> {
+    if (fields && Object.keys(fields).length > 0) return fields;
+    if (!user) return {};
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, email, phone")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const { name_first, name_last } = splitName(profile?.full_name ?? (user.user_metadata as any)?.full_name);
+    const out: Record<string, string> = {};
+    if (name_first) out.name_first = name_first;
+    if (name_last) out.name_last = name_last;
+    const email = profile?.email ?? user.email ?? undefined;
+    if (email) out.email = email;
+    const phone = profile?.phone ?? user.phone ?? undefined;
+    if (phone) out.phone = phone;
+    return out;
+  }
+
   async function start() {
     setLoading(true);
     try {
+      const resolvedFields = await resolveFields();
       const { data, error } = await supabase.functions.invoke("persona-create-inquiry", {
-        body: { subject_type: subject, subject_role: subjectRole, subject_ref: subjectRef, region: country, fields },
+        body: { subject_type: subject, subject_role: subjectRole, subject_ref: subjectRef, region: country, fields: resolvedFields },
       });
       if (error) throw error;
 
