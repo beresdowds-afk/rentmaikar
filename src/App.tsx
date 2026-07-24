@@ -108,10 +108,8 @@ const PageLoader = () => <PageSkeleton />;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AppLiveSync />
-
-
     <AuthProvider>
+      <AppLiveSync />
       <RegionProvider>
         <UserTypeProvider>
           <TooltipProvider>
