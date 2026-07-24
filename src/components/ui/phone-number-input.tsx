@@ -3,6 +3,7 @@ import PhoneInputBase, { type Country } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import '@/styles/phone-input.css';
 import { cn } from '@/lib/utils';
+import { useDefaultPhoneCountry } from '@/hooks/useDefaultPhoneCountry';
 
 export interface PhoneNumberInputProps {
   /** E.164 value, e.g. "+2348012345678". */
@@ -29,7 +30,7 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
     {
       value,
       onChange,
-      defaultCountry = 'US',
+      defaultCountry,
       placeholder = 'Enter phone number',
       disabled,
       className,
@@ -40,11 +41,16 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
     },
     ref,
   ) => {
+    // When no explicit defaultCountry is provided, sync from the user's
+    // profile / region. This keeps every phone input (web + Capacitor iOS/Android)
+    // consistent with the signed-in user's preferred country.
+    const autoCountry = useDefaultPhoneCountry();
+    const resolvedCountry: Country = defaultCountry ?? autoCountry;
     return (
       <PhoneInputBase
         international
         countryCallingCodeEditable={false}
-        defaultCountry={defaultCountry}
+        defaultCountry={resolvedCountry}
         value={value || undefined}
         onChange={(v) => onChange((v as string) || '')}
         disabled={disabled}
