@@ -194,7 +194,7 @@ const DriverRegistration = () => {
         first_name: data.firstName,
         last_name: data.lastName,
         email: data.email,
-        phone_country: data.phoneCountry,
+        phone_country: data.phoneCountry ?? (parsePhoneNumberFromString(data.phoneNumber)?.country === 'NG' ? 'ng' : 'us'),
         phone_number: data.phoneNumber,
         country: data.country,
         city: data.city,
