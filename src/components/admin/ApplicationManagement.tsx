@@ -188,6 +188,16 @@ export const ApplicationManagement = () => {
         return;
       }
 
+      if (newStatus === 'rejected') {
+        const { error } = await supabase.rpc('reject_application', {
+          _app_id: appId,
+          _reason: reason ?? 'Rejected by reviewer',
+          _notes: notes ?? null,
+        });
+        if (error) throw error;
+        return;
+      }
+
       const updateData: Record<string, unknown> = {
         status: newStatus,
         reviewed_by: user?.id,

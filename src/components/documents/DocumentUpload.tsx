@@ -25,6 +25,7 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { DocumentExportButton } from './DocumentExportButton';
+import { UploadDropZone } from '@/components/ui/upload-drop-zone';
 
 type DocumentType =
   | 'driver_license'
@@ -247,20 +248,19 @@ export const DocumentUpload = ({ userType, vehicleId, vehicleName }: DocumentUpl
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, docType: DocumentType, category: DocumentCategory) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    // Validate file size (10MB)
+    processFile(file, docType, category);
+  };
+
+  const processFile = (file: File, docType: DocumentType, category: DocumentCategory) => {
     if (file.size > 10 * 1024 * 1024) {
       toast.error('File size must be less than 10MB');
       return;
     }
-    
-    // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     if (!allowedTypes.includes(file.type)) {
       toast.error('Only JPG, PNG, WebP, and PDF files are allowed');
       return;
     }
-    
     setUploadingType(docType);
     uploadMutation.mutate({ file, documentType: docType, category });
   };
@@ -466,28 +466,13 @@ export const DocumentUpload = ({ userType, vehicleId, vehicleName }: DocumentUpl
                 )}
                 
                 {(!existingDoc || existingDoc.status === 'rejected') && (
-                  <div className="relative">
-                    <Input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,application/pdf"
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                      onChange={(e) => handleFileSelect(e, config.type, config.category)}
-                      disabled={isUploading}
-                    />
-                    <Button size="sm" disabled={isUploading}>
-                      {isUploading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                          {uploadProgress}%
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-4 w-4 mr-1" />
-                          Upload
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                  <UploadDropZone
+                    compact
+                    isUploading={isUploading}
+                    progress={uploadProgress}
+                    disabled={isUploading}
+                    onFileSelected={(file) => processFile(file, config.type, config.category)}
+                  />
                 )}
               </div>
             </div>

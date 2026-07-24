@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlternativeAuthOptions } from '@/components/auth/AlternativeAuthOptions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -490,6 +491,8 @@ const Auth = () => {
                     <p className="text-sm text-destructive">{loginForm.formState.errors.password.message}</p>
                   )}
                 </div>
+
+                <AlternativeAuthOptions defaultRole="driver" />
               </CardContent>
               
               <CardFooter>
@@ -625,6 +628,8 @@ const Auth = () => {
                 {signupForm.formState.errors.agreeTerms && (
                   <p className="text-sm text-destructive">{signupForm.formState.errors.agreeTerms.message}</p>
                 )}
+
+                <AlternativeAuthOptions defaultRole={(signupForm.watch('role') as 'driver' | 'owner') || 'driver'} />
               </CardContent>
               
               <CardFooter>
