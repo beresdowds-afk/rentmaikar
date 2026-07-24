@@ -69,6 +69,32 @@ const handler = async (req: Request): Promise<Response> => {
 
       const parsed = setupSchema.parse(rawBody);
 
+      // Rate limit setup attempts to prevent spam / dialing abuse.
+      const rl = await checkRateLimit(`2fa-setup:${user.id}`, "send-2fa-code", 5);
+      if (!rl.allowed) {
+        return tooMany(rl.retry_after_seconds, {
+          message: "Too many 2FA setup attempts. Please wait and try again.",
+        });
+      }
+
+      // Require the phone number to be verified against the user's profile
+      // before it can be enabled for 2FA / dialing.
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("phone, phone_verified")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!profile || profile.phone !== parsed.phone || !profile.phone_verified) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error:
+              "Phone number must be verified before enabling 2FA. Please complete SMS/voice verification first.",
+          }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+
       // Update or create 2FA settings
       const { error: upsertError } = await supabase
         .from("two_factor_settings")
