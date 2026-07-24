@@ -428,6 +428,15 @@ const App = () => (
                   />
                   <Route path="/onboarding-redirect" element={<OnboardingRedirect />} />
                   <Route path="/verify-email" element={<OnboardingRedirect />} />
+                  <Route
+                    path="/onboarding/complete-profile"
+                    element={
+                      <ProtectedRoute>
+                        <ProfileCompletionWizard />
+                      </ProtectedRoute>
+                    }
+                  />
+
 
 
                   <Route path="*" element={<NotFound />} />
