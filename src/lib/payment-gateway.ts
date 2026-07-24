@@ -1,10 +1,11 @@
 import { getRegionById, type Region } from './regions';
-import { 
-  type PaymentBreakdown, 
-  type PaymentTransaction, 
+import {
+  type PaymentBreakdown,
+  type PaymentTransaction,
   calculatePaymentBreakdown,
-  formatCurrency 
+  formatCurrency
 } from './payment-config';
+import { supabase } from '@/integrations/supabase/client';
 
 // PayPal types
 export interface PayPalConfig {
