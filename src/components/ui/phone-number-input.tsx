@@ -30,7 +30,7 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
     {
       value,
       onChange,
-      defaultCountry = 'US',
+      defaultCountry,
       placeholder = 'Enter phone number',
       disabled,
       className,
@@ -41,11 +41,16 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
     },
     ref,
   ) => {
+    // When no explicit defaultCountry is provided, sync from the user's
+    // profile / region. This keeps every phone input (web + Capacitor iOS/Android)
+    // consistent with the signed-in user's preferred country.
+    const autoCountry = useDefaultPhoneCountry();
+    const resolvedCountry: Country = defaultCountry ?? autoCountry;
     return (
       <PhoneInputBase
         international
         countryCallingCodeEditable={false}
-        defaultCountry={defaultCountry}
+        defaultCountry={resolvedCountry}
         value={value || undefined}
         onChange={(v) => onChange((v as string) || '')}
         disabled={disabled}
