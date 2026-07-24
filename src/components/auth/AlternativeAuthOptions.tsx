@@ -15,25 +15,52 @@ import { useResendCooldown } from '@/hooks/useResendCooldown';
 type Role = 'driver' | 'owner';
 type Provider = 'supabase' | 'custom';
 
+function friendlyGoogleError(raw: string | undefined | null): string {
+  const msg = (raw || '').toLowerCase();
+  if (!msg) return 'Google sign-in could not complete. Please try again.';
+  if (msg.includes('access_denied') || msg.includes('denied') || msg.includes('cancel')) {
+    return 'You denied access on the Google consent screen. Tap "Retry" and choose Allow to continue.';
+  }
+  if (msg.includes('popup') || msg.includes('closed') || msg.includes('window')) {
+    return 'The Google sign-in window closed before finishing. Please try again.';
+  }
+  if (msg.includes('expired') || msg.includes('timeout')) {
+    return 'Your Google session expired. Please retry to start a fresh sign-in.';
+  }
+  if (msg.includes('redirect') || msg.includes('callback') || msg.includes('uri')) {
+    return 'Google callback is misconfigured for this environment. Please contact support if this persists.';
+  }
+  if (msg.includes('unsupported provider') || msg.includes('provider is not enabled')) {
+    return 'Google sign-in is temporarily disabled. Please use email/phone or try again shortly.';
+  }
+  return raw || 'Google sign-in failed. Please try again.';
+}
+
 export function AlternativeAuthOptions({ defaultRole = 'driver' as Role }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [phoneOpen, setPhoneOpen] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
 
   const handleGoogle = async () => {
+    setGoogleError(null);
     setGoogleLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth('google', {
         redirect_uri: window.location.origin,
       });
       if (result.error) {
-        toast.error(result.error.message || 'Google sign-in failed');
+        const friendly = friendlyGoogleError(result.error.message);
+        setGoogleError(friendly);
+        toast.error(friendly);
         setGoogleLoading(false);
         return;
       }
       // redirected === true → browser is navigating to Google.
       // Otherwise the session is set and AuthContext's listener will route.
     } catch (e) {
-      toast.error((e as Error).message);
+      const friendly = friendlyGoogleError((e as Error).message);
+      setGoogleError(friendly);
+      toast.error(friendly);
       setGoogleLoading(false);
     }
   };
