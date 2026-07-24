@@ -184,6 +184,11 @@ verify_jwt = false
 [functions.referee-attestation]
 verify_jwt = false
 
+[functions.phone-otp-custom]
+verify_jwt = false
+
+
+
 # ─────────────────────────────────────────────
 # Authenticated functions (verify_jwt = true — default, no entry needed)
 # Listed here for documentation only:
