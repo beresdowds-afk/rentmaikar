@@ -15,6 +15,8 @@ import { UserIdentityCard } from '@/components/profile/UserIdentityCard';
 import { ReverificationBanner } from '@/components/profile/ReverificationBanner';
 import { ProfileAuditHistory } from '@/components/profile/ProfileAuditHistory';
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
+import { PhoneNumberInput } from '@/components/ui/phone-number-input';
+import { useRegion } from '@/contexts/RegionContext';
 import { z } from 'zod';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
@@ -49,6 +51,7 @@ const normalizePhoneE164 = (raw: string | null | undefined) => {
 
 export default function ProfileSettingsPage() {
   const { user } = useAuth();
+  const { country } = useRegion();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [initial, setInitial] = useState({ fullName: '', phone: '' });
@@ -254,14 +257,14 @@ export default function ProfileSettingsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
-                <Input
+                <PhoneNumberInput
                   id="phone"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={setPhone}
+                  defaultCountry={country === 'Nigeria' ? 'NG' : 'US'}
                   disabled={loading || saving}
-                  maxLength={30}
                   autoComplete="tel"
-                  placeholder="+1 555 123 4567"
+                  placeholder="Enter phone number"
                 />
               </div>
 

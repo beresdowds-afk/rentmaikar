@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -176,13 +177,13 @@ export const CallGroups = ({ groups, onCreateGroup, onDeleteGroup, isLoading }: 
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 md:col-span-2">
                       <Label className="text-xs">Phone Number</Label>
-                      <Input
+                      <PhoneNumberInput
+                        value={memberPhone.startsWith('+') ? memberPhone : ''}
+                        onChange={setMemberPhone}
+                        defaultCountry={memberRegion === 'Nigeria' ? 'NG' : 'US'}
                         placeholder="Phone"
-                        value={memberPhone}
-                        onChange={(e) => setMemberPhone(e.target.value.replace(/\D/g, ''))}
-                        maxLength={10}
                       />
                     </div>
                     <div className="space-y-2">
