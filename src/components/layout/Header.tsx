@@ -178,23 +178,38 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
           <div className="lg:hidden py-4 border-t border-border animate-slide-up">
             <nav className="flex flex-col gap-2">
               {/* Region Switcher and Tour for Mobile */}
-              <div className="px-4 py-2 flex items-center justify-between border-b border-border mb-2 pb-4">
-                <span className="text-sm text-muted-foreground">Region</span>
-                <div className="flex items-center gap-2">
-                  {onRestartTour && location.pathname === "/" && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => { onRestartTour(); setIsMenuOpen(false); }}
-                      className="gap-1"
-                    >
-                      <HelpCircle className="w-4 h-4" />
-                      Tour
-                    </Button>
-                  )}
-                  <RegionSwitcher />
+              {(userRole === 'admin' || userRole === 'admin_assistant') ? (
+                <div className="px-4 py-2 flex items-center justify-between border-b border-border mb-2 pb-4">
+                  <span className="text-sm text-muted-foreground">Region</span>
+                  <div className="flex items-center gap-2">
+                    {onRestartTour && location.pathname === "/" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { onRestartTour(); setIsMenuOpen(false); }}
+                        className="gap-1"
+                      >
+                        <HelpCircle className="w-4 h-4" />
+                        Tour
+                      </Button>
+                    )}
+                    <RegionSwitcher />
+                  </div>
                 </div>
-              </div>
+              ) : onRestartTour && location.pathname === "/" ? (
+                <div className="px-4 py-2 flex items-center justify-end border-b border-border mb-2 pb-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { onRestartTour(); setIsMenuOpen(false); }}
+                    className="gap-1"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                    Tour
+                  </Button>
+                </div>
+              ) : null}
+
               
               {navLinks.map((link) => (
                 <Link
