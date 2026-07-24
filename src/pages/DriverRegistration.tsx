@@ -139,7 +139,7 @@ const DriverRegistration = () => {
         .select('phone')
         .eq('user_id', user.id)
         .maybeSingle();
-      if (profile?.phone) setValue('phoneNumber', profile.phone.replace(/^\+?\d{1,3}/, ''));
+      if (profile?.phone) setValue('phoneNumber', profile.phone);
     })();
   }, [user, setValue]);
 
