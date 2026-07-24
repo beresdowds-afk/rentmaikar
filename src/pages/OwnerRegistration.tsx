@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { Building, Mail, Phone, MapPin, Car, Calendar, Check, ArrowLeft, Upload, ExternalLink, FileText, Shield } from "lucide-react";
+import { PhoneNumberInput } from "@/components/ui/phone-number-input";
 import { CurrencyIcon } from "@/components/ui/Currencyicon";
 import { useRegion } from "@/contexts/RegionContext";
 import { Button } from "@/components/ui/button";
@@ -29,8 +31,13 @@ const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   lastName: z.string().min(2, "Last name is required").max(50, "Last name too long"),
   email: z.string().email("Invalid email address").max(255, "Email too long"),
   password: z.string().max(72, "Password too long").optional().or(z.literal("")),
-  phoneCountry: z.enum(["us", "ng"]),
-  phoneNumber: z.string().min(10, "Phone number is required").max(15, "Phone number too long"),
+  phoneCountry: z.enum(["us", "ng"]).optional(),
+  phoneNumber: z
+    .string()
+    .refine((v) => {
+      const p = parsePhoneNumberFromString(v || "");
+      return !!p && p.isValid();
+    }, "Enter a valid phone number with country code"),
   
   // Location
   country: z.enum(["usa", "nigeria"]),
