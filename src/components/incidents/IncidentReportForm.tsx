@@ -615,7 +615,7 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
 
             {/* Upload Button */}
             {photos.length < MAX_PHOTOS && (
-              <div>
+              <div className="space-y-2">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -624,15 +624,18 @@ export function IncidentReportForm({ vehicleId, vehicleName, ownerId, onSuccess 
                   onChange={handleFileSelect}
                   className="hidden"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-dashed"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Add Photos ({photos.length}/{MAX_PHOTOS})
-                </Button>
+                <UploadDropZone
+                  accept="image/*"
+                  maxSizeMB={10}
+                  multiple
+                  onFilesSelected={(files) => {
+                    const dt = new DataTransfer();
+                    files.forEach(f => dt.items.add(f));
+                    const evt = { target: { files: dt.files, value: '' } } as unknown as React.ChangeEvent<HTMLInputElement>;
+                    handleFileSelect(evt);
+                  }}
+                  label={`Add Photos (${photos.length}/${MAX_PHOTOS})`}
+                />
               </div>
             )}
           </div>
