@@ -54,6 +54,7 @@ import { AdminTaskPortal } from "@/components/admin/portal/AdminTaskPortal";
 import { VehiclePickupManagement } from "@/components/admin/VehiclePickupManagement";
 import { ApplicationManagement } from "@/components/admin/ApplicationManagement";
 import { AdminAssistantManagement } from "@/components/admin/AdminAssistantManagement";
+import { PhoneOtpProviderSettings } from "@/components/admin/PhoneOtpProviderSettings";
 import { PortalNavigation, type PortalType } from "@/components/admin/PortalNavigation";
 import { AdminNotificationsBell } from "@/components/admin/AdminNotificationsBell";
 
