@@ -3,6 +3,7 @@ import PhoneInputBase, { type Country } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import '@/styles/phone-input.css';
 import { cn } from '@/lib/utils';
+import { useDefaultPhoneCountry } from '@/hooks/useDefaultPhoneCountry';
 
 export interface PhoneNumberInputProps {
   /** E.164 value, e.g. "+2348012345678". */
