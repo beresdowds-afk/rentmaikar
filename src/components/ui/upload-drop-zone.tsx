@@ -10,7 +10,9 @@ interface UploadDropZoneProps {
   disabled?: boolean;
   isUploading?: boolean;
   progress?: number;
-  onFileSelected: (file: File) => void;
+  onFileSelected?: (file: File) => void;
+  onFilesSelected?: (files: File[]) => void;
+  multiple?: boolean;
   className?: string;
   compact?: boolean;
   label?: string;
