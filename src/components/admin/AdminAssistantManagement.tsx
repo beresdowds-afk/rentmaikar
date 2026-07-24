@@ -21,6 +21,7 @@ export const PERMISSION_GROUPS: Array<{
     items: [
       { key: 'can_view_users', label: 'View users', description: 'Read the platform user directory.' },
       { key: 'can_manage_users', label: 'Manage users', description: 'Edit profiles and toggle active status.' },
+      { key: 'can_approve_applications', label: 'Approve / reject registrations', description: 'Approve or reject driver & owner registration applications.' },
       { key: 'can_view_audit_log', label: 'View audit log', description: 'Read admin & role audit history.' },
     ],
   },
@@ -61,7 +62,7 @@ export const PERMISSION_GROUPS: Array<{
 ];
 
 export type PermissionKey =
-  | 'can_view_users' | 'can_manage_users'
+  | 'can_view_users' | 'can_manage_users' | 'can_approve_applications'
   | 'can_view_vehicles' | 'can_manage_vehicles'
   | 'can_view_rentals' | 'can_manage_rentals'
   | 'can_view_payments' | 'can_manage_payments'
@@ -75,7 +76,7 @@ type PermissionRecord = { id: string; user_id: string; notes: string | null } & 
 type AssistantRow = PermissionRecord & { full_name: string | null; email: string | null };
 
 const EMPTY_PERMS: Record<PermissionKey, boolean> = {
-  can_view_users: false, can_manage_users: false,
+  can_view_users: false, can_manage_users: false, can_approve_applications: false,
   can_view_vehicles: false, can_manage_vehicles: false,
   can_view_rentals: false, can_manage_rentals: false,
   can_view_payments: false, can_manage_payments: false,

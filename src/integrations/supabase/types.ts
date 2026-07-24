@@ -49,6 +49,7 @@ export type Database = {
       }
       admin_assistant_permissions: {
         Row: {
+          can_approve_applications: boolean
           can_manage_content: boolean
           can_manage_iot: boolean
           can_manage_payments: boolean
@@ -74,6 +75,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          can_approve_applications?: boolean
           can_manage_content?: boolean
           can_manage_iot?: boolean
           can_manage_payments?: boolean
@@ -99,6 +101,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          can_approve_applications?: boolean
           can_manage_content?: boolean
           can_manage_iot?: boolean
           can_manage_payments?: boolean
@@ -3622,6 +3625,39 @@ export type Database = {
         }
         Relationships: []
       }
+      phone_otp_codes: {
+        Row: {
+          attempts: number
+          channel: string
+          code_hash: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          phone: string
+        }
+        Insert: {
+          attempts?: number
+          channel?: string
+          code_hash: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          phone: string
+        }
+        Update: {
+          attempts?: number
+          channel?: string
+          code_hash?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          phone?: string
+        }
+        Relationships: []
+      }
       platform_cities: {
         Row: {
           center_lat: number | null
@@ -3908,6 +3944,27 @@ export type Database = {
           is_global_default?: boolean
           key?: string
           name?: string
+        }
+        Relationships: []
+      }
+      platform_kv_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
         }
         Relationships: []
       }
@@ -8852,6 +8909,10 @@ export type Database = {
       register_push_device: {
         Args: { _device_label?: string; _platform: string; _token: string }
         Returns: string
+      }
+      reject_application: {
+        Args: { _app_id: string; _notes?: string; _reason: string }
+        Returns: undefined
       }
       revoke_full_access: {
         Args: { _reason?: string; _user_id: string }
