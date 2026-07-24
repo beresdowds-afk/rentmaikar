@@ -185,28 +185,18 @@ export const TwoFactorSetup = () => {
         ) : (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Phone Number for 2FA</Label>
-              <div className="flex gap-2">
-                <Select value={countryCode} onValueChange={(v) => setCountryCode(v as CountryCode)}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="us">{countryCodes.us.flag} {countryCodes.us.prefix}</SelectItem>
-                    <SelectItem value="ng">{countryCodes.ng.flag} {countryCodes.ng.prefix}</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="relative flex-1">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="tel"
-                    placeholder="(202) 555-0123"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
+              <Label htmlFor="tfa-phone">Phone Number for 2FA</Label>
+              <PhoneNumberInput
+                id="tfa-phone"
+                defaultCountry={countryCode === 'ng' ? 'NG' : 'US'}
+                value={phoneNumber}
+                onChange={(v) => {
+                  setPhoneNumber(v);
+                  const parsed = parsePhoneNumberFromString(v || '');
+                  if (parsed?.country === 'NG') setCountryCode('ng');
+                  else if (parsed?.country === 'US') setCountryCode('us');
+                }}
+              />
             </div>
 
             <div className="space-y-2">
