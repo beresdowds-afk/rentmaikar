@@ -21,6 +21,7 @@ import {
   Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { UploadDropZone } from '@/components/ui/upload-drop-zone';
 import { format, addDays, isAfter, parseISO } from 'date-fns';
 
 interface RideshareProfileUploadProps {
