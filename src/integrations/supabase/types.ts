@@ -4315,9 +4315,14 @@ export type Database = {
           daily_plan_forbidden: boolean | null
           daily_plan_forbidden_at: string | null
           daily_plan_forbidden_reason: string | null
+          driver_license_expiry: string | null
+          driver_license_number: string | null
           email: string | null
           email_verified: boolean | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
           full_name: string | null
+          has_payment_method: boolean
           id: string
           identity_verification_status: string | null
           identity_verified_at: string | null
@@ -4328,6 +4333,7 @@ export type Database = {
           notification_whatsapp: boolean | null
           onboarding_completed_at: string | null
           onboarding_state: Json
+          owns_vehicle: boolean | null
           payment_proxy_verified: boolean
           payments_suspended: boolean
           persona_verified: boolean
@@ -4336,6 +4342,7 @@ export type Database = {
           phone_verification_expires_at: string | null
           phone_verified: boolean | null
           preferred_country: string | null
+          profile_completion_skipped_at: string | null
           public_uuid: string
           referee_verified: boolean
           region_mode: string | null
@@ -4357,9 +4364,14 @@ export type Database = {
           daily_plan_forbidden?: boolean | null
           daily_plan_forbidden_at?: string | null
           daily_plan_forbidden_reason?: string | null
+          driver_license_expiry?: string | null
+          driver_license_number?: string | null
           email?: string | null
           email_verified?: boolean | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           full_name?: string | null
+          has_payment_method?: boolean
           id?: string
           identity_verification_status?: string | null
           identity_verified_at?: string | null
@@ -4370,6 +4382,7 @@ export type Database = {
           notification_whatsapp?: boolean | null
           onboarding_completed_at?: string | null
           onboarding_state?: Json
+          owns_vehicle?: boolean | null
           payment_proxy_verified?: boolean
           payments_suspended?: boolean
           persona_verified?: boolean
@@ -4378,6 +4391,7 @@ export type Database = {
           phone_verification_expires_at?: string | null
           phone_verified?: boolean | null
           preferred_country?: string | null
+          profile_completion_skipped_at?: string | null
           public_uuid?: string
           referee_verified?: boolean
           region_mode?: string | null
@@ -4399,9 +4413,14 @@ export type Database = {
           daily_plan_forbidden?: boolean | null
           daily_plan_forbidden_at?: string | null
           daily_plan_forbidden_reason?: string | null
+          driver_license_expiry?: string | null
+          driver_license_number?: string | null
           email?: string | null
           email_verified?: boolean | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           full_name?: string | null
+          has_payment_method?: boolean
           id?: string
           identity_verification_status?: string | null
           identity_verified_at?: string | null
@@ -4412,6 +4431,7 @@ export type Database = {
           notification_whatsapp?: boolean | null
           onboarding_completed_at?: string | null
           onboarding_state?: Json
+          owns_vehicle?: boolean | null
           payment_proxy_verified?: boolean
           payments_suspended?: boolean
           persona_verified?: boolean
@@ -4420,6 +4440,7 @@ export type Database = {
           phone_verification_expires_at?: string | null
           phone_verified?: boolean | null
           preferred_country?: string | null
+          profile_completion_skipped_at?: string | null
           public_uuid?: string
           referee_verified?: boolean
           region_mode?: string | null
@@ -8804,6 +8825,7 @@ export type Database = {
         Args: { _currency: string; _owner_id: string }
         Returns: number
       }
+      get_profile_completion_status: { Args: never; Returns: Json }
       get_proxy_consent_context: {
         Args: { _token: string }
         Returns: {
