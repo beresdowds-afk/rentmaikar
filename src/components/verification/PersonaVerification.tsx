@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRegion } from "@/contexts/RegionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import PersonaFieldsFallbackDialog, { type PersonaFieldKey, type PersonaFallbackValues } from "./PersonaFieldsFallbackDialog";
 
 interface Props {
   subject?: "self" | "referee";
