@@ -167,8 +167,6 @@ serve(async (req) => {
     let emailSent = false;
     let emailError: string | null = null;
 
-    let emailSent = false;
-    let emailError: string | null = null;
     try {
       const { error: sendErr } = await admin.functions.invoke("send-outbound-email", {
         body: {
