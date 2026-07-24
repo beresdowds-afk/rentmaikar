@@ -5,22 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
-import { Shield, Phone, CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { Shield, CheckCircle, Loader2, AlertTriangle, PhoneCall } from 'lucide-react';
 import { toast } from 'sonner';
-import { PhoneNumberInput } from '@/components/ui/phone-number-input';
+import { PhoneNumberField } from '@/components/ui/phone-number-field';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
-type CountryCode = 'us' | 'ng';
 type Channel = 'sms' | 'whatsapp';
-
-const countryCodes: Record<CountryCode, { prefix: string; flag: string }> = {
-  us: { prefix: '+1', flag: '🇺🇸' },
-  ng: { prefix: '+234', flag: '🇳🇬' },
-};
+type VerifyChannel = 'sms' | 'whatsapp' | 'voice';
 
 export const TwoFactorSetup = () => {
   const { user, userRole } = useAuth();
@@ -29,9 +23,19 @@ export const TwoFactorSetup = () => {
   const [isEnabled, setIsEnabled] = useState(false);
   const [isMandatory, setIsMandatory] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [countryCode, setCountryCode] = useState<CountryCode>('us');
+  const [phoneIsValid, setPhoneIsValid] = useState(false);
+  const [normalizedPhone, setNormalizedPhone] = useState<string | null>(null);
   const [channel, setChannel] = useState<Channel>('sms');
   const [existingPhone, setExistingPhone] = useState<string | null>(null);
+
+  // Verification flow state
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [verifyChannel, setVerifyChannel] = useState<VerifyChannel>('sms');
+  const [codeSent, setCodeSent] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
 
   const mandatoryRoles = ['admin', 'owner'];
 
@@ -49,7 +53,7 @@ export const TwoFactorSetup = () => {
           .maybeSingle(),
         supabase
           .from('profiles')
-          .select('phone')
+          .select('phone, phone_verified')
           .eq('user_id', user.id)
           .maybeSingle(),
       ]);
@@ -66,29 +70,83 @@ export const TwoFactorSetup = () => {
       } else if (profile?.phone) {
         setPhoneNumber(profile.phone);
       }
+      setPhoneVerified(!!profile?.phone_verified && profile?.phone === (data?.phone_number || profile?.phone));
       setIsLoading(false);
     };
     fetchSettings();
   }, [user, userRole]);
 
-  const getFullPhone = () => phoneNumber;
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
+
+  // Reset verification whenever the number is edited.
+  useEffect(() => {
+    setPhoneVerified(false);
+    setCodeSent(false);
+    setOtp('');
+  }, [normalizedPhone]);
+
+  const handleSendCode = async () => {
+    if (!phoneIsValid || !normalizedPhone) {
+      toast.error('Enter a valid phone number first');
+      return;
+    }
+    setSendingCode(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-phone', {
+        body: { action: 'send_code', phone: normalizedPhone, channel: verifyChannel },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to send code');
+      setCodeSent(true);
+      setCooldown(45);
+      toast.success(`Code sent via ${verifyChannel.toUpperCase()}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send code');
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!/^\d{6}$/.test(otp) || !normalizedPhone) {
+      toast.error('Enter the 6-digit code');
+      return;
+    }
+    setVerifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-phone', {
+        body: { action: 'verify_code', phone: normalizedPhone, code: otp },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Invalid code');
+      setPhoneVerified(true);
+      toast.success('Phone verified — you can now enable 2FA.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Verification failed');
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const handleSave = async () => {
-    if (!user) return;
-    const parsed = parsePhoneNumberFromString(phoneNumber || '');
-    if (!parsed?.isValid()) {
-      toast.error('Please enter a valid phone number with country code');
+    if (!user || !normalizedPhone) return;
+    if (!phoneVerified) {
+      toast.error('Please verify your phone number before enabling 2FA.');
       return;
     }
     setIsSaving(true);
     try {
       const { data, error } = await supabase.functions.invoke('send-2fa-code', {
-        body: { action: 'setup', phone: getFullPhone(), channel },
+        body: { action: 'setup', phone: normalizedPhone, channel },
       });
       if (error) throw error;
       if (!data.success) throw new Error(data.error);
       setIsEnabled(true);
-      setExistingPhone(getFullPhone());
+      setExistingPhone(normalizedPhone);
       toast.success('Two-factor authentication enabled!');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to enable 2FA');
@@ -184,34 +242,106 @@ export const TwoFactorSetup = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="tfa-phone">Phone Number for 2FA</Label>
-              <PhoneNumberInput
-                id="tfa-phone"
-                defaultCountry={countryCode === 'ng' ? 'NG' : 'US'}
-                value={phoneNumber}
-                onChange={(v) => {
-                  setPhoneNumber(v);
-                  const parsed = parsePhoneNumberFromString(v || '');
-                  if (parsed?.country === 'NG') setCountryCode('ng');
-                  else if (parsed?.country === 'US') setCountryCode('us');
-                }}
-              />
-            </div>
+            <PhoneNumberField
+              id="tfa-phone"
+              label="Phone Number for 2FA"
+              value={phoneNumber}
+              onChange={setPhoneNumber}
+              onValidityChange={(valid, e164) => {
+                setPhoneIsValid(valid);
+                setNormalizedPhone(e164);
+              }}
+              hint="Include your country code — e.g. +15551234567. This is the number Rentmaikar will dial or text with security codes."
+            />
+
+            {/* Step 1: Verify the number */}
+            {!phoneVerified && (
+              <div className="rounded-md border border-dashed p-3 space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <PhoneCall className="h-4 w-4 text-primary" />
+                  Step 1 — Verify this number
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Before we enable dialing or 2FA, we send a one-time code to confirm the number
+                  is really yours. Choose how you'd like to receive it.
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['sms', 'whatsapp', 'voice'] as const).map((c) => (
+                    <Button
+                      key={c}
+                      type="button"
+                      size="sm"
+                      variant={verifyChannel === c ? 'default' : 'outline'}
+                      onClick={() => setVerifyChannel(c)}
+                    >
+                      {c === 'voice' ? 'Voice call' : c === 'sms' ? 'SMS' : 'WhatsApp'}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={handleSendCode}
+                    disabled={!phoneIsValid || sendingCode || cooldown > 0}
+                    className="flex-1"
+                  >
+                    {sendingCode ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    {cooldown > 0
+                      ? `Resend in ${cooldown}s`
+                      : codeSent
+                        ? 'Resend code'
+                        : 'Send verification code'}
+                  </Button>
+                </div>
+                {codeSent && (
+                  <div className="space-y-2">
+                    <Label htmlFor="tfa-otp" className="text-xs">Enter the 6-digit code</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="tfa-otp"
+                        inputMode="numeric"
+                        maxLength={6}
+                        pattern="\d{6}"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="123456"
+                        className="font-mono tracking-widest"
+                      />
+                      <Button onClick={handleVerifyOtp} disabled={verifying || otp.length !== 6}>
+                        {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {phoneVerified && (
+              <Alert className="border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  Number verified. You can now enable 2FA.
+                </AlertDescription>
+              </Alert>
+            )}
 
             <div className="space-y-2">
-              <Label>Delivery Method</Label>
+              <Label>Step 2 — Delivery method for 2FA codes</Label>
               <div className="grid grid-cols-2 gap-2">
-                <Button type="button" variant={channel === 'sms' ? 'default' : 'outline'} onClick={() => setChannel('sms')} className="gap-2">
+                <Button type="button" variant={channel === 'sms' ? 'default' : 'outline'} onClick={() => setChannel('sms')}>
                   SMS
                 </Button>
-                <Button type="button" variant={channel === 'whatsapp' ? 'default' : 'outline'} onClick={() => setChannel('whatsapp')} className="gap-2">
+                <Button type="button" variant={channel === 'whatsapp' ? 'default' : 'outline'} onClick={() => setChannel('whatsapp')}>
                   WhatsApp
                 </Button>
               </div>
             </div>
 
-            <Button onClick={handleSave} disabled={isSaving || !phoneNumber} className="w-full">
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || !phoneIsValid || !phoneVerified}
+              className="w-full"
+            >
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
