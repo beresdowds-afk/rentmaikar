@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { checkRateLimit, tooMany } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,7 +24,7 @@ const verifyCodeSchema = z.object({
 
 const setupSchema = z.object({
   action: z.literal("setup"),
-  phone: z.string().min(7).max(16),
+  phone: z.string().regex(/^\+[1-9]\d{6,14}$/, "Phone must be normalized E.164"),
   channel: z.enum(["sms", "whatsapp"]),
 });
 
@@ -67,6 +68,32 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       const parsed = setupSchema.parse(rawBody);
+
+      // Rate limit setup attempts to prevent spam / dialing abuse.
+      const rl = await checkRateLimit(`2fa-setup:${user.id}`, "send-2fa-code", 5);
+      if (!rl.allowed) {
+        return tooMany(rl.retry_after_seconds, {
+          message: "Too many 2FA setup attempts. Please wait and try again.",
+        });
+      }
+
+      // Require the phone number to be verified against the user's profile
+      // before it can be enabled for 2FA / dialing.
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("phone, phone_verified")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!profile || profile.phone !== parsed.phone || !profile.phone_verified) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error:
+              "Phone number must be verified before enabling 2FA. Please complete SMS/voice verification first.",
+          }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
 
       // Update or create 2FA settings
       const { error: upsertError } = await supabase

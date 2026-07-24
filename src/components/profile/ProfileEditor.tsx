@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import PersonaVerification from '@/components/verification/PersonaVerification';
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 import { Lock } from 'lucide-react';
-import { PhoneNumberInput } from '@/components/ui/phone-number-input';
+import { PhoneNumberField } from '@/components/ui/phone-number-field';
 
 interface ProfileEditorProps {
   subjectRole: 'driver' | 'owner' | 'support_staff' | 'admin_assistant';
@@ -399,19 +399,17 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
                   <Badge variant="outline" className="text-xs">Unverified</Badge>
                 )}
               </Label>
-              <PhoneNumberInput
+              <PhoneNumberField
                 id="pe-phone"
                 value={phone}
                 onChange={(v) => { setPhone(v); if (errors.phone) setErrors(x => ({ ...x, phone: undefined })); }}
                 autoComplete="tel"
-                aria-invalid={!!errors.phone}
-                className={fieldClass('phone')}
+                error={errors.phone ?? null}
+                hint="Numbers are saved in international E.164 format (e.g. +15551234567). Include your country code."
               />
-              {errors.phone
-                ? <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.phone}</p>
-                : <p className="text-xs text-muted-foreground">International format required (e.g. +15551234567).</p>}
             </div>
           </div>
+
 
           {stateWarnings.length > 0 && (
             <Alert variant="default" className="border-blue-300 bg-blue-50 dark:bg-blue-950/20">
