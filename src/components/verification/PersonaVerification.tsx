@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Shield, Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRegion } from "@/contexts/RegionContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 interface Props {
@@ -12,6 +13,13 @@ interface Props {
   fields?: Record<string, string>;
   onComplete?: (inquiryId: string | null) => void;
   buttonLabel?: string;
+}
+
+function splitName(full?: string | null): { name_first?: string; name_last?: string } {
+  if (!full) return {};
+  const parts = full.trim().split(/\s+/);
+  if (parts.length === 1) return { name_first: parts[0] };
+  return { name_first: parts.slice(0, -1).join(" "), name_last: parts.slice(-1)[0] };
 }
 
 const PERSONA_SDK_URL = "https://cdn.withpersona.com/dist/persona-v5.5.0.js";
