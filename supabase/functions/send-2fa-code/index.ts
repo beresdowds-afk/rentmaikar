@@ -24,7 +24,7 @@ const verifyCodeSchema = z.object({
 
 const setupSchema = z.object({
   action: z.literal("setup"),
-  phone: z.string().min(7).max(16),
+  phone: z.string().regex(/^\+[1-9]\d{6,14}$/, "Phone must be normalized E.164"),
   channel: z.enum(["sms", "whatsapp"]),
 });
 
