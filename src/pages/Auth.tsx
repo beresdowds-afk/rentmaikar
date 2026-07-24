@@ -114,6 +114,19 @@ const Auth = () => {
       navigate(isRoleHomeRoute && from !== '/' ? from : target, { replace: true });
     };
 
+    const routeWithCompletionCheck = async (fallbackTarget: string) => {
+      // OAuth (e.g. Google) users may land here with a bare profile — send
+      // them to the completion wizard when mandatory fields are missing.
+      const { data: comp } = await supabase.rpc('get_profile_completion_status');
+      const mandatoryComplete = (comp as { mandatory_complete?: boolean } | null)?.mandatory_complete;
+      if (comp && mandatoryComplete === false) {
+        const returnTo = encodeURIComponent(fallbackTarget);
+        navigate(`/onboarding/complete-profile?returnTo=${returnTo}`, { replace: true });
+        return;
+      }
+      finishRedirect(fallbackTarget);
+    };
+
     const onboardingTarget = ROLE_ONBOARDING[userRole as AppRole];
 
     // First-login redirect for driver/owner → role-specific onboarding
@@ -125,15 +138,15 @@ const Auth = () => {
         .maybeSingle()
         .then(({ data }) => {
           if (!data?.onboarding_completed_at) {
-            navigate(onboardingTarget, { replace: true });
+            void routeWithCompletionCheck(onboardingTarget);
           } else {
-            finishRedirect(ROLE_HOME[userRole as AppRole]);
+            void routeWithCompletionCheck(ROLE_HOME[userRole as AppRole]);
           }
         });
       return;
     }
 
-    finishRedirect(ROLE_HOME[userRole as AppRole] ?? from ?? '/');
+    void routeWithCompletionCheck(ROLE_HOME[userRole as AppRole] ?? from ?? '/');
   }, [user, authLoading, userRole, navigate, from, twoFactorVerified, show2FA]);
 
   const loginForm = useForm<LoginFormData>({
