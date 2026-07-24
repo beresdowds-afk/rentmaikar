@@ -79,7 +79,7 @@ export function UploadDropZone({
           type="file"
           accept={accept}
           className="hidden"
-          onChange={e => { handleFile(e.target.files?.[0]); e.target.value = ''; }}
+          onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
           disabled={disabled}
         />
         <input
@@ -88,7 +88,7 @@ export function UploadDropZone({
           accept="image/*"
           capture="environment"
           className="hidden"
-          onChange={e => { handleFile(e.target.files?.[0]); e.target.value = ''; }}
+          onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
           disabled={disabled}
         />
         <Button
@@ -134,7 +134,7 @@ export function UploadDropZone({
         type="file"
         accept={accept}
         className="hidden"
-        onChange={e => { handleFile(e.target.files?.[0]); e.target.value = ''; }}
+        onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
       />
       <input
         ref={cameraInputRef}
@@ -142,7 +142,7 @@ export function UploadDropZone({
         accept="image/*"
         capture="environment"
         className="hidden"
-        onChange={e => { handleFile(e.target.files?.[0]); e.target.value = ''; }}
+        onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
       />
       <div className="flex flex-col items-center gap-2">
         {isUploading ? (
