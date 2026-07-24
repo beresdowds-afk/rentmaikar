@@ -254,14 +254,14 @@ export default function ProfileSettingsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
-                <Input
+                <PhoneNumberInput
                   id="phone"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={setPhone}
+                  defaultCountry={country === 'Nigeria' ? 'NG' : 'US'}
                   disabled={loading || saving}
-                  maxLength={30}
                   autoComplete="tel"
-                  placeholder="+1 555 123 4567"
+                  placeholder="Enter phone number"
                 />
               </div>
 
