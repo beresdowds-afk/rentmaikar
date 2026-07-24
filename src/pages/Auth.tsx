@@ -84,8 +84,16 @@ const Auth = () => {
         server_error: 'Google could not complete sign-in. Please retry in a moment.',
         temporarily_unavailable: 'Google sign-in is temporarily unavailable. Please retry shortly.',
         invalid_request: 'The Google callback is misconfigured for this environment. Please contact support.',
+        identity_already_exists: 'This Google account is already linked to a different RentMaikar user. Sign in with that account instead.',
       };
-      const msg = map[oauthError] || oauthDesc || 'Google sign-in failed. Please try again.';
+      // Supabase surfaces the "email already registered" case as an
+      // "email_exists" / "user_already_exists" description. Steer the user to
+      // sign in with their existing password first, then link Google from
+      // Profile Settings → Connected Accounts (so no duplicate account is created).
+      const dupHint = /email.*exists|user.*already.*exists|already.*registered/i.test(oauthDesc || '')
+        ? 'An account with this email already exists. Sign in with your password below, then link Google from Profile Settings → Connected Accounts.'
+        : null;
+      const msg = dupHint || map[oauthError] || oauthDesc || 'Google sign-in failed. Please try again.';
       setError(msg);
       // Clean the URL so the error doesn't stick on refresh.
       const url = new URL(window.location.href);
