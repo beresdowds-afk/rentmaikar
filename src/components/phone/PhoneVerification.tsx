@@ -12,6 +12,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Phone, MessageSquare, CheckCircle, Loader2, RefreshCw, Shield } from 'lucide-react';
 import { toast } from 'sonner';
+import { PhoneNumberInput } from '@/components/ui/phone-number-input';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 interface PhoneVerificationProps {
   onVerified?: () => void;
@@ -54,15 +56,9 @@ export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerifi
         setIsPhoneVerified(data.phone_verified || false);
         setExistingPhone(data.phone || null);
         if (data.phone) {
-          // Extract number without country code for display
-          const phone = data.phone;
-          if (phone.startsWith('+1')) {
-            setCountryCode('us');
-            setPhoneNumber(phone.slice(2));
-          } else if (phone.startsWith('+234')) {
-            setCountryCode('ng');
-            setPhoneNumber(phone.slice(4));
-          }
+          setPhoneNumber(data.phone);
+          if (data.phone.startsWith('+234')) setCountryCode('ng');
+          else if (data.phone.startsWith('+1')) setCountryCode('us');
         }
       }
     };
@@ -78,15 +74,12 @@ export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerifi
     }
   }, [countdown]);
 
-  const getFullPhoneNumber = () => {
-    const prefix = countryCodes[countryCode].prefix;
-    const cleanNumber = phoneNumber.replace(/\D/g, '');
-    return `${prefix}${cleanNumber}`;
-  };
+  const getFullPhoneNumber = () => phoneNumber;
 
   const handleSendCode = async () => {
-    if (!phoneNumber || phoneNumber.length < 10) {
-      toast.error('Please enter a valid phone number');
+    const parsed = parsePhoneNumberFromString(phoneNumber || '');
+    if (!parsed?.isValid()) {
+      toast.error('Please enter a valid phone number with country code');
       return;
     }
 
@@ -181,31 +174,18 @@ export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerifi
       ) : (
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Phone Number</Label>
-            <div className="flex gap-2">
-              <Select 
-                value={countryCode} 
-                onValueChange={(v) => setCountryCode(v as CountryCode)}
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="us">{countryCodes.us.flag} {countryCodes.us.prefix}</SelectItem>
-                  <SelectItem value="ng">{countryCodes.ng.flag} {countryCodes.ng.prefix}</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="relative flex-1">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="tel"
-                  placeholder="(202) 555-0123"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
+            <Label htmlFor="pv-phone">Phone Number</Label>
+            <PhoneNumberInput
+              id="pv-phone"
+              defaultCountry={countryCode === 'ng' ? 'NG' : 'US'}
+              value={phoneNumber}
+              onChange={(v) => {
+                setPhoneNumber(v);
+                const parsed = parsePhoneNumberFromString(v || '');
+                if (parsed?.country === 'NG') setCountryCode('ng');
+                else if (parsed?.country === 'US') setCountryCode('us');
+              }}
+            />
           </div>
 
           <div className="space-y-2">

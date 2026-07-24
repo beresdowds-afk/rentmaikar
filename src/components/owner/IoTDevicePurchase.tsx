@@ -1,3 +1,4 @@
+import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -594,12 +595,10 @@ export function IoTDevicePurchase() {
                 />
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number (for delivery)</Label>
-                  <Input
+                  <PhoneNumberInput
                     id="phone"
-                    type="tel"
-                    placeholder="Enter phone number"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={setPhone}
                   />
                 </div>
               </div>

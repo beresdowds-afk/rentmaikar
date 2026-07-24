@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { User, Mail, Phone, MapPin, FileText, Car, Check, ArrowLeft, ExternalLink, Shield } from "lucide-react";
+import { PhoneNumberInput } from "@/components/ui/phone-number-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,8 +27,13 @@ const driverSchema = z.object({
   email: z.string().email("Invalid email address").max(255, "Email too long"),
   // Password is optional when the visitor is already signed in.
   password: z.string().max(72, "Password too long").optional().or(z.literal("")),
-  phoneCountry: z.enum(["us", "ng"]),
-  phoneNumber: z.string().min(10, "Phone number is required").max(15, "Phone number too long"),
+  phoneCountry: z.enum(["us", "ng"]).optional(),
+  phoneNumber: z
+    .string()
+    .refine((v) => {
+      const p = parsePhoneNumberFromString(v || "");
+      return !!p && p.isValid();
+    }, "Enter a valid phone number with country code"),
   country: z.enum(["usa", "nigeria"]),
   city: z.string().min(1, "City is required"),
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
@@ -89,7 +96,7 @@ const DriverRegistration = () => {
     handleSubmit,
     setValue,
     watch,
-    
+    control,
     formState: { errors, isSubmitting },
   } = useForm<DriverFormData>({
     resolver: zodResolver(driverSchema),
@@ -132,7 +139,7 @@ const DriverRegistration = () => {
         .select('phone')
         .eq('user_id', user.id)
         .maybeSingle();
-      if (profile?.phone) setValue('phoneNumber', profile.phone.replace(/^\+?\d{1,3}/, ''));
+      if (profile?.phone) setValue('phoneNumber', profile.phone);
     })();
   }, [user, setValue]);
 
@@ -187,7 +194,7 @@ const DriverRegistration = () => {
         first_name: data.firstName,
         last_name: data.lastName,
         email: data.email,
-        phone_country: data.phoneCountry,
+        phone_country: data.phoneCountry ?? (parsePhoneNumberFromString(data.phoneNumber)?.country === 'NG' ? 'ng' : 'us'),
         phone_number: data.phoneNumber,
         country: data.country,
         city: data.city,
@@ -359,31 +366,25 @@ const DriverRegistration = () => {
 
 
                 <div className="space-y-2">
-                  <Label>Phone Number</Label>
-                  <div className="flex gap-2">
-                    <Select
-                      defaultValue="us"
-                      onValueChange={(value) => setValue("phoneCountry", value as "us" | "ng")}
-                    >
-                      <SelectTrigger className="w-28">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="us">🇺🇸 +1</SelectItem>
-                        <SelectItem value="ng">🇳🇬 +234</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="relative flex-1">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <Input
-                        type="tel"
-                        placeholder="(202) 555-0123"
-                        className="pl-10"
-                        autoComplete="tel-national"
-                        {...register("phoneNumber")}
+                  <Label htmlFor="driver-phone">Phone Number</Label>
+                  <Controller
+                    control={control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                      <PhoneNumberInput
+                        id="driver-phone"
+                        defaultCountry="US"
+                        value={field.value}
+                        onChange={(v) => {
+                          field.onChange(v);
+                          const parsed = parsePhoneNumberFromString(v || "");
+                          if (parsed?.country === "NG") setValue("phoneCountry", "ng");
+                          else if (parsed?.country === "US") setValue("phoneCountry", "us");
+                        }}
+                        aria-invalid={!!errors.phoneNumber}
                       />
-                    </div>
-                  </div>
+                    )}
+                  />
                   {errors.phoneNumber && (
                     <p className="text-destructive text-sm">{errors.phoneNumber.message}</p>
                   )}
@@ -510,11 +511,17 @@ const DriverRegistration = () => {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor={`referee${num}Phone`}>Phone Number</Label>
-                        <Input
-                          id={`referee${num}Phone`}
-                          type="tel"
-                          placeholder="Phone number"
-                          {...register(`referee${num}Phone` as keyof DriverFormData)}
+                        <Controller
+                          control={control}
+                          name={`referee${num}Phone` as keyof DriverFormData}
+                          render={({ field }) => (
+                            <PhoneNumberInput
+                              id={`referee${num}Phone`}
+                              defaultCountry="US"
+                              value={(field.value as string) || ""}
+                              onChange={field.onChange}
+                            />
+                          )}
                         />
                         {errors[`referee${num}Phone` as keyof typeof errors] && (
                           <p className="text-destructive text-sm">

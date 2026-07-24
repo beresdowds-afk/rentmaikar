@@ -1,3 +1,4 @@
+import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -612,11 +613,9 @@ export const SupportUserManagement = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Phone (Optional)</Label>
-                    <Input
-                      type="tel"
-                      placeholder="+234..."
+                    <PhoneNumberInput
                       value={onboardUser.phone}
-                      onChange={(e) => setOnboardUser(prev => ({ ...prev, phone: e.target.value }))}
+                      onChange={(v) => setOnboardUser(prev => ({ ...prev, phone: v }))}
                     />
                   </div>
                 </div>
@@ -674,11 +673,9 @@ export const SupportUserManagement = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Phone (Optional)</Label>
-                    <Input
-                      type="tel"
-                      placeholder="+234..."
+                    <PhoneNumberInput
                       value={newUser.phone}
-                      onChange={(e) => setNewUser(prev => ({ ...prev, phone: e.target.value }))}
+                      onChange={(v) => setNewUser(prev => ({ ...prev, phone: v }))}
                     />
                   </div>
                   <div className="space-y-2">

@@ -1,3 +1,4 @@
+import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -962,11 +963,9 @@ export const AdminSupportTaskManagement = () => {
 
                     <div className="space-y-2">
                       <Label>Phone (Optional)</Label>
-                      <Input
-                        type="tel"
-                        placeholder="+234..."
+                      <PhoneNumberInput
                         value={newStaff.phone}
-                        onChange={(e) => setNewStaff(prev => ({ ...prev, phone: e.target.value }))}
+                        onChange={(v) => setNewStaff(prev => ({ ...prev, phone: v }))}
                       />
                     </div>
                   </div>

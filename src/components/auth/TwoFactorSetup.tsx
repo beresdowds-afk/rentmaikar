@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Shield, Phone, CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { PhoneNumberInput } from '@/components/ui/phone-number-input';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 type CountryCode = 'us' | 'ng';
 type Channel = 'sms' | 'whatsapp';
@@ -52,45 +54,30 @@ export const TwoFactorSetup = () => {
           .maybeSingle(),
       ]);
 
-      const applyPhone = (raw: string) => {
-        if (raw.startsWith('+1')) {
-          setCountryCode('us');
-          setPhoneNumber(raw.slice(2));
-        } else if (raw.startsWith('+234')) {
-          setCountryCode('ng');
-          setPhoneNumber(raw.slice(4));
-        } else {
-          setPhoneNumber(raw.replace(/^\+/, ''));
-        }
-      };
-
       if (data) {
         setIsEnabled(data.is_enabled);
         if (data.phone_number) {
           setExistingPhone(data.phone_number);
-          applyPhone(data.phone_number);
+          setPhoneNumber(data.phone_number);
         } else if (profile?.phone) {
-          // Prefill from the user's verified profile phone so they don't retype.
-          applyPhone(profile.phone);
+          setPhoneNumber(profile.phone);
         }
         setChannel((data.preferred_channel as Channel) || 'sms');
       } else if (profile?.phone) {
-        applyPhone(profile.phone);
+        setPhoneNumber(profile.phone);
       }
       setIsLoading(false);
     };
     fetchSettings();
   }, [user, userRole]);
 
-  const getFullPhone = () => {
-    const prefix = countryCodes[countryCode].prefix;
-    return `${prefix}${phoneNumber.replace(/\D/g, '')}`;
-  };
+  const getFullPhone = () => phoneNumber;
 
   const handleSave = async () => {
     if (!user) return;
-    if (!phoneNumber || phoneNumber.length < 7) {
-      toast.error('Please enter a valid phone number');
+    const parsed = parsePhoneNumberFromString(phoneNumber || '');
+    if (!parsed?.isValid()) {
+      toast.error('Please enter a valid phone number with country code');
       return;
     }
     setIsSaving(true);
@@ -198,28 +185,18 @@ export const TwoFactorSetup = () => {
         ) : (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Phone Number for 2FA</Label>
-              <div className="flex gap-2">
-                <Select value={countryCode} onValueChange={(v) => setCountryCode(v as CountryCode)}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="us">{countryCodes.us.flag} {countryCodes.us.prefix}</SelectItem>
-                    <SelectItem value="ng">{countryCodes.ng.flag} {countryCodes.ng.prefix}</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="relative flex-1">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="tel"
-                    placeholder="(202) 555-0123"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
+              <Label htmlFor="tfa-phone">Phone Number for 2FA</Label>
+              <PhoneNumberInput
+                id="tfa-phone"
+                defaultCountry={countryCode === 'ng' ? 'NG' : 'US'}
+                value={phoneNumber}
+                onChange={(v) => {
+                  setPhoneNumber(v);
+                  const parsed = parsePhoneNumberFromString(v || '');
+                  if (parsed?.country === 'NG') setCountryCode('ng');
+                  else if (parsed?.country === 'US') setCountryCode('us');
+                }}
+              />
             </div>
 
             <div className="space-y-2">
