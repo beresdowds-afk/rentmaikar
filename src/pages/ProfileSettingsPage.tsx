@@ -51,6 +51,7 @@ const normalizePhoneE164 = (raw: string | null | undefined) => {
 
 export default function ProfileSettingsPage() {
   const { user } = useAuth();
+  const { country } = useRegion();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [initial, setInitial] = useState({ fullName: '', phone: '' });
