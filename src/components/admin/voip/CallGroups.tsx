@@ -176,13 +176,13 @@ export const CallGroups = ({ groups, onCreateGroup, onDeleteGroup, isLoading }: 
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 md:col-span-2">
                       <Label className="text-xs">Phone Number</Label>
-                      <Input
+                      <PhoneNumberInput
+                        value={memberPhone.startsWith('+') ? memberPhone : ''}
+                        onChange={setMemberPhone}
+                        defaultCountry={memberRegion === 'Nigeria' ? 'NG' : 'US'}
                         placeholder="Phone"
-                        value={memberPhone}
-                        onChange={(e) => setMemberPhone(e.target.value.replace(/\D/g, ''))}
-                        maxLength={10}
                       />
                     </div>
                     <div className="space-y-2">
