@@ -69,10 +69,28 @@ const Auth = () => {
 
   // Deep-link support: `/auth?forgot=1` opens the forgot-password view directly
   // (used from the "Request a new reset link" button on the ResetPassword page).
+  // Also surfaces OAuth-provider errors coming back on the callback URL, e.g.
+  // `?error=access_denied&error_description=...`, with a friendly retry message.
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('forgot') === '1') {
       setShowForgotPassword(true);
+    }
+    const oauthError = params.get('error') || params.get('error_code');
+    const oauthDesc = params.get('error_description');
+    if (oauthError) {
+      const map: Record<string, string> = {
+        access_denied: 'You denied access on the Google consent screen. Please retry and choose Allow.',
+        server_error: 'Google could not complete sign-in. Please retry in a moment.',
+        temporarily_unavailable: 'Google sign-in is temporarily unavailable. Please retry shortly.',
+        invalid_request: 'The Google callback is misconfigured for this environment. Please contact support.',
+      };
+      const msg = map[oauthError] || oauthDesc || 'Google sign-in failed. Please try again.';
+      setError(msg);
+      // Clean the URL so the error doesn't stick on refresh.
+      const url = new URL(window.location.href);
+      ['error', 'error_code', 'error_description', 'state'].forEach(k => url.searchParams.delete(k));
+      window.history.replaceState({}, '', url.toString());
     }
   }, [location.search]);
 
