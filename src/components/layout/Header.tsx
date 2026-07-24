@@ -103,9 +103,12 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
                 Tour
               </Button>
             )}
-            <div data-tour="region">
-              <RegionSwitcher />
-            </div>
+            {(userRole === 'admin' || userRole === 'admin_assistant') && (
+              <div data-tour="region">
+                <RegionSwitcher />
+              </div>
+            )}
+
             
             {!isLoading && user ? (
               <>
