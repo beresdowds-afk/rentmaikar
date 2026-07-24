@@ -612,7 +612,12 @@ const AdminDashboard = () => {
                 </div>
               )}
               {activeTab === 'roles' && <RoleManagement />}
-              {activeTab === 'admin-assistants' && <AdminAssistantManagement />}
+              {activeTab === 'admin-assistants' && (
+                <div className="space-y-6">
+                  <AdminAssistantManagement />
+                  <PhoneOtpProviderSettings />
+                </div>
+              )}
               {activeTab === 'negotiations' && <AdminPriceNegotiation />}
               {activeTab === 'approvals' && (
                 <Card className="p-6">
