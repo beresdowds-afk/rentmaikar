@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import PersonaVerification from '@/components/verification/PersonaVerification';
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 import { Lock } from 'lucide-react';
-import { PhoneNumberInput } from '@/components/ui/phone-number-input';
+import { PhoneNumberField } from '@/components/ui/phone-number-field';
 
 interface ProfileEditorProps {
   subjectRole: 'driver' | 'owner' | 'support_staff' | 'admin_assistant';
