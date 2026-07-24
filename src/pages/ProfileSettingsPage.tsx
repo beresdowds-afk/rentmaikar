@@ -15,6 +15,8 @@ import { UserIdentityCard } from '@/components/profile/UserIdentityCard';
 import { ReverificationBanner } from '@/components/profile/ReverificationBanner';
 import { ProfileAuditHistory } from '@/components/profile/ProfileAuditHistory';
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
+import { PhoneNumberInput } from '@/components/ui/phone-number-input';
+import { useRegion } from '@/contexts/RegionContext';
 import { z } from 'zod';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
