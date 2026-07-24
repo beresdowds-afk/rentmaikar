@@ -120,7 +120,7 @@ export class PaymentGateway {
   }
 
   /**
-   * Initialize Paystack payment (Nigeria)
+   * Initialize Paystack payment (Nigeria) via edge function.
    */
   private async initializePaystackPayment(
     breakdown: PaymentBreakdown,
@@ -130,33 +130,23 @@ export class PaymentGateway {
     metadata?: Record<string, unknown>
   ): Promise<PaymentResult> {
     try {
-      // In production, this would call the Paystack API via edge function
-      console.log('[Paystack] Initializing payment:', {
-        amount: breakdown.driverTotal,
-        currency: 'NGN',
-        driverId,
-        vehicleId,
-        rentalId,
-        breakdown,
+      const { data, error } = await supabase.functions.invoke('create-paystack-transaction', {
+        body: {
+          amount: breakdown.driverTotal,
+          currency: 'NGN',
+          rentalId: rentalId && /^[0-9a-f-]{36}$/i.test(rentalId) ? rentalId : undefined,
+          vehicleId: vehicleId && /^[0-9a-f-]{36}$/i.test(vehicleId) ? vehicleId : undefined,
+          paymentFrequency: breakdown.frequency,
+          description: `Rentmaikar payment — ${formatCurrency(breakdown.baseAmount, 'NGN')}`,
+          metadata,
+        },
       });
-
-      // Mock Paystack transaction initialization
-      const mockReference = `PAYSTACK-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const mockAccessCode = `ACCESS-${Math.random().toString(36).substr(2, 12)}`;
-
+      if (error) throw error;
       return {
         success: true,
-        transactionId: mockReference,
-        redirectUrl: `https://checkout.paystack.com/${mockAccessCode}`,
-        gatewayResponse: {
-          status: true,
-          message: 'Authorization URL created',
-          data: {
-            authorization_url: `https://checkout.paystack.com/${mockAccessCode}`,
-            access_code: mockAccessCode,
-            reference: mockReference,
-          },
-        },
+        transactionId: data?.reference,
+        redirectUrl: data?.authorization_url ?? null,
+        gatewayResponse: data,
       };
     } catch (error) {
       console.error('[Paystack] Payment initialization failed:', error);
@@ -201,27 +191,18 @@ export class PaymentGateway {
   }
 
   /**
-   * Verify Paystack payment
+   * Verify Paystack payment via edge function.
    */
   private async verifyPaystackPayment(reference: string): Promise<PaymentResult> {
     try {
-      // In production, this would call Paystack's verify API
-      console.log('[Paystack] Verifying payment:', reference);
-
-      // Mock verification
+      const { data, error } = await supabase.functions.invoke('verify-paystack-transaction', {
+        body: { reference },
+      });
+      if (error) throw error;
       return {
-        success: true,
+        success: data?.status === 'completed',
         transactionId: reference,
-        gatewayResponse: {
-          status: true,
-          message: 'Verification successful',
-          data: {
-            status: 'success',
-            reference,
-            amount: 100000, // In kobo
-            currency: 'NGN',
-          },
-        },
+        gatewayResponse: data,
       };
     } catch (error) {
       console.error('[Paystack] Payment verification failed:', error);
