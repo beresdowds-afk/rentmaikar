@@ -327,28 +327,26 @@ export function RideshareProfileUpload({ vehicleId }: RideshareProfileUploadProp
               </div>
             </div>
           ) : (
-            <div className="relative border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
-              <Input
-                type="file"
-                accept="image/jpeg,image/png"
-                className="absolute inset-0 opacity-0 cursor-pointer"
-                onChange={handlePhotoUpload}
-                disabled={uploading || isSubmitted}
-              />
-              {uploading ? (
-                <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" />
-              ) : (
-                <>
-                  <Image className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Click or drag to upload your rating screenshot
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    PNG or JPG, max 5MB
-                  </p>
-                </>
-              )}
-            </div>
+            <UploadDropZone
+              accept="image/jpeg,image/png"
+              maxSizeMB={5}
+              disabled={uploading || isSubmitted}
+              isUploading={uploading}
+              onFileSelected={(file) => {
+                const evt = { target: { files: [file] as unknown as FileList, value: '' } } as unknown as React.ChangeEvent<HTMLInputElement>;
+                handlePhotoUpload(evt);
+              }}
+            />
+          )}
+        </div>
+        {false && (
+          <div>
+            <Input type="file" accept="image/jpeg,image/png" onChange={handlePhotoUpload} disabled={uploading || isSubmitted} />
+          </div>)}
+        {false && (
+          <div style={{ display: 'none' }}>
+            <p>legacy</p>
+          </div>
           )}
         </div>
 
