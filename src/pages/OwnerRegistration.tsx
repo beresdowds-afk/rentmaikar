@@ -107,6 +107,7 @@ const OwnerRegistration = () => {
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<OwnerFormData>({
     resolver: zodResolver(createOwnerSchema(currentCountry)),
@@ -141,7 +142,7 @@ const OwnerRegistration = () => {
         .select('phone')
         .eq('user_id', user.id)
         .maybeSingle();
-      if (profile?.phone) setValue('phoneNumber', profile.phone.replace(/^\+?\d{1,3}/, ''));
+      if (profile?.phone) setValue('phoneNumber', profile.phone);
     })();
   }, [user, setValue]);
 
@@ -220,7 +221,7 @@ const OwnerRegistration = () => {
         first_name: data.firstName,
         last_name: data.lastName,
         email: data.email,
-        phone_country: data.phoneCountry,
+        phone_country: data.phoneCountry ?? (parsePhoneNumberFromString(data.phoneNumber)?.country === 'NG' ? 'ng' : 'us'),
         phone_number: data.phoneNumber,
         country: data.country,
         city: data.city,
