@@ -291,6 +291,8 @@ export default function ProfileSettingsPage() {
             </CardContent>
           </Card>
 
+          <ConnectedAccounts />
+
           <ProfileAuditHistory />
         </div>
       </main>
