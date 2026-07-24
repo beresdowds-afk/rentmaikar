@@ -100,6 +100,7 @@ const PortalRouteGuard = lazy(() => import("./components/onboarding/PortalRouteG
 const OnboardingRedirect = lazy(() => import("./pages/OnboardingRedirect"));
 const OnboardingLegalAgreement = lazy(() => import("./pages/OnboardingLegalAgreement"));
 const ProfileSettingsPage = lazy(() => import("./pages/ProfileSettingsPage"));
+const ProfileCompletionWizard = lazy(() => import("./pages/ProfileCompletionWizard"));
 import { OnboardingStageToaster } from "@/components/onboarding/OnboardingStageToaster";
 
 const queryClient = new QueryClient();
