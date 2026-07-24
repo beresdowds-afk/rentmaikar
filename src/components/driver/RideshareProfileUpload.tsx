@@ -339,16 +339,6 @@ export function RideshareProfileUpload({ vehicleId }: RideshareProfileUploadProp
             />
           )}
         </div>
-        {false && (
-          <div>
-            <Input type="file" accept="image/jpeg,image/png" onChange={handlePhotoUpload} disabled={uploading || isSubmitted} />
-          </div>)}
-        {false && (
-          <div style={{ display: 'none' }}>
-            <p>legacy</p>
-          </div>
-          )}
-        </div>
 
         {/* Submit Button */}
         {!isSubmitted && hasPhoto && (
