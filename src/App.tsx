@@ -89,6 +89,7 @@ const OnboardingDiagnosticsPage = lazy(() => import("./pages/admin/OnboardingDia
 const OnboardingAuditTimelinePage = lazy(() => import("./pages/admin/OnboardingAuditTimelinePage"));
 const AdminImpersonateDashboardPage = lazy(() => import("./pages/admin/AdminImpersonateDashboardPage"));
 const AdminPersonaInquiriesPage = lazy(() => import("./pages/admin/AdminPersonaInquiriesPage"));
+const AdminPersonaReviewPage = lazy(() => import("./pages/admin/AdminPersonaReviewPage"));
 const AdminPersonaTemplatesPage = lazy(() => import("./pages/admin/AdminPersonaTemplatesPage"));
 const OrchestratorPage = lazy(() => import("./pages/admin/OrchestratorPage"));
 
@@ -376,6 +377,14 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
                         <AdminPersonaInquiriesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/persona-review"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
+                        <AdminPersonaReviewPage />
                       </ProtectedRoute>
                     }
                   />
