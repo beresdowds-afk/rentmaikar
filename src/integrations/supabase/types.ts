@@ -8602,6 +8602,10 @@ export type Database = {
         Args: { _reason?: string; _rental_id: string }
         Returns: Json
       }
+      admin_review_persona_inquiry: {
+        Args: { _action: string; _inquiry_row_id: string; _notes?: string }
+        Returns: Json
+      }
       admin_review_proxy_billing: {
         Args: { _decision: string; _notes?: string; _proxy_id: string }
         Returns: {
@@ -8713,6 +8717,22 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      admin_search_persona_users: {
+        Args: { _limit?: number; _query?: string; _status?: string }
+        Returns: {
+          email: string
+          full_name: string
+          identity_verification_status: string
+          identity_verified_at: string
+          latest_inquiry_id: string
+          latest_inquiry_row_id: string
+          latest_inquiry_status: string
+          latest_inquiry_updated_at: string
+          latest_mismatch_fields: Json
+          latest_region: string
+          user_id: string
+        }[]
       }
       admin_update_elevenlabs_retention: {
         Args: { _audio_days: number; _transcript_days: number }
