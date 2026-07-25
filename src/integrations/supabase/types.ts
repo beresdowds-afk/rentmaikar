@@ -8870,6 +8870,7 @@ export type Database = {
           linked_user_id: string
         }[]
       }
+      get_my_identity_verification: { Args: never; Returns: Json }
       get_my_registration_progress: { Args: never; Returns: Json }
       get_onboarding_next_step: { Args: never; Returns: Json }
       get_owner_available_balance: {
