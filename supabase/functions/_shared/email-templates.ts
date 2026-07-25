@@ -930,6 +930,74 @@ export const ninVerificationEmail = (data: {
   };
 };
 
+// ==================== IDENTITY VERIFICATION (PERSONA) ====================
+
+/**
+ * Persona identity verification status change
+ */
+export const personaStatusUpdateEmail = (data: {
+  firstName: string;
+  status: 'submitted' | 'pending' | 'needs_review' | 'approved' | 'declined' | 'expired' | string;
+  statusUrl: string;
+  mismatchNote?: string;
+}) => {
+  const map: Record<string, { title: string; box: string; body: string; cta: string }> = {
+    submitted: {
+      title: 'Verification submitted',
+      box: 'info-box',
+      body: 'We received your identity verification and it is now queued for review. We will update you as soon as it moves forward.',
+      cta: 'View status',
+    },
+    pending: {
+      title: 'Verification in progress',
+      box: 'info-box',
+      body: 'Your identity verification is being processed. No action is required from you right now.',
+      cta: 'View status',
+    },
+    needs_review: {
+      title: 'Verification needs your attention',
+      box: 'warning-box',
+      body: 'Our reviewers need a closer look at your submission. Please open your verification page for details or additional steps.',
+      cta: 'Open verification',
+    },
+    approved: {
+      title: '🎉 Identity verified',
+      box: 'success-box',
+      body: 'Great news — your identity has been verified. Marketplace features are now unlocked on your dashboard.',
+      cta: 'Go to dashboard',
+    },
+    declined: {
+      title: 'Verification could not be completed',
+      box: 'warning-box',
+      body: 'Your identity verification did not pass this time. You can restart the flow from your verification page.',
+      cta: 'Retry verification',
+    },
+    expired: {
+      title: 'Verification session expired',
+      box: 'warning-box',
+      body: 'Your verification session expired before it was completed. Please start a new session to continue.',
+      cta: 'Restart verification',
+    },
+  };
+  const m = map[data.status] ?? map.pending;
+  const content = `
+    <div class="${m.box}">${m.title}</div>
+    <h1>${m.title}</h1>
+    <p>Hi ${escapeHtml(data.firstName || 'there')},</p>
+    <p>${m.body}</p>
+    ${data.mismatchNote ? `<div class="warning-box"><strong>Reviewer note:</strong> ${escapeHtml(data.mismatchNote)}</div>` : ''}
+    <a href="${data.statusUrl}" class="cta-button">${m.cta} →</a>
+    <p style="color:#64748b;font-size:13px;margin-top:24px;">You can always check the latest status from your Rentmaikar dashboard.</p>
+  `;
+  return {
+    subject: `Rentmaikar identity verification: ${m.title}`,
+    html: emailWrapper(content, m.title),
+    from: formatSenderEmail('verify'),
+  };
+};
+
+
+
 // ==================== SUPPORT TEMPLATES ====================
 
 /**

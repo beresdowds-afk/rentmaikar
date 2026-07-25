@@ -1,7 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+
 
 export type PersonaStatus =
   | 'created'
@@ -50,6 +52,7 @@ const DEFAULT: IdentityVerification = {
 export function useIdentityVerification() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const lastStatusRef = useRef<PersonaStatus | null>(null);
 
   const query = useQuery({
     queryKey: ['identity-verification', user?.id],
@@ -61,6 +64,28 @@ export function useIdentityVerification() {
       return { ...DEFAULT, ...(data as Partial<IdentityVerification>) };
     },
   });
+
+  // Toast on status transitions so users don't need to refresh.
+  useEffect(() => {
+    const status = query.data?.profile_status ?? query.data?.latest_inquiry?.status ?? null;
+    if (!status) return;
+    const prev = lastStatusRef.current;
+    lastStatusRef.current = status;
+    if (prev === null || prev === status) return;
+
+    const copy: Record<string, { title: string; description: string; type: 'success' | 'error' | 'info' | 'warning' }> = {
+      submitted: { title: 'Verification submitted', description: 'We received your identity verification.', type: 'info' },
+      pending: { title: 'Verification in progress', description: 'Your submission is being processed.', type: 'info' },
+      needs_review: { title: 'Verification needs your attention', description: 'Open your verification page for details.', type: 'warning' },
+      approved: { title: '🎉 Identity verified', description: 'Marketplace features are now unlocked.', type: 'success' },
+      declined: { title: 'Verification could not be completed', description: 'You can restart the flow from your verification page.', type: 'error' },
+      expired: { title: 'Verification session expired', description: 'Please start a new verification session.', type: 'warning' },
+    };
+    const c = copy[status];
+    if (!c) return;
+    const fn = c.type === 'success' ? toast.success : c.type === 'error' ? toast.error : c.type === 'warning' ? toast.warning : toast.info;
+    fn(c.title, { description: c.description, duration: 8000 });
+  }, [query.data?.profile_status, query.data?.latest_inquiry?.status]);
 
   useEffect(() => {
     if (!user) return;
@@ -88,3 +113,4 @@ export function useIdentityVerification() {
 
   return query;
 }
+
