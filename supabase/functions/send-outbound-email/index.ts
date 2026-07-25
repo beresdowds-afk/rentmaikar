@@ -133,6 +133,7 @@ function renderTemplate(
     password_reset: passwordResetEmail,
     login_alert: loginAlertEmail,
     account_deactivated: accountDeactivatedEmail,
+    persona_status_update: personaStatusUpdateEmail,
   };
 
   const fn = templateMap[templateName];
