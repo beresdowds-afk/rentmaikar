@@ -101,6 +101,7 @@ const OnboardingRedirect = lazy(() => import("./pages/OnboardingRedirect"));
 const OnboardingLegalAgreement = lazy(() => import("./pages/OnboardingLegalAgreement"));
 const ProfileSettingsPage = lazy(() => import("./pages/ProfileSettingsPage"));
 const ProfileCompletionWizard = lazy(() => import("./pages/ProfileCompletionWizard"));
+const VerificationStatusPage = lazy(() => import("./pages/VerificationStatusPage"));
 import { OnboardingStageToaster } from "@/components/onboarding/OnboardingStageToaster";
 
 const queryClient = new QueryClient();
@@ -436,6 +437,15 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/onboarding/verification-status"
+                    element={
+                      <ProtectedRoute>
+                        <VerificationStatusPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
 
 
 
