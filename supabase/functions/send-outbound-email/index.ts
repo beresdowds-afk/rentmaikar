@@ -42,6 +42,7 @@ import { requireServiceRole } from "../_shared/auth-guards.ts";
   passwordResetEmail,
   loginAlertEmail,
   accountDeactivatedEmail,
+  personaStatusUpdateEmail,
 } from "../_shared/email-templates.ts";
 
 const corsHeaders = {
