@@ -82,7 +82,55 @@ Deno.serve(async (req) => {
           identity_verified_at: status === "approved" ? new Date().toISOString() : null,
           identity_verified_inquiry_id: status === "approved" ? inquiryId : null,
         }).eq("user_id", row.user_id);
+
+        // Notify user (in-app inbox + email) about the status change.
+        try {
+          const { data: prof } = await supa
+            .from("profiles")
+            .select("email, full_name")
+            .eq("user_id", row.user_id)
+            .maybeSingle();
+
+          const statusLabels: Record<string, string> = {
+            submitted: "Verification submitted",
+            pending: "Verification in progress",
+            needs_review: "Verification needs your attention",
+            approved: "Identity verified",
+            declined: "Verification could not be completed",
+            expired: "Verification session expired",
+          };
+          const label = statusLabels[status] ?? `Verification update: ${status}`;
+          const mismatchNote = (attrs?.["decision-reason"] as string | undefined) ??
+            (Object.keys(mismatch).length ? "Some checks need review — see your verification page." : undefined);
+
+          // In-app inbox (drives realtime toast + notifications badge)
+          await supa.from("inbox_messages").insert({
+            user_id: row.user_id,
+            direction: "inbound",
+            channel: "system",
+            subject: label,
+            body: `Your Rentmaikar identity verification status changed to "${status}".${mismatchNote ? ` ${mismatchNote}` : ""} Open your verification status page for details.`,
+            status: "unread",
+          }).then(() => {}, () => {});
+
+          // Email
+          if (prof?.email) {
+            const firstName = (prof.full_name as string | null)?.split(" ")[0] ?? "";
+            const statusUrl = `${Deno.env.get("APP_URL") ?? "https://rentmaikar.lovable.app"}/onboarding/verification-status`;
+            await supa.functions.invoke("send-outbound-email", {
+              body: {
+                action: "send",
+                to: prof.email,
+                templateName: "persona_status_update",
+                category: "verification",
+                priority: status === "approved" || status === "declined" ? "high" : "normal",
+                data: { firstName, status, statusUrl, mismatchNote },
+              },
+            }).catch(() => null);
+          }
+        } catch (_notifyErr) { /* best-effort */ }
       }
+
 
       // Referee cascade
       if (row.subject_type === "referee" && row.subject_ref) {
