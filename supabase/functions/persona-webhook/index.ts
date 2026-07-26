@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
         try {
           const { data: prof } = await supa
             .from("profiles")
-            .select("email, full_name")
+            .select("email, full_name, persona_notification_frequency")
             .eq("user_id", row.user_id)
             .maybeSingle();
 
@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
           const mismatchNote = (attrs?.["decision-reason"] as string | undefined) ??
             (Object.keys(mismatch).length ? "Some checks need review — see your verification page." : undefined);
 
-          // In-app inbox (drives realtime toast + notifications badge)
+          // In-app inbox (drives realtime toast + notifications badge) — always sent.
           await supa.from("inbox_messages").insert({
             user_id: row.user_id,
             direction: "inbound",
@@ -113,8 +113,9 @@ Deno.serve(async (req) => {
             status: "unread",
           }).then(() => {}, () => {});
 
-          // Email
-          if (prof?.email) {
+          // Email cadence honours the user's preference.
+          const freq = (prof as { persona_notification_frequency?: string } | null)?.persona_notification_frequency ?? "realtime";
+          if (prof?.email && freq === "realtime") {
             const firstName = (prof.full_name as string | null)?.split(" ")[0] ?? "";
             const statusUrl = `${Deno.env.get("APP_URL") ?? "https://rentmaikar.lovable.app"}/onboarding/verification-status`;
             await supa.functions.invoke("send-outbound-email", {
@@ -127,7 +128,16 @@ Deno.serve(async (req) => {
                 data: { firstName, status, statusUrl, mismatchNote },
               },
             }).catch(() => null);
+          } else if (freq === "daily_digest") {
+            // Buffer the event; a scheduled worker sends one summary email per day.
+            await supa.from("persona_status_digest_queue").insert({
+              user_id: row.user_id,
+              inquiry_id: inquiryId,
+              status,
+              note: mismatchNote ?? null,
+            }).then(() => {}, () => {});
           }
+          // freq === "off": in-app only, no email at all.
         } catch (_notifyErr) { /* best-effort */ }
       }
 
