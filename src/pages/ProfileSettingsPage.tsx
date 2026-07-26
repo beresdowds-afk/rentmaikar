@@ -15,6 +15,7 @@ import { UserIdentityCard } from '@/components/profile/UserIdentityCard';
 import { ReverificationBanner } from '@/components/profile/ReverificationBanner';
 import { ProfileAuditHistory } from '@/components/profile/ProfileAuditHistory';
 import { ConnectedAccounts } from '@/components/profile/ConnectedAccounts';
+import { PersonaNotificationPreference } from '@/components/profile/PersonaNotificationPreference';
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 import { useRegion } from '@/contexts/RegionContext';
@@ -290,6 +291,8 @@ export default function ProfileSettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          <PersonaNotificationPreference />
 
           <ConnectedAccounts />
 

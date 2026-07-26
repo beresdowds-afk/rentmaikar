@@ -127,25 +127,11 @@ const Auth = () => {
       finishRedirect(fallbackTarget);
     };
 
-    const onboardingTarget = ROLE_ONBOARDING[userRole as AppRole];
-
-    // First-login redirect for driver/owner → role-specific onboarding
-    if (onboardingTarget) {
-      supabase
-        .from('profiles')
-        .select('onboarding_completed_at')
-        .eq('user_id', user.id)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (!data?.onboarding_completed_at) {
-            void routeWithCompletionCheck(onboardingTarget);
-          } else {
-            void routeWithCompletionCheck(ROLE_HOME[userRole as AppRole]);
-          }
-        });
-      return;
-    }
-
+    // Every returning user — including drivers and owners still working
+    // through onboarding — lands on their role dashboard first. The dashboard
+    // renders <OnboardingChecklist /> so they can continue any incomplete
+    // steps from there without being forced back into the wizard on each
+    // sign-in.
     void routeWithCompletionCheck(ROLE_HOME[userRole as AppRole] ?? from ?? '/');
   }, [user, authLoading, userRole, navigate, from, twoFactorVerified, show2FA]);
 
