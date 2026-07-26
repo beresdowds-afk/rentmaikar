@@ -127,26 +127,11 @@ const Auth = () => {
       finishRedirect(fallbackTarget);
     };
 
-    const onboardingTarget = ROLE_ONBOARDING[userRole as AppRole];
-
-    // For driver/owner: first-time users (never logged in before) go to the
-    // role-specific onboarding wizard once. Any return visit — even before
-    // onboarding is fully completed — lands on the dashboard, which shows
-    // the OnboardingChecklist so they can continue where they left off.
-    if (onboardingTarget) {
-      supabase
-        .from('profiles')
-        .select('last_sign_in_at, onboarding_completed_at')
-        .eq('user_id', user.id)
-        .maybeSingle()
-        .then(({ data }) => {
-          const isFirstEverLogin = !data?.last_sign_in_at && !data?.onboarding_completed_at;
-          const target = isFirstEverLogin ? onboardingTarget : ROLE_HOME[userRole as AppRole];
-          void routeWithCompletionCheck(target);
-        });
-      return;
-    }
-
+    // Every returning user — including drivers and owners still working
+    // through onboarding — lands on their role dashboard first. The dashboard
+    // renders <OnboardingChecklist /> so they can continue any incomplete
+    // steps from there without being forced back into the wizard on each
+    // sign-in.
     void routeWithCompletionCheck(ROLE_HOME[userRole as AppRole] ?? from ?? '/');
   }, [user, authLoading, userRole, navigate, from, twoFactorVerified, show2FA]);
 
