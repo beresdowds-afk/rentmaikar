@@ -43,6 +43,7 @@ import {
   loginAlertEmail,
   accountDeactivatedEmail,
   personaStatusUpdateEmail,
+  personaStatusDigestEmail,
 } from "../_shared/email-templates.ts";
 
 const corsHeaders = {
