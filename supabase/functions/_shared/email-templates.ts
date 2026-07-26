@@ -996,6 +996,41 @@ export const personaStatusUpdateEmail = (data: {
   };
 };
 
+/**
+ * Daily digest of Persona identity verification status changes.
+ * Sent by the send-persona-digest scheduled worker to users who opted into
+ * profiles.persona_notification_frequency = 'daily_digest'.
+ */
+export const personaStatusDigestEmail = (data: {
+  firstName: string;
+  count: number;
+  latestStatus: string;
+  summary: string;
+  statusUrl: string;
+}) => {
+  const list = escapeHtml(data.summary)
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => `<li style="margin:4px 0;">${line.replace(/^•\s*/, '')}</li>`)
+    .join('');
+  const content = `
+    <div class="info-box">Daily verification digest</div>
+    <h1>Your identity verification updates</h1>
+    <p>Hi ${escapeHtml(data.firstName || 'there')},</p>
+    <p>Here is a summary of your Rentmaikar identity verification status changes from the last 24 hours (${data.count} update${data.count === 1 ? '' : 's'}). Latest status: <strong>${escapeHtml(data.latestStatus)}</strong>.</p>
+    <ul style="padding-left:18px;color:#334155;font-size:14px;">${list}</ul>
+    <a href="${data.statusUrl}" class="cta-button">Open verification status →</a>
+    <p style="color:#64748b;font-size:13px;margin-top:24px;">You can switch back to real-time emails or turn digest emails off any time from Profile Settings.</p>
+  `;
+  return {
+    subject: `Rentmaikar verification digest — ${data.count} update${data.count === 1 ? '' : 's'}`,
+    html: emailWrapper(content, 'Verification digest'),
+    from: formatSenderEmail('verify'),
+  };
+};
+
+
+
 
 
 // ==================== SUPPORT TEMPLATES ====================
