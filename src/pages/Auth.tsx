@@ -129,19 +129,20 @@ const Auth = () => {
 
     const onboardingTarget = ROLE_ONBOARDING[userRole as AppRole];
 
-    // First-login redirect for driver/owner → role-specific onboarding
+    // For driver/owner: first-time users (never logged in before) go to the
+    // role-specific onboarding wizard once. Any return visit — even before
+    // onboarding is fully completed — lands on the dashboard, which shows
+    // the OnboardingChecklist so they can continue where they left off.
     if (onboardingTarget) {
       supabase
         .from('profiles')
-        .select('onboarding_completed_at')
+        .select('last_sign_in_at, onboarding_completed_at')
         .eq('user_id', user.id)
         .maybeSingle()
         .then(({ data }) => {
-          if (!data?.onboarding_completed_at) {
-            void routeWithCompletionCheck(onboardingTarget);
-          } else {
-            void routeWithCompletionCheck(ROLE_HOME[userRole as AppRole]);
-          }
+          const isFirstEverLogin = !data?.last_sign_in_at && !data?.onboarding_completed_at;
+          const target = isFirstEverLogin ? onboardingTarget : ROLE_HOME[userRole as AppRole];
+          void routeWithCompletionCheck(target);
         });
       return;
     }

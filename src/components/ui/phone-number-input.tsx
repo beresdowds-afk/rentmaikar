@@ -1,5 +1,6 @@
 import * as React from 'react';
 import PhoneInputBase, { type Country } from 'react-phone-number-input';
+import flags from 'react-phone-number-input/flags';
 import 'react-phone-number-input/style.css';
 import '@/styles/phone-input.css';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,7 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
         international
         countryCallingCodeEditable={false}
         defaultCountry={resolvedCountry}
+        flags={flags}
         value={value || undefined}
         onChange={(v) => onChange((v as string) || '')}
         disabled={disabled}
