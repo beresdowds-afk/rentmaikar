@@ -3637,6 +3637,36 @@ export type Database = {
           },
         ]
       }
+      persona_status_digest_queue: {
+        Row: {
+          created_at: string
+          id: string
+          inquiry_id: string | null
+          note: string | null
+          sent_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inquiry_id?: string | null
+          note?: string | null
+          sent_at?: string | null
+          status: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inquiry_id?: string | null
+          note?: string | null
+          sent_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       persona_template_config: {
         Row: {
           created_at: string
@@ -4378,6 +4408,7 @@ export type Database = {
           owns_vehicle: boolean | null
           payment_proxy_verified: boolean
           payments_suspended: boolean
+          persona_notification_frequency: string
           persona_verified: boolean
           phone: string | null
           phone_verification_code: string | null
@@ -4427,6 +4458,7 @@ export type Database = {
           owns_vehicle?: boolean | null
           payment_proxy_verified?: boolean
           payments_suspended?: boolean
+          persona_notification_frequency?: string
           persona_verified?: boolean
           phone?: string | null
           phone_verification_code?: string | null
@@ -4476,6 +4508,7 @@ export type Database = {
           owns_vehicle?: boolean | null
           payment_proxy_verified?: boolean
           payments_suspended?: boolean
+          persona_notification_frequency?: string
           persona_verified?: boolean
           phone?: string | null
           phone_verification_code?: string | null
