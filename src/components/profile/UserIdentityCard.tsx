@@ -149,7 +149,7 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
       const { error } = await supabase
         .from('profiles')
         .update({ avatar_url: null })
-        .eq('id', user.id);
+        .eq('user_id', user.id);
       if (error) throw error;
       setAvatarUrl(null);
       trackOnboardingEvent('passport_removed');
