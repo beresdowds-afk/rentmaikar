@@ -49,6 +49,11 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
     const resolvedCountry: Country = defaultCountry ?? autoCountry;
     return (
       <PhoneInputBase
+        // Force remount when the resolved country changes so the country
+        // selector (and its flag) refreshes to the new default. Without a
+        // key, react-phone-number-input keeps the initial defaultCountry
+        // (which was USA before the async region/profile lookup resolved).
+        key={value ? undefined : resolvedCountry}
         international
         countryCallingCodeEditable={false}
         defaultCountry={resolvedCountry}
