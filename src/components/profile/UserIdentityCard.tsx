@@ -48,7 +48,7 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
       const { data } = await supabase
         .from('profiles')
         .select('full_name, public_uuid, avatar_url')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .maybeSingle();
       if (data) {
         setFullName(data.full_name || user.user_metadata?.full_name || '');
@@ -114,7 +114,7 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
       const { error: updErr } = await supabase
         .from('profiles')
         .update({ avatar_url: url })
-        .eq('id', user.id);
+        .eq('user_id', user.id);
       if (updErr) throw updErr;
       const hadPrevious = !!avatarUrl;
       setAvatarUrl(url);
@@ -149,7 +149,7 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
       const { error } = await supabase
         .from('profiles')
         .update({ avatar_url: null })
-        .eq('id', user.id);
+        .eq('user_id', user.id);
       if (error) throw error;
       setAvatarUrl(null);
       trackOnboardingEvent('passport_removed');
