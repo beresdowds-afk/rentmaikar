@@ -114,7 +114,7 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
       const { error: updErr } = await supabase
         .from('profiles')
         .update({ avatar_url: url })
-        .eq('id', user.id);
+        .eq('user_id', user.id);
       if (updErr) throw updErr;
       const hadPrevious = !!avatarUrl;
       setAvatarUrl(url);
