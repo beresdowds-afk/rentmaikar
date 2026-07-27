@@ -20,13 +20,55 @@ interface PhoneVerificationProps {
   showAsCard?: boolean;
 }
 
-type CountryCode = 'us' | 'ng';
+ interface Region {
+  id: string;
+  iso2: string;
+  region_name: string;
+  country_name: string;
+  calling_code: string;
+  is_active: boolean;
+}
 type Channel = 'sms' | 'whatsapp';
+const [regions, setRegions] = useState<Region[]>([]);
+const [selectedRegion, setSelectedRegion] = useState<string>();
 
-const countryCodes: Record<CountryCode, { code: string; prefix: string; flag: string }> = {
-  us: { code: 'us', prefix: '+1', flag: '🇺🇸' },
-  ng: { code: 'ng', prefix: '+234', flag: '🇳🇬' },
-};
+useEffect(() => {
+  const loadRegions = async () => {
+    const { data, error } = await supabase
+      .from("regions")
+      .select(`
+        id,
+        region_name,
+        iso2,
+        is_active,
+        phone_reference(
+          country_name,
+          calling_code
+        )
+      `)
+      .eq("is_active", true)
+      .order("region_name");
+
+    if (!error && data) {
+      const mapped = data.map(r => ({
+        id: r.id,
+        iso2: r.iso2,
+        region_name: r.region_name,
+        country_name: r.phone_reference.country_name,
+        calling_code: r.phone_reference.calling_code,
+        is_active: r.is_active,
+      }));
+
+      setRegions(mapped);
+
+      if (mapped.length) {
+        setSelectedRegion(mapped[0].iso2);
+      }
+    }
+  };
+
+  loadRegions();
+}, []);
 
 export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerificationProps) => {
   const { user } = useAuth();
@@ -77,8 +119,24 @@ export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerifi
   const getFullPhoneNumber = () => phoneNumber;
 
   const handleSendCode = async () => {
-    const parsed = parsePhoneNumberFromString(phoneNumber || '');
-    if (!parsed?.isValid()) {
+    const parsed = parsePhoneNumberFromString(existingPhone);
+
+parsed?.formatNational();
+
+if (!parsed) {
+    toast.error("Enter a valid phone number.");
+    return;
+}
+
+if (!parsed.isPossible()) {
+    toast.error("This phone number is not possible.");
+    return;
+}
+
+if (!parsed.isValid()) {
+    toast.error("This phone number is not valid.");
+    return;
+} {
       toast.error('Please enter a valid phone number with country code');
       return;
     }
@@ -151,7 +209,18 @@ export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerifi
     if (countdown > 0) return;
     await handleSendCode();
   };
+await supabase
+    .from("profiles")
+    .update({
 
+        phone: parsed.number,
+
+        phone_region: parsed.country,
+
+        phone_verified: true
+
+    })
+    .eq("user_id", user.id);
   const content = (
     <div className="space-y-4">
       {isPhoneVerified && existingPhone ? (
@@ -175,15 +244,49 @@ export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerifi
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="pv-phone">Phone Number</Label>
-            <PhoneNumberInput
-              id="pv-phone"
-              defaultCountry={countryCode === 'ng' ? 'NG' : 'US'}
-              value={phoneNumber}
+            id="pv-phone"
+            <Select
+    value={selectedRegion}
+    onValueChange={setSelectedRegion}
+>
+    <SelectTrigger>
+        <SelectValue placeholder="Select Region" />
+    </SelectTrigger>
+
+    <SelectContent>
+
+        {regions.map(region => (
+
+            <SelectItem
+                key={region.iso2}
+                value={region.iso2}
+            >
+
+                {region.country_name}
+                {" "}
+                ({region.calling_code})
+
+            </SelectItem>
+
+        ))}
+
+    </SelectContent>
+
+</Select>
+                <PhoneNumberInput
+    value={phoneNumber}
+    defaultCountry={selectedRegion}
+    onChange={setPhoneNumber}
+/>
               onChange={(v) => {
                 setPhoneNumber(v);
-                const parsed = parsePhoneNumberFromString(v || '');
-                if (parsed?.country === 'NG') setCountryCode('ng');
-                else if (parsed?.country === 'US') setCountryCode('us');
+                const parsed = parsePhoneNumberFromString(existingPhone);
+
+parsed?.formatNational();
+
+if (parsed?.country) {
+    setSelectedRegion(parsed.country);
+}
               }}
             />
           </div>
