@@ -3730,6 +3730,39 @@ export type Database = {
         }
         Relationships: []
       }
+      phone_reference: {
+        Row: {
+          calling_code: string
+          country_name: string
+          created_at: string
+          example_e164: string | null
+          example_national: string | null
+          iso2: string
+          region_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          calling_code: string
+          country_name: string
+          created_at?: string
+          example_e164?: string | null
+          example_national?: string | null
+          iso2: string
+          region_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          calling_code?: string
+          country_name?: string
+          created_at?: string
+          example_e164?: string | null
+          example_national?: string | null
+          iso2?: string
+          region_label?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       platform_cities: {
         Row: {
           center_lat: number | null
