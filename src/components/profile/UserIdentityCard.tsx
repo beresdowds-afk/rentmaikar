@@ -48,7 +48,7 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
       const { data } = await supabase
         .from('profiles')
         .select('full_name, public_uuid, avatar_url')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .maybeSingle();
       if (data) {
         setFullName(data.full_name || user.user_metadata?.full_name || '');
