@@ -33,7 +33,7 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
       value,
       onChange,
       defaultCountry,
-      placeholder = 'Enter phone number',
+      placeholder,
       disabled,
       className,
       id,
@@ -48,6 +48,11 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
     // consistent with the signed-in user's preferred country.
     const autoCountry = useDefaultPhoneCountry();
     const resolvedCountry: Country = defaultCountry ?? autoCountry;
+    // Region-aware example number pulled from the `phone_reference` dataset,
+    // so the placeholder always shows a valid, correctly-formatted sample
+    // for the selected IDD.
+    const example = usePhoneExample(resolvedCountry);
+    const effectivePlaceholder = placeholder ?? (example ? `e.g. ${example}` : 'Enter phone number');
     return (
       <PhoneInputBase
         // Force remount when the resolved country changes so the country
@@ -62,7 +67,7 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
         value={value || undefined}
         onChange={(v) => onChange((v as string) || '')}
         disabled={disabled}
-        placeholder={placeholder}
+        placeholder={effectivePlaceholder}
         numberInputProps={{
           ref: ref as React.Ref<HTMLInputElement>,
           id,
