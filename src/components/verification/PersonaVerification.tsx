@@ -256,13 +256,44 @@ export default function PersonaVerification({
           ) : (
             user && (
               <UploadDropZone
-                userId={user.id}
-                documentType="drivers_license"
-                onUploaded={(id: string) => setDlDocId(id)}
                 accept="image/*,application/pdf"
+                maxSizeMB={10}
+                isUploading={dlChecking}
+                label="Upload driver's license"
+                onFileSelected={async (file: File) => {
+                  setDlChecking(true);
+                  try {
+                    const ext = file.name.split(".").pop() || "bin";
+                    const path = `${user.id}/drivers_license/${Date.now()}.${ext}`;
+                    const up = await supabase.storage
+                      .from("user-documents")
+                      .upload(path, file, { upsert: false, contentType: file.type });
+                    if (up.error) throw up.error;
+                    const { data: doc, error: insErr } = await supabase
+                      .from("user_documents")
+                      .insert({
+                        user_id: user.id,
+                        document_type: "drivers_license",
+                        file_name: file.name,
+                        file_path: path,
+                        file_size: file.size,
+                        mime_type: file.type,
+                      } as any)
+                      .select("id")
+                      .single();
+                    if (insErr) throw insErr;
+                    setDlDocId((doc as any).id);
+                    toast.success("Driver's license uploaded");
+                  } catch (e: any) {
+                    toast.error(e?.message ?? "Upload failed");
+                  } finally {
+                    setDlChecking(false);
+                  }
+                }}
               />
             )
           )}
+
         </div>
       )}
 
