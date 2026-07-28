@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Shield, Loader2, CheckCircle2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Shield, Loader2, CheckCircle2, IdCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRegion } from "@/contexts/RegionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import PersonaFieldsFallbackDialog, { type PersonaFieldKey, type PersonaFallbackValues } from "./PersonaFieldsFallbackDialog";
+import { UploadDropZone } from "@/components/documents/UploadDropZone";
 
 interface Props {
   subject?: "self" | "referee";
@@ -63,8 +65,36 @@ export default function PersonaVerification({
   const [fallbackOpen, setFallbackOpen] = useState(false);
   const [missingFields, setMissingFields] = useState<PersonaFieldKey[]>([]);
   const [pendingFields, setPendingFields] = useState<Record<string, string>>({});
+  const [dlDocId, setDlDocId] = useState<string | null>(null);
+  const [dlChecking, setDlChecking] = useState(false);
+
+  // Drivers MUST present a driver's license in addition to any other
+  // identity document. Owners and other roles can choose any accepted doc.
+  const requiresDriversLicense = subject === "self" && subjectRole === "driver";
 
   useEffect(() => { loadPersonaSdk().catch(() => {/* fallback to hosted */}); }, []);
+
+  // Check whether a driver's license has already been uploaded by this user.
+  useEffect(() => {
+    if (!requiresDriversLicense || !user) return;
+    let cancelled = false;
+    (async () => {
+      setDlChecking(true);
+      const { data } = await supabase
+        .from("user_documents")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("document_type", "drivers_license")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled) {
+        setDlDocId((data as any)?.id ?? null);
+        setDlChecking(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [requiresDriversLicense, user]);
 
   async function resolveFields(): Promise<Record<string, string>> {
     if (fields && Object.keys(fields).length > 0) return fields;
@@ -91,7 +121,14 @@ export default function PersonaVerification({
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("persona-create-inquiry", {
-        body: { subject_type: subject, subject_role: subjectRole, subject_ref: subjectRef, region: country, fields: finalFields },
+        body: {
+          subject_type: subject,
+          subject_role: subjectRole,
+          subject_ref: subjectRef,
+          region: country,
+          fields: finalFields,
+          drivers_license_document_id: requiresDriversLicense ? dlDocId : undefined,
+        },
       });
       if (error) throw error;
 
@@ -157,6 +194,10 @@ export default function PersonaVerification({
   }
 
   async function start() {
+    if (requiresDriversLicense && !dlDocId) {
+      toast.error("Please upload your driver's license before starting verification.");
+      return;
+    }
     setLoading(true);
     try {
       const resolved = await resolveFields();
@@ -191,8 +232,44 @@ export default function PersonaVerification({
   }
 
   return (
-    <>
-      <Button onClick={start} disabled={loading} variant="default">
+    <div className="space-y-3">
+      {requiresDriversLicense && (
+        <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <IdCard className="h-4 w-4" />
+            Driver's license (required for drivers)
+          </div>
+          <p className="text-xs text-muted-foreground">
+            All drivers must upload a valid driver's license in addition to any
+            other identity document requested by Persona.
+          </p>
+          {dlChecking ? (
+            <p className="text-xs text-muted-foreground">Checking uploaded documents…</p>
+          ) : dlDocId ? (
+            <Alert className="border-green-200 bg-green-50 py-2">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800 text-xs">
+                Driver's license on file. You can start verification.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            user && (
+              <UploadDropZone
+                userId={user.id}
+                documentType="drivers_license"
+                onUploaded={(id: string) => setDlDocId(id)}
+                accept="image/*,application/pdf"
+              />
+            )
+          )}
+        </div>
+      )}
+
+      <Button
+        onClick={start}
+        disabled={loading || (requiresDriversLicense && !dlDocId)}
+        variant="default"
+      >
         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
         {buttonLabel ?? "Verify identity with Persona"}
       </Button>
@@ -203,6 +280,6 @@ export default function PersonaVerification({
         initial={pendingFields as any}
         onConfirm={handleFallbackConfirm}
       />
-    </>
+    </div>
   );
 }
