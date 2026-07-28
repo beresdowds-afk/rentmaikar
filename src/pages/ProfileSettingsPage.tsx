@@ -21,6 +21,7 @@ import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 import { useRegion } from '@/contexts/RegionContext';
 import { z } from 'zod';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
+import { normalizeToE164, PhoneValidationError } from '@/lib/phone-normalize';
 
 const nameSchema = z.object({
   full_name: z
@@ -38,17 +39,11 @@ const nameSchema = z.object({
       if (!v) return true;
       const withPlus = v.startsWith('+') ? v : `+${v.replace(/[^\d]/g, '')}`;
       return !!parsePhoneNumberFromString(withPlus)?.isValid();
-    }, 'Enter a valid international phone number (e.g. +15551234567)'),
+    }, 'Enter a valid international phone number (e.g. +14155551234)'),
 });
 
 const normalize = (v: string | null | undefined) => (v ?? '').trim();
-const normalizePhoneE164 = (raw: string | null | undefined) => {
-  const t = (raw ?? '').trim();
-  if (!t) return '';
-  const withPlus = t.startsWith('+') ? t : `+${t.replace(/[^\d]/g, '')}`;
-  const parsed = parsePhoneNumberFromString(withPlus);
-  return parsed?.isValid() ? parsed.number : t;
-};
+
 
 
 export default function ProfileSettingsPage() {
@@ -114,11 +109,25 @@ export default function ProfileSettingsPage() {
     }
     setSaving(true);
     try {
-      const newPhone = parsed.data.phone ? normalizePhoneE164(parsed.data.phone) : null;
+      // Normalize to E.164 and enforce the number matches the user's
+      // selected region so we never persist a mismatched flag/IDD combo.
+      let newPhone: string | null = null;
+      if (parsed.data.phone) {
+        try {
+          const expected = country === 'Nigeria' ? 'NG' : 'US';
+          newPhone = normalizeToE164(parsed.data.phone, expected).e164;
+        } catch (err) {
+          const message = err instanceof PhoneValidationError ? err.message : 'Invalid phone number.';
+          toast({ title: 'Phone number', description: message, variant: 'destructive' });
+          setSaving(false);
+          return;
+        }
+      }
       const updates: Record<string, any> = {
         full_name: parsed.data.full_name,
         phone: newPhone,
       };
+
 
       if (phoneChanged) {
         updates.phone_verified = false;

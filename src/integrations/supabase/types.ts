@@ -3672,6 +3672,7 @@ export type Database = {
           created_at: string
           environment_id: string | null
           notes: string | null
+          requires_drivers_license: boolean
           subject_role: string
           template_id: string
           updated_at: string
@@ -3681,6 +3682,7 @@ export type Database = {
           created_at?: string
           environment_id?: string | null
           notes?: string | null
+          requires_drivers_license?: boolean
           subject_role: string
           template_id: string
           updated_at?: string
@@ -3690,6 +3692,7 @@ export type Database = {
           created_at?: string
           environment_id?: string | null
           notes?: string | null
+          requires_drivers_license?: boolean
           subject_role?: string
           template_id?: string
           updated_at?: string

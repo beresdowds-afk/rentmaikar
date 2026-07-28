@@ -1,6 +1,7 @@
 import * as React from 'react';
 import PhoneInputBase, { type Country } from 'react-phone-number-input';
 import flags from 'react-phone-number-input/flags';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import 'react-phone-number-input/style.css';
 import '@/styles/phone-input.css';
 import { cn } from '@/lib/utils';
@@ -13,6 +14,8 @@ export interface PhoneNumberInputProps {
   onChange: (value: string) => void;
   /** Default ISO country when the value doesn't yet include a calling code. */
   defaultCountry?: Country;
+  /** Notified whenever the flag/country picker changes. */
+  onCountryChange?: (country: Country | undefined) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -26,6 +29,11 @@ export interface PhoneNumberInputProps {
  * Region-aware phone input with an IDD (international dialing code) country
  * selector. Emits E.164 formatted values on change. Country list, flags and
  * per-country formatting come from libphonenumber-js.
+ *
+ * The picker is fully controlled internally so the flag, IDD and per-country
+ * example placeholder always stay in sync — no matter whether the user picks
+ * a country manually, pastes a number with a `+` prefix, or the caller's
+ * region resolves asynchronously.
  */
 export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberInputProps>(
   (
@@ -33,6 +41,7 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
       value,
       onChange,
       defaultCountry,
+      onCountryChange,
       placeholder,
       disabled,
       className,
@@ -43,26 +52,42 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
     },
     ref,
   ) => {
-    // When no explicit defaultCountry is provided, sync from the user's
-    // profile / region. This keeps every phone input (web + Capacitor iOS/Android)
-    // consistent with the signed-in user's preferred country.
     const autoCountry = useDefaultPhoneCountry();
-    const resolvedCountry: Country = defaultCountry ?? autoCountry;
-    // Region-aware example number pulled from the `phone_reference` dataset,
-    // so the placeholder always shows a valid, correctly-formatted sample
-    // for the selected IDD.
-    const example = usePhoneExample(resolvedCountry);
-    const effectivePlaceholder = placeholder ?? (example ? `e.g. ${example}` : 'Enter phone number');
+    const resolvedDefault: Country = defaultCountry ?? autoCountry;
+
+    // Track the picker's current country so the flag/IDD stay consistent with
+    // both the value AND the resolved default when it changes asynchronously.
+    const parsedFromValue = React.useMemo(() => {
+      if (!value) return undefined;
+      return parsePhoneNumberFromString(value)?.country as Country | undefined;
+    }, [value]);
+
+    const [country, setCountry] = React.useState<Country | undefined>(
+      parsedFromValue ?? resolvedDefault,
+    );
+
+    // If the value or the resolved default changes (e.g. RegionContext
+    // switches, or the async profile lookup lands), reconcile the picker.
+    React.useEffect(() => {
+      const next = parsedFromValue ?? resolvedDefault;
+      setCountry((prev) => (prev === next ? prev : next));
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [parsedFromValue, resolvedDefault]);
+
+    const example = usePhoneExample(country ?? resolvedDefault);
+    const effectivePlaceholder =
+      placeholder ?? (example ? `e.g. ${example}` : 'Enter phone number');
+
     return (
       <PhoneInputBase
-        // Force remount when the resolved country changes so the country
-        // selector (and its flag) refreshes to the new default. Without a
-        // key, react-phone-number-input keeps the initial defaultCountry
-        // (which was USA before the async region/profile lookup resolved).
-        key={value ? undefined : resolvedCountry}
         international
         countryCallingCodeEditable={false}
-        defaultCountry={resolvedCountry}
+        country={country}
+        defaultCountry={resolvedDefault}
+        onCountryChange={(c) => {
+          setCountry(c as Country | undefined);
+          onCountryChange?.(c as Country | undefined);
+        }}
         flags={flags}
         value={value || undefined}
         onChange={(v) => onChange((v as string) || '')}
