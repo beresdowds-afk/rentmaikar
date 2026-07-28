@@ -16,6 +16,7 @@ interface Props {
   fields?: Record<string, string>;
   onComplete?: (inquiryId: string | null) => void;
   buttonLabel?: string;
+  onDriversLicenseUploaded?: () => void;
 }
 
 function splitName(full?: string | null): { name_first?: string; name_last?: string } {
