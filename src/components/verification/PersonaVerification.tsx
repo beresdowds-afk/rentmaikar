@@ -7,7 +7,7 @@ import { useRegion } from "@/contexts/RegionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import PersonaFieldsFallbackDialog, { type PersonaFieldKey, type PersonaFallbackValues } from "./PersonaFieldsFallbackDialog";
-import { UploadDropZone } from "@/components/documents/UploadDropZone";
+import { UploadDropZone } from "@/components/ui/upload-drop-zone";
 
 interface Props {
   subject?: "self" | "referee";
