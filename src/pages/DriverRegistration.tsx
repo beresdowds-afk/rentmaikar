@@ -373,7 +373,6 @@ const DriverRegistration = () => {
                     render={({ field }) => (
                       <PhoneNumberInput
                         id="driver-phone"
-                        defaultCountry="US"
                         value={field.value}
                         onChange={(v) => {
                           field.onChange(v);
@@ -517,7 +516,7 @@ const DriverRegistration = () => {
                           render={({ field }) => (
                             <PhoneNumberInput
                               id={`referee${num}Phone`}
-                              defaultCountry="US"
+                              
                               value={(field.value as string) || ""}
                               onChange={field.onChange}
                             />
