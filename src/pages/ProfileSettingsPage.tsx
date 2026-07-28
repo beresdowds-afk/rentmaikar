@@ -109,11 +109,25 @@ export default function ProfileSettingsPage() {
     }
     setSaving(true);
     try {
-      const newPhone = parsed.data.phone ? normalizePhoneE164(parsed.data.phone) : null;
+      // Normalize to E.164 and enforce the number matches the user's
+      // selected region so we never persist a mismatched flag/IDD combo.
+      let newPhone: string | null = null;
+      if (parsed.data.phone) {
+        try {
+          const expected = country === 'Nigeria' ? 'NG' : 'US';
+          newPhone = normalizeToE164(parsed.data.phone, expected).e164;
+        } catch (err) {
+          const message = err instanceof PhoneValidationError ? err.message : 'Invalid phone number.';
+          toast({ title: 'Phone number', description: message, variant: 'destructive' });
+          setSaving(false);
+          return;
+        }
+      }
       const updates: Record<string, any> = {
         full_name: parsed.data.full_name,
         phone: newPhone,
       };
+
 
       if (phoneChanged) {
         updates.phone_verified = false;
