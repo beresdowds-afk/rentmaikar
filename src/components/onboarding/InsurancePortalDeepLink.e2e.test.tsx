@@ -10,14 +10,11 @@
  *   5. Repeated CTA taps dedupe to a single provider request.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Routes, Route } from 'react-router-dom';
 import { ReactNode } from "react";
-import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-import { AuthProvider } from "@/contexts/AuthContext";
 import { RegionProvider } from "@/contexts/RegionContext";
 
 export function renderWithProviders(
@@ -25,15 +22,16 @@ export function renderWithProviders(
   initialEntries = ["/"]
 ) {
   const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-      mutations: {
-        retry: false,
-      },
+  defaultOptions: {
+    queries: {
+      retry: false,
+      gcTime: 0,
     },
-  });
+    mutations: {
+      retry: false,
+    },
+  },
+});
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -46,6 +44,7 @@ export function renderWithProviders(
       </AuthProvider>
     </QueryClientProvider>
   );
+  
 }import {
   runIdempotent,
   getIdempotencyKey,
@@ -105,7 +104,7 @@ vi.mock('@/integrations/supabase/client', () => ({
   removeChannel: vi.fn(),
 
   functions: {
-    invoke: (...args: unknown[]) => invoke(...args),
+    invoke: vi.fn((...args) => invoke(...args)),
   },
 
   rpc: vi.fn(async () => ({
@@ -113,6 +112,7 @@ vi.mock('@/integrations/supabase/client', () => ({
     error: null,
   })),
 },
+  }));
   
 vi.mock('@/hooks/useRegistrationProgress', () => ({
   useRegistrationProgress: () => ({ data: progress, isLoading: false }),
@@ -153,7 +153,11 @@ function InsuranceCheckoutButton() {
   const submit = async () => {
     const key = getIdempotencyKey('insurance-checkout');
     const { supabase } = await import('@/integrations/supabase/client');
-    const { trackOnboardingEvent } = await import('@/lib/onboarding-analytics');
+    const trackOnboardingEvent = vi.fn();
+
+vi.mock("@/lib/onboarding-analytics", () => ({
+  trackOnboardingEvent,
+})); await import('@/lib/onboarding-analytics');
     trackOnboardingEvent('portal_cta_submitted', {
       role: 'owner',
       portal: 'insurance',
