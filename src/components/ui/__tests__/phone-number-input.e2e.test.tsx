@@ -10,7 +10,62 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { parsePhoneNumberFromString, isValidPhoneNumber } from 'libphonenumber-js';
 import { PhoneNumberInput } from '@/components/ui/phone-number-input';
+// -----------------------------------------------------------------------------
+// Mock Supabase (including Realtime)
+// -----------------------------------------------------------------------------
+vi.mock("@/integrations/supabase/client", () => {
+  const query: any = {
+    select: vi.fn(() => query),
+    insert: vi.fn(() => query),
+    update: vi.fn(() => query),
+    upsert: vi.fn(() => query),
+    delete: vi.fn(() => query),
+    eq: vi.fn(() => query),
+    neq: vi.fn(() => query),
+    gt: vi.fn(() => query),
+    gte: vi.fn(() => query),
+    lt: vi.fn(() => query),
+    lte: vi.fn(() => query),
+    order: vi.fn(() => query),
+    limit: vi.fn(() => query),
+    single: vi.fn(async () => ({ data: null, error: null })),
+    maybeSingle: vi.fn(async () => ({ data: null, error: null })),
+    then: (resolve: any) =>
+      resolve({ data: null, error: null }),
+  };
 
+  const realtimeChannel: any = {
+    on: vi.fn(() => realtimeChannel),
+    subscribe: vi.fn(() => realtimeChannel),
+    unsubscribe: vi.fn(),
+  };
+
+  return {
+    supabase: {
+      from: vi.fn(() => query),
+
+      // Realtime API
+      channel: vi.fn(() => realtimeChannel),
+      removeChannel: vi.fn(),
+      removeAllChannels: vi.fn(),
+
+      auth: {
+        getUser: vi.fn(async () => ({
+          data: { user: null },
+          error: null,
+        })),
+
+        onAuthStateChange: vi.fn(() => ({
+          data: {
+            subscription: {
+              unsubscribe: vi.fn(),
+            },
+          },
+        })),
+      },
+    },
+  };
+});
 vi.mock('@/hooks/useDefaultPhoneCountry', () => ({
   useDefaultPhoneCountry: () => 'US',
 }));
@@ -114,3 +169,16 @@ describe('Region-aware IDD phone input (E2E)', () => {
     });
   });
 });
+export const mockSupabase = {
+  from: vi.fn(),
+  channel: vi.fn(),
+  removeChannel: vi.fn(),
+  removeAllChannels: vi.fn(),
+  auth: {
+    getUser: vi.fn(),
+    onAuthStateChange: vi.fn(),
+  },
+};
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: mockSupabase,
+}));
