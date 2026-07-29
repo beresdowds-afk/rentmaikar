@@ -10,10 +10,43 @@
  *   5. Repeated CTA taps dedupe to a single provider request.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import {
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { Routes, Route } from 'react-router-dom';
+import { ReactNode } from "react";
+import { render } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+import { AuthProvider } from "@/contexts/AuthContext";
+import { RegionProvider } from "@/contexts/RegionContext";
+
+export function renderWithProviders(
+  ui: ReactNode,
+  initialEntries = ["/"]
+) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RegionProvider>
+          <MemoryRouter initialEntries={initialEntries}>
+            {ui}
+          </MemoryRouter>
+        </RegionProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}import {
   runIdempotent,
   getIdempotencyKey,
   __resetIdempotentSubmitForTests,
@@ -36,22 +69,78 @@ const progress = {
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
-    functions: { invoke: (...a: unknown[]) => invoke(...a) },
-    auth: {
-      getUser: () => Promise.resolve({ data: { user: { id: 'u1', email: 'o@r.com' } } }),
-    },
-    rpc: () => Promise.resolve({ data: progress, error: null }),
-  },
-}));
+  auth: {
+    getUser: vi.fn(async () => ({
+      data: {
+        user: {
+          id: "u1",
+          email: "o@r.com",
+        },
+      },
+      error: null,
+    })),
 
+    getSession: vi.fn(async () => ({
+      data: {
+        session: null,
+      },
+      error: null,
+    })),
+
+    onAuthStateChange: vi.fn(() => ({
+      data: {
+        subscription: {
+          unsubscribe: vi.fn(),
+        },
+      },
+    })),
+  },
+
+  channel: vi.fn(() => ({
+    on: vi.fn().mockReturnThis(),
+    subscribe: vi.fn().mockReturnThis(),
+    unsubscribe: vi.fn(),
+  })),
+
+  removeChannel: vi.fn(),
+
+  functions: {
+    invoke: (...args: unknown[]) => invoke(...args),
+  },
+
+  rpc: vi.fn(async () => ({
+    data: progress,
+    error: null,
+  })),
+},
+  
 vi.mock('@/hooks/useRegistrationProgress', () => ({
   useRegistrationProgress: () => ({ data: progress, isLoading: false }),
   advanceRegistrationStage: vi.fn(),
 }));
 
-vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: () => ({ user: { id: 'u1' }, isLoading: false, isRoleLoading: false }),
-}));
+vi.mock("@/contexts/AuthContext", () => {
+  const React = require("react");
+
+  const value = {
+    user: { id: "u1", email: "o@r.com" },
+    session: {},
+    profile: {},
+    isLoading: false,
+    isRoleLoading: false,
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+    refreshProfile: vi.fn(),
+  };
+
+  return {
+    AuthProvider: ({ children }: { children: React.ReactNode }) => (
+      <>{children}</>
+    ),
+
+    useAuth: () => value,
+  };
+});
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() } }));
 
@@ -87,19 +176,19 @@ function InsuranceCheckoutButton() {
 }
 
 function renderInsuranceRoute() {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/owner/portal/insurance']}>
-        <Routes>
-          <Route path="/owner/portal/:portalKey" element={<PortalRouteGuard role="owner" />} />
-          <Route
-            path="/owner/dashboard"
-            element={<InsuranceCheckoutButton />}
-          />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>,
+  return renderWithProviders(
+    <Routes>
+      <Route
+        path="/owner/portal/:portalKey"
+        element={<PortalRouteGuard role="owner" />}
+      />
+
+      <Route
+        path="/owner/dashboard"
+        element={<InsuranceCheckoutButton />}
+      />
+    </Routes>,
+    ["/owner/portal/insurance"]
   );
 }
 
