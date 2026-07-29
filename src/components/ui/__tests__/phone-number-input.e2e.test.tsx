@@ -9,7 +9,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { parsePhoneNumberFromString, isValidPhoneNumber } from 'libphonenumber-js';
-import { PhoneNumberInput } from '@/components/ui/phone-number-input';
+import { describe, it, expect, vi } from "vitest";
+
+// mocks
+vi.mock(...);
+vi.mock(...);
+
+// then import modules that use those mocks
+import { PhoneNumberInput } from "@/components/ui/phone-number-input";
 // -----------------------------------------------------------------------------
 // Mock Supabase (including Realtime)
 // -----------------------------------------------------------------------------
@@ -169,16 +176,4 @@ describe('Region-aware IDD phone input (E2E)', () => {
     });
   });
 });
-export const mockSupabase = {
-  from: vi.fn(),
-  channel: vi.fn(),
-  removeChannel: vi.fn(),
-  removeAllChannels: vi.fn(),
-  auth: {
-    getUser: vi.fn(),
-    onAuthStateChange: vi.fn(),
-  },
-};
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: mockSupabase,
-}));
+ 
