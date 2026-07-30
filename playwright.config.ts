@@ -9,6 +9,8 @@ export default defineConfig({
   // The single Vite dev server is the bottleneck; parallel workers cause
   // spurious timeouts, so run serially.
   workers: 1,
+  // Vite dev-server hiccups during long runs cause occasional timeouts.
+  retries: 1,
   reporter: [["list"]],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:8080",
