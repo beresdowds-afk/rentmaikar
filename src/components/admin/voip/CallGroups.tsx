@@ -12,6 +12,9 @@ import { Users, Plus, Trash2, Phone, Loader2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { VoIPCallGroup, CallRegion } from '@/types/voip';
 import { COUNTRY_CODES, validatePhoneNumber, formatPhoneForDisplay } from '@/types/voip';
+import { useRegion } from '@/contexts/RegionContext';
+import { regionToDefaultCountry } from '@/hooks/useDefaultPhoneCountry';
+
 
 interface CallGroupsProps {
   groups: VoIPCallGroup[];
