@@ -6,6 +6,7 @@ import {
   formatCurrency
 } from './payment-config';
 import { supabase } from '@/integrations/supabase/client';
+import { idempotencyHeaders } from './idempotency';
 
 // PayPal types
 export interface PayPalConfig {
@@ -140,6 +141,9 @@ export class PaymentGateway {
           description: `Rentmaikar payment — ${formatCurrency(breakdown.baseAmount, 'NGN')}`,
           metadata,
         },
+        headers: idempotencyHeaders('charge.paystack', {
+          amount: breakdown.driverTotal, driverId, vehicleId, rentalId,
+        }),
       });
       if (error) throw error;
       return {
@@ -243,6 +247,7 @@ export class PaymentGateway {
       }
       const { data, error } = await supabase.functions.invoke('initiate-paypal-payout', {
         body: { amount, payoutAccountId: payoutDetails.payoutAccountId, note: payoutDetails.note },
+        headers: idempotencyHeaders('payout.paypal', { amount, payoutAccountId: payoutDetails.payoutAccountId }),
       });
       if (error) throw error;
       return { success: true, transactionId: data?.reference ?? data?.payout_batch_id, gatewayResponse: data };
@@ -266,6 +271,7 @@ export class PaymentGateway {
       }
       const { data, error } = await supabase.functions.invoke('initiate-paystack-transfer', {
         body: { amount, payoutAccountId: payoutDetails.payoutAccountId, note: payoutDetails.note },
+        headers: idempotencyHeaders('payout.paystack', { amount, payoutAccountId: payoutDetails.payoutAccountId }),
       });
       if (error) throw error;
       return { success: true, transactionId: data?.reference ?? data?.transfer_code, gatewayResponse: data };

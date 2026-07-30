@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { idempotencyHeaders } from "@/lib/idempotency";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -49,6 +50,7 @@ export function PaystackCheckout({
     try {
       const { data, error } = await supabase.functions.invoke("create-paystack-transaction", {
         body: { amount, currency, rentalId, vehicleId, driverId, paymentFrequency, description, channels },
+        headers: idempotencyHeaders("charge.paystack", { amount, currency, rentalId, vehicleId, driverId }),
       });
       if (error || !data?.reference) throw new Error(error?.message ?? data?.error ?? "Init failed");
 

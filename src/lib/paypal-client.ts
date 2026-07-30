@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { idempotencyHeaders } from "@/lib/idempotency";
 
 export interface CreatePayPalOrderInput {
   amount: number;
@@ -31,6 +32,9 @@ export async function createPayPalOrder(input: CreatePayPalOrderInput): Promise<
       description: input.description,
       ...input.metadata,
     },
+    headers: idempotencyHeaders("charge.paypal", {
+      amount: input.amount, currency: input.currency, rentalId: input.rentalId, vehicleId: input.vehicleId,
+    }),
   });
 
   if (error || !data?.order_id) {
