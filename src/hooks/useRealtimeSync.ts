@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRegion } from "@/contexts/RegionContext";
+import { useRealtimeSound, shouldChime } from "@/hooks/useRealtimeSound";
 
 /**
  * Global realtime sync worker. Subscribes to a curated set of tables and
