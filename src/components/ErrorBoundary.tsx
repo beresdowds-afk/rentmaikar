@@ -39,6 +39,19 @@ window.location.reload();
   handleGoHome = () => {
     window.location.href = "/";
   };
+  try {
+
+const result =
+await supabase
+.from("profiles")
+.select("*");
+
+
+} catch(error){
+
+reportError(error);
+
+}
 
   render() {
     if (this.state.hasError) {
