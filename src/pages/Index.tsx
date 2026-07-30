@@ -25,12 +25,30 @@ const Index = () => {
 
   // Returning verified users landing on `/` are forwarded straight to their
   // role dashboard — the landing page is for guests only.
-  useEffect(() => {
-    if (isLoading || !user || !userRole) return;
-    const target = homeForRole(userRole as AppRole, '/');
-    if (target && target !== '/') navigate(target, { replace: true });
-  }, [isLoading, user, userRole, navigate]);
+  const {
+    user,
+    userRole,
+    isLoading,
+    isRoleLoading,
+} = useAuth();
 
+useEffect(() => {
+    if (isLoading || isRoleLoading) return;
+
+    if (!user || !userRole) return;
+
+    const target = homeForRole(userRole, "/");
+
+    if (target !== "/") {
+        navigate(target, { replace: true });
+    }
+}, [
+    isLoading,
+    isRoleLoading,
+    user,
+    userRole,
+    navigate,
+]);
 
   return (
     <div className="min-h-screen bg-background">
