@@ -20,7 +20,18 @@ export default function DocumentExpiryInAppNotifier() {
     if (!user || ranRef.current) return;
     ranRef.current = true;
 
-    (async () => {
+    const loadNotifications = async () => {
+    try {
+
+    }
+    catch(error){
+
+        reportError(...)
+
+    }
+};
+
+void loadNotifications();{
       const today = new Date();
       const in30 = new Date();
       in30.setDate(today.getDate() + 30);
