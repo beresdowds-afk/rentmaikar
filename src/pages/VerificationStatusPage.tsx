@@ -1,12 +1,17 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, Clock, AlertTriangle, XCircle, ShieldCheck, RefreshCw, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, XCircle, ShieldCheck, RefreshCw, Loader2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import PageSkeleton from '@/components/PageSkeleton';
 import PersonaVerification from '@/components/verification/PersonaVerification';
+import VerificationFailureCard from '@/components/verification/VerificationFailureCard';
+import { classifyPersonaMismatches } from '@/lib/verification-failures';
+import { useVerificationResume } from '@/hooks/useVerificationResume';
+import { supabase } from '@/integrations/supabase/client';
 import { useIdentityVerification, type PersonaStatus, type PersonaTimelineEntry } from '@/hooks/useIdentityVerification';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -146,10 +151,50 @@ export default function VerificationStatusPage() {
     }
   }, [data?.is_verified, returnTo, navigate]);
 
+  const { session, canResume, clear: clearSession } = useVerificationResume();
+  const [reconciling, setReconciling] = useState(false);
+
+  // Translate the provider's flagged checks into actionable guidance.
+  const failures = useMemo(
+    () => classifyPersonaMismatches(data?.latest_inquiry?.mismatch_fields ?? null),
+    [data?.latest_inquiry?.mismatch_fields],
+  );
+
+  /** Re-reads status from the provider — recovers from missed webhooks. */
+  const reconcile = async () => {
+    setReconciling(true);
+    try {
+      const { data: res, error } = await supabase.functions.invoke('persona-reconcile', {
+        body: { inquiry_id: session?.inquiryId ?? undefined, limit: 10 },
+      });
+      if (error) throw error;
+      await refetch();
+      toast.success(
+        res?.updated ? 'Status updated from the provider' : 'Your status is already up to date',
+      );
+    } catch {
+      toast.error('Could not reach the verification provider', {
+        description: 'Try again in a moment — your progress is saved.',
+      });
+    } finally {
+      setReconciling(false);
+    }
+  };
+
+  /** Reopens the interrupted hosted session rather than restarting. */
+  const resumeSession = () => {
+    if (session?.hostedUrl) {
+      window.open(session.hostedUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      toast.info('Continue below to pick up your verification.');
+    }
+  };
+
   if (!user) return <PageSkeleton />;
   if (isLoading || !data) return <PageSkeleton />;
 
   const steps = stepsFor(current);
+
   const badge = STATUS_BADGE[current];
   const mismatches = data.latest_inquiry?.mismatch_fields ?? null;
 
@@ -203,19 +248,30 @@ export default function VerificationStatusPage() {
         <CardContent className="space-y-4">
           <p className="text-sm">{nextActionCopy(current, mismatches)}</p>
 
-          {current === 'failed' && mismatches && Object.keys(mismatches).length > 0 && (
-            <div className="rounded-md border border-red-500/40 bg-red-500/5 p-3 text-sm">
-              <div className="flex items-center gap-2 font-medium text-red-400 mb-2">
-                <AlertTriangle className="h-4 w-4" /> Flagged checks
-              </div>
-              <ul className="space-y-1 text-muted-foreground">
-                {Object.entries(mismatches).map(([k, v]) => (
-                  <li key={k}>
-                    <span className="font-mono text-xs">{k}</span>: {typeof v === 'string' ? v : JSON.stringify(v)}
-                  </li>
-                ))}
-              </ul>
+          {/* Every flagged Persona check is translated into a plain-language
+              problem plus the exact fix — never a bare "verification failed". */}
+          {failures.length > 0 && (
+            <div className="space-y-3">
+              {failures.map((f) => (
+                <VerificationFailureCard key={f.code} failure={f} />
+              ))}
             </div>
+          )}
+
+          {canResume && current !== 'verified' && (
+            <Alert>
+              <RotateCcw className="h-4 w-4" />
+              <AlertTitle>You have an unfinished verification</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p className="text-sm">
+                  Started {formatWhen(session!.startedAt)}. Continue where you left off instead of starting over.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={resumeSession}>Resume verification</Button>
+                  <Button size="sm" variant="outline" onClick={clearSession}>Start fresh instead</Button>
+                </div>
+              </AlertDescription>
+            </Alert>
           )}
 
           <div className="flex flex-wrap gap-3">
@@ -229,10 +285,17 @@ export default function VerificationStatusPage() {
                 Continue to marketplace
               </Button>
             )}
+            {/* Recovers from missed/failed webhooks by re-reading the
+                authoritative status straight from the provider. */}
+            <Button variant="outline" onClick={reconcile} disabled={reconciling}>
+              {reconciling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Re-check with provider
+            </Button>
             <Button variant="outline" asChild>
               <Link to="/">Back to home</Link>
             </Button>
           </div>
+
         </CardContent>
       </Card>
 

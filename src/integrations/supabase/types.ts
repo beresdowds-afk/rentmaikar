@@ -7812,6 +7812,54 @@ export type Database = {
         }
         Relationships: []
       }
+      verification_event_log: {
+        Row: {
+          context: Json
+          correlation_id: string
+          created_at: string
+          failure_code: string | null
+          failure_domain: string | null
+          id: string
+          message: string | null
+          outcome: string
+          provider: string | null
+          retryable: boolean | null
+          stage: string
+          step: string
+          user_id: string | null
+        }
+        Insert: {
+          context?: Json
+          correlation_id: string
+          created_at?: string
+          failure_code?: string | null
+          failure_domain?: string | null
+          id?: string
+          message?: string | null
+          outcome: string
+          provider?: string | null
+          retryable?: boolean | null
+          stage: string
+          step: string
+          user_id?: string | null
+        }
+        Update: {
+          context?: Json
+          correlation_id?: string
+          created_at?: string
+          failure_code?: string | null
+          failure_domain?: string | null
+          id?: string
+          message?: string | null
+          outcome?: string
+          provider?: string | null
+          retryable?: boolean | null
+          stage?: string
+          step?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       voice_call_permissions: {
         Row: {
           caller_role: string
@@ -9408,6 +9456,7 @@ export type Database = {
           linked_user_id: string
         }[]
       }
+      get_my_activation_blockers: { Args: never; Returns: Json }
       get_my_identity_verification: { Args: never; Returns: Json }
       get_my_registration_progress: { Args: never; Returns: Json }
       get_my_wallet_summary: { Args: { _currency?: string }; Returns: Json }
@@ -9437,6 +9486,30 @@ export type Database = {
           _user_id: string
         }
         Returns: string
+      }
+      get_verification_trace: {
+        Args: { p_correlation_id: string }
+        Returns: {
+          context: Json
+          correlation_id: string
+          created_at: string
+          failure_code: string | null
+          failure_domain: string | null
+          id: string
+          message: string | null
+          outcome: string
+          provider: string | null
+          retryable: boolean | null
+          stage: string
+          step: string
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "verification_event_log"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       grant_full_access: { Args: { _user_id: string }; Returns: undefined }
       has_active_subscription: {
@@ -9503,6 +9576,21 @@ export type Database = {
           _values?: Json
         }
         Returns: undefined
+      }
+      log_verification_event: {
+        Args: {
+          p_context?: Json
+          p_correlation_id: string
+          p_failure_code?: string
+          p_failure_domain?: string
+          p_message?: string
+          p_outcome: string
+          p_provider?: string
+          p_retryable?: boolean
+          p_stage: string
+          p_step: string
+        }
+        Returns: string
       }
       mark_all_admin_notifications_read: { Args: never; Returns: number }
       needs_latest_agreement_acceptance: {

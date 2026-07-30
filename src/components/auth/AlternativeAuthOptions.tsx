@@ -10,41 +10,48 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Loader2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useResendCooldown } from '@/hooks/useResendCooldown';
-
+import VerificationFailureCard from '@/components/verification/VerificationFailureCard';
+import type { ClassifiedFailure } from '@/lib/verification-failures';
+import { getCorrelationId, logVerificationEvent, reportVerificationFailure } from '@/lib/verification-logger';
+import { runPreflight } from '@/lib/verification-preflight';
 
 type Role = 'driver' | 'owner';
 type Provider = 'supabase' | 'custom';
 
-function friendlyGoogleError(raw: string | undefined | null): string {
-  const msg = (raw || '').toLowerCase();
-  if (!msg) return 'Google sign-in could not complete. Please try again.';
-  if (msg.includes('access_denied') || msg.includes('denied') || msg.includes('cancel')) {
-    return 'You denied access on the Google consent screen. Tap "Retry" and choose Allow to continue.';
-  }
-  if (msg.includes('popup') || msg.includes('closed') || msg.includes('window')) {
-    return 'The Google sign-in window closed before finishing. Please try again.';
-  }
-  if (msg.includes('expired') || msg.includes('timeout')) {
-    return 'Your Google session expired. Please retry to start a fresh sign-in.';
-  }
-  if (msg.includes('redirect') || msg.includes('callback') || msg.includes('uri')) {
-    return 'Google callback is misconfigured for this environment. Please contact support if this persists.';
-  }
-  if (msg.includes('unsupported provider') || msg.includes('provider is not enabled')) {
-    return 'Google sign-in is temporarily disabled. Please use email/phone or try again shortly.';
-  }
-  return raw || 'Google sign-in failed. Please try again.';
-}
-
 export function AlternativeAuthOptions({ defaultRole = 'driver' as Role }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [phoneOpen, setPhoneOpen] = useState(false);
-  const [googleError, setGoogleError] = useState<string | null>(null);
+  const [googleFailure, setGoogleFailure] = useState<ClassifiedFailure | null>(null);
+
+  const failGoogle = async (err: unknown, step: string) => {
+    const failure = await reportVerificationFailure(err, { stage: 'oauth', step, provider: 'google' });
+    setGoogleFailure(failure);
+    toast.error(failure.title, { description: failure.nextStep });
+    setGoogleLoading(false);
+  };
 
   const handleGoogle = async () => {
-    setGoogleError(null);
+    setGoogleFailure(null);
     setGoogleLoading(true);
+    const correlationId = getCorrelationId();
     try {
+      // Catch the common browser-side blockers (cookies, storage, offline,
+      // outdated engine) BEFORE bouncing the user to Google.
+      const preflight = await runPreflight({ requireOAuth: true, skipClockCheck: true });
+      if (!preflight.ok) {
+        const blocker = preflight.blocking[0];
+        setGoogleFailure({ ...blocker, raw: blocker.detail ?? blocker.code, correlationId });
+        await logVerificationEvent({
+          stage: 'oauth', step: 'preflight', outcome: 'failed', provider: 'google',
+          failure: { ...blocker, raw: blocker.detail ?? blocker.code, correlationId }, correlationId,
+        });
+        toast.error(blocker.title, { description: blocker.nextStep });
+        setGoogleLoading(false);
+        return;
+      }
+
+      await logVerificationEvent({ stage: 'oauth', step: 'google_sign_in', outcome: 'started', provider: 'google', correlationId });
+
       const result = await lovable.auth.signInWithOAuth('google', {
         redirect_uri: window.location.origin,
         extraParams: {
@@ -61,21 +68,20 @@ export function AlternativeAuthOptions({ defaultRole = 'driver' as Role }) {
         },
       });
       if (result.error) {
-        const friendly = friendlyGoogleError(result.error.message);
-        setGoogleError(friendly);
-        toast.error(friendly);
-        setGoogleLoading(false);
+        await failGoogle(result.error, 'google_sign_in');
         return;
       }
+      await logVerificationEvent({
+        stage: 'oauth', step: 'google_sign_in', outcome: 'succeeded', provider: 'google',
+        correlationId, context: { redirected: (result as { redirected?: boolean }).redirected ?? false },
+      });
       // redirected === true → browser is navigating to Google.
       // Otherwise the session is set and AuthContext's listener will route.
     } catch (e) {
-      const friendly = friendlyGoogleError((e as Error).message);
-      setGoogleError(friendly);
-      toast.error(friendly);
-      setGoogleLoading(false);
+      await failGoogle(e, 'google_sign_in');
     }
   };
+
 
   return (
     <div className="space-y-3">
@@ -110,25 +116,20 @@ export function AlternativeAuthOptions({ defaultRole = 'driver' as Role }) {
         </Button>
       </div>
 
-      {googleError && (
-        <div
-          role="alert"
-          className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive space-y-2"
-          data-testid="google-sso-error"
-        >
-          <p>{googleError}</p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleGoogle}
-            disabled={googleLoading}
-          >
-            {googleLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-            Retry Google sign-in
-          </Button>
+      {googleFailure && (
+        <div data-testid="google-sso-error" role="alert">
+          <VerificationFailureCard
+            failure={googleFailure}
+            busy={googleLoading}
+            onAction={
+              googleFailure.action === 'use_password_login' || googleFailure.action === 'contact_support'
+                ? undefined
+                : handleGoogle
+            }
+          />
         </div>
       )}
+
 
       <PhoneOtpDialog open={phoneOpen} onOpenChange={setPhoneOpen} defaultRole={defaultRole} />
     </div>
