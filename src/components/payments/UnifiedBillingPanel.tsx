@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PaymentMethodPicker } from "@/components/payments/PaymentMethodPicker";
 import { PaymentPreflightGate } from "@/components/payments/PaymentPreflightGate";
+import { WalletLedgerPanel } from "@/components/payments/WalletLedgerPanel";
 
 import { toast } from "sonner";
 import { FileText, Receipt, Download, Send, RefreshCw, CreditCard } from "lucide-react";
@@ -137,6 +138,7 @@ export function UnifiedBillingPanel({ userId, role, country }: Props) {
             <TabsList>
               <TabsTrigger value="invoices">Invoices ({filtered.length})</TabsTrigger>
               <TabsTrigger value="receipts">Receipts ({receipts.length})</TabsTrigger>
+              <TabsTrigger value="wallet">Wallet</TabsTrigger>
             </TabsList>
             <TabsContent value="invoices" className="space-y-2 mt-4">
               {filtered.length === 0 && <p className="text-center text-sm text-muted-foreground py-6">No invoices yet</p>}
@@ -182,6 +184,9 @@ export function UnifiedBillingPanel({ userId, role, country }: Props) {
                   </div>
                 </div>
               ))}
+            </TabsContent>
+            <TabsContent value="wallet" className="mt-4">
+              <WalletLedgerPanel />
             </TabsContent>
           </Tabs>
         </CardContent>
