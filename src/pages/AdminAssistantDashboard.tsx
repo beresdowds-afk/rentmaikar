@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAssistantPermissions } from "@/hooks/useAssistantPermissions";
+import { assistantExcludedTabs, warnTabPermissionDrift } from "@/lib/admin-tab-registry";
+
 import { Lock } from "lucide-react";
 import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, Eye, CreditCard, Wallet, Mail, Loader2, RefreshCw, TrendingUp, HelpCircle, Inbox, Phone, Headphones } from "lucide-react";
 import { CallCenterPage } from "@/components/admin/voip/CallCenterPage";
