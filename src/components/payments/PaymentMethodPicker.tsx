@@ -1,4 +1,6 @@
+import { useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Info } from "lucide-react";
@@ -31,15 +33,31 @@ export function PaymentMethodPicker({
   country, amount, rentalId, vehicleId, driverId, paymentFrequency, description,
   onSuccess, onError, preferredPSP,
 }: PaymentMethodPickerProps) {
-  const psps = getCheckoutPSPs(country);
-  const currency = getRegionCurrency(country);
   const cc = resolveCountryCode(country);
+  const currency = getRegionCurrency(country);
+  // Opay is Nigeria-only; never offer a tab we don't render content for.
+  const psps = useMemo(
+    () => getCheckoutPSPs(country).filter((p) => p !== "opay" || cc === "NG"),
+    [country, cc],
+  );
+
   // Auto-select with graceful fallback: if the caller's preferred PSP isn't
   // supported in this region (e.g. PayPal outside the US, Paystack in the US),
   // fall back to the first regionally-supported provider and surface why.
   const preferredUnavailable = !!preferredPSP && !psps.includes(preferredPSP);
   const defaultPSP: CheckoutPSP | undefined =
     preferredPSP && psps.includes(preferredPSP) ? preferredPSP : psps[0];
+
+  // Controlled selection. Previously the Tabs were uncontrolled with a
+  // `key={defaultPSP}` remount hack, so an async country/PSP resolution wiped
+  // the user's pick — and an undefined `defaultValue` left every tab blank.
+  const [selected, setSelected] = useState<CheckoutPSP | undefined>(defaultPSP);
+  useEffect(() => {
+    setSelected((current) =>
+      current && psps.includes(current) ? current : defaultPSP,
+    );
+  }, [psps, defaultPSP]);
+
 
   if (psps.length === 0) {
     return (
@@ -77,7 +95,13 @@ export function PaymentMethodPicker({
             </AlertDescription>
           </Alert>
         )}
-        <Tabs defaultValue={defaultPSP} key={defaultPSP} className="w-full" data-testid="payment-method-picker">
+        <Tabs
+          value={selected}
+          onValueChange={(v) => setSelected(v as CheckoutPSP)}
+          className="w-full"
+          data-testid="payment-method-picker"
+        >
+
           <TabsList className="w-full" style={{ display: "grid", gridTemplateColumns: `repeat(${psps.length}, minmax(0,1fr))` }}>
             {psps.map((p) => (
               <TabsTrigger key={p} value={p}>{psplabels[p]}</TabsTrigger>

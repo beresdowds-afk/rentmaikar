@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAssistantPermissions } from "@/hooks/useAssistantPermissions";
+import { assistantExcludedTabs, warnTabPermissionDrift } from "@/lib/admin-tab-registry";
+
 import { Lock } from "lucide-react";
 import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, Eye, CreditCard, Wallet, Mail, Loader2, RefreshCw, TrendingUp, HelpCircle, Inbox, Phone, Headphones } from "lucide-react";
 import { CallCenterPage } from "@/components/admin/voip/CallCenterPage";
@@ -178,17 +180,16 @@ const AdminAssistantDashboard = () => {
   const [portalView, setPortalView] = useState<PortalType>('support');
   const [activeTab, setActiveTab] = useState<string>('inbox');
 
-  // Base admin-only tabs assistants may never see.
-  const BASE_EXCLUDED_TABS = useMemo<string[]>(() => [
-    // ERP infrastructure/admin-only
-    'hardware', 'mqtt-credentials', 'fees', 'secrets', 'api-keys',
-    'webhooks', 'api-endpoints', 'security', 'settings', 'region-autobuild',
-    'category-year-specs',
-    // Support portal
-    'task-portal',
-    // CRM assistant-management is admin-only
-    'admin-assistants',
-  ], []);
+  // Base admin-only tabs assistants may never see. Derived from the shared
+  // registry (ADMIN_ONLY_TABS + anything unmapped in TAB_PERMISSION_MAP) so
+  // this list can never drift from the Admin dashboard's tab universe.
+  const BASE_EXCLUDED_TABS = useMemo<string[]>(() => assistantExcludedTabs(), []);
+
+  // Dev-only drift warning, shared with the Admin dashboard.
+  useEffect(() => {
+    warnTabPermissionDrift('admin-assistant');
+  }, []);
+
 
   // Role-based dynamic exclusions from admin_assistant_permissions.
   const {

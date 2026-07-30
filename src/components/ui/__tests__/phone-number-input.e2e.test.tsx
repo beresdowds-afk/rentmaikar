@@ -9,14 +9,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { parsePhoneNumberFromString, isValidPhoneNumber } from 'libphonenumber-js';
-import { describe, it, expect, vi } from "vitest";
+import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 
-// mocks
-vi.mock(...);
-vi.mock(...);
 
-// then import modules that use those mocks
-import { PhoneNumberInput } from "@/components/ui/phone-number-input";
+
 // -----------------------------------------------------------------------------
 // Mock Supabase (including Realtime)
 // -----------------------------------------------------------------------------

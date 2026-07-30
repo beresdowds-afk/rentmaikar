@@ -89,7 +89,9 @@ const EMPTY_PERMS: Record<PermissionKey, boolean> = {
 
 export function AdminAssistantManagement() {
   const [assistants, setAssistants] = useState<AssistantRow[]>([]);
-  const [candidateUsers, setCandidateUsers] = useState<Array<{ user_id: string; email: string | null; full_name: string | null }>>([]);
+  const [candidateUsers, setCandidateUsers] = useState<Array<{ user_id: string; email: string | null; full_name: string | null; hasRole?: boolean }>>([]);
+  const [candidateSearch, setCandidateSearch] = useState('');
+
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AssistantRow | null>(null);
@@ -123,19 +125,29 @@ export function AdminAssistantManagement() {
         email: pmap.get(r.user_id)?.email ?? null,
       })));
 
-      // Fetch candidates: users with admin_assistant role that don't have a row yet
+      // Candidate pool = every platform user without an assistant permission
+      // row yet. Picking one and saving elevates them to `admin_assistant`
+      // (the role is upserted in `save`), so admins can promote existing
+      // users — not just users who already hold the role.
       const { data: roleRows } = await supabase
         .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin_assistant' as any);
-      const roleIds = (roleRows || []).map(r => r.user_id).filter(id => !ids.includes(id));
-      if (roleIds.length) {
-        const { data: candProfiles } = await supabase
-          .from('profiles').select('user_id, full_name, email').in('user_id', roleIds);
-        setCandidateUsers(candProfiles || []);
-      } else {
-        setCandidateUsers([]);
-      }
+        .select('user_id, role');
+      const assistantRoleIds = new Set(
+        (roleRows || []).filter(r => r.role === 'admin_assistant').map(r => r.user_id),
+      );
+
+      const { data: allProfiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email')
+        .order('full_name', { ascending: true })
+        .limit(500);
+
+      setCandidateUsers(
+        (allProfiles || [])
+          .filter(p => !ids.includes(p.user_id))
+          .map(p => ({ ...p, hasRole: assistantRoleIds.has(p.user_id) })),
+      );
+
     } catch (e: any) {
       toast.error('Failed to load admin assistants', { description: e.message });
     } finally {
@@ -309,24 +321,41 @@ export function AdminAssistantManagement() {
             {!editing && (
               <div className="space-y-2">
                 <Label>User</Label>
+                <Input
+                  placeholder="Search by name or email…"
+                  value={candidateSearch}
+                  onChange={(e) => setCandidateSearch(e.target.value)}
+                />
                 {candidateUsers.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    No users with the "Admin Assistant" role yet. Assign that role first in the Users tab,
-                    or create the user via <em>Create New User</em>.
+                    No eligible users found. Create one via <em>Create New User</em>.
                   </p>
                 ) : (
                   <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                     <SelectTrigger><SelectValue placeholder="Pick a user" /></SelectTrigger>
                     <SelectContent>
-                      {candidateUsers.map(u => (
-                        <SelectItem key={u.user_id} value={u.user_id}>
-                          {u.full_name || u.email} — {u.email}
-                        </SelectItem>
-                      ))}
+                      {candidateUsers
+                        .filter(u => {
+                          const q = candidateSearch.trim().toLowerCase();
+                          if (!q) return true;
+                          return `${u.full_name ?? ''} ${u.email ?? ''}`.toLowerCase().includes(q);
+                        })
+                        .slice(0, 100)
+                        .map(u => (
+                          <SelectItem key={u.user_id} value={u.user_id}>
+                            {u.full_name || u.email} — {u.email}
+                            {u.hasRole ? '' : ' (will be elevated to Admin Assistant)'}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  Saving grants the selected user the Admin Assistant role along with the
+                  permissions below.
+                </p>
               </div>
+
             )}
 
             <div className="flex items-center justify-between">

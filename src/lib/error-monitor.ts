@@ -5,6 +5,8 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { isAutomationMode } from "@/lib/test-mode";
+
 
 export type ErrorSeverity = "low" | "medium" | "high" | "critical";
 
@@ -106,7 +108,12 @@ export function reportError(
 
 /** Initialize global error handlers */
 export function initErrorMonitoring() {
+  // Automated/headless runs: skip the long-task observer and periodic flush —
+  // both keep the main thread and network busy, which stalls Playwright's
+  // waitForLoadState("networkidle") and screenshot capture.
+  if (isAutomationMode()) return;
   // Unhandled errors
+
   window.addEventListener("error", (event) => {
     reportError(
       event.error || event.message,

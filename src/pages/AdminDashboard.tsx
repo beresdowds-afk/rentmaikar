@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { warnTabPermissionDrift } from "@/lib/admin-tab-registry";
+
 import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, Eye, CreditCard, Wallet, Mail, Loader2, RefreshCw, TrendingUp, HelpCircle, Inbox, Phone, Headphones } from "lucide-react";
 import { CallCenterPage } from "@/components/admin/voip/CallCenterPage";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
@@ -188,6 +190,12 @@ const paymentDefaults: PaymentDefault[] = [
 
 const AdminDashboard = () => {
   const _region = useRegion();
+  // Dev-only warning shared with the Admin Assistant dashboard: surfaces any
+  // tab that isn't classified in TAB_PERMISSION_MAP / ADMIN_ONLY_TABS.
+  useEffect(() => {
+    warnTabPermissionDrift('admin');
+  }, []);
+
   const { rates, isLoading: ratesLoading, convertToUSD, refetch: refetchRates } = useCurrencyConversion();
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
   const [approvingId, setApprovingId] = useState<number | null>(null);

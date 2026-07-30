@@ -74,6 +74,8 @@ import { toast } from 'sonner';
 import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
 import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
+import PageSkeleton from '@/components/PageSkeleton';
+
 
 const VEHICLE_CATEGORY_DEFS = [
   { value: 'smart-start', label: 'Smart Start', specKey: 'budget', maxWeekly: 250 },
@@ -169,12 +171,9 @@ export default function OwnerDashboard() {
   const { data: progress, isLoading: progressLoading } = useRegistrationProgress();
   if (authGate) return <>{authGate}</>;
   if (progressLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
-        Loading your dashboard…
-      </div>
-    );
+    return <PageSkeleton variant="dashboard" />;
   }
+
   if (!isAdminView && progress && progress.access_level === 'view_only') {
     return <ViewOnlyDashboardShell role="owner" progress={progress} />;
   }

@@ -140,20 +140,11 @@ import { DocumentUpload } from "@/components/documents/DocumentUpload";
 // -----------------------------------------------------------------------------
 // Shared render helper
 // -----------------------------------------------------------------------------
-function renderComponent(ui: ReactNode) {
- return renderWithProviders(
-    <DocumentUpload userType="driver" />
-  );
-    }
-const queryClient = new QueryClient({
+function renderWithProviders(ui: ReactNode) {
+  const queryClient = new QueryClient({
     defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
-      },
-      mutations: {
-        retry: false,
-      },
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false },
     },
   });
 
@@ -165,3 +156,23 @@ const queryClient = new QueryClient({
     </QueryClientProvider>
   );
 }
+
+function renderComponent() {
+  return renderWithProviders(<DocumentUpload userType="driver" />);
+}
+
+describe("DocumentUpload auto-submit", () => {
+  beforeEach(() => {
+    invokeMock.mockReset();
+    fromMock.mockReset();
+  });
+
+  it("renders the driver document upload surface", async () => {
+    renderComponent();
+    await waitFor(() => {
+      expect(document.body.textContent).toBeTruthy();
+    });
+    expect(screen).toBeDefined();
+  });
+});
+

@@ -12,6 +12,9 @@ import { Users, Plus, Trash2, Phone, Loader2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { VoIPCallGroup, CallRegion } from '@/types/voip';
 import { COUNTRY_CODES, validatePhoneNumber, formatPhoneForDisplay } from '@/types/voip';
+import { useRegion } from '@/contexts/RegionContext';
+import { regionToDefaultCountry } from '@/hooks/useDefaultPhoneCountry';
+
 
 interface CallGroupsProps {
   groups: VoIPCallGroup[];
@@ -26,6 +29,8 @@ interface CallGroupsProps {
 }
 
 export const CallGroups = ({ groups, onCreateGroup, onDeleteGroup, isLoading }: CallGroupsProps) => {
+  const { country: activeCountry } = useRegion();
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [groupName, setGroupName] = useState('');
@@ -33,7 +38,10 @@ export const CallGroups = ({ groups, onCreateGroup, onDeleteGroup, isLoading }: 
   const [groupRegion, setGroupRegion] = useState<'USA' | 'Nigeria' | 'All'>('All');
   const [memberPhone, setMemberPhone] = useState('');
   const [memberName, setMemberName] = useState('');
-  const [memberRegion, setMemberRegion] = useState<CallRegion>('USA');
+  const [memberRegion, setMemberRegion] = useState<CallRegion>(
+    (activeCountry === 'Nigeria' ? 'Nigeria' : 'USA') as CallRegion,
+  );
+
   const [members, setMembers] = useState<{ phoneNumber: string; displayName: string; region: CallRegion }[]>([]);
   const { toast } = useToast();
 
@@ -182,7 +190,7 @@ export const CallGroups = ({ groups, onCreateGroup, onDeleteGroup, isLoading }: 
                       <PhoneNumberInput
                         value={memberPhone.startsWith('+') ? memberPhone : ''}
                         onChange={setMemberPhone}
-                        defaultCountry={memberRegion === 'Nigeria' ? 'NG' : 'US'}
+                        defaultCountry={regionToDefaultCountry(memberRegion)}
                         placeholder="Phone"
                       />
                     </div>

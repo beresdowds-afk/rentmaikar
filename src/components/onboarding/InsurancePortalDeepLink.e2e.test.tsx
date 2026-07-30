@@ -16,6 +16,8 @@ import { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RegionProvider } from "@/contexts/RegionContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+
 
 export function renderWithProviders(
   ui: ReactNode,

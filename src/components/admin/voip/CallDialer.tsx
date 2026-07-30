@@ -11,6 +11,9 @@ import { Phone, Users, Plus, X, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { CallRegion, CallType, VoIPCallGroup } from '@/types/voip';
 import { COUNTRY_CODES, validatePhoneNumber, formatPhoneForDisplay } from '@/types/voip';
+import { useRegion } from '@/contexts/RegionContext';
+import { regionToDefaultCountry } from '@/hooks/useDefaultPhoneCountry';
+
 
 interface CallDialerProps {
   onInitiateCall: (
@@ -23,8 +26,14 @@ interface CallDialerProps {
 }
 
 export const CallDialer = ({ onInitiateCall, groups, isLoading }: CallDialerProps) => {
+  // Seed the dial region from RegionContext so admins start on their active
+  // region instead of a hard-coded USA default.
+  const { country: activeCountry } = useRegion();
   const [callMode, setCallMode] = useState<'individual' | 'group'>('individual');
-  const [region, setRegion] = useState<CallRegion>('USA');
+  const [region, setRegion] = useState<CallRegion>(
+    (activeCountry === 'Nigeria' ? 'Nigeria' : 'USA') as CallRegion,
+  );
+
   const [phoneNumber, setPhoneNumber] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
@@ -166,7 +175,7 @@ export const CallDialer = ({ onInitiateCall, groups, isLoading }: CallDialerProp
                   id="phone"
                   value={phoneNumber}
                   onChange={setPhoneNumber}
-                  defaultCountry={region === 'Nigeria' ? 'NG' : 'US'}
+                  defaultCountry={regionToDefaultCountry(region)}
                   placeholder="Enter phone number"
                 />
               </div>
