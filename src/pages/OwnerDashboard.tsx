@@ -74,6 +74,8 @@ import { toast } from 'sonner';
 import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
 import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
+import PageSkeleton from '@/components/PageSkeleton';
+
 
 const VEHICLE_CATEGORY_DEFS = [
   { value: 'smart-start', label: 'Smart Start', specKey: 'budget', maxWeekly: 250 },
