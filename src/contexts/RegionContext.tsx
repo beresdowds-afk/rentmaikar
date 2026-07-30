@@ -82,7 +82,7 @@ interface RegionContextType {
 // and support email — are loaded from the admin-managed Regional Contact
 // Channels table (public.contact_settings). Empty strings here mean
 // "not yet loaded"; consumers should render conditionally.
-const regionConfig: Record<Country, RegionConfig> = {
+const regionConfig: Record<string, RegionConfig> = {
   USA: {
     currency: "USD",
     currencySymbol: "$",
@@ -100,6 +100,30 @@ const regionConfig: Record<Country, RegionConfig> = {
     supportEmail: "",
   },
 };
+
+const BUILTIN_REGION_OPTIONS: RegionOption[] = [
+  {
+    value: "USA",
+    label: "United States",
+    flag: "🇺🇸",
+    countryCode: "US",
+    currency: "USD",
+    currencySymbol: "$",
+    phonePrefix: "+1",
+    builtIn: true,
+  },
+  {
+    value: "Nigeria",
+    label: "Nigeria",
+    flag: "🇳🇬",
+    countryCode: "NG",
+    currency: "NGN",
+    currencySymbol: "₦",
+    phonePrefix: "+234",
+    builtIn: true,
+  },
+];
+
 
 const stripPhone = (v: string) => (v || "").replace(/[^\d]/g, "");
 
