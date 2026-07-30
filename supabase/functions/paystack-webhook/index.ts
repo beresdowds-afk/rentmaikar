@@ -56,6 +56,16 @@ Deno.serve(async (req) => {
   const externalEventId: string | undefined =
     evt?.id ? String(evt.id) : (evt?.data?.id ? String(evt.data.id) : (reference ? `${evt?.event}:${reference}` : undefined));
 
+  // One trace key for this delivery, its retries, and every state hop it causes.
+  const logger = createWebhookLogger({
+    provider: "paystack",
+    correlationId: deriveCorrelationId(req, "paystack", externalEventId),
+    eventType: evt?.event ?? null,
+    externalEventId: externalEventId ?? null,
+    reference: reference ?? null,
+  });
+  logger.info("received", { signature_valid: true });
+
   // Idempotent event log — duplicate delivery returns 200 without side effects.
   const idem = await recordWebhookEvent(supabase, {
     logger,
