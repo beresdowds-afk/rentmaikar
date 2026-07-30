@@ -26,8 +26,14 @@ interface CallDialerProps {
 }
 
 export const CallDialer = ({ onInitiateCall, groups, isLoading }: CallDialerProps) => {
+  // Seed the dial region from RegionContext so admins start on their active
+  // region instead of a hard-coded USA default.
+  const { country: activeCountry } = useRegion();
   const [callMode, setCallMode] = useState<'individual' | 'group'>('individual');
-  const [region, setRegion] = useState<CallRegion>('USA');
+  const [region, setRegion] = useState<CallRegion>(
+    (activeCountry === 'Nigeria' ? 'Nigeria' : 'USA') as CallRegion,
+  );
+
   const [phoneNumber, setPhoneNumber] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
