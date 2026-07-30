@@ -74,7 +74,7 @@ export function PolicyManagement() {
   const [form, setForm] = useState({
     policy_type: 'terms' as 'terms' | 'privacy',
     version: '',
-    region: 'USA' as 'USA' | 'Nigeria',
+    region: 'USA' as 'USA' | 'Nigeria' | (string & {}),
     title: '',
     content: '',
     summary: '',
@@ -369,7 +369,7 @@ export function PolicyManagement() {
                 <Label>Region</Label>
                 <Select
                   value={form.region}
-                  onValueChange={(value) => setForm({ ...form, region: value as 'USA' | 'Nigeria' })}
+                  onValueChange={(value) => setForm({ ...form, region: value as 'USA' | 'Nigeria' | (string & {}) })}
                   disabled={!!editingPolicy}
                 >
                   <SelectTrigger>

@@ -76,7 +76,7 @@ interface RecommendationRow {
   details: any;
 }
 
-const inferCountry = (v: VehicleRow): "USA" | "Nigeria" => {
+const inferCountry = (v: VehicleRow): "USA" | "Nigeria" | (string & {}) => {
   const c = (v.pickup_city || v.pickup_location || "").toLowerCase();
   if (/(lagos|abuja|port harcourt|ikeja|lekki|victoria|maitama|garki|wuse|surulere)/.test(c)) return "Nigeria";
   return "USA";

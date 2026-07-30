@@ -80,7 +80,7 @@ export default function PaymentReceipt() {
     return () => { cancelled = true; };
   }, [paymentId, rentalId, user?.id, userRole]);
 
-  const currency = (payment?.currency as "USD" | "NGN") || "USD";
+  const currency = (payment?.currency as "USD" | "NGN" | (string & {})) || "USD";
   const providerRows = useMemo(() => {
     if (!providerTx) return [] as Array<[string, string]>;
     const rows: Array<[string, string]> = [];

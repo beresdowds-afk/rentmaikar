@@ -60,7 +60,7 @@ export function FAQManagement() {
     description: '',
     display_order: 0,
     is_active: true,
-    region: 'all' as 'USA' | 'Nigeria' | 'all',
+    region: 'all' as 'USA' | 'Nigeria' | (string & {}) | 'all',
   });
 
   // Item form state
@@ -71,7 +71,7 @@ export function FAQManagement() {
     display_order: 0,
     is_active: true,
     is_public: true,
-    region: 'all' as 'USA' | 'Nigeria' | 'all',
+    region: 'all' as 'USA' | 'Nigeria' | (string & {}) | 'all',
   });
 
   const openCategoryDialog = (category?: FAQCategory) => {
@@ -385,7 +385,7 @@ export function FAQManagement() {
                 <Label>Region</Label>
                 <Select
                   value={categoryForm.region}
-                  onValueChange={(value) => setCategoryForm({ ...categoryForm, region: value as 'USA' | 'Nigeria' | 'all' })}
+                  onValueChange={(value) => setCategoryForm({ ...categoryForm, region: value as 'USA' | 'Nigeria' | (string & {}) | 'all' })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -474,7 +474,7 @@ export function FAQManagement() {
                 <Label>Region</Label>
                 <Select
                   value={itemForm.region}
-                  onValueChange={(value) => setItemForm({ ...itemForm, region: value as 'USA' | 'Nigeria' | 'all' })}
+                  onValueChange={(value) => setItemForm({ ...itemForm, region: value as 'USA' | 'Nigeria' | (string & {}) | 'all' })}
                 >
                   <SelectTrigger>
                     <SelectValue />

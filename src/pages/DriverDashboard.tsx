@@ -442,7 +442,7 @@ export default function DriverDashboard() {
                             </div>
                             <div className="text-right">
                               <p className="font-bold">
-                                {formatCurrency(Number(payment.amount), payment.currency as 'USD' | 'NGN')}
+                                {formatCurrency(Number(payment.amount), payment.currency as 'USD' | 'NGN' | (string & {}))}
                               </p>
                               <Badge variant="outline" className="text-xs capitalize">
                                 {payment.payment_method || payment.status}

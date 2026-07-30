@@ -55,7 +55,7 @@ export function OwnerRentToOwnListing() {
   
   // Form state
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState<'USA' | 'Nigeria'>(country === 'Nigeria' ? 'Nigeria' : 'USA');
+  const [selectedCountry, setSelectedCountry] = useState<'USA' | 'Nigeria' | (string & {})>(country === 'Nigeria' ? 'Nigeria' : 'USA');
   const [totalPrice, setTotalPrice] = useState('');
   const [downPayment, setDownPayment] = useState('');
   const [monthlyPayment, setMonthlyPayment] = useState('');
@@ -234,7 +234,7 @@ export function OwnerRentToOwnListing() {
                       </Label>
                       <Select 
                         value={selectedCountry} 
-                        onValueChange={(value) => setSelectedCountry(value as 'USA' | 'Nigeria')}
+                        onValueChange={(value) => setSelectedCountry(value as 'USA' | 'Nigeria' | (string & {}))}
                       >
                         <SelectTrigger>
                           <SelectValue />

@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type AgreementRegion = 'USA' | 'Nigeria';
+type AgreementRegion = 'USA' | 'Nigeria' | (string & {});
 
 interface LegalAgreementTemplate {
   id: string;

@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-export type RTOCurrency = 'USD' | 'NGN';
+export type RTOCurrency = 'USD' | 'NGN' | (string & {});
 
 export interface RTOListing {
   id: string;

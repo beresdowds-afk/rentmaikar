@@ -64,7 +64,7 @@ export interface NexusStatus {
  * Fetch active tax rules for a jurisdiction
  */
 export async function getTaxRulesForJurisdiction(
-  customerCountry: 'USA' | 'Nigeria',
+  customerCountry: 'USA' | 'Nigeria' | (string & {}),
   stateCode?: string
 ): Promise<TaxRule[]> {
   let query = supabase
@@ -93,8 +93,8 @@ export async function getTaxRulesForJurisdiction(
  */
 export async function calculateTax(
   amount: number,
-  currency: 'USD' | 'NGN',
-  customerCountry: 'USA' | 'Nigeria',
+  currency: 'USD' | 'NGN' | (string & {}),
+  customerCountry: 'USA' | 'Nigeria' | (string & {}),
   stateCode?: string
 ): Promise<TaxCalculationResult> {
   const result: TaxCalculationResult = {
@@ -170,8 +170,8 @@ export async function calculateTax(
  */
 export function calculateTaxSync(
   amount: number,
-  currency: 'USD' | 'NGN',
-  customerCountry: 'USA' | 'Nigeria',
+  currency: 'USD' | 'NGN' | (string & {}),
+  customerCountry: 'USA' | 'Nigeria' | (string & {}),
   stateCode?: string,
   nexusTriggered: boolean = false,
   stateTaxRate: number = 0

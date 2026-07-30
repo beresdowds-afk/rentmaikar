@@ -262,7 +262,7 @@ export function OwnerDashboardPreview({ userId, userProfile }: OwnerDashboardPre
                     <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div>
                         <p className="font-medium">
-                          {formatCurrency(Number(order.device_price), order.currency as 'USD' | 'NGN')}
+                          {formatCurrency(Number(order.device_price), order.currency as 'USD' | 'NGN' | (string & {}))}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {new Date(order.created_at).toLocaleDateString()}

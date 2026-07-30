@@ -43,7 +43,7 @@ interface SecretConfig {
   category: "sms" | "sms_ng" | "email" | "payment" | "iot" | "voice" | "identity" | "system";
   testable: boolean;
   docsUrl?: string;
-  region?: "USA" | "Nigeria";
+  region?: "USA" | "Nigeria" | (string & {});
 }
 
 const secrets: SecretConfig[] = [

@@ -111,7 +111,7 @@ export function IoTDevicePurchase() {
   const [installNotes, setInstallNotes] = useState('');
 
   const currentRegion = country === 'Nigeria' ? 'nigeria' : 'usa';
-  const currentCurrency: 'USD' | 'NGN' = country === 'Nigeria' ? 'NGN' : 'USD';
+  const currentCurrency: 'USD' | 'NGN' | (string & {}) = country === 'Nigeria' ? 'NGN' : 'USD';
 
   useEffect(() => {
     fetchData();
@@ -400,7 +400,7 @@ export function IoTDevicePurchase() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Device Price ({currentRegion.toUpperCase()})</p>
-                <p className="text-3xl font-bold">{formatCurrency(pricing.price, pricing.currency as 'USD' | 'NGN')}</p>
+                <p className="text-3xl font-bold">{formatCurrency(pricing.price, pricing.currency as 'USD' | 'NGN' | (string & {}))}</p>
                 {pricing.description && (
                   <p className="text-sm text-muted-foreground mt-1">{pricing.description}</p>
                 )}
@@ -435,7 +435,7 @@ export function IoTDevicePurchase() {
                         Ordered {new Date(order.created_at).toLocaleDateString()}
                       </p>
                       <p className="text-sm font-medium">
-                        {formatCurrency(order.device_price, order.currency as 'USD' | 'NGN')}
+                        {formatCurrency(order.device_price, order.currency as 'USD' | 'NGN' | (string & {}))}
                       </p>
                     </div>
                     <div className="text-right space-y-2">
@@ -504,7 +504,7 @@ export function IoTDevicePurchase() {
               <div className="bg-muted p-4 rounded-lg">
                 <div className="flex justify-between items-center">
                   <span>IoT Tracking Device</span>
-                  <span className="font-bold">{formatCurrency(pricing.price, pricing.currency as 'USD' | 'NGN')}</span>
+                  <span className="font-bold">{formatCurrency(pricing.price, pricing.currency as 'USD' | 'NGN' | (string & {}))}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm text-muted-foreground mt-1">
                   <span>Shipping</span>
@@ -513,7 +513,7 @@ export function IoTDevicePurchase() {
                 <Separator className="my-2" />
                 <div className="flex justify-between items-center font-bold">
                   <span>Total</span>
-                  <span>{formatCurrency(pricing.price, pricing.currency as 'USD' | 'NGN')}</span>
+                  <span>{formatCurrency(pricing.price, pricing.currency as 'USD' | 'NGN' | (string & {}))}</span>
                 </div>
               </div>
 

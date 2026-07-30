@@ -44,7 +44,7 @@ const ProfileCompletionWizard = () => {
   // form state
   const [phone, setPhone] = useState('');
   const [phoneValid, setPhoneValid] = useState(false);
-  const [country, setCountry] = useState<'USA' | 'Nigeria' | ''>('');
+  const [country, setCountry] = useState<'USA' | 'Nigeria' | (string & {}) | ''>('');
   const [ecName, setEcName] = useState('');
   const [ecPhone, setEcPhone] = useState('');
   const [ecPhoneValid, setEcPhoneValid] = useState(false);
@@ -62,7 +62,7 @@ const ProfileCompletionWizard = () => {
         if (!data) return;
         if (data.phone) setPhone(data.phone);
         if (data.preferred_country === 'USA' || data.preferred_country === 'Nigeria') {
-          setCountry(data.preferred_country as 'USA' | 'Nigeria');
+          setCountry(data.preferred_country as 'USA' | 'Nigeria' | (string & {}));
         }
         setEcName(data.emergency_contact_name ?? '');
         setEcPhone(data.emergency_contact_phone ?? '');
@@ -121,7 +121,7 @@ const ProfileCompletionWizard = () => {
           <div className="space-y-4">
             <div>
               <Label htmlFor="pcw-country">Country</Label>
-              <Select value={country} onValueChange={(v) => setCountry(v as 'USA' | 'Nigeria')}>
+              <Select value={country} onValueChange={(v) => setCountry(v as 'USA' | 'Nigeria' | (string & {}))}>
                 <SelectTrigger id="pcw-country"><SelectValue placeholder="Select your country" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USA">United States</SelectItem>

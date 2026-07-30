@@ -1,8 +1,8 @@
 export interface Region {
   id: string;
   name: string;
-  country: 'USA' | 'Nigeria';
-  currency: 'USD' | 'NGN';
+  country: 'USA' | 'Nigeria' | (string & {});
+  currency: 'USD' | 'NGN' | (string & {});
   center: { lat: number; lng: number };
   zoom: number;
   paymentGateway: 'paypal' | 'paystack';
@@ -84,7 +84,7 @@ export const getRegionById = (id: string): Region | undefined => {
   return regions.find(r => r.id === id);
 };
 
-export const getRegionsByCountry = (country: 'USA' | 'Nigeria'): Region[] => {
+export const getRegionsByCountry = (country: 'USA' | 'Nigeria' | (string & {})): Region[] => {
   return regions.filter(r => r.country === country);
 };
 

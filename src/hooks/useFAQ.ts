@@ -10,7 +10,7 @@ export interface FAQCategory {
   icon: string | null;
   display_order: number;
   is_active: boolean;
-  region: 'USA' | 'Nigeria' | 'all';
+  region: 'USA' | 'Nigeria' | (string & {}) | 'all';
   created_at: string;
   updated_at: string;
 }
@@ -23,7 +23,7 @@ export interface FAQItem {
   display_order: number;
   is_active: boolean;
   is_public: boolean;
-  region: 'USA' | 'Nigeria' | 'all';
+  region: 'USA' | 'Nigeria' | (string & {}) | 'all';
   created_at: string;
   updated_at: string;
   category?: FAQCategory;
@@ -33,7 +33,7 @@ export interface PolicyVersion {
   id: string;
   policy_type: 'terms' | 'privacy';
   version: string;
-  region: 'USA' | 'Nigeria';
+  region: 'USA' | 'Nigeria' | (string & {});
   title: string;
   content: string;
   summary: string | null;
@@ -52,10 +52,10 @@ export interface PolicyAcceptance {
   accepted_at: string;
   ip_address: string | null;
   user_agent: string | null;
-  region: 'USA' | 'Nigeria' | null;
+  region: 'USA' | 'Nigeria' | (string & {}) | null;
 }
 
-export function useFAQ(regionFilter?: 'USA' | 'Nigeria' | 'all') {
+export function useFAQ(regionFilter?: 'USA' | 'Nigeria' | (string & {}) | 'all') {
   const [categories, setCategories] = useState<FAQCategory[]>([]);
   const [items, setItems] = useState<FAQItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,7 +238,7 @@ export function usePolicyVersions() {
     fetchPolicies();
   }, [fetchPolicies]);
 
-  const getActivePolicy = (type: 'terms' | 'privacy', region: 'USA' | 'Nigeria') => {
+  const getActivePolicy = (type: 'terms' | 'privacy', region: 'USA' | 'Nigeria' | (string & {})) => {
     return policies.find(p => p.policy_type === type && p.region === region && p.is_active);
   };
 
@@ -274,7 +274,7 @@ export function usePolicyVersions() {
     await fetchPolicies();
   };
 
-  const activatePolicy = async (id: string, type: 'terms' | 'privacy', region: 'USA' | 'Nigeria') => {
+  const activatePolicy = async (id: string, type: 'terms' | 'privacy', region: 'USA' | 'Nigeria' | (string & {})) => {
     // Deactivate other versions of same type and region
     await supabase
       .from('policy_versions')
@@ -342,7 +342,7 @@ export function usePolicyAcceptance(userId?: string) {
     return acceptances.some(a => a.policy_version_id === policyVersionId);
   };
 
-  const acceptPolicy = async (policyVersionId: string, policyType: 'terms' | 'privacy', region: 'USA' | 'Nigeria') => {
+  const acceptPolicy = async (policyVersionId: string, policyType: 'terms' | 'privacy', region: 'USA' | 'Nigeria' | (string & {})) => {
     if (!userId) {
       toast.error('You must be logged in to accept policies');
       return;

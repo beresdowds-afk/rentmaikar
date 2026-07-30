@@ -8,8 +8,8 @@
  */
 
 export interface RegionTemplateConfig {
-  country: string;              // "USA" | "Nigeria" | "Ghana" | ...
-  currency: string;             // "USD" | "NGN" | "GHS"
+  country: string;              // "USA" | "Nigeria" | (string & {}) | "Ghana" | ...
+  currency: string;             // "USD" | "NGN" | (string & {}) | "GHS"
   currencySymbol: string;       // "$" | "₦" | "₵"
   phonePrefix: string;          // "+1" | "+234"
   smsProvider: string;          // "twilio" | "termii" | ...

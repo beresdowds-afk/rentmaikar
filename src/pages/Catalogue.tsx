@@ -27,7 +27,7 @@ interface Vehicle {
   coordinates?: { lat: number; lng: number };
   rating: number;
   image: string;
-  country: "USA" | "Nigeria";
+  country: "USA" | "Nigeria" | (string & {});
 }
 
 interface VehicleWithDistance extends Vehicle {
@@ -73,7 +73,7 @@ const categoryInfo: Record<string, { title: string; years: string; minPrice: num
 };
 
 // Mock driver home location (in a real app, this would come from user profile)
-const getDriverHomeLocation = (country: "USA" | "Nigeria") => {
+const getDriverHomeLocation = (country: "USA" | "Nigeria" | (string & {})) => {
   if (country === "Nigeria") {
     return { location: "Lagos", coordinates: null };
   }

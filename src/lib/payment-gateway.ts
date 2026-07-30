@@ -59,7 +59,7 @@ export class PaymentGateway {
     return this.region.paymentGateway;
   }
 
-  get currency(): 'USD' | 'NGN' {
+  get currency(): 'USD' | 'NGN' | (string & {}) {
     return this.region.currency;
   }
 

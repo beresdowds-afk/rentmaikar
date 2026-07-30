@@ -2,7 +2,7 @@ export type CallType = 'individual' | 'group';
 export type CallStatus = 'pending' | 'ringing' | 'in-progress' | 'completed' | 'failed' | 'busy' | 'no-answer' | 'canceled';
 export type CallDirection = 'inbound' | 'outbound';
 export type ParticipantStatus = 'pending' | 'ringing' | 'connected' | 'disconnected' | 'failed';
-export type CallRegion = 'USA' | 'Nigeria';
+export type CallRegion = 'USA' | 'Nigeria' | (string & {});
 
 export interface VoIPCall {
   id: string;
@@ -39,7 +39,7 @@ export interface VoIPCallGroup {
   id: string;
   name: string;
   description?: string;
-  region: 'USA' | 'Nigeria' | 'All';
+  region: 'USA' | 'Nigeria' | (string & {}) | 'All';
   created_by?: string;
   is_active: boolean;
   created_at: string;

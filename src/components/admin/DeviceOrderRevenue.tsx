@@ -62,7 +62,7 @@ function calculateStats(orders: DeviceOrder[]): RevenueStats {
 
 interface RegionOrdersProps {
   orders: DeviceOrder[];
-  currency: 'USD' | 'NGN';
+  currency: 'USD' | 'NGN' | (string & {});
   region: string;
   loading: boolean;
 }
