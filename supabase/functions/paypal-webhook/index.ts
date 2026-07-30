@@ -105,6 +105,8 @@ Deno.serve(async (req) => {
       const { data: tx } = await supabase.from("paypal_transactions")
         .select("payment_id, rental_id, amount, currency").eq("order_id", orderId).maybeSingle();
       if (tx?.payment_id) {
+        await transitionState(supabase, "payment", tx.payment_id, "captured", eventType);
+        await transitionState(supabase, "payment", tx.payment_id, "settled", "paypal capture settled");
         const { alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id);
         await recordPaymentInLedger(supabase, tx.payment_id, "paypal", orderId);
         if (!alreadyCompleted) {
@@ -121,44 +123,61 @@ Deno.serve(async (req) => {
         }
       }
     }
-  } else if (eventType === "PAYMENT.CAPTURE.DENIED" || eventType === "PAYMENT.CAPTURE.REFUNDED") {
+  } else if (eventType === "PAYMENT.CAPTURE.DENIED") {
     if (orderId) {
-      const status = eventType === "PAYMENT.CAPTURE.REFUNDED" ? "refunded" : "failed";
       await supabase.from("paypal_transactions").update({
-        status, raw_payload: resource,
+        status: "failed", raw_payload: resource,
       }).eq("order_id", orderId);
       const { data: tx } = await supabase.from("paypal_transactions")
         .select("payment_id").eq("order_id", orderId).maybeSingle();
       if (tx?.payment_id) {
+        await transitionState(supabase, "payment", tx.payment_id, "failed", eventType);
         // Never overwrite a completed payment via a later denial event.
         await supabase.from("payments").update({
-          status, failure_reason: eventType,
+          status: "failed", failure_reason: eventType,
         }).eq("id", tx.payment_id).neq("status", "completed");
-
-        if (eventType === "PAYMENT.CAPTURE.REFUNDED") {
-          const { data: pay } = await supabase.from("payments")
-            .select("id, driver_id, amount, currency").eq("id", tx.payment_id).maybeSingle();
-          if (pay?.driver_id) {
-            const res = await postLedgerEntry(supabase, {
-              userId: pay.driver_id,
-              accountType: "driver",
-              currency: pay.currency ?? "USD",
-              direction: "credit",
-              amount: Number(pay.amount),
-              entryType: "refund",
-              idempotencyKey: `payment:${pay.id}:refund`,
-              referenceTable: "payments",
-              referenceId: pay.id,
-              provider: "paypal",
-              providerReference: orderId,
-              description: "Payment refunded",
-            });
-            if (!res.ok) console.error("[paypal-webhook] ledger refund error:", res.error);
-          }
-        }
+      }
+    }
+  } else if (eventType === "PAYMENT.CAPTURE.REFUNDED" || eventType === "PAYMENT.CAPTURE.REVERSED") {
+    if (orderId) {
+      await supabase.from("paypal_transactions").update({
+        status: "refunded", raw_payload: resource,
+      }).eq("order_id", orderId);
+      const { data: tx } = await supabase.from("paypal_transactions")
+        .select("payment_id").eq("order_id", orderId).maybeSingle();
+      if (tx?.payment_id) {
+        // Shared handler: state transition + full ledger reversal.
+        await applyRefund(supabase, {
+          paymentId: tx.payment_id,
+          provider: "paypal",
+          providerReference: orderId,
+          amount: amountValue ? Number(amountValue) : null,
+          reason: eventType,
+        });
+      }
+    }
+  } else if (
+    eventType === "CUSTOMER.DISPUTE.CREATED" ||
+    eventType === "CUSTOMER.DISPUTE.UPDATED"
+  ) {
+    // Dispute resources reference the disputed capture, not the order.
+    const captureId: string | undefined =
+      resource?.disputed_transactions?.[0]?.seller_transaction_id ??
+      resource?.disputed_transactions?.[0]?.buyer_transaction_id;
+    if (captureId) {
+      const { data: tx } = await supabase.from("paypal_transactions")
+        .select("payment_id").or(`order_id.eq.${captureId},capture_id.eq.${captureId}`).maybeSingle();
+      if (tx?.payment_id) {
+        await applyDispute(supabase, {
+          paymentId: tx.payment_id,
+          provider: "paypal",
+          providerReference: captureId,
+          reason: resource?.reason ?? "dispute opened",
+        });
       }
     }
   }
+
 
   return new Response(JSON.stringify({ received: true, event: eventType, amount: amountValue }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
