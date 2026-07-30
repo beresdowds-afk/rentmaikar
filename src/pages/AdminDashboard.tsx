@@ -188,6 +188,12 @@ const paymentDefaults: PaymentDefault[] = [
 
 const AdminDashboard = () => {
   const _region = useRegion();
+  // Dev-only warning shared with the Admin Assistant dashboard: surfaces any
+  // tab that isn't classified in TAB_PERMISSION_MAP / ADMIN_ONLY_TABS.
+  useEffect(() => {
+    warnTabPermissionDrift('admin');
+  }, []);
+
   const { rates, isLoading: ratesLoading, convertToUSD, refetch: refetchRates } = useCurrencyConversion();
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
   const [approvingId, setApprovingId] = useState<number | null>(null);
