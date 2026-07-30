@@ -123,19 +123,29 @@ export function AdminAssistantManagement() {
         email: pmap.get(r.user_id)?.email ?? null,
       })));
 
-      // Fetch candidates: users with admin_assistant role that don't have a row yet
+      // Candidate pool = every platform user without an assistant permission
+      // row yet. Picking one and saving elevates them to `admin_assistant`
+      // (the role is upserted in `save`), so admins can promote existing
+      // users — not just users who already hold the role.
       const { data: roleRows } = await supabase
         .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin_assistant' as any);
-      const roleIds = (roleRows || []).map(r => r.user_id).filter(id => !ids.includes(id));
-      if (roleIds.length) {
-        const { data: candProfiles } = await supabase
-          .from('profiles').select('user_id, full_name, email').in('user_id', roleIds);
-        setCandidateUsers(candProfiles || []);
-      } else {
-        setCandidateUsers([]);
-      }
+        .select('user_id, role');
+      const assistantRoleIds = new Set(
+        (roleRows || []).filter(r => r.role === 'admin_assistant').map(r => r.user_id),
+      );
+
+      const { data: allProfiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email')
+        .order('full_name', { ascending: true })
+        .limit(500);
+
+      setCandidateUsers(
+        (allProfiles || [])
+          .filter(p => !ids.includes(p.user_id))
+          .map(p => ({ ...p, hasRole: assistantRoleIds.has(p.user_id) })),
+      );
+
     } catch (e: any) {
       toast.error('Failed to load admin assistants', { description: e.message });
     } finally {
