@@ -303,7 +303,10 @@ export default function ProfileSettingsPage() {
 
           <PersonaNotificationPreference />
 
+          <PWASettingsPanel />
+
           <ConnectedAccounts />
+
 
           <ProfileAuditHistory />
         </div>
