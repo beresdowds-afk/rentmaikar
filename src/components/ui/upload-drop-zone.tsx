@@ -121,7 +121,7 @@ export function UploadDropZone({
         <Button
           size="sm"
           type="button"
-          disabled={disabled || isUploading}
+          disabled={disabled || isUploading || isPreparing}
           onClick={() => fileInputRef.current?.click()}
         >
           {isUploading ? (
@@ -134,7 +134,7 @@ export function UploadDropZone({
           size="sm"
           type="button"
           variant="outline"
-          disabled={disabled || isUploading}
+          disabled={disabled || isUploading || isPreparing}
           onClick={() => cameraInputRef.current?.click()}
           title="Take photo with camera"
         >
@@ -180,13 +180,13 @@ export function UploadDropZone({
           <Upload className="h-8 w-8 text-muted-foreground" />
         )}
         <p className="text-sm text-muted-foreground">
-          {isUploading ? `Uploading… ${progress}%` : 'Drag & drop a file, or choose an option below'}
+          {isPreparing ? 'Optimizing image…' : isUploading ? `Uploading… ${progress}%` : 'Drag & drop a file, or choose an option below'}
         </p>
         <div className="flex gap-2 flex-wrap justify-center">
-          <Button size="sm" type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+          <Button size="sm" type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isPreparing}>
             <Upload className="h-4 w-4 mr-1" /> Browse
           </Button>
-          <Button size="sm" type="button" variant="outline" onClick={() => cameraInputRef.current?.click()} disabled={isUploading}>
+          <Button size="sm" type="button" variant="outline" onClick={() => cameraInputRef.current?.click()} disabled={isUploading || isPreparing}>
             <Camera className="h-4 w-4 mr-1" /> Take Photo
           </Button>
         </div>
