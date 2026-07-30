@@ -45,6 +45,8 @@ export async function recordWebhookEvent(
   supabase: any,
   input: IdempotencyRecordInput,
 ): Promise<IdempotencyResult> {
+  const log = input.logger;
+  const correlationId = input.correlationId ?? log?.ctx.correlationId ?? null;
   const row: Record<string, unknown> = {
     provider: input.provider,
     event_type: input.eventType ?? null,
@@ -56,6 +58,7 @@ export async function recordWebhookEvent(
     invoice_id: input.invoiceId ?? null,
     receipt_id: input.receiptId ?? null,
     payload: input.payload,
+    correlation_id: correlationId,
   };
 
   const { data, error } = await supabase
@@ -64,7 +67,10 @@ export async function recordWebhookEvent(
     .select("id")
     .maybeSingle();
 
-  if (!error && data?.id) return { duplicate: false, eventRowId: data.id };
+  if (!error && data?.id) {
+    log?.info("idempotency.recorded", { event_row_id: data.id, duplicate: false });
+    return { duplicate: false, eventRowId: data.id };
+  }
 
   // Unique-violation on (provider, external_event_id) → duplicate delivery.
   const code = (error as any)?.code;
@@ -76,14 +82,21 @@ export async function recordWebhookEvent(
   if (isDuplicate) {
     const { data: existing } = await supabase
       .from("payment_webhook_events")
-      .select("id")
+      .select("id, correlation_id")
       .eq("provider", input.provider)
       .eq("external_event_id", input.externalEventId)
       .maybeSingle();
+    // Log both trace keys so a replay can be tied back to the original delivery.
+    log?.warn("idempotency.replay", {
+      event_row_id: existing?.id ?? null,
+      original_correlation_id: existing?.correlation_id ?? null,
+      duplicate: true,
+    });
     return { duplicate: true, eventRowId: existing?.id ?? null };
   }
 
   // Unknown insert error — do not block webhook processing, but flag it.
+  log?.error("idempotency.insert_failed", { error: message || String(error) });
   console.error(`[webhook-idempotency] insert failed provider=${input.provider}`, error);
   return { duplicate: false, eventRowId: null };
 }
