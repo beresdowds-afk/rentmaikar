@@ -318,60 +318,107 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
     () => readRegionCache()?.regions.filter((r) => !r.builtIn) ?? [],
   );
   const [regionsLoading, setRegionsLoading] = useState(() => !readRegionCache());
+  const [regionSync, setRegionSync] = useState<RegionSyncState>(() => {
+    const cached = readRegionCache();
+    return {
+      source: cached ? "cache" : "builtin",
+      lastSyncedAt: cached?.savedAt ?? null,
+      stale: cached ? cached.stale : true,
+      offline: typeof navigator !== "undefined" && navigator.onLine === false,
+      refreshing: false,
+    };
+  });
 
+  const cancelledRef = useRef(false);
+  useEffect(() => {
+    cancelledRef.current = false;
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, []);
+
+  const loadRegions = useCallback(async () => {
+    setRegionSync((s) => ({ ...s, refreshing: true }));
+    try {
+      // Authoritative list comes from the server-side allow-list RPC so the
+      // client can never invent a region that admins have not published.
+      const { data, error } = await supabase.rpc("get_allowed_regions");
+      if (cancelledRef.current) return;
+      if (error || !data) {
+        // Offline / RPC failure → keep whatever the cache gave us (or the
+        // built-ins) instead of blanking the picker, but tell the UI the list
+        // it is showing is not confirmed fresh.
+        setRegionSync((s) => ({
+          ...s,
+          stale: true,
+          offline: typeof navigator !== "undefined" && navigator.onLine === false,
+          refreshing: false,
+        }));
+        setRegionsLoading(false);
+        return;
+      }
+      const mapped = mapAllowedRegionRows(data as unknown as AllowedRegionRow[]);
+      const merged = mergeRegions(mapped.filter((r) => !r.builtIn));
+      setBuilderRegions(merged.filter((r) => !r.builtIn));
+      writeRegionCache(merged);
+      setRegionSync({
+        source: "live",
+        lastSyncedAt: Date.now(),
+        stale: false,
+        offline: false,
+        refreshing: false,
+      });
+    } catch {
+      // Network down or RPC unavailable — cached/built-in regions stand.
+      if (cancelledRef.current) return;
+      setRegionSync((s) => ({
+        ...s,
+        stale: true,
+        offline: typeof navigator !== "undefined" && navigator.onLine === false,
+        refreshing: false,
+      }));
+    } finally {
+      if (!cancelledRef.current) setRegionsLoading(false);
+    }
+  }, []);
+
+  /** Manual refresh: drop the offline cache and re-ask the server. */
+  const refreshRegions = useCallback(async () => {
+    clearRegionCache();
+    await loadRegions();
+  }, [loadRegions]);
 
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        // Authoritative list comes from the server-side allow-list RPC so the
-        // client can never invent a region that admins have not published.
-        const { data, error } = await supabase.rpc("get_allowed_regions");
-        if (cancelled) return;
-        if (error || !data) {
-          // Offline / RPC failure → keep whatever the cache gave us (or the
-          // built-ins) instead of blanking the picker.
-          setRegionsLoading(false);
-          return;
-        }
-        const mapped = mapAllowedRegionRows(data as unknown as AllowedRegionRow[]);
-        const merged = mergeRegions(mapped.filter((r) => !r.builtIn));
-        setBuilderRegions(merged.filter((r) => !r.builtIn));
-        writeRegionCache(merged);
-      } catch {
-        // Network down or RPC unavailable — cached/built-in regions stand.
-      } finally {
-        if (!cancelled) setRegionsLoading(false);
-      }
-    };
-
-    load();
+    loadRegions();
     const channel = supabase
       .channel("region_definitions_available")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "region_definitions" },
-        () => load(),
+        () => loadRegions(),
       )
       .subscribe();
     // Realtime can be delayed or unavailable (offline PWA); revalidate on
     // resume and on a slow poll so the list self-heals.
     const onResume = () => {
-      if (document.visibilityState === "visible") load();
+      if (document.visibilityState === "visible") loadRegions();
     };
+    const onOffline = () => setRegionSync((s) => ({ ...s, offline: true, stale: true }));
     document.addEventListener("visibilitychange", onResume);
     window.addEventListener("online", onResume);
-    const poll = window.setInterval(load, 10 * 60 * 1000);
+    window.addEventListener("offline", onOffline);
+    const poll = window.setInterval(loadRegions, 10 * 60 * 1000);
     return () => {
-      cancelled = true;
       supabase.removeChannel(channel);
       document.removeEventListener("visibilitychange", onResume);
       window.removeEventListener("online", onResume);
+      window.removeEventListener("offline", onOffline);
       window.clearInterval(poll);
     };
-  }, []);
+  }, [loadRegions]);
 
   const availableRegions: RegionOption[] = mergeRegions(builderRegions);
+
 
 
   // Load region-specific WhatsApp / SMS / email from the admin-managed
