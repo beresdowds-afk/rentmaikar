@@ -324,11 +324,16 @@ export default function OwnerDashboard() {
                       disabled={!selectedVehicle}
                       metadata={{ vehicle_id: selectedVehicle }}
                     >
-                      {() => (
-                        <Button onClick={handleWithdraw} className="w-full">
-                          Request Withdrawal
+                      {(authorizationId) => (
+                        <Button
+                          onClick={() => handleWithdraw(authorizationId)}
+                          disabled={withdrawing}
+                          className="w-full"
+                        >
+                          {withdrawing ? 'Processing…' : 'Request Withdrawal'}
                         </Button>
                       )}
+
                     </WithdrawalAuthorizationGate>
 
                   </div>
