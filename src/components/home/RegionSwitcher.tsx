@@ -1,4 +1,4 @@
-import { useRegion, Country } from "@/contexts/RegionContext";
+import { useRegion } from "@/contexts/RegionContext";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -6,29 +6,27 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Globe } from "lucide-react";
+import { Globe, Loader2 } from "lucide-react";
 
 const RegionSwitcher = () => {
-  const { country, setCountry } = useRegion();
+  const { country, setCountry, availableRegions, regionsLoading } = useRegion();
 
-  const regions: { value: Country; label: string; flag: string }[] = [
-    { value: "USA", label: "United States", flag: "🇺🇸" },
-    { value: "Nigeria", label: "Nigeria", flag: "🇳🇬" },
-  ];
-
-  const currentRegion = regions.find((r) => r.value === country);
+  const currentRegion =
+    availableRegions.find((r) => r.value === country) ?? availableRegions[0];
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="gap-2 text-sm">
           <Globe className="w-4 h-4" />
-          <span className="hidden sm:inline">{currentRegion?.flag} {currentRegion?.label}</span>
+          <span className="hidden sm:inline">
+            {currentRegion?.flag} {currentRegion?.label ?? country}
+          </span>
           <span className="sm:hidden">{currentRegion?.flag}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {regions.map((region) => (
+      <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
+        {availableRegions.map((region) => (
           <DropdownMenuItem
             key={region.value}
             onClick={() => setCountry(region.value)}
@@ -38,6 +36,12 @@ const RegionSwitcher = () => {
             {region.label}
           </DropdownMenuItem>
         ))}
+        {regionsLoading && (
+          <DropdownMenuItem disabled className="text-muted-foreground">
+            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+            Loading regions…
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
