@@ -108,7 +108,7 @@ export default function AdminTreasuryPage() {
               <WithdrawalAuthorizationGate
                 requestType="platform_withdrawal"
                 amount={parsedAmount}
-                currency={currency as "USD" | "NGN"}
+                currency={currency as "USD" | "NGN" | (string & {})}
                 destinationRef={destination || null}
                 requestLabel="Request treasury authorization"
               >

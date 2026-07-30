@@ -64,7 +64,7 @@ export function useRequestWithdrawalAuthorization() {
     mutationFn: async (input: {
       requestType: WithdrawalRequestType;
       amount: number;
-      currency: "USD" | "NGN";
+      currency: "USD" | "NGN" | (string & {});
       subjectUserId?: string | null;
       destinationRef?: string | null;
       metadata?: Record<string, unknown>;

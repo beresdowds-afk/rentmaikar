@@ -224,9 +224,9 @@ export function DriverDashboardPreview({ userId, userProfile }: DriverDashboardP
                             }
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            Requested: {formatCurrency(Number(neg.requested_daily_rate), neg.currency as 'USD' | 'NGN')}/day
+                            Requested: {formatCurrency(Number(neg.requested_daily_rate), neg.currency as 'USD' | 'NGN' | (string & {}))}/day
                             {neg.final_daily_rate && (
-                              <> • Final: {formatCurrency(Number(neg.final_daily_rate), neg.currency as 'USD' | 'NGN')}/day</>
+                              <> • Final: {formatCurrency(Number(neg.final_daily_rate), neg.currency as 'USD' | 'NGN' | (string & {}))}/day</>
                             )}
                           </p>
                           <p className="text-xs text-muted-foreground">

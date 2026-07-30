@@ -15,7 +15,7 @@ import {
 interface WithdrawalAuthorizationGateProps {
   requestType: WithdrawalRequestType;
   amount: number;
-  currency: "USD" | "NGN";
+  currency: "USD" | "NGN" | (string & {});
   subjectUserId?: string | null;
   destinationRef?: string | null;
   metadata?: Record<string, unknown>;

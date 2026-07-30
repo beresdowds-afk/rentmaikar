@@ -129,7 +129,7 @@ export const useVoIPCalls = () => {
   const createGroup = async (
     name: string,
     description: string,
-    region: 'USA' | 'Nigeria' | 'All',
+    region: 'USA' | 'Nigeria' | (string & {}) | 'All',
     members: { phoneNumber: string; displayName?: string; userId?: string; region: CallRegion }[]
   ) => {
     try {

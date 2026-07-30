@@ -10,9 +10,9 @@ interface UseCurrencyConversionReturn {
   rates: ExchangeRates | null;
   isLoading: boolean;
   error: string | null;
-  convertToUSD: (amount: number, fromCurrency: 'USD' | 'NGN') => number;
-  convertToNGN: (amount: number, fromCurrency: 'USD' | 'NGN') => number;
-  formatWithConversion: (amount: number, currency: 'USD' | 'NGN') => string;
+  convertToUSD: (amount: number, fromCurrency: 'USD' | 'NGN' | (string & {})) => number;
+  convertToNGN: (amount: number, fromCurrency: 'USD' | 'NGN' | (string & {})) => number;
+  formatWithConversion: (amount: number, currency: 'USD' | 'NGN' | (string & {})) => string;
   refetch: () => Promise<void>;
 }
 
@@ -69,19 +69,19 @@ export function useCurrencyConversion(): UseCurrencyConversionReturn {
     return () => clearInterval(interval);
   }, []);
 
-  const convertToUSD = (amount: number, fromCurrency: 'USD' | 'NGN'): number => {
+  const convertToUSD = (amount: number, fromCurrency: 'USD' | 'NGN' | (string & {})): number => {
     if (fromCurrency === 'USD') return amount;
     const rate = rates?.NGN_USD || (1 / FALLBACK_USD_NGN);
     return amount * rate;
   };
 
-  const convertToNGN = (amount: number, fromCurrency: 'USD' | 'NGN'): number => {
+  const convertToNGN = (amount: number, fromCurrency: 'USD' | 'NGN' | (string & {})): number => {
     if (fromCurrency === 'NGN') return amount;
     const rate = rates?.USD_NGN || FALLBACK_USD_NGN;
     return amount * rate;
   };
 
-  const formatWithConversion = (amount: number, currency: 'USD' | 'NGN'): string => {
+  const formatWithConversion = (amount: number, currency: 'USD' | 'NGN' | (string & {})): string => {
     if (currency === 'USD') {
       return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }

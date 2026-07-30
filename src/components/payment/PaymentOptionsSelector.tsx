@@ -30,8 +30,8 @@ import { toast } from 'sonner';
 
 interface PaymentOptionsSelectorProps {
   baseAmount: number;
-  currency: 'USD' | 'NGN';
-  country: 'USA' | 'Nigeria';
+  currency: 'USD' | 'NGN' | (string & {});
+  country: 'USA' | 'Nigeria' | (string & {});
   onPaymentSubmit: (options: PaymentSelection) => Promise<void>;
   isProcessing?: boolean;
 }

@@ -7,7 +7,7 @@ interface VoIPSetting {
   id: string;
   feature_key: string;
   is_enabled: boolean;
-  region: 'USA' | 'Nigeria' | 'All';
+  region: 'USA' | 'Nigeria' | (string & {}) | 'All';
   description: string | null;
   updated_at: string;
 }
@@ -16,7 +16,7 @@ interface CallRequest {
   id: string;
   user_id: string;
   user_type: 'driver' | 'owner';
-  region: 'USA' | 'Nigeria';
+  region: 'USA' | 'Nigeria' | (string & {});
   phone_number: string;
   status: 'pending' | 'callback_scheduled' | 'called_back' | 'canceled' | 'missed';
   priority: 'low' | 'normal' | 'high' | 'urgent';
@@ -105,7 +105,7 @@ export const useCallSupport = (userType?: 'driver' | 'owner') => {
         .insert({
           user_id: user.id,
           user_type: userType || 'driver',
-          region: country as 'USA' | 'Nigeria',
+          region: country as 'USA' | 'Nigeria' | (string & {}),
           phone_number: profile.phone,
           reason,
         })

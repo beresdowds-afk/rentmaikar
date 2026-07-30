@@ -3,7 +3,7 @@ import { useRegion } from "@/contexts/RegionContext";
 import { cn } from "@/lib/utils";
 
 interface CurrencyIconProps extends React.HTMLAttributes<HTMLSpanElement> {
-  currencyCode?: "USD" | "NGN";
+  currencyCode?: "USD" | "NGN" | (string & {});
 }
 
 const NairaIcon = ({ className }: { className?: string }) => (

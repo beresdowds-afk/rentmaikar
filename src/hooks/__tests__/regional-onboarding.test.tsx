@@ -3,7 +3,7 @@ import { renderHook, act } from "@testing-library/react";
 
 // Region hook is mocked per test so we can flip the country and verify
 // each tour hook writes its completion under a region-scoped storage key.
-const mockRegion = vi.fn(() => ({ country: "USA" as "USA" | "Nigeria" }));
+const mockRegion = vi.fn(() => ({ country: "USA" as "USA" | "Nigeria" | (string & {}) }));
 vi.mock("@/contexts/RegionContext", () => ({
   useRegion: () => mockRegion(),
 }));

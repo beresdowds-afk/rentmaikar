@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export interface WalletAccountSummary {
   wallet_id: string;
   account_type: "driver" | "owner" | "platform" | "proxy";
-  currency: "USD" | "NGN";
+  currency: "USD" | "NGN" | (string & {});
   available_balance: number;
   pending_balance: number;
   lifetime_credits: number;
@@ -30,7 +30,7 @@ export interface WalletLedgerEntry {
 }
 
 /** Wallet balances for the signed-in user, across account types and currencies. */
-export function useWalletSummary(currency?: "USD" | "NGN") {
+export function useWalletSummary(currency?: "USD" | "NGN" | (string & {})) {
   const { user } = useAuth();
 
   return useQuery({

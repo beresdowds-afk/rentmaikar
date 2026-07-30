@@ -21,7 +21,7 @@ import { PAYMENT_CONFIG, type PaymentFrequency, formatCurrency } from '@/lib/pay
 interface NotificationPreviewProps {
   driverName?: string;
   amountDue?: number;
-  currency?: 'USD' | 'NGN';
+  currency?: 'USD' | 'NGN' | (string & {});
   paymentFrequency?: PaymentFrequency;
 }
 

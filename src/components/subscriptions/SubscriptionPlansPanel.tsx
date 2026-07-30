@@ -14,9 +14,9 @@ export type Plan = {
   description: string | null;
   plan_type: "training" | "roadside_support" | "insurance" | string;
   price: number;
-  currency: "USD" | "NGN" | string;
+  currency: "USD" | "NGN" | (string & {}) | string;
   billing_interval: "monthly" | "yearly" | "weekly" | "daily" | string;
-  region: "USA" | "Nigeria" | string;
+  region: "USA" | "Nigeria" | (string & {}) | string;
   eligible_roles: string[];
   is_active: boolean;
 };

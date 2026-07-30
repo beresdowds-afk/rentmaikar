@@ -178,19 +178,19 @@ export function RentalPaymentStatusPanel({ rentalId, refreshKey, onRetry }: Rent
           <div className="p-3 border rounded-lg">
             <p className="text-xs text-muted-foreground">Completed</p>
             <p className="text-lg font-bold text-green-700">
-              {formatCurrency(totals.completed, (payments[0]?.currency as "USD" | "NGN") || "USD")}
+              {formatCurrency(totals.completed, (payments[0]?.currency as "USD" | "NGN" | (string & {})) || "USD")}
             </p>
           </div>
           <div className="p-3 border rounded-lg">
             <p className="text-xs text-muted-foreground">Pending</p>
             <p className="text-lg font-bold text-amber-700">
-              {formatCurrency(totals.pending, (payments[0]?.currency as "USD" | "NGN") || "USD")}
+              {formatCurrency(totals.pending, (payments[0]?.currency as "USD" | "NGN" | (string & {})) || "USD")}
             </p>
           </div>
           <div className="p-3 border rounded-lg">
             <p className="text-xs text-muted-foreground">Failed</p>
             <p className="text-lg font-bold text-red-700">
-              {formatCurrency(totals.failed, (payments[0]?.currency as "USD" | "NGN") || "USD")}
+              {formatCurrency(totals.failed, (payments[0]?.currency as "USD" | "NGN" | (string & {})) || "USD")}
             </p>
           </div>
         </div>
@@ -214,7 +214,7 @@ export function RentalPaymentStatusPanel({ rentalId, refreshKey, onRetry }: Rent
                     <div className="flex items-center gap-2 text-sm">
                       <StatusBadge status={p.status} />
                       <span className="font-medium">
-                        {formatCurrency(Number(p.amount), (p.currency as "USD" | "NGN") || "USD")}
+                        {formatCurrency(Number(p.amount), (p.currency as "USD" | "NGN" | (string & {})) || "USD")}
                       </span>
                       {p.payment_method && (
                         <Badge variant="secondary" className="capitalize">{p.payment_method}</Badge>

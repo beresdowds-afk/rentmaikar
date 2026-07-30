@@ -18,7 +18,7 @@ export type TourEventType = "tour_start" | "tour_step_view" | "tour_complete";
 
 export interface TourEventPayload {
   tour: string;               // e.g. "landing", "admin", "iot-support"
-  country: Country | string;  // "USA" | "Nigeria" | fallback string
+  country: Country | string;  // "USA" | "Nigeria" | (string & {}) | fallback string
   stepId?: string;
   stepIndex?: number;
   totalSteps?: number;

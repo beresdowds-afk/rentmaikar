@@ -43,7 +43,7 @@ export class PaymentDefaultHandler {
     vehicleId: string,
     rentalId: string,
     amountDue: number,
-    currency: 'USD' | 'NGN',
+    currency: 'USD' | 'NGN' | (string & {}),
     paymentFrequency: PaymentFrequency = 'weekly'
   ): PaymentDefault {
     return {

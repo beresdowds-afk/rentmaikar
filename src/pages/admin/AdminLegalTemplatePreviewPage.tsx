@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertTriangle, Eye, FileText } from 'lucide-react';
 
-type AgreementRegion = 'USA' | 'Nigeria';
+type AgreementRegion = 'USA' | 'Nigeria' | (string & {});
 
 interface LegalAgreementTemplate {
   id: string;

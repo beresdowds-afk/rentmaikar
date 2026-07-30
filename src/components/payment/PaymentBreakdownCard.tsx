@@ -10,11 +10,11 @@ import { CreditCard, Wallet, Building2, TrendingUp, Receipt } from 'lucide-react
 
 interface PaymentBreakdownCardProps {
   baseAmount: number;
-  currency: 'USD' | 'NGN';
+  currency: 'USD' | 'NGN' | (string & {});
   gateway: 'paypal' | 'paystack';
   showOwnerView?: boolean;
   showTax?: boolean;
-  customerCountry?: 'USA' | 'Nigeria';
+  customerCountry?: 'USA' | 'Nigeria' | (string & {});
   stateCode?: string;
 }
 

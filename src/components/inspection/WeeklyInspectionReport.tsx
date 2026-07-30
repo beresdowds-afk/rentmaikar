@@ -16,7 +16,7 @@ interface WeeklyInspectionReportProps {
   vehicleId: string;
   vehicleName: string;
   ownerId?: string | null;
-  region?: 'USA' | 'Nigeria';
+  region?: 'USA' | 'Nigeria' | (string & {});
 }
 
 export function WeeklyInspectionReport({

@@ -22,7 +22,7 @@ interface GlossaryEntry {
   category: Category;
   definition: string;
   aka?: string[];
-  region?: "USA" | "Nigeria" | "Both";
+  region?: "USA" | "Nigeria" | (string & {}) | "Both";
 }
 
 const ENTRIES: GlossaryEntry[] = [

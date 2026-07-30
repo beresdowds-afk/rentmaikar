@@ -63,7 +63,7 @@ export const nigeriaCityCoordinates: Record<string, { lat: number; lng: number }
 export const getDistanceBetweenLocations = (
   location1: string,
   location2: string,
-  country: "USA" | "Nigeria"
+  country: "USA" | "Nigeria" | (string & {})
 ): number => {
   if (country === "Nigeria") {
     const city1 = getNigeriaParentCity(location1) || location1;
@@ -90,7 +90,7 @@ export const isVehicleInRange = (
   vehicleCoordinates: { lat: number; lng: number } | null,
   userLocation: string,
   userCoordinates: { lat: number; lng: number } | null,
-  country: "USA" | "Nigeria",
+  country: "USA" | "Nigeria" | (string & {}),
   radiusMiles: number = USA_DEFAULT_RADIUS_MILES
 ): boolean => {
   if (country === "Nigeria") {
@@ -124,7 +124,7 @@ export const getVehicleDistance = (
   vehicleCoordinates: { lat: number; lng: number } | null,
   userLocation: string,
   userCoordinates: { lat: number; lng: number } | null,
-  country: "USA" | "Nigeria"
+  country: "USA" | "Nigeria" | (string & {})
 ): number => {
   if (country === "Nigeria") {
     return getDistanceBetweenLocations(vehicleLocation, userLocation, country);

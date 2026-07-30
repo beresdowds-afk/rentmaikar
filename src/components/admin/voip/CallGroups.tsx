@@ -21,7 +21,7 @@ interface CallGroupsProps {
   onCreateGroup: (
     name: string,
     description: string,
-    region: 'USA' | 'Nigeria' | 'All',
+    region: 'USA' | 'Nigeria' | (string & {}) | 'All',
     members: { phoneNumber: string; displayName?: string; userId?: string; region: CallRegion }[]
   ) => Promise<any>;
   onDeleteGroup: (groupId: string) => Promise<void>;
@@ -35,7 +35,7 @@ export const CallGroups = ({ groups, onCreateGroup, onDeleteGroup, isLoading }: 
   const [isCreating, setIsCreating] = useState(false);
   const [groupName, setGroupName] = useState('');
   const [groupDescription, setGroupDescription] = useState('');
-  const [groupRegion, setGroupRegion] = useState<'USA' | 'Nigeria' | 'All'>('All');
+  const [groupRegion, setGroupRegion] = useState<'USA' | 'Nigeria' | (string & {}) | 'All'>('All');
   const [memberPhone, setMemberPhone] = useState('');
   const [memberName, setMemberName] = useState('');
   const [memberRegion, setMemberRegion] = useState<CallRegion>(
@@ -147,7 +147,7 @@ export const CallGroups = ({ groups, onCreateGroup, onDeleteGroup, isLoading }: 
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="groupRegion">Region</Label>
-                    <Select value={groupRegion} onValueChange={(v) => setGroupRegion(v as 'USA' | 'Nigeria' | 'All')}>
+                    <Select value={groupRegion} onValueChange={(v) => setGroupRegion(v as 'USA' | 'Nigeria' | (string & {}) | 'All')}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>

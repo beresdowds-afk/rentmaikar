@@ -319,7 +319,7 @@ export default function OwnerDashboard() {
                     <WithdrawalAuthorizationGate
                       requestType="owner_payout"
                       amount={parseFloat(withdrawAmount) || 0}
-                      currency={currency as 'USD' | 'NGN'}
+                      currency={currency as 'USD' | 'NGN' | (string & {})}
                       destinationRef={selectedVehicle}
                       disabled={!selectedVehicle}
                       metadata={{ vehicle_id: selectedVehicle }}

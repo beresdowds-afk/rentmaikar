@@ -16,7 +16,7 @@ interface VoIPSetting {
   id: string;
   feature_key: string;
   is_enabled: boolean;
-  region: 'USA' | 'Nigeria' | 'All';
+  region: 'USA' | 'Nigeria' | (string & {}) | 'All';
   description: string | null;
   updated_at: string;
 }
@@ -25,7 +25,7 @@ interface CallRequest {
   id: string;
   user_id: string;
   user_type: 'driver' | 'owner';
-  region: 'USA' | 'Nigeria';
+  region: 'USA' | 'Nigeria' | (string & {});
   phone_number: string;
   status: string;
   priority: string;
@@ -116,7 +116,7 @@ export const VoIPFeatureSettings = () => {
     }
   };
 
-  const updateSettingRegion = async (featureKey: string, region: 'USA' | 'Nigeria' | 'All') => {
+  const updateSettingRegion = async (featureKey: string, region: 'USA' | 'Nigeria' | (string & {}) | 'All') => {
     setIsUpdating(featureKey);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -268,7 +268,7 @@ export const VoIPFeatureSettings = () => {
               <div className="flex items-center gap-4">
                 <Select
                   value={setting.region}
-                  onValueChange={(v) => updateSettingRegion(setting.feature_key, v as 'USA' | 'Nigeria' | 'All')}
+                  onValueChange={(v) => updateSettingRegion(setting.feature_key, v as 'USA' | 'Nigeria' | (string & {}) | 'All')}
                   disabled={isUpdating === setting.feature_key}
                 >
                   <SelectTrigger className="w-[130px]">

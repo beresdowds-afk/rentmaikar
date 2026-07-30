@@ -378,7 +378,7 @@ export function IoTDeviceOrders() {
                                 </TableCell>
                                 <TableCell>{order.owner_email || 'N/A'}</TableCell>
                                 <TableCell>
-                                  {formatCurrency(order.device_price, order.currency as 'USD' | 'NGN')}
+                                  {formatCurrency(order.device_price, order.currency as 'USD' | 'NGN' | (string & {}))}
                                 </TableCell>
                                 <TableCell>{getPaymentStatusBadge(order.payment_status)}</TableCell>
                                 <TableCell>
@@ -480,7 +480,7 @@ export function IoTDeviceOrders() {
                       <div className="flex items-center gap-2">
                         <DollarSign className="h-5 w-5 text-muted-foreground" />
                         <span className="text-2xl font-bold">
-                          {formatCurrency(price.price, price.currency as 'USD' | 'NGN')}
+                          {formatCurrency(price.price, price.currency as 'USD' | 'NGN' | (string & {}))}
                         </span>
                       </div>
                       {price.description && (
@@ -527,7 +527,7 @@ export function IoTDeviceOrders() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Amount:</span>
-                  <p className="font-medium">{formatCurrency(selectedOrder.device_price, selectedOrder.currency as 'USD' | 'NGN')}</p>
+                  <p className="font-medium">{formatCurrency(selectedOrder.device_price, selectedOrder.currency as 'USD' | 'NGN' | (string & {}))}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Payment Method:</span>
@@ -641,7 +641,7 @@ export function IoTDeviceOrders() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Amount:</span>
                   <span className="font-medium">
-                    {formatCurrency(selectedOrder.device_price, selectedOrder.currency as 'USD' | 'NGN')}
+                    {formatCurrency(selectedOrder.device_price, selectedOrder.currency as 'USD' | 'NGN' | (string & {}))}
                   </span>
                 </div>
                 <div className="flex justify-between">

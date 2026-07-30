@@ -16,7 +16,7 @@ import { Edit, Eye, FileText, GitBranch, Loader2, Plus, Save } from 'lucide-reac
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
-type AgreementRegion = 'USA' | 'Nigeria';
+type AgreementRegion = 'USA' | 'Nigeria' | (string & {});
 
 interface LegalAgreementTemplate {
   id: string;
