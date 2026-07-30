@@ -203,19 +203,30 @@ export default function VerificationStatusPage() {
         <CardContent className="space-y-4">
           <p className="text-sm">{nextActionCopy(current, mismatches)}</p>
 
-          {current === 'failed' && mismatches && Object.keys(mismatches).length > 0 && (
-            <div className="rounded-md border border-red-500/40 bg-red-500/5 p-3 text-sm">
-              <div className="flex items-center gap-2 font-medium text-red-400 mb-2">
-                <AlertTriangle className="h-4 w-4" /> Flagged checks
-              </div>
-              <ul className="space-y-1 text-muted-foreground">
-                {Object.entries(mismatches).map(([k, v]) => (
-                  <li key={k}>
-                    <span className="font-mono text-xs">{k}</span>: {typeof v === 'string' ? v : JSON.stringify(v)}
-                  </li>
-                ))}
-              </ul>
+          {/* Every flagged Persona check is translated into a plain-language
+              problem plus the exact fix — never a bare "verification failed". */}
+          {failures.length > 0 && (
+            <div className="space-y-3">
+              {failures.map((f) => (
+                <VerificationFailureCard key={f.code} failure={f} />
+              ))}
             </div>
+          )}
+
+          {canResume && current !== 'verified' && (
+            <Alert>
+              <RotateCcw className="h-4 w-4" />
+              <AlertTitle>You have an unfinished verification</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p className="text-sm">
+                  Started {formatWhen(session!.startedAt)}. Continue where you left off instead of starting over.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={resumeSession}>Resume verification</Button>
+                  <Button size="sm" variant="outline" onClick={clearSession}>Start fresh instead</Button>
+                </div>
+              </AlertDescription>
+            </Alert>
           )}
 
           <div className="flex flex-wrap gap-3">
@@ -229,10 +240,17 @@ export default function VerificationStatusPage() {
                 Continue to marketplace
               </Button>
             )}
+            {/* Recovers from missed/failed webhooks by re-reading the
+                authoritative status straight from the provider. */}
+            <Button variant="outline" onClick={reconcile} disabled={reconciling}>
+              {reconciling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Re-check with provider
+            </Button>
             <Button variant="outline" asChild>
               <Link to="/">Back to home</Link>
             </Button>
           </div>
+
         </CardContent>
       </Card>
 
