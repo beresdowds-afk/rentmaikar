@@ -321,24 +321,41 @@ export function AdminAssistantManagement() {
             {!editing && (
               <div className="space-y-2">
                 <Label>User</Label>
+                <Input
+                  placeholder="Search by name or email…"
+                  value={candidateSearch}
+                  onChange={(e) => setCandidateSearch(e.target.value)}
+                />
                 {candidateUsers.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    No users with the "Admin Assistant" role yet. Assign that role first in the Users tab,
-                    or create the user via <em>Create New User</em>.
+                    No eligible users found. Create one via <em>Create New User</em>.
                   </p>
                 ) : (
                   <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                     <SelectTrigger><SelectValue placeholder="Pick a user" /></SelectTrigger>
                     <SelectContent>
-                      {candidateUsers.map(u => (
-                        <SelectItem key={u.user_id} value={u.user_id}>
-                          {u.full_name || u.email} — {u.email}
-                        </SelectItem>
-                      ))}
+                      {candidateUsers
+                        .filter(u => {
+                          const q = candidateSearch.trim().toLowerCase();
+                          if (!q) return true;
+                          return `${u.full_name ?? ''} ${u.email ?? ''}`.toLowerCase().includes(q);
+                        })
+                        .slice(0, 100)
+                        .map(u => (
+                          <SelectItem key={u.user_id} value={u.user_id}>
+                            {u.full_name || u.email} — {u.email}
+                            {u.hasRole ? '' : ' (will be elevated to Admin Assistant)'}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  Saving grants the selected user the Admin Assistant role along with the
+                  permissions below.
+                </p>
               </div>
+
             )}
 
             <div className="flex items-center justify-between">
