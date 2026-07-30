@@ -3,6 +3,16 @@ import { DollarSign } from "lucide-react";
 import { detectCountryFromIP, detectCountryFromTimezone } from "@/lib/ip-geolocation";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  BUILTIN_REGION_OPTIONS,
+  mergeRegions,
+  mapAllowedRegionRows,
+  readRegionCache,
+  writeRegionCache,
+  resolveRegion,
+  type AllowedRegionRow,
+} from "@/lib/region-cache";
+
+import {
   getStoredCountry,
   getStoredMode,
   persistCountry,
