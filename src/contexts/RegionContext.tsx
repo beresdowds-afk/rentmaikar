@@ -145,10 +145,22 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
     }
   });
 
+  /**
+   * Switch region. The value is resolved against the allow-list first, then
+   * persisted server-side through `set_my_region` so web and mobile read the
+   * same source of truth after login. The server re-validates and rejects any
+   * region the user is not permitted to select.
+   */
   const setCountry = (next: Country) => {
-    setCountryState(next);
-    persistCountry(next);
+    const resolved = resolveRegion(next, availableRegions);
+    if (!resolved) return;
+    setCountryState(resolved.value);
+    persistCountry(resolved.value);
+    void supabase.rpc("set_my_region", { p_country: resolved.value }).then(({ error }) => {
+      if (error) console.warn("[region] server rejected region change:", error.message);
+    });
   };
+
 
   const setRegionMode = (next: RegionMode) => {
     setRegionModeState(next);
