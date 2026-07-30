@@ -47,16 +47,21 @@ type LoginFormData = z.infer<typeof loginSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
-const navigate = useNavigate();
-const location = useLocation();
+const Auth = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-const {
-  authState,
-  session,
-  profile,
-  permissions,
-  actions
-} = useAuth();
+  const {
+    user,
+    isLoading: authLoading,
+    userRole,
+    twoFactorVerified,
+    setTwoFactorVerified,
+    signUp,
+    signIn,
+    check2FAStatus,
+  } = useAuth();
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
