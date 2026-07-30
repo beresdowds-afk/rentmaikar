@@ -134,3 +134,131 @@ export async function withRetry<T>(
   console.error(`[withRetry] gave up after ${attempts} attempts: ${label}`, lastErr);
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Payment / payout state machine
+// Pending → Authorized → Captured → Settled → Available → Completed
+//                                   └→ Failed / Refunded / Disputed
+// Every PSP webhook drives the machine through `transition_payment_state` so
+// invalid jumps are rejected in one place (the DB) rather than per provider.
+// ---------------------------------------------------------------------------
+
+export type PaymentEntity = "payment" | "payout";
+
+export type PaymentState =
+  | "pending"
+  | "authorized"
+  | "captured"
+  | "settled"
+  | "available"
+  | "completed"
+  | "failed"
+  | "refunded"
+  | "disputed";
+
+/**
+ * Move a payment/payout to `toState`. Retries transient failures, never throws.
+ * Returns true when the DB accepted the transition.
+ */
+export async function transitionState(
+  supabase: any,
+  entity: PaymentEntity,
+  entityId: string,
+  toState: PaymentState,
+  reason?: string,
+  metadata: Record<string, unknown> = {},
+): Promise<boolean> {
+  const result = await withRetry(`state.${entity}.${toState}`, async () => {
+    const { error } = await supabase.rpc("transition_payment_state", {
+      _entity: entity,
+      _entity_id: entityId,
+      _to_state: toState,
+      _reason: reason ?? null,
+      _metadata: metadata,
+    });
+    // An illegal transition is a permanent answer, not a transient fault:
+    // surface it as a non-retryable false rather than burning retries.
+    if (error) {
+      if (/invalid transition|not allowed/i.test(error.message ?? "")) {
+        console.warn(`[state] rejected ${entity} ${entityId} → ${toState}: ${error.message}`);
+        return false;
+      }
+      throw error;
+    }
+    return true;
+  });
+  return result === true;
+}
+
+/**
+ * Refund handling shared by every PSP: flip the payment state, stamp the
+ * refund metadata, and reverse the wallet ledger entries that the original
+ * capture posted. Ledger reversal is idempotent via the entry's own key.
+ */
+export async function applyRefund(
+  supabase: any,
+  opts: {
+    paymentId: string;
+    provider: string;
+    providerReference?: string | null;
+    amount?: number | null;
+    reason?: string | null;
+  },
+): Promise<void> {
+  const { paymentId, provider, providerReference, amount, reason } = opts;
+
+  await transitionState(supabase, "payment", paymentId, "refunded", reason ?? "provider refund", {
+    provider,
+    provider_reference: providerReference ?? null,
+    amount: amount ?? null,
+  });
+
+  await supabase
+    .from("payments")
+    .update({ status: "refunded", failure_reason: reason ?? null })
+    .eq("id", paymentId);
+
+  // Reverse every ledger entry raised for this payment.
+  const { data: entries } = await supabase
+    .from("wallet_ledger_entries")
+    .select("id, status")
+    .eq("reference_table", "payments")
+    .eq("reference_id", paymentId);
+
+  for (const entry of entries ?? []) {
+    if (entry.status === "reversed") continue;
+    await withRetry(`refund.reverse.${entry.id}`, async () => {
+      const { error } = await supabase.rpc("reverse_wallet_entry", {
+        _entry_id: entry.id,
+        _reason: reason ?? `${provider} refund`,
+      });
+      if (error) throw error;
+    });
+  }
+}
+
+/**
+ * Chargeback / dispute opened at the PSP. Funds are frozen rather than
+ * reversed — the ledger stays intact until the dispute resolves.
+ */
+export async function applyDispute(
+  supabase: any,
+  opts: {
+    paymentId: string;
+    provider: string;
+    providerReference?: string | null;
+    reason?: string | null;
+  },
+): Promise<void> {
+  const { paymentId, provider, providerReference, reason } = opts;
+
+  await transitionState(supabase, "payment", paymentId, "disputed", reason ?? "chargeback opened", {
+    provider,
+    provider_reference: providerReference ?? null,
+  });
+
+  await supabase
+    .from("payments")
+    .update({ status: "disputed", failure_reason: reason ?? "chargeback opened" })
+    .eq("id", paymentId);
+}

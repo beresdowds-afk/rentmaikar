@@ -7,7 +7,11 @@ import {
   recordWebhookEvent,
   markPaymentCompletedIdempotent,
   withRetry,
+  transitionState,
+  applyRefund,
+  applyDispute,
 } from "../_shared/webhook-idempotency.ts";
+
 import { postRentalPaymentLedger, postLedgerEntry } from "../_shared/wallet-ledger.ts";
 
 async function notifyPush(paymentId: string, rentalId: string | null, status: string, amount?: number, currency?: string, reference?: string) {
@@ -74,6 +78,10 @@ Deno.serve(async (req) => {
     const { data: tx } = await supabase.from("paystack_transactions")
       .select("payment_id, amount, currency, rental_id").eq("reference", reference).maybeSingle();
     if (tx?.payment_id) {
+      // Drive the state machine to captured → settled before flipping the
+      // legacy status column, so the audit trail records every hop.
+      await transitionState(supabase, "payment", tx.payment_id, "captured", "paystack charge.success");
+      await transitionState(supabase, "payment", tx.payment_id, "settled", "paystack settlement");
       const { alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id);
       await recordPaymentInLedger(supabase, tx.payment_id, "paystack", reference);
       await notifyPush(tx.payment_id, tx.rental_id ?? null, "completed", tx.amount ? Number(tx.amount) / 100 : undefined, tx.currency ?? undefined, reference);
@@ -90,6 +98,7 @@ Deno.serve(async (req) => {
         await supabase.from("payment_webhook_events").update({ payment_id: tx.payment_id }).eq("id", idem.eventRowId);
       }
     }
+
   } else if (evt.event === "charge.failed" && reference) {
     await supabase.from("paystack_transactions").update({
       status: "failed",
@@ -99,11 +108,47 @@ Deno.serve(async (req) => {
     const { data: tx } = await supabase.from("paystack_transactions")
       .select("payment_id, amount, currency, rental_id").eq("reference", reference).maybeSingle();
     if (tx?.payment_id) {
+      await transitionState(supabase, "payment", tx.payment_id, "failed", evt.data.gateway_response ?? "failed");
       await supabase.from("payments").update({
         status: "failed", failure_reason: evt.data.gateway_response ?? "failed",
       }).eq("id", tx.payment_id).neq("status", "completed");
       await notifyPush(tx.payment_id, tx.rental_id ?? null, "failed", tx.amount ? Number(tx.amount) / 100 : undefined, tx.currency ?? undefined, reference);
     }
+  } else if (evt.event === "refund.processed" || evt.event === "refund.failed") {
+    // Paystack refunds carry the original transaction reference.
+    const refundRef: string | undefined =
+      evt?.data?.transaction_reference ?? evt?.data?.transaction?.reference ?? reference;
+    if (refundRef && evt.event === "refund.processed") {
+      const { data: tx } = await supabase.from("paystack_transactions")
+        .select("payment_id, rental_id, currency").eq("reference", refundRef).maybeSingle();
+      if (tx?.payment_id) {
+        await applyRefund(supabase, {
+          paymentId: tx.payment_id,
+          provider: "paystack",
+          providerReference: refundRef,
+          amount: evt?.data?.amount ? Number(evt.data.amount) / 100 : null,
+          reason: evt?.data?.merchant_note ?? "refund processed",
+        });
+        await notifyPush(tx.payment_id, tx.rental_id ?? null, "refunded", undefined, tx.currency ?? undefined, refundRef);
+      }
+    }
+  } else if (evt.event === "charge.dispute.create" || evt.event === "charge.dispute.remind") {
+    const disputeRef: string | undefined =
+      evt?.data?.transaction?.reference ?? evt?.data?.transaction_reference;
+    if (disputeRef) {
+      const { data: tx } = await supabase.from("paystack_transactions")
+        .select("payment_id, rental_id, currency").eq("reference", disputeRef).maybeSingle();
+      if (tx?.payment_id) {
+        await applyDispute(supabase, {
+          paymentId: tx.payment_id,
+          provider: "paystack",
+          providerReference: disputeRef,
+          reason: evt?.data?.category ?? "chargeback opened",
+        });
+        await notifyPush(tx.payment_id, tx.rental_id ?? null, "disputed", undefined, tx.currency ?? undefined, disputeRef);
+      }
+    }
+
   } else if (evt.event === "transfer.success" || evt.event === "transfer.failed") {
     const ref = evt?.data?.reference ?? evt?.data?.transfer_code;
     if (ref) {
@@ -116,7 +161,16 @@ Deno.serve(async (req) => {
           raw_payload: evt.data,
         }).eq("transfer_reference", ref).select("id, owner_id, amount, currency").maybeSingle();
 
+      if (payoutRow?.id) {
+        await transitionState(
+          supabase, "payout", payoutRow.id,
+          success ? "completed" : "failed",
+          success ? "paystack transfer.success" : (evt.data.reason ?? "transfer failed"),
+        );
+      }
+
       if (payoutRow?.owner_id) {
+
         const res = await postLedgerEntry(supabase, {
           userId: payoutRow.owner_id,
           accountType: "owner",
