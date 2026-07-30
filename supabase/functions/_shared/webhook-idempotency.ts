@@ -14,6 +14,8 @@
 //
 // deno-lint-ignore-file no-explicit-any
 
+import type { WebhookLogger } from "./webhook-logger.ts";
+
 export interface IdempotencyRecordInput {
   provider: "paystack" | "paypal" | "opay";
   eventType?: string | null;
@@ -24,6 +26,9 @@ export interface IdempotencyRecordInput {
   invoiceId?: string | null;
   receiptId?: string | null;
   payload: unknown;
+  /** Trace key shared by this delivery and every side effect it triggers. */
+  correlationId?: string | null;
+  logger?: WebhookLogger;
 }
 
 export interface IdempotencyResult {
