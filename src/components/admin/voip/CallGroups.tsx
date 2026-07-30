@@ -190,7 +190,7 @@ export const CallGroups = ({ groups, onCreateGroup, onDeleteGroup, isLoading }: 
                       <PhoneNumberInput
                         value={memberPhone.startsWith('+') ? memberPhone : ''}
                         onChange={setMemberPhone}
-                        defaultCountry={memberRegion === 'Nigeria' ? 'NG' : 'US'}
+                        defaultCountry={regionToDefaultCountry(memberRegion)}
                         placeholder="Phone"
                       />
                     </div>
