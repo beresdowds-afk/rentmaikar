@@ -158,17 +158,11 @@ export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerifi
       if (error) throw error;
 
       if (data.success) {
-        const parsed = parsePhoneNumberFromString(phoneNumber);
-        if (user && parsed?.isValid()) {
-          await supabase
-            .from('profiles')
-            .update({
-              phone: parsed.number,
-              phone_verified: true,
-            })
-            .eq('user_id', user.id);
-        }
+        // The verify-phone edge function already persists the normalized E.164
+        // number and flips phone_verified — writing it again from the client is
+        // blocked by RLS/column guards and silently masked verification errors.
         setIsPhoneVerified(true);
+
         setShowOTPDialog(false);
         setOtpValue('');
         toast.success('Phone number verified successfully!');
