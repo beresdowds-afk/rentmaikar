@@ -49,6 +49,8 @@ import { installDeepLinkListener } from '@/lib/push';
 import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
 import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
+import PageSkeleton from '@/components/PageSkeleton';
+
 import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
 import { SubscriptionGate } from '@/components/subscriptions/SubscriptionGate';
 import { PortalGate } from '@/components/onboarding/PortalGate';
