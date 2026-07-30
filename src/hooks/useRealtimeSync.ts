@@ -117,7 +117,7 @@ export function useRealtimeSync(enabled: boolean = true) {
       bc?.close();
       bc = null;
     };
-  }, [enabled, qc]);
+  }, [enabled, qc, country, play]);
 }
 
 /** Ask every other open window/tab (and installed PWA instance) to refresh. */
