@@ -89,7 +89,9 @@ const EMPTY_PERMS: Record<PermissionKey, boolean> = {
 
 export function AdminAssistantManagement() {
   const [assistants, setAssistants] = useState<AssistantRow[]>([]);
-  const [candidateUsers, setCandidateUsers] = useState<Array<{ user_id: string; email: string | null; full_name: string | null }>>([]);
+  const [candidateUsers, setCandidateUsers] = useState<Array<{ user_id: string; email: string | null; full_name: string | null; hasRole?: boolean }>>([]);
+  const [candidateSearch, setCandidateSearch] = useState('');
+
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AssistantRow | null>(null);
