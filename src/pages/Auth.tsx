@@ -208,8 +208,33 @@ const Auth = () => {
   };
 
   const handleSignup = async (data: SignupFormData) => {
-    setIsSubmitting(true);
-    setError(null);
+  // Prevent duplicate submissions
+  if (isSubmitting) return;
+
+  setIsSubmitting(true);
+  setError(null);
+
+  try {
+    // TODO:
+    // 1. Validate data if needed
+    // 2. Call signUp(...)
+    // 3. Initialize onboarding/profile
+    // 4. Route user based on onboarding status
+
+  } catch (err) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : "Unable to create your account. Please try again.";
+
+    setError(message);
+
+    // Optional: log to your monitoring service
+    console.error("Signup failed:", err);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
     const { error } = await signUp(data.email, data.password, data.fullName, data.role);
 
@@ -231,8 +256,35 @@ const Auth = () => {
   };
 
   const handleForgotPassword = async (data: ForgotPasswordFormData) => {
-    setIsSubmitting(true);
+  if (isSubmitting) return;
+
+  const email = data.email.trim().toLowerCase();
+
+  if (!email) {
+    setError("Please enter your email address.");
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  try {
     setError(null);
+
+    // Call your authentication provider here.
+    // await resetPassword(email);
+
+    setResetEmailSent(true);
+
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Unable to send password reset email. Please try again."
+    );
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
     const normalized = data.email.trim().toLowerCase();
 
