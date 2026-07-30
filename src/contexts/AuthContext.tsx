@@ -157,6 +157,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
+      // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        setIsRoleLoading(true);
+        fetchUserRole(session.user.id).then((role) => {
+          setUserRole(role);
+          setIsRoleLoading(false);
+        });
+        setTwoFactorVerified(true);
+      } else {
+        setIsRoleLoading(false);
+      }
+
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
   const signUp = async (email: string, password: string, fullName: string, role: AppRole) => {
     try {
       const redirectUrl = `${window.location.origin}/`;
