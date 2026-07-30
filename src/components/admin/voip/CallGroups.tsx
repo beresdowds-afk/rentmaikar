@@ -29,6 +29,8 @@ interface CallGroupsProps {
 }
 
 export const CallGroups = ({ groups, onCreateGroup, onDeleteGroup, isLoading }: CallGroupsProps) => {
+  const { country: activeCountry } = useRegion();
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [groupName, setGroupName] = useState('');
