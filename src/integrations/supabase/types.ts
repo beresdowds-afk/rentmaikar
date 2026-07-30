@@ -9380,6 +9380,19 @@ export type Database = {
         }
         Returns: Json
       }
+      get_allowed_regions: {
+        Args: never
+        Returns: {
+          built_in: boolean
+          country_code: string
+          currency: string
+          currency_symbol: string
+          flag: string
+          label: string
+          phone_prefix: string
+          value: string
+        }[]
+      }
       get_ledger_balance: {
         Args: {
           _account_type: string
@@ -9447,6 +9460,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      is_allowed_region: { Args: { _country: string }; Returns: boolean }
       is_any_support_staff: { Args: { _user_id: string }; Returns: boolean }
       is_support_staff: {
         Args: {
@@ -9587,6 +9601,10 @@ export type Database = {
           _turns: Json
         }
         Returns: string
+      }
+      set_my_region: {
+        Args: { _country: string; _mode?: string }
+        Returns: Json
       }
       set_onboarding_last_visited: { Args: { _step: string }; Returns: Json }
       sign_legal_agreement: {
