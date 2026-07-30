@@ -138,6 +138,10 @@
     "vitest": "^4.1.10"
   },
   "overrides": {
-    "ws": "^8.21.1"
+    "ws": "^8.21.1",
+    "dompurify": "^3.4.12"
+  },
+  "resolutions": {
+    "dompurify": "^3.4.12"
   }
 }
