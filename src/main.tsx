@@ -27,10 +27,6 @@ if (!root) {
   );
 }
 
-
-import ErrorBoundary from "./components/errors/ErrorBoundary";
-
-
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
 
