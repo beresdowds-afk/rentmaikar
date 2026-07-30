@@ -67,9 +67,12 @@ export function trackTourEvent(
     /* ignore */
   }
 
-  // Persist to DB (fire-and-forget). Never throw.
+  // Persist to DB (fire-and-forget) for signed-in users only.
+  // Anonymous inserts are rejected server-side to prevent event spoofing.
   try {
     void supabase.auth.getUser().then(({ data }) => {
+      const userId = data.user?.id;
+      if (!userId) return;
       void supabase.from("tour_analytics_events").insert({
         event_type: event,
         tour_name: payload.tour,
@@ -77,7 +80,7 @@ export function trackTourEvent(
         step_id: payload.stepId ?? null,
         step_index: payload.stepIndex ?? null,
         total_steps: payload.totalSteps ?? null,
-        user_id: data.user?.id ?? null,
+        user_id: userId,
         extra: (payload.extra ?? {}) as never,
       });
     });
