@@ -28,20 +28,20 @@ if (!root) {
 }
 
 
-createRoot(root).render(
+import ErrorBoundary from "./components/ErrorBoundary";
 
-<React.StrictMode>
 
-<ErrorBoundary>
+createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
 
-<App />
+    <ErrorBoundary>
 
-</ErrorBoundary>
+      <App />
 
-</React.StrictMode>
+    </ErrorBoundary>
 
+  </React.StrictMode>
 );
-
 
 // Register service worker
 registerPWA();
