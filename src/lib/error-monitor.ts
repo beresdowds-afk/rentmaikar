@@ -5,6 +5,8 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { isAutomationMode } from "@/lib/test-mode";
+
 
 export type ErrorSeverity = "low" | "medium" | "high" | "critical";
 
