@@ -19,19 +19,20 @@ import { useRealtimeSound, shouldChime } from "@/hooks/useRealtimeSound";
  * Only tables that were added to `supabase_realtime` in the accompanying
  * migration will emit events. Silent no-op otherwise.
  */
-const TABLES: Array<{ table: string; keys: string[] }> = [
+/** `alert: true` marks a table whose changes are worth an audible cue. */
+const TABLES: Array<{ table: string; keys: string[]; alert?: boolean }> = [
   { table: "driver_proxy_billing_accounts", keys: ["proxy-billing", "proxy-accounts"] },
   { table: "proxy_billing_audit_log", keys: ["proxy-audit"] },
   { table: "push_devices", keys: ["push-devices"] },
-  { table: "inbox_messages", keys: ["inbox", "inbox-messages"] },
+  { table: "inbox_messages", keys: ["inbox", "inbox-messages"], alert: true },
   { table: "inbox_conversations", keys: ["inbox", "inbox-conversations"] },
   { table: "unified_message_log", keys: ["unified-messages"] },
-  { table: "invoices", keys: ["invoices", "billing"] },
+  { table: "invoices", keys: ["invoices", "billing"], alert: true },
   { table: "receipts", keys: ["receipts", "billing"] },
-  { table: "payments", keys: ["payments", "billing"] },
+  { table: "payments", keys: ["payments", "billing"], alert: true },
   { table: "rentals", keys: ["rentals"] },
   { table: "legal_agreements", keys: ["legal-agreements", "agreements"] },
-  { table: "vehicle_incidents", keys: ["vehicle-incidents", "incidents"] },
+  { table: "vehicle_incidents", keys: ["vehicle-incidents", "incidents"], alert: true },
   { table: "region_definitions", keys: ["allowed-regions", "regions"] },
   { table: "contact_settings", keys: ["contact-settings", "regions"] },
   { table: "platform_company_info", keys: ["company-info", "regions"] },
@@ -46,6 +47,8 @@ const HEARTBEAT_MS = 60_000;
 
 export function useRealtimeSync(enabled: boolean = true) {
   const qc = useQueryClient();
+  const { country } = useRegion();
+  const { play } = useRealtimeSound();
 
   useEffect(() => {
     if (!enabled) return;
@@ -63,17 +66,21 @@ export function useRealtimeSync(enabled: boolean = true) {
 
     // 1. Realtime subscription
     const channel = supabase.channel("global-sync");
-    for (const { table, keys } of TABLES) {
+    for (const { table, keys, alert } of TABLES) {
       channel.on(
         "postgres_changes" as never,
         { event: "*", schema: "public", table },
         () => {
           lastEventAt = Date.now();
           invalidate(keys);
+          // Audible cue only for meaningful tables, and only when the user
+          // opted in for the active region (see sound-settings defaults).
+          if (alert && shouldChime(country)) play();
         },
       );
     }
     channel.subscribe();
+
 
     // 2. Resume paths — an installed PWA regains focus / connectivity.
     const onVisible = () => {
