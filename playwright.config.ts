@@ -5,7 +5,10 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 60_000,
-  fullyParallel: true,
+  fullyParallel: false,
+  // The single Vite dev server is the bottleneck; parallel workers cause
+  // spurious timeouts, so run serially.
+  workers: 1,
   reporter: [["list"]],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:8080",
