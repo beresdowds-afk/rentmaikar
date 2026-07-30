@@ -1,17 +1,57 @@
-// App-shell PWA disabled. A kill-switch service worker at /sw.js evicts any
-// previously installed Workbox registration for returning visitors. The
-// separate push-sw.js (web-push messaging) is untouched.
+// src/pwa/register.ts
+//
+// Registers the cleanup service worker in production only.
+// The cleanup worker removes obsolete caches left behind by previous
+// Workbox/PWA deployments, then unregisters itself.
+//
+// It NEVER forces a page reload. Instead it notifies React when cleanup
+// finishes so the application can decide whether and when to refresh.
+
+const CLEANUP_SW = "/sw.js";
 
 export async function registerPWA(): Promise<void> {
   if (typeof window === "undefined") return;
+
   if (!("serviceWorker" in navigator)) return;
 
+  if (!import.meta.env.PROD) {
+    console.info("[PWA] Development mode - service worker disabled.");
+    return;
+  }
+
   try {
-    // Register the same /sw.js path browsers already have cached. The new
-    // worker's activate handler wipes its own Workbox caches and then calls
-    // self.registration.unregister(), so it self-destructs after one cycle.
-    await navigator.serviceWorker.register("/sw.js");
-  } catch {
-    /* ignore — nothing to clean up */
+    const registration = await navigator.serviceWorker.register(CLEANUP_SW, {
+      updateViaCache: "none",
+    });
+
+    console.info("[PWA] Cleanup service worker registered.");
+
+    registration.addEventListener("updatefound", () => {
+      console.info("[PWA] Cleanup worker update detected.");
+    });
+
+    navigator.serviceWorker.addEventListener("message", (event) => {
+      if (!event.data) return;
+
+      switch (event.data.type) {
+        case "CACHE_CLEANUP_COMPLETE":
+          console.info("[PWA] Cache cleanup complete.");
+          break;
+
+        case "CACHE_CLEANUP_FAILED":
+          console.error("[PWA] Cache cleanup failed.", event.data.error);
+          break;
+
+        default:
+          break;
+      }
+    });
+
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      console.info("[PWA] Service worker controller changed.");
+    });
+
+  } catch (err) {
+    console.error("[PWA] Registration failed.", err);
   }
 }
