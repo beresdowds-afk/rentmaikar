@@ -114,15 +114,32 @@ const queryClient = new QueryClient();
 const PageLoader = () => <PageSkeleton />;
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <RegionProvider>
-        <AppLiveSync />
-        <UserTypeProvider>
-          <TooltipProvider>
+  <ErrorBoundary>
+<BrowserRouter>
+<QueryClientProvider>
+<AuthProvider>
+<RegionProvider>
+<UserTypeProvider>
+<TooltipProvider>
+<AppLiveSync />
+<Routes />
+</TooltipProvider>
+</UserTypeProvider>
+</RegionProvider>
+</AuthProvider>
+</QueryClientProvider>
+</BrowserRouter>
+
+</ErrorBoundary>
+  
             <Toaster />
             <Sonner />
             <BrowserRouter>
+           <AuthProvider>
+              <AppLiveSync />
+            </AuthProvider> 
+             </BrowserRouter>
+            
               <MetaPixelRouteTracker />
               <NativeDeepLinkBridge />
               <DocumentExpiryInAppNotifier />
@@ -132,7 +149,6 @@ const App = () => (
               <CookieConsent />
               <MessageConsent />
               <AudioPermissionPrimer />
-              <ErrorBoundary>
                 <Suspense fallback={<PageLoader />}>
                   <main id="main-content">
                   <Routes>
