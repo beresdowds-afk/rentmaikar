@@ -116,25 +116,20 @@ export function AlternativeAuthOptions({ defaultRole = 'driver' as Role }) {
         </Button>
       </div>
 
-      {googleError && (
-        <div
-          role="alert"
-          className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive space-y-2"
-          data-testid="google-sso-error"
-        >
-          <p>{googleError}</p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleGoogle}
-            disabled={googleLoading}
-          >
-            {googleLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-            Retry Google sign-in
-          </Button>
+      {googleFailure && (
+        <div data-testid="google-sso-error" role="alert">
+          <VerificationFailureCard
+            failure={googleFailure}
+            busy={googleLoading}
+            onAction={
+              googleFailure.action === 'use_password_login' || googleFailure.action === 'contact_support'
+                ? undefined
+                : handleGoogle
+            }
+          />
         </div>
       )}
+
 
       <PhoneOtpDialog open={phoneOpen} onOpenChange={setPhoneOpen} defaultRole={defaultRole} />
     </div>
