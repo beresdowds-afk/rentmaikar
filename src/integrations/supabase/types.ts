@@ -9062,6 +9062,7 @@ export type Database = {
         Args: { _email: string }
         Returns: boolean
       }
+      normalize_country_label: { Args: { _v: string }; Returns: string }
       onboarding_diagnostics: { Args: never; Returns: Json }
       purge_expired_elevenlabs_test_logs: {
         Args: never
