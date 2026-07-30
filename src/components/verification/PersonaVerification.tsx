@@ -362,6 +362,18 @@ export default function PersonaVerification({
         </div>
       )}
 
+      {failure && (
+        <VerificationFailureCard
+          failure={failure}
+          busy={loading}
+          onAction={
+            failure.action === "contact_support" || failure.action === "wait_for_review"
+              ? undefined
+              : () => { void launchInquiry(lastFields ?? {}); }
+          }
+        />
+      )}
+
       <Button
         onClick={start}
         disabled={loading || (requiresDriversLicense && !dlDocId)}
@@ -370,6 +382,7 @@ export default function PersonaVerification({
         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
         {buttonLabel ?? "Verify identity with Persona"}
       </Button>
+
       <PersonaFieldsFallbackDialog
         open={fallbackOpen}
         onOpenChange={setFallbackOpen}
