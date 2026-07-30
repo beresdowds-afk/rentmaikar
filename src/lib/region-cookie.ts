@@ -22,8 +22,11 @@ export const getStoredCountry = (): Country | null => {
   const fromLocal =
     isBrowser() ? window.localStorage.getItem(COUNTRY_COOKIE) : null;
   const fromCookie = readCookie(COUNTRY_COOKIE);
-  const value = fromLocal || fromCookie;
-  return value === "USA" || value === "Nigeria" ? value : null;
+  const value = (fromLocal || fromCookie || "").trim();
+  // Any non-empty country name is accepted: built-ins plus every region
+  // produced by the Region Builder. Validation against the live region list
+  // happens in RegionProvider.
+  return value.length > 0 && value.length <= 64 ? (value as Country) : null;
 };
 
 export const getStoredMode = (): RegionMode | null => {
