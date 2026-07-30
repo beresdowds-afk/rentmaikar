@@ -11,7 +11,7 @@ import { Loader2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useResendCooldown } from '@/hooks/useResendCooldown';
 import VerificationFailureCard from '@/components/verification/VerificationFailureCard';
-import { classifyVerificationFailure, type ClassifiedFailure } from '@/lib/verification-failures';
+import type { ClassifiedFailure } from '@/lib/verification-failures';
 import { getCorrelationId, logVerificationEvent, reportVerificationFailure } from '@/lib/verification-logger';
 import { runPreflight } from '@/lib/verification-preflight';
 
