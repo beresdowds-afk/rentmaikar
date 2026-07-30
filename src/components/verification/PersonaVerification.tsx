@@ -120,18 +120,47 @@ export default function PersonaVerification({
 
   async function launchInquiry(finalFields: Record<string, string>) {
     setLoading(true);
+    setFailure(null);
+    const correlationId = newCorrelationId();
+    setLastFields(finalFields);
     try {
-      const { data, error } = await supabase.functions.invoke("persona-create-inquiry", {
-        body: {
-          subject_type: subject,
-          subject_role: subjectRole,
-          subject_ref: subjectRef,
-          region: country,
-          fields: finalFields,
-          drivers_license_document_id: requiresDriversLicense ? dlDocId : undefined,
-        },
+      // Device/browser pre-flight: catch denied cameras, blocked storage and
+      // offline devices before burning a Persona inquiry.
+      const preflight = await runPreflight({ requireCamera: true, skipClockCheck: true });
+      if (!preflight.ok) {
+        const blocker = preflight.blocking[0];
+        const classified = { ...blocker, raw: blocker.detail ?? blocker.code, correlationId };
+        setFailure(classified);
+        await logVerificationEvent({
+          stage: "identity", step: "preflight", outcome: "failed",
+          provider: "persona", failure: classified, correlationId,
+        });
+        setLoading(false);
+        return;
+      }
+
+      await logVerificationEvent({
+        stage: "identity", step: "create_inquiry", outcome: "started", provider: "persona",
+        correlationId, context: { subject, subjectRole, region: country },
       });
-      if (error) throw error;
+
+      // Transient provider/network failures retry automatically with backoff.
+      const data = await withRetry(async () => {
+        const { data, error } = await supabase.functions.invoke("persona-create-inquiry", {
+          body: {
+            subject_type: subject,
+            subject_role: subjectRole,
+            subject_ref: subjectRef,
+            region: country,
+            fields: finalFields,
+            correlation_id: correlationId,
+            drivers_license_document_id: requiresDriversLicense ? dlDocId : undefined,
+          },
+          headers: { "x-correlation-id": correlationId },
+        });
+        if (error) throw error;
+        return data;
+      }, { stage: "identity", step: "create_inquiry", provider: "persona", correlationId });
 
       if (data?.provider_configured === false) {
         toast.info("Verification queued — provider will be enabled soon");
@@ -144,6 +173,14 @@ export default function PersonaVerification({
       const envId: string | null = data?.environment_id ?? null;
       const hostedUrl: string | undefined = data?.hosted_url;
 
+      // Persist a resume marker so a refresh / closed tab / backgrounded app
+      // continues the same inquiry instead of restarting from scratch.
+      saveVerificationSession({
+        inquiryId, sessionToken, environmentId: envId, hostedUrl: hostedUrl ?? null,
+        subjectRole: subjectRole ?? null, region: country ?? null,
+        correlationId, startedAt: new Date().toISOString(), lastStep: "created",
+      });
+
       const Persona = await loadPersonaSdk().catch(() => null);
       if (Persona && inquiryId) {
         const client = new Persona.Client({
@@ -153,13 +190,29 @@ export default function PersonaVerification({
           onReady: () => client.open(),
           onComplete: ({ inquiryId: id, status }: any) => {
             setDone(true);
+            clearVerificationSession();
+            void logVerificationEvent({
+              stage: "identity", step: "inquiry_complete", outcome: "succeeded",
+              provider: "persona", correlationId, context: { inquiry_id: id ?? inquiryId, status },
+            });
             toast.success(`Verification submitted (${status})`);
             onComplete?.(id ?? inquiryId);
           },
-          onCancel: () => toast.info("Verification cancelled"),
+          onCancel: () => {
+            const classified = classifyVerificationFailure("user_cancelled", { correlationId });
+            setFailure(classified);
+            void logVerificationEvent({
+              stage: "identity", step: "inquiry_cancelled", outcome: "failed",
+              provider: "persona", failure: classified, correlationId,
+            });
+          },
           onError: (e: any) => {
-            console.error("[persona]", e);
-            toast.error("Verification error — opening hosted flow");
+            const classified = classifyVerificationFailure(e, { correlationId });
+            setFailure(classified);
+            void logVerificationEvent({
+              stage: "identity", step: "sdk_error", outcome: "failed",
+              provider: "persona", failure: classified, correlationId,
+            });
             if (hostedUrl) window.open(hostedUrl, "_blank", "noopener,noreferrer");
           },
         });
@@ -169,11 +222,15 @@ export default function PersonaVerification({
         onComplete?.(inquiryId);
       }
     } catch (e: any) {
-      toast.error(e?.message ?? "Could not start verification");
+      const classified = e?.failure ?? (await reportVerificationFailure(e, {
+        stage: "identity", step: "create_inquiry", provider: "persona", correlationId,
+      }));
+      setFailure(classified);
     } finally {
       setLoading(false);
     }
   }
+
 
   async function notifyPending(phone: string | undefined, channels: { sms: boolean; whatsapp: boolean }) {
     if (!phone || (!channels.sms && !channels.whatsapp)) return;
