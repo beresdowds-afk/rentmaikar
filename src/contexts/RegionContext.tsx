@@ -282,35 +282,20 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const { data, error } = await supabase
-        .from("region_definitions")
-        .select("country_name, country_code, currency, currency_symbol, phone_prefix, flag_emoji, status")
-        .in("status", ["ready", "published"]);
+      // Authoritative list comes from the server-side allow-list RPC so the
+      // client can never invent a region that admins have not published.
+      const { data, error } = await supabase.rpc("get_allowed_regions");
       if (cancelled) return;
       if (error || !data) {
+        // Offline / RPC failure → keep whatever the cache gave us (or the
+        // built-ins) instead of blanking the picker.
         setRegionsLoading(false);
         return;
       }
-      const mapped: RegionOption[] = (data as Array<Record<string, unknown>>)
-        .map((row) => ({
-          value: String(row.country_name ?? "").trim(),
-          label: String(row.country_name ?? "").trim(),
-          flag: String(row.flag_emoji ?? "🌍"),
-          countryCode: String(row.country_code ?? "").toUpperCase(),
-          currency: String(row.currency ?? "USD").toUpperCase(),
-          currencySymbol: String(row.currency_symbol ?? "$"),
-          phonePrefix: String(row.phone_prefix ?? ""),
-          builtIn: false,
-        }))
-        .filter(
-          (r) =>
-            r.value.length > 0 &&
-            !BUILTIN_REGION_OPTIONS.some(
-              (b) => b.value.toLowerCase() === r.value.toLowerCase() ||
-                b.countryCode === r.countryCode,
-            ),
-        );
-      setBuilderRegions(mapped);
+      const mapped = mapAllowedRegionRows(data as unknown as AllowedRegionRow[]);
+      const merged = mergeRegions(mapped.filter((r) => !r.builtIn));
+      setBuilderRegions(merged.filter((r) => !r.builtIn));
+      writeRegionCache(merged);
       setRegionsLoading(false);
     };
     load();
@@ -322,16 +307,25 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
         () => load(),
       )
       .subscribe();
+    // Realtime can be delayed or unavailable (offline PWA); revalidate on
+    // resume and on a slow poll so the list self-heals.
+    const onResume = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onResume);
+    window.addEventListener("online", onResume);
+    const poll = window.setInterval(load, 10 * 60 * 1000);
     return () => {
       cancelled = true;
       supabase.removeChannel(channel);
+      document.removeEventListener("visibilitychange", onResume);
+      window.removeEventListener("online", onResume);
+      window.clearInterval(poll);
     };
   }, []);
 
-  const availableRegions: RegionOption[] = [
-    ...BUILTIN_REGION_OPTIONS,
-    ...builderRegions.sort((a, b) => a.label.localeCompare(b.label)),
-  ];
+  const availableRegions: RegionOption[] = mergeRegions(builderRegions);
+
 
   // Load region-specific WhatsApp / SMS / email from the admin-managed
   // "Regional Contact Channels" table. Falls back to base regionConfig when
