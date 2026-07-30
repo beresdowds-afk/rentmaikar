@@ -3272,6 +3272,90 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_state_events: {
+        Row: {
+          actor: string | null
+          actor_kind: string
+          attempt: number
+          created_at: string
+          entity: string
+          entity_id: string
+          from_state: string | null
+          id: string
+          metadata: Json
+          provider: string | null
+          provider_reference: string | null
+          reason: string | null
+          to_state: string
+          user_id: string | null
+        }
+        Insert: {
+          actor?: string | null
+          actor_kind?: string
+          attempt?: number
+          created_at?: string
+          entity: string
+          entity_id: string
+          from_state?: string | null
+          id?: string
+          metadata?: Json
+          provider?: string | null
+          provider_reference?: string | null
+          reason?: string | null
+          to_state: string
+          user_id?: string | null
+        }
+        Update: {
+          actor?: string | null
+          actor_kind?: string
+          attempt?: number
+          created_at?: string
+          entity?: string
+          entity_id?: string
+          from_state?: string | null
+          id?: string
+          metadata?: Json
+          provider?: string | null
+          provider_reference?: string | null
+          reason?: string | null
+          to_state?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      payment_state_transitions: {
+        Row: {
+          created_at: string
+          description: string | null
+          entity: string
+          from_state: string
+          id: string
+          is_terminal: boolean
+          requires_admin: boolean
+          to_state: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          entity: string
+          from_state: string
+          id?: string
+          is_terminal?: boolean
+          requires_admin?: boolean
+          to_state: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          entity?: string
+          from_state?: string
+          id?: string
+          is_terminal?: boolean
+          requires_admin?: boolean
+          to_state?: string
+        }
+        Relationships: []
+      }
       payment_webhook_events: {
         Row: {
           created_at: string
@@ -8793,6 +8877,84 @@ export type Database = {
         }
         Relationships: []
       }
+      withdrawal_authorizations: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          consumed_at: string | null
+          consumed_reference: string | null
+          created_at: string
+          currency: string
+          decision_reason: string | null
+          destination_ref: string | null
+          device_fingerprint: string | null
+          expires_at: string
+          id: string
+          ip_address: string | null
+          metadata: Json
+          request_type: string
+          requested_by: string
+          requires_dual_auth: boolean
+          risk_flags: string[]
+          risk_score: number
+          status: string
+          subject_user_id: string
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          consumed_at?: string | null
+          consumed_reference?: string | null
+          created_at?: string
+          currency: string
+          decision_reason?: string | null
+          destination_ref?: string | null
+          device_fingerprint?: string | null
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          request_type: string
+          requested_by: string
+          requires_dual_auth?: boolean
+          risk_flags?: string[]
+          risk_score?: number
+          status?: string
+          subject_user_id: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          consumed_at?: string | null
+          consumed_reference?: string | null
+          created_at?: string
+          currency?: string
+          decision_reason?: string | null
+          destination_ref?: string | null
+          device_fingerprint?: string | null
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          request_type?: string
+          requested_by?: string
+          requires_dual_auth?: boolean
+          risk_flags?: string[]
+          risk_score?: number
+          status?: string
+          subject_user_id?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       billing_reconciliation_view: {
@@ -8874,6 +9036,10 @@ export type Database = {
         Args: { _period_end: string; _period_start: string; _rental_id: string }
         Returns: Json
       }
+      admin_list_withdrawal_authorizations: {
+        Args: { _limit?: number; _status?: string }
+        Returns: Json
+      }
       admin_provision_rental_from_negotiation: {
         Args: {
           _end_date: string
@@ -8883,6 +9049,10 @@ export type Database = {
           _return_location?: string
           _start_date: string
         }
+        Returns: Json
+      }
+      admin_reconcile_payment_ledger: {
+        Args: { _owner_share_pct?: number; _payment_id: string }
         Returns: Json
       }
       admin_release_security_deposit: {
@@ -9005,6 +9175,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_scan_ledger_mismatches: {
+        Args: { _limit?: number; _owner_share_pct?: number; _since?: string }
+        Returns: Json
+      }
       admin_search_persona_users: {
         Args: { _limit?: number; _query?: string; _status?: string }
         Returns: {
@@ -9084,6 +9258,14 @@ export type Database = {
           provider: string
           reason: string
         }[]
+      }
+      consume_withdrawal_authorization: {
+        Args: { _id: string; _reference?: string }
+        Returns: Json
+      }
+      decide_withdrawal_authorization: {
+        Args: { _decision: string; _id: string; _reason?: string }
+        Returns: Json
       }
       driver_request_rental_extension: {
         Args: { _rental_id: string }
@@ -9188,6 +9370,25 @@ export type Database = {
         Args: { _account_type: string; _currency: string; _user_id: string }
         Returns: string
       }
+      evaluate_withdrawal_risk: {
+        Args: {
+          _amount: number
+          _currency: string
+          _device_fingerprint?: string
+          _request_type?: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      get_ledger_balance: {
+        Args: {
+          _account_type: string
+          _currency: string
+          _include_pending?: boolean
+          _user_id: string
+        }
+        Returns: number
+      }
       get_linked_user_ids: {
         Args: { _user_id: string }
         Returns: {
@@ -9255,6 +9456,10 @@ export type Database = {
         Returns: boolean
       }
       is_valid_e164: { Args: { p: string }; Returns: boolean }
+      is_valid_payment_transition: {
+        Args: { _entity: string; _from: string; _to: string }
+        Returns: boolean
+      }
       log_admin_action: {
         Args: {
           _action: string
@@ -9347,6 +9552,19 @@ export type Database = {
       reject_application: {
         Args: { _app_id: string; _notes?: string; _reason: string }
         Returns: undefined
+      }
+      request_withdrawal_authorization: {
+        Args: {
+          _amount: number
+          _currency: string
+          _destination_ref?: string
+          _device_fingerprint?: string
+          _metadata?: Json
+          _request_type: string
+          _subject_user_id?: string
+          _user_agent?: string
+        }
+        Returns: Json
       }
       reverse_wallet_entry: {
         Args: { _entry_id: string; _reason?: string }
@@ -9507,6 +9725,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      transition_payment_state: {
+        Args: {
+          _entity: string
+          _entity_id: string
+          _metadata?: Json
+          _reason?: string
+          _to_state: string
+        }
+        Returns: Json
       }
       update_proxy_notification_prefs: {
         Args: { _prefs: Json; _proxy_id: string; _token?: string }

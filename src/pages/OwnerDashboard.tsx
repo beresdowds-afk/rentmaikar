@@ -75,6 +75,8 @@ import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
 import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
 import PageSkeleton from '@/components/PageSkeleton';
+import { WithdrawalAuthorizationGate } from '@/components/payments/WithdrawalAuthorizationGate';
+
 
 
 const VEHICLE_CATEGORY_DEFS = [
@@ -272,9 +274,21 @@ export default function OwnerDashboard() {
                         Management fee (20%) has already been deducted.
                       </AlertDescription>
                     </Alert>
-                    <Button onClick={handleWithdraw} className="w-full">
-                      Request Withdrawal
-                    </Button>
+                    <WithdrawalAuthorizationGate
+                      requestType="owner_payout"
+                      amount={parseFloat(withdrawAmount) || 0}
+                      currency={currency as 'USD' | 'NGN'}
+                      destinationRef={selectedVehicle}
+                      disabled={!selectedVehicle}
+                      metadata={{ vehicle_id: selectedVehicle }}
+                    >
+                      {() => (
+                        <Button onClick={handleWithdraw} className="w-full">
+                          Request Withdrawal
+                        </Button>
+                      )}
+                    </WithdrawalAuthorizationGate>
+
                   </div>
                 </DialogContent>
               </Dialog>
