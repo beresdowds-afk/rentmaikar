@@ -560,6 +560,8 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
         config,
         availableRegions,
         regionsLoading,
+        regionSync,
+        refreshRegions,
       }}
     >
       {children}
