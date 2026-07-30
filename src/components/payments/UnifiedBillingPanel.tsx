@@ -194,21 +194,29 @@ export function UnifiedBillingPanel({ userId, role, country }: Props) {
             </DialogDescription>
           </DialogHeader>
           {payTarget && (
-            <PaymentMethodPicker
-              country={country}
+            <PaymentPreflightGate
+              operation={role === "driver" ? "driver_payment" : "owner_payout"}
               amount={Number(Number(payTarget.total_amount).toFixed(2))}
-              rentalId={payTarget.rental_id ?? undefined}
-              vehicleId={payTarget.vehicle_id ?? undefined}
-              driverId={role === "driver" ? userId : payTarget.driver_id ?? undefined}
-              description={`Invoice ${payTarget.invoice_number} · ${labelFor(payTarget.invoice_type)}`}
-              onSuccess={() => {
-                toast.success("Payment received. Receipt will arrive shortly.");
-                setPayTarget(null);
-                setTimeout(load, 1500);
-              }}
-              onError={() => setPayTarget(null)}
-            />
+              currency={payTarget.currency ?? undefined}
+              context={{ invoice_id: payTarget.id, invoice_type: payTarget.invoice_type }}
+            >
+              <PaymentMethodPicker
+                country={country}
+                amount={Number(Number(payTarget.total_amount).toFixed(2))}
+                rentalId={payTarget.rental_id ?? undefined}
+                vehicleId={payTarget.vehicle_id ?? undefined}
+                driverId={role === "driver" ? userId : payTarget.driver_id ?? undefined}
+                description={`Invoice ${payTarget.invoice_number} · ${labelFor(payTarget.invoice_type)}`}
+                onSuccess={() => {
+                  toast.success("Payment received. Receipt will arrive shortly.");
+                  setPayTarget(null);
+                  setTimeout(load, 1500);
+                }}
+                onError={() => setPayTarget(null)}
+              />
+            </PaymentPreflightGate>
           )}
+
         </DialogContent>
       </Dialog>
     </>
