@@ -175,7 +175,7 @@ export const CallDialer = ({ onInitiateCall, groups, isLoading }: CallDialerProp
                   id="phone"
                   value={phoneNumber}
                   onChange={setPhoneNumber}
-                  defaultCountry={region === 'Nigeria' ? 'NG' : 'US'}
+                  defaultCountry={regionToDefaultCountry(region)}
                   placeholder="Enter phone number"
                 />
               </div>
