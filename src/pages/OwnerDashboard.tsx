@@ -146,7 +146,9 @@ export default function OwnerDashboard() {
     setIsAddVehicleOpen(false);
   };
 
-  const handleWithdraw = () => {
+  const [withdrawing, setWithdrawing] = useState(false);
+
+  const handleWithdraw = async (authorizationId: string) => {
     const amount = parseFloat(withdrawAmount);
     if (!selectedVehicle) {
       toast.error('Please select a vehicle');
@@ -156,18 +158,58 @@ export default function OwnerDashboard() {
       toast.error('Please enter a valid amount');
       return;
     }
-    
-    const vehicle = dbVehicles.find(v => v.id === selectedVehicle);
-    if (vehicle && amount > availableBalance) {
+    if (amount > availableBalance) {
       toast.error('Insufficient available balance');
       return;
     }
 
-    toast.success(`Withdrawal of ${formatCurrency(amount, currency)} initiated!`);
-    setIsWithdrawOpen(false);
-    setWithdrawAmount('');
-    setSelectedVehicle(null);
+    setWithdrawing(true);
+    try {
+      // Pick the owner's default payout account for this currency.
+      const { data: account, error: accountError } = await supabase
+        .from('owner_payout_accounts')
+        .select('id, provider, currency')
+        .eq('owner_id', user?.id ?? '')
+        .eq('currency', currency)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (accountError) throw accountError;
+      if (!account) {
+        toast.error('Add a payout account before requesting a withdrawal.');
+        return;
+      }
+
+      const fnName = account.provider === 'paypal'
+        ? 'initiate-paypal-payout'
+        : 'initiate-paystack-transfer';
+
+      const { data, error } = await supabase.functions.invoke(fnName, {
+        body: {
+          amount,
+          payoutAccountId: account.id,
+          authorizationId,
+          note: 'RentMaikar owner withdrawal',
+          reason: 'RentMaikar owner withdrawal',
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(String(data.error));
+
+      toast.success(`Withdrawal of ${formatCurrency(amount, currency)} submitted for processing.`);
+      setIsWithdrawOpen(false);
+      setWithdrawAmount('');
+      setSelectedVehicle(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Withdrawal failed');
+    } finally {
+      setWithdrawing(false);
+    }
   };
+
 
   const authGate = useDashboardAuthGate({ allowedRoles: ['owner'], label: 'Owner Dashboard' });
   const { data: progress, isLoading: progressLoading } = useRegistrationProgress();
