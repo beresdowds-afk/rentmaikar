@@ -300,22 +300,28 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      // Authoritative list comes from the server-side allow-list RPC so the
-      // client can never invent a region that admins have not published.
-      const { data, error } = await supabase.rpc("get_allowed_regions");
-      if (cancelled) return;
-      if (error || !data) {
-        // Offline / RPC failure → keep whatever the cache gave us (or the
-        // built-ins) instead of blanking the picker.
-        setRegionsLoading(false);
-        return;
+      try {
+        // Authoritative list comes from the server-side allow-list RPC so the
+        // client can never invent a region that admins have not published.
+        const { data, error } = await supabase.rpc("get_allowed_regions");
+        if (cancelled) return;
+        if (error || !data) {
+          // Offline / RPC failure → keep whatever the cache gave us (or the
+          // built-ins) instead of blanking the picker.
+          setRegionsLoading(false);
+          return;
+        }
+        const mapped = mapAllowedRegionRows(data as unknown as AllowedRegionRow[]);
+        const merged = mergeRegions(mapped.filter((r) => !r.builtIn));
+        setBuilderRegions(merged.filter((r) => !r.builtIn));
+        writeRegionCache(merged);
+      } catch {
+        // Network down or RPC unavailable — cached/built-in regions stand.
+      } finally {
+        if (!cancelled) setRegionsLoading(false);
       }
-      const mapped = mapAllowedRegionRows(data as unknown as AllowedRegionRow[]);
-      const merged = mergeRegions(mapped.filter((r) => !r.builtIn));
-      setBuilderRegions(merged.filter((r) => !r.builtIn));
-      writeRegionCache(merged);
-      setRegionsLoading(false);
     };
+
     load();
     const channel = supabase
       .channel("region_definitions_available")
