@@ -31,15 +31,31 @@ export function PaymentMethodPicker({
   country, amount, rentalId, vehicleId, driverId, paymentFrequency, description,
   onSuccess, onError, preferredPSP,
 }: PaymentMethodPickerProps) {
-  const psps = getCheckoutPSPs(country);
-  const currency = getRegionCurrency(country);
   const cc = resolveCountryCode(country);
+  const currency = getRegionCurrency(country);
+  // Opay is Nigeria-only; never offer a tab we don't render content for.
+  const psps = useMemo(
+    () => getCheckoutPSPs(country).filter((p) => p !== "opay" || cc === "NG"),
+    [country, cc],
+  );
+
   // Auto-select with graceful fallback: if the caller's preferred PSP isn't
   // supported in this region (e.g. PayPal outside the US, Paystack in the US),
   // fall back to the first regionally-supported provider and surface why.
   const preferredUnavailable = !!preferredPSP && !psps.includes(preferredPSP);
   const defaultPSP: CheckoutPSP | undefined =
     preferredPSP && psps.includes(preferredPSP) ? preferredPSP : psps[0];
+
+  // Controlled selection. Previously the Tabs were uncontrolled with a
+  // `key={defaultPSP}` remount hack, so an async country/PSP resolution wiped
+  // the user's pick — and an undefined `defaultValue` left every tab blank.
+  const [selected, setSelected] = useState<CheckoutPSP | undefined>(defaultPSP);
+  useEffect(() => {
+    setSelected((current) =>
+      current && psps.includes(current) ? current : defaultPSP,
+    );
+  }, [psps, defaultPSP]);
+
 
   if (psps.length === 0) {
     return (
