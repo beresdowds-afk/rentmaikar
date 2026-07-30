@@ -115,8 +115,8 @@ const PageLoader = () => <PageSkeleton />;
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <AppLiveSync />
       <RegionProvider>
+        <AppLiveSync />
         <UserTypeProvider>
           <TooltipProvider>
             <Toaster />
