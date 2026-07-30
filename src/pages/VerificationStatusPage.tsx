@@ -151,10 +151,50 @@ export default function VerificationStatusPage() {
     }
   }, [data?.is_verified, returnTo, navigate]);
 
+  const { session, canResume, clear: clearSession } = useVerificationResume();
+  const [reconciling, setReconciling] = useState(false);
+
+  // Translate the provider's flagged checks into actionable guidance.
+  const failures = useMemo(
+    () => classifyPersonaMismatches(data?.latest_inquiry?.mismatch_fields ?? null),
+    [data?.latest_inquiry?.mismatch_fields],
+  );
+
+  /** Re-reads status from the provider — recovers from missed webhooks. */
+  const reconcile = async () => {
+    setReconciling(true);
+    try {
+      const { data: res, error } = await supabase.functions.invoke('persona-reconcile', {
+        body: { inquiry_id: session?.inquiryId ?? undefined, limit: 10 },
+      });
+      if (error) throw error;
+      await refetch();
+      toast.success(
+        res?.updated ? 'Status updated from the provider' : 'Your status is already up to date',
+      );
+    } catch {
+      toast.error('Could not reach the verification provider', {
+        description: 'Try again in a moment — your progress is saved.',
+      });
+    } finally {
+      setReconciling(false);
+    }
+  };
+
+  /** Reopens the interrupted hosted session rather than restarting. */
+  const resumeSession = () => {
+    if (session?.hostedUrl) {
+      window.open(session.hostedUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      toast.info('Continue below to pick up your verification.');
+    }
+  };
+
   if (!user) return <PageSkeleton />;
   if (isLoading || !data) return <PageSkeleton />;
 
   const steps = stepsFor(current);
+
   const badge = STATUS_BADGE[current];
   const mismatches = data.latest_inquiry?.mismatch_fields ?? null;
 
