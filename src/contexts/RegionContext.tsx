@@ -156,9 +156,14 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
     if (!resolved) return;
     setCountryState(resolved.value);
     persistCountry(resolved.value);
-    void supabase.rpc("set_my_region", { _country: resolved.value }).then(({ error }) => {
-      if (error) console.warn("[region] server rejected region change:", error.message);
-    });
+    try {
+      void supabase.rpc("set_my_region", { _country: resolved.value }).then(({ error }) => {
+        if (error) console.warn("[region] server rejected region change:", error.message);
+      });
+    } catch {
+      // Offline: the local preference stands and re-syncs on next login.
+    }
+
   };
 
 
