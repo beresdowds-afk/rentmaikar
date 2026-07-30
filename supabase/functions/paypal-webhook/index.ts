@@ -12,6 +12,11 @@ import {
   applyRefund,
   applyDispute,
 } from "../_shared/webhook-idempotency.ts";
+import {
+  createWebhookLogger,
+  deriveCorrelationId,
+  correlationHeaders,
+} from "../_shared/webhook-logger.ts";
 import { postRentalPaymentLedger } from "../_shared/wallet-ledger.ts";
 
 
@@ -80,6 +85,8 @@ Deno.serve(async (req) => {
   // Idempotent event log — duplicate deliveries with the same PayPal event id
   // short-circuit with 200 so PayPal stops retrying.
   const idem = await recordWebhookEvent(supabase, {
+    logger,
+    correlationId: logger.ctx.correlationId,
     provider: "paypal",
     eventType: eventType ?? null,
     externalEventId: externalId ?? null,
@@ -109,8 +116,8 @@ Deno.serve(async (req) => {
       const { data: tx } = await supabase.from("paypal_transactions")
         .select("payment_id, rental_id, amount, currency").eq("order_id", orderId).maybeSingle();
       if (tx?.payment_id) {
-        await transitionState(supabase, "payment", tx.payment_id, "captured", eventType);
-        await transitionState(supabase, "payment", tx.payment_id, "settled", "paypal capture settled");
+        await transitionState(supabase, "payment", tx.payment_id, "captured", eventType, {}, logger);
+        await transitionState(supabase, "payment", tx.payment_id, "settled", "paypal capture settled", {}, logger);
         const { alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id);
         await recordPaymentInLedger(supabase, tx.payment_id, "paypal", orderId);
         if (!alreadyCompleted) {
@@ -135,7 +142,7 @@ Deno.serve(async (req) => {
       const { data: tx } = await supabase.from("paypal_transactions")
         .select("payment_id").eq("order_id", orderId).maybeSingle();
       if (tx?.payment_id) {
-        await transitionState(supabase, "payment", tx.payment_id, "failed", eventType);
+        await transitionState(supabase, "payment", tx.payment_id, "failed", eventType, {}, logger);
         // Never overwrite a completed payment via a later denial event.
         await supabase.from("payments").update({
           status: "failed", failure_reason: eventType,
@@ -152,6 +159,7 @@ Deno.serve(async (req) => {
       if (tx?.payment_id) {
         // Shared handler: state transition + full ledger reversal.
         await applyRefund(supabase, {
+          logger,
           paymentId: tx.payment_id,
           provider: "paypal",
           providerReference: orderId,
@@ -173,6 +181,7 @@ Deno.serve(async (req) => {
         .select("payment_id").or(`order_id.eq.${captureId},capture_id.eq.${captureId}`).maybeSingle();
       if (tx?.payment_id) {
         await applyDispute(supabase, {
+          logger,
           paymentId: tx.payment_id,
           provider: "paypal",
           providerReference: captureId,

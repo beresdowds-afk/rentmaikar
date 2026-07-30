@@ -11,6 +11,11 @@ import {
   applyRefund,
   applyDispute,
 } from "../_shared/webhook-idempotency.ts";
+import {
+  createWebhookLogger,
+  deriveCorrelationId,
+  correlationHeaders,
+} from "../_shared/webhook-logger.ts";
 
 import { postRentalPaymentLedger, postLedgerEntry } from "../_shared/wallet-ledger.ts";
 
@@ -53,6 +58,8 @@ Deno.serve(async (req) => {
 
   // Idempotent event log — duplicate delivery returns 200 without side effects.
   const idem = await recordWebhookEvent(supabase, {
+    logger,
+    correlationId: logger.ctx.correlationId,
     provider: "paystack",
     eventType: evt.event,
     externalEventId,
@@ -80,8 +87,8 @@ Deno.serve(async (req) => {
     if (tx?.payment_id) {
       // Drive the state machine to captured → settled before flipping the
       // legacy status column, so the audit trail records every hop.
-      await transitionState(supabase, "payment", tx.payment_id, "captured", "paystack charge.success");
-      await transitionState(supabase, "payment", tx.payment_id, "settled", "paystack settlement");
+      await transitionState(supabase, "payment", tx.payment_id, "captured", "paystack charge.success", {}, logger);
+      await transitionState(supabase, "payment", tx.payment_id, "settled", "paystack settlement", {}, logger);
       const { alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id);
       await recordPaymentInLedger(supabase, tx.payment_id, "paystack", reference);
       await notifyPush(tx.payment_id, tx.rental_id ?? null, "completed", tx.amount ? Number(tx.amount) / 100 : undefined, tx.currency ?? undefined, reference);
@@ -108,7 +115,7 @@ Deno.serve(async (req) => {
     const { data: tx } = await supabase.from("paystack_transactions")
       .select("payment_id, amount, currency, rental_id").eq("reference", reference).maybeSingle();
     if (tx?.payment_id) {
-      await transitionState(supabase, "payment", tx.payment_id, "failed", evt.data.gateway_response ?? "failed");
+      await transitionState(supabase, "payment", tx.payment_id, "failed", evt.data.gateway_response ?? "failed", {}, logger);
       await supabase.from("payments").update({
         status: "failed", failure_reason: evt.data.gateway_response ?? "failed",
       }).eq("id", tx.payment_id).neq("status", "completed");
@@ -123,6 +130,7 @@ Deno.serve(async (req) => {
         .select("payment_id, rental_id, currency").eq("reference", refundRef).maybeSingle();
       if (tx?.payment_id) {
         await applyRefund(supabase, {
+          logger,
           paymentId: tx.payment_id,
           provider: "paystack",
           providerReference: refundRef,
@@ -140,6 +148,7 @@ Deno.serve(async (req) => {
         .select("payment_id, rental_id, currency").eq("reference", disputeRef).maybeSingle();
       if (tx?.payment_id) {
         await applyDispute(supabase, {
+          logger,
           paymentId: tx.payment_id,
           provider: "paystack",
           providerReference: disputeRef,
