@@ -28,23 +28,6 @@ const AppLiveSync = () => {
   return null;
 };
 
-// Native deep-link bridge: mounted inside <BrowserRouter> so it can navigate.
-const NativeDeepLinkBridge = () => {
-  const navigate = useNavigate();
-  useEffect(() => {
-    let cleanup = () => {};
-    installOnboardingDeepLinkListener((p) => navigate(p)).then((fn) => {
-      cleanup = fn;
-    });
-    return () => cleanup();
-  }, [navigate]);
-  return null;
-};
-import LiveAnnouncer from "@/components/LiveAnnouncer";
-import MetaPixelRouteTracker from "@/components/MetaPixelRouteTracker";
-import DocumentExpiryInAppNotifier from "@/components/notifications/DocumentExpiryInAppNotifier";
-import AudioPermissionPrimer from "@/components/AudioPermissionPrimer";
-
 // Lazy-loaded pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
