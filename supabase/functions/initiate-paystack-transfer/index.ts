@@ -2,6 +2,8 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
+import { claimIdempotencyKey, completeIdempotencyKey, duplicateResponse, resolveIdempotencyKey } from "../_shared/payment-idempotency.ts";
+import { postLedgerEntry } from "../_shared/wallet-ledger.ts";
 
 const BodySchema = z.object({
   amount: z.number().positive(),
@@ -26,9 +28,17 @@ Deno.serve(async (req) => {
     const owner = u?.user;
     if (!owner) return json({ error: "Unauthenticated" }, 401);
 
-    const parsed = BodySchema.safeParse(await req.json());
+    const rawBody = await req.json();
+    const parsed = BodySchema.safeParse(rawBody);
     if (!parsed.success) return json({ error: parsed.error.flatten() }, 400);
     const b = parsed.data;
+
+    // Request-level idempotency: the same key can never trigger two transfers.
+    const idemKey = resolveIdempotencyKey(req, rawBody ?? {});
+    const claim = await claimIdempotencyKey(supabase, idemKey, "payout.paystack", owner.id, {
+      amount: b.amount, payoutAccountId: b.payoutAccountId,
+    });
+    if (!claim.claimed) return duplicateResponse(claim, corsHeaders);
 
     const { data: acc } = await supabase.from("owner_payout_accounts")
       .select("*").eq("id", b.payoutAccountId).eq("owner_id", owner.id).maybeSingle();
@@ -73,7 +83,10 @@ Deno.serve(async (req) => {
       }),
     });
     const body = await resp.json();
-    if (!resp.ok || !body?.status) return json({ error: body?.message ?? "transfer failed" }, 502);
+    if (!resp.ok || !body?.status) {
+      await completeIdempotencyKey(supabase, idemKey, "failed");
+      return json({ error: body?.message ?? "transfer failed" }, 502);
+    }
 
     const { data: payout } = await supabase.from("owner_payouts").insert({
       owner_id: owner.id, payout_account_id: acc.id, provider: "paystack",
@@ -83,6 +96,28 @@ Deno.serve(async (req) => {
       initiated_by: "owner", raw_payload: body.data,
     }).select("*").maybeSingle();
 
+    // Ledger: reserve the payout against the owner wallet immediately; the
+    // webhook flips it to settled or reverses it on failure.
+    if (payout?.id) {
+      const led = await postLedgerEntry(supabase, {
+        userId: owner.id,
+        accountType: "owner",
+        currency: acc.currency,
+        direction: "debit",
+        amount: b.amount,
+        entryType: "payout",
+        idempotencyKey: `payout:${payout.id}:requested`,
+        referenceTable: "owner_payouts",
+        referenceId: payout.id,
+        provider: "paystack",
+        providerReference: reference,
+        description: "Owner payout requested",
+        status: "pending",
+      });
+      if (!led.ok) console.error("[initiate-paystack-transfer] ledger error:", led.error);
+    }
+
+    await completeIdempotencyKey(supabase, idemKey, "succeeded", { payout });
     return json({ payout });
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : "unknown" }, 500);

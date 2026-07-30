@@ -2,6 +2,8 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
+import { claimIdempotencyKey, completeIdempotencyKey, duplicateResponse, resolveIdempotencyKey } from "../_shared/payment-idempotency.ts";
+import { postLedgerEntry } from "../_shared/wallet-ledger.ts";
 
 const BodySchema = z.object({
   amount: z.number().positive(),
@@ -28,9 +30,16 @@ Deno.serve(async (req) => {
     const owner = u?.user;
     if (!owner) return json({ error: "Unauthenticated" }, 401);
 
-    const parsed = BodySchema.safeParse(await req.json());
+    const rawBody = await req.json();
+    const parsed = BodySchema.safeParse(rawBody);
     if (!parsed.success) return json({ error: parsed.error.flatten() }, 400);
     const b = parsed.data;
+
+    const idemKey = resolveIdempotencyKey(req, rawBody ?? {});
+    const claim = await claimIdempotencyKey(supabase, idemKey, "payout.paypal", owner.id, {
+      amount: b.amount, payoutAccountId: b.payoutAccountId,
+    });
+    if (!claim.claimed) return duplicateResponse(claim, corsHeaders);
 
     const { data: acc } = await supabase.from("owner_payout_accounts")
       .select("*").eq("id", b.payoutAccountId).eq("owner_id", owner.id).maybeSingle();
@@ -93,7 +102,10 @@ Deno.serve(async (req) => {
       }),
     });
     const payoutBody = await payoutResp.json();
-    if (!payoutResp.ok) return json({ error: payoutBody?.message ?? "payout failed", raw: payoutBody }, 502);
+    if (!payoutResp.ok) {
+      await completeIdempotencyKey(supabase, idemKey, "failed");
+      return json({ error: payoutBody?.message ?? "payout failed", raw: payoutBody }, 502);
+    }
 
     const batchStatus = payoutBody?.batch_header?.batch_status ?? "PENDING";
     const status = batchStatus === "SUCCESS" ? "completed"
@@ -107,6 +119,26 @@ Deno.serve(async (req) => {
       initiated_by: "owner", raw_payload: payoutBody,
     }).select("*").maybeSingle();
 
+    if (payout?.id) {
+      const led = await postLedgerEntry(supabase, {
+        userId: owner.id,
+        accountType: "owner",
+        currency: "USD",
+        direction: "debit",
+        amount: b.amount,
+        entryType: "payout",
+        idempotencyKey: `payout:${payout.id}:requested`,
+        referenceTable: "owner_payouts",
+        referenceId: payout.id,
+        provider: "paypal",
+        providerReference: reference,
+        description: "Owner payout requested",
+        status: status === "completed" ? "posted" : "pending",
+      });
+      if (!led.ok) console.error("[initiate-paypal-payout] ledger error:", led.error);
+    }
+
+    await completeIdempotencyKey(supabase, idemKey, "succeeded", { payout });
     return json({ payout });
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : "unknown" }, 500);
