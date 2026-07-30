@@ -82,6 +82,15 @@ Deno.serve(async (req) => {
   const resource = evt.resource ?? {};
   const orderId: string | undefined = resource.supplementary_data?.related_ids?.order_id ?? resource.id;
 
+  const logger = createWebhookLogger({
+    provider: "paypal",
+    correlationId: deriveCorrelationId(req, "paypal", externalId),
+    eventType: eventType ?? null,
+    externalEventId: externalId ?? null,
+    reference: orderId ?? null,
+  });
+  logger.info("received", { signature_valid: signatureValid });
+
   // Idempotent event log — duplicate deliveries with the same PayPal event id
   // short-circuit with 200 so PayPal stops retrying.
   const idem = await recordWebhookEvent(supabase, {
@@ -96,13 +105,15 @@ Deno.serve(async (req) => {
   });
   if (idem.duplicate) {
     return new Response(JSON.stringify({ received: true, duplicate: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, ...correlationHeaders(logger), "Content-Type": "application/json" },
     });
   }
 
   if (!signatureValid) {
+    logger.warn("signature.invalid");
     return new Response(JSON.stringify({ received: true, verified: false }), {
-      status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 202,
+      headers: { ...corsHeaders, ...correlationHeaders(logger), "Content-Type": "application/json" },
     });
   }
 
@@ -192,9 +203,11 @@ Deno.serve(async (req) => {
   }
 
 
-  return new Response(JSON.stringify({ received: true, event: eventType, amount: amountValue }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  logger.info("completed", { duration_ms: logger.elapsedMs() });
+  return new Response(
+    JSON.stringify({ received: true, event: eventType, amount: amountValue, correlation_id: logger.ctx.correlationId }),
+    { headers: { ...corsHeaders, ...correlationHeaders(logger), "Content-Type": "application/json" } },
+  );
 });
 
 /** Mirror a completed payment into the wallet ledger. Never throws. */
