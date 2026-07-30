@@ -1,12 +1,17 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, Clock, AlertTriangle, XCircle, ShieldCheck, RefreshCw, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, XCircle, ShieldCheck, RefreshCw, Loader2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import PageSkeleton from '@/components/PageSkeleton';
 import PersonaVerification from '@/components/verification/PersonaVerification';
+import VerificationFailureCard from '@/components/verification/VerificationFailureCard';
+import { classifyPersonaMismatches } from '@/lib/verification-failures';
+import { useVerificationResume } from '@/hooks/useVerificationResume';
+import { supabase } from '@/integrations/supabase/client';
 import { useIdentityVerification, type PersonaStatus, type PersonaTimelineEntry } from '@/hooks/useIdentityVerification';
 import { useAuth } from '@/contexts/AuthContext';
 
