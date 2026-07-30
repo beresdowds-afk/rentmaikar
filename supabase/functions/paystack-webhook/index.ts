@@ -108,11 +108,47 @@ Deno.serve(async (req) => {
     const { data: tx } = await supabase.from("paystack_transactions")
       .select("payment_id, amount, currency, rental_id").eq("reference", reference).maybeSingle();
     if (tx?.payment_id) {
+      await transitionState(supabase, "payment", tx.payment_id, "failed", evt.data.gateway_response ?? "failed");
       await supabase.from("payments").update({
         status: "failed", failure_reason: evt.data.gateway_response ?? "failed",
       }).eq("id", tx.payment_id).neq("status", "completed");
       await notifyPush(tx.payment_id, tx.rental_id ?? null, "failed", tx.amount ? Number(tx.amount) / 100 : undefined, tx.currency ?? undefined, reference);
     }
+  } else if (evt.event === "refund.processed" || evt.event === "refund.failed") {
+    // Paystack refunds carry the original transaction reference.
+    const refundRef: string | undefined =
+      evt?.data?.transaction_reference ?? evt?.data?.transaction?.reference ?? reference;
+    if (refundRef && evt.event === "refund.processed") {
+      const { data: tx } = await supabase.from("paystack_transactions")
+        .select("payment_id, rental_id, currency").eq("reference", refundRef).maybeSingle();
+      if (tx?.payment_id) {
+        await applyRefund(supabase, {
+          paymentId: tx.payment_id,
+          provider: "paystack",
+          providerReference: refundRef,
+          amount: evt?.data?.amount ? Number(evt.data.amount) / 100 : null,
+          reason: evt?.data?.merchant_note ?? "refund processed",
+        });
+        await notifyPush(tx.payment_id, tx.rental_id ?? null, "refunded", undefined, tx.currency ?? undefined, refundRef);
+      }
+    }
+  } else if (evt.event === "charge.dispute.create" || evt.event === "charge.dispute.remind") {
+    const disputeRef: string | undefined =
+      evt?.data?.transaction?.reference ?? evt?.data?.transaction_reference;
+    if (disputeRef) {
+      const { data: tx } = await supabase.from("paystack_transactions")
+        .select("payment_id, rental_id, currency").eq("reference", disputeRef).maybeSingle();
+      if (tx?.payment_id) {
+        await applyDispute(supabase, {
+          paymentId: tx.payment_id,
+          provider: "paystack",
+          providerReference: disputeRef,
+          reason: evt?.data?.category ?? "chargeback opened",
+        });
+        await notifyPush(tx.payment_id, tx.rental_id ?? null, "disputed", undefined, tx.currency ?? undefined, disputeRef);
+      }
+    }
+
   } else if (evt.event === "transfer.success" || evt.event === "transfer.failed") {
     const ref = evt?.data?.reference ?? evt?.data?.transfer_code;
     if (ref) {
