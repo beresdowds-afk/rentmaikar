@@ -103,7 +103,8 @@ const regionConfig: Record<string, RegionConfig> = {
 
 // Built-in launch regions live in region-cache so both the cache layer and the
 // provider agree on the guaranteed-available baseline.
-export { BUILTIN_REGION_OPTIONS } from "@/lib/region-cache";
+export { BUILTIN_REGION_OPTIONS };
+
 
 
 
