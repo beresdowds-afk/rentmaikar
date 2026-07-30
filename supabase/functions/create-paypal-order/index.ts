@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { requireAuthenticatedUser } from "../_shared/auth-guards.ts";
 import { resolvePaymentContext } from "../_shared/resolve-payment-context.ts";
+import { claimIdempotencyKey, completeIdempotencyKey, duplicateResponse, resolveIdempotencyKey } from "../_shared/payment-idempotency.ts";
 
 const Body = z.object({
   amount: z.number().positive().max(1_000_000),
@@ -38,7 +39,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const parsed = Body.safeParse(await req.json());
+    const rawBody = await req.json();
+    const parsed = Body.safeParse(rawBody);
     if (!parsed.success) {
       return new Response(JSON.stringify({ error: parsed.error.flatten() }), {
         status: 400,
@@ -53,6 +55,16 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Service client used for idempotency bookkeeping and persistence.
+    const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Duplicate submissions must never create two PayPal orders.
+    const idemKey = resolveIdempotencyKey(req, rawBody ?? {});
+    const claim = await claimIdempotencyKey(supa, idemKey, "charge.paypal", userId, {
+      amount: data.amount, currency: data.currency, rental_id: data.rental_id, vehicle_id: data.vehicle_id,
+    });
+    if (!claim.claimed) return duplicateResponse(claim, corsHeaders);
 
     const base = getPayPalBase(mode);
     const tokenRes = await fetch(`${base}/v1/oauth2/token`, {
@@ -101,8 +113,6 @@ Deno.serve(async (req) => {
       throw new Error(`PayPal order error ${orderRes.status}: ${JSON.stringify(order)}`);
     }
 
-    // Persist order intent using the service role client.
-    const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     // Driver identity ALWAYS from JWT — reject spoofed values.
     if (data.driver_id && data.driver_id !== userId) {
       return new Response(JSON.stringify({ error: "driver_id does not match authenticated user" }), {
@@ -146,6 +156,7 @@ Deno.serve(async (req) => {
 
     if (paymentError || !payment?.id) {
       console.error("[create-paypal-order] payment insert error:", paymentError);
+      await completeIdempotencyKey(supa, idemKey, "failed");
       return new Response(JSON.stringify({ error: "Failed to record payment" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -169,6 +180,14 @@ Deno.serve(async (req) => {
     if (txError) {
       console.error("[create-paypal-order] paypal transaction insert error:", txError);
     }
+
+    const successBody = {
+      order_id: order.id,
+      payment_id: payment?.id ?? null,
+      // deno-lint-ignore no-explicit-any
+      approve_url: order.links?.find((l: any) => l.rel === "approve")?.href ?? null,
+    };
+    await completeIdempotencyKey(supa, idemKey, "succeeded", successBody);
 
     return new Response(
       JSON.stringify({
