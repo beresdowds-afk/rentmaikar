@@ -1,21 +1,47 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
+
 import App from "./App.tsx";
 import "./index.css";
+
 import { initErrorMonitoring } from "./lib/error-monitor";
 import { registerPWA } from "./pwa/register";
+
 import "./services";
 import "./plugins";
 
-// Initialize error monitoring before rendering
+import ErrorBoundary from "./components/errors/ErrorBoundary";
+
+
+// Initialize monitoring before React starts
 initErrorMonitoring();
 
-createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
+
+const root =
+document.getElementById("root");
+
+
+if (!root) {
+  throw new Error(
+    "Root element not found"
+  );
+}
+
+
+createRoot(root).render(
+
+<React.StrictMode>
+
+<ErrorBoundary>
+
+<App />
+
+</ErrorBoundary>
+
+</React.StrictMode>
+
 );
 
-// Register PWA service worker with continuous update polling (prod only)
-registerPWA();
 
+// Register service worker
+registerPWA();
