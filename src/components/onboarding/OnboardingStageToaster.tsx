@@ -1,7 +1,12 @@
-import { useOnboardingStageToasts } from '@/hooks/useOnboardingStageToasts';
+import { useOnboardingStageToasts } from "@/hooks/useOnboardingStageToasts";
 
-/** Mount once in the app tree (under AuthProvider). Fires congratulatory
- *  and failure-advice toasts whenever the user's registration stage changes. */
+/**
+ * Global onboarding stage notification bridge.
+ *
+ * Mount once beneath AuthProvider.
+ * Displays onboarding progress notifications.
+ * Notification failures must never interrupt application startup.
+ */
 export function OnboardingStageToaster() {
   useOnboardingStageToasts();
   return null;
