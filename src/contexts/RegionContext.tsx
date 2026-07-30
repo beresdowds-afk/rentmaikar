@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  ReactNode,
+} from "react";
 import { DollarSign } from "lucide-react";
 import { detectCountryFromIP, detectCountryFromTimezone } from "@/lib/ip-geolocation";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +16,7 @@ import {
   mapAllowedRegionRows,
   readRegionCache,
   writeRegionCache,
+  clearRegionCache,
   resolveRegion,
   type AllowedRegionRow,
 } from "@/lib/region-cache";
