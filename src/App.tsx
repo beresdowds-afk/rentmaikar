@@ -288,6 +288,22 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/stream"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'iot_support']}>
+                        <TelemetryStreamPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/stream"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'iot_support']}>
+                        <TelemetryStreamPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/treasury"
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
