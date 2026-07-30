@@ -47,16 +47,21 @@ type LoginFormData = z.infer<typeof loginSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
-const navigate = useNavigate();
-const location = useLocation();
+const Auth = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-const {
-  authState,
-  session,
-  profile,
-  permissions,
-  actions
-} = useAuth();
+  const {
+    user,
+    isLoading: authLoading,
+    userRole,
+    twoFactorVerified,
+    setTwoFactorVerified,
+    signUp,
+    signIn,
+    check2FAStatus,
+  } = useAuth();
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
@@ -214,33 +219,11 @@ const {
   };
 
   const handleSignup = async (data: SignupFormData) => {
-  // Prevent duplicate submissions
-  if (isSubmitting) return;
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
 
-  setIsSubmitting(true);
-  setError(null);
-
-  try {
-    // TODO:
-    // 1. Validate data if needed
-    // 2. Call signUp(...)
-    // 3. Initialize onboarding/profile
-    // 4. Route user based on onboarding status
-
-  } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Unable to create your account. Please try again.";
-
-    setError(message);
-
-    // Optional: log to your monitoring service
-    console.error("Signup failed:", err);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    setIsSubmitting(true);
+    setError(null);
 
     const { error } = await signUp(data.email, data.password, data.fullName, data.role);
 
@@ -262,37 +245,17 @@ const {
   };
 
   const handleForgotPassword = async (data: ForgotPasswordFormData) => {
-  if (isSubmitting) return;
-
-  const email = data.email.trim().toLowerCase();
-
-  if (!email) {
-    setError("Please enter your email address.");
-    return;
-  }
-
-  setIsSubmitting(true);
-
-  try {
-    setError(null);
-
-    // Call your authentication provider here.
-    // await resetPassword(email);
-
-    setResetEmailSent(true);
-
-  } catch (err) {
-    setError(
-      err instanceof Error
-        ? err.message
-        : "Unable to send password reset email. Please try again."
-    );
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    if (isSubmitting) return;
 
     const normalized = data.email.trim().toLowerCase();
+
+    if (!normalized) {
+      setError('Please enter your email address.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
 
     try {
       // Rate-limit reset requests: 3 per email per 15 minutes.
@@ -337,6 +300,7 @@ const {
 
     setIsSubmitting(false);
   };
+
 
 
   const handleBackToLogin = () => {
