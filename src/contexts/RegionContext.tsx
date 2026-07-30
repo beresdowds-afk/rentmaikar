@@ -102,6 +102,8 @@ export interface RegionSyncState {
   offline: boolean;
   /** A manual/automatic refresh is currently in flight. */
   refreshing: boolean;
+}
+
 
 
 // Base config (currency + phone prefix only). Contact channels — WhatsApp, SMS,
