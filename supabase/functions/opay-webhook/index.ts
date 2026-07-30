@@ -63,7 +63,9 @@ Deno.serve(async (req) => {
   }
 
   const status = opayStatus === "SUCCESS" ? "completed"
-    : (opayStatus === "FAIL" || opayStatus === "CLOSE") ? "failed" : "pending";
+    : (opayStatus === "FAIL" || opayStatus === "CLOSE") ? "failed"
+    : (opayStatus === "REFUND" || opayStatus === "REFUNDED") ? "refunded"
+    : "pending";
   const failure = status === "failed" ? evt?.payload?.failureReason ?? opayStatus : null;
 
   await supabase.from("opay_transactions").update({
@@ -75,13 +77,28 @@ Deno.serve(async (req) => {
   if (tx?.payment_id) {
     let alreadyCompleted = false;
     if (status === "completed") {
+      await transitionState(supabase, "payment", tx.payment_id, "captured", "opay SUCCESS");
+      await transitionState(supabase, "payment", tx.payment_id, "settled", "opay settlement");
       ({ alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id));
+    } else if (status === "refunded") {
+      // Shared handler: state transition + ledger reversal.
+      await applyRefund(supabase, {
+        paymentId: tx.payment_id,
+        provider: "opay",
+        providerReference: reference,
+        amount: tx.amount ? Number(tx.amount) : null,
+        reason: evt?.payload?.refundReason ?? "opay refund",
+      });
     } else {
+      if (status === "failed") {
+        await transitionState(supabase, "payment", tx.payment_id, "failed", failure ?? "opay failure");
+      }
       await supabase.from("payments").update({
         status, failure_reason: failure, processed_at: null,
       }).eq("id", tx.payment_id).neq("status", "completed");
     }
     await notifyPush(tx.payment_id, tx.rental_id ?? null, status, tx.amount ? Number(tx.amount) : undefined, tx.currency ?? undefined, reference);
+
     if (status === "completed" && !alreadyCompleted) {
       await withRetry("opay.receipt.email", async () => {
         const { error } = await supabase.functions.invoke("billing-portal", {
