@@ -344,6 +344,9 @@ export const ApplicationManagement = () => {
         </Card>
       </div>
 
+      {/* Recovery & recycle for rejected applications */}
+      <ApplicationRecoveryPanel />
+
       {/* Filters */}
       <Card>
         <CardHeader className="pb-3">
