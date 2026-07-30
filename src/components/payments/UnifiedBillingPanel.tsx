@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PaymentMethodPicker } from "@/components/payments/PaymentMethodPicker";
+import { PaymentPreflightGate } from "@/components/payments/PaymentPreflightGate";
+
 import { toast } from "sonner";
 import { FileText, Receipt, Download, Send, RefreshCw, CreditCard } from "lucide-react";
 
