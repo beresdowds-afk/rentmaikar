@@ -62,6 +62,12 @@ export const PAYMENT_CONFIG = {
   },
 } as const;
 
+/**
+ * Currency codes are open-ended: 'USD' and 'NGN' are the built-in launch
+ * currencies, every other code comes from a Region Builder region.
+ */
+export type CurrencyCode = 'USD' | 'NGN' | (string & {});
+
 export type PaymentMethod = 'paypal' | 'paystack' | 'bank_transfer';
 export type PaymentFrequency = 'daily' | 'weekly';
 
@@ -72,7 +78,7 @@ export interface PaymentBreakdown {
   managementFee: number;
   ownerPayout: number;
   platformEarnings: number;
-  currency: 'USD' | 'NGN';
+  currency: CurrencyCode;
   // Extended breakdown for daily payments
   dailyRate?: number;
   dailyFine?: number;
@@ -86,7 +92,7 @@ export interface PaymentTransaction {
   id: string;
   type: 'rental_payment' | 'owner_payout' | 'refund';
   amount: number;
-  currency: 'USD' | 'NGN';
+  currency: CurrencyCode;
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded';
   gateway: 'paypal' | 'paystack';
   gatewayTransactionId?: string;
@@ -106,7 +112,7 @@ export interface PaymentDefault {
   vehicleId: string;
   rentalId: string;
   amountDue: number;
-  currency: 'USD' | 'NGN';
+  currency: CurrencyCode;
   paymentFrequency: PaymentFrequency;
   hoursOverdue: number;
   notificationsSent: number;
@@ -121,7 +127,7 @@ export interface PaymentDefault {
  */
 export function calculatePaymentBreakdown(
   baseAmount: number,
-  currency: 'USD' | 'NGN',
+  currency: CurrencyCode,
   frequency: PaymentFrequency = 'weekly',
   downPaymentDays: number = PAYMENT_CONFIG.MINIMUM_DOWN_PAYMENT_DAYS
 ): PaymentBreakdown {
@@ -166,7 +172,7 @@ export function calculatePaymentBreakdown(
  */
 export function calculateDailyPaymentBreakdown(
   weeklyBaseAmount: number,
-  currency: 'USD' | 'NGN',
+  currency: CurrencyCode,
   days: number
 ): { dailyRate: number; fine: number; total: number; withAdminFee: number } {
   const dailyRate = weeklyBaseAmount / 7;
@@ -181,12 +187,22 @@ export function calculateDailyPaymentBreakdown(
 /**
  * Format currency amount for display
  */
-export function formatCurrency(amount: number, currency: 'USD' | 'NGN'): string {
-  const config = PAYMENT_CONFIG.CURRENCIES[currency];
-  return `${config.symbol}${amount.toLocaleString(undefined, {
-    minimumFractionDigits: config.decimals,
-    maximumFractionDigits: config.decimals,
-  })}`;
+export function formatCurrency(amount: number, currency: CurrencyCode): string {
+  const config = (PAYMENT_CONFIG.CURRENCIES as Record<string, { symbol: string; decimals: number } | undefined>)[
+    currency
+  ];
+  if (config) {
+    return `${config.symbol}${amount.toLocaleString(undefined, {
+      minimumFractionDigits: config.decimals,
+      maximumFractionDigits: config.decimals,
+    })}`;
+  }
+  // Region Builder currency without a hard-coded config — use Intl.
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency: String(currency) }).format(amount);
+  } catch {
+    return `${currency} ${amount.toLocaleString()}`;
+  }
 }
 
 /**
