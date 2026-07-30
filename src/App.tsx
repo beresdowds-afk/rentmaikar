@@ -77,6 +77,7 @@ const AdminInvoiceStatusPage = lazy(() => import("./pages/admin/AdminInvoiceStat
 const AdminRentalReconciliationPage = lazy(() => import("./pages/admin/AdminRentalReconciliationPage"));
 const AdminLedgerReconciliationPage = lazy(() => import("./pages/admin/AdminLedgerReconciliationPage"));
 const AdminDisputesPage = lazy(() => import("./pages/admin/AdminDisputesPage"));
+const TelemetryStreamPage = lazy(() => import("./pages/TelemetryStreamPage"));
 const AdminTreasuryPage = lazy(() => import("./pages/admin/AdminTreasuryPage"));
 
 const AdminDocumentExportAuditPage = lazy(() => import("./pages/admin/AdminDocumentExportAuditPage"));
