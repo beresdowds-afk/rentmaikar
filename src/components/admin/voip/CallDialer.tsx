@@ -11,6 +11,9 @@ import { Phone, Users, Plus, X, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { CallRegion, CallType, VoIPCallGroup } from '@/types/voip';
 import { COUNTRY_CODES, validatePhoneNumber, formatPhoneForDisplay } from '@/types/voip';
+import { useRegion } from '@/contexts/RegionContext';
+import { regionToDefaultCountry } from '@/hooks/useDefaultPhoneCountry';
+
 
 interface CallDialerProps {
   onInitiateCall: (
