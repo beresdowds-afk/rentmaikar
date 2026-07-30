@@ -38,7 +38,10 @@ export const CallGroups = ({ groups, onCreateGroup, onDeleteGroup, isLoading }: 
   const [groupRegion, setGroupRegion] = useState<'USA' | 'Nigeria' | 'All'>('All');
   const [memberPhone, setMemberPhone] = useState('');
   const [memberName, setMemberName] = useState('');
-  const [memberRegion, setMemberRegion] = useState<CallRegion>('USA');
+  const [memberRegion, setMemberRegion] = useState<CallRegion>(
+    (activeCountry === 'Nigeria' ? 'Nigeria' : 'USA') as CallRegion,
+  );
+
   const [members, setMembers] = useState<{ phoneNumber: string; displayName: string; region: CallRegion }[]>([]);
   const { toast } = useToast();
 
