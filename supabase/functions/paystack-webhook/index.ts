@@ -161,7 +161,16 @@ Deno.serve(async (req) => {
           raw_payload: evt.data,
         }).eq("transfer_reference", ref).select("id, owner_id, amount, currency").maybeSingle();
 
+      if (payoutRow?.id) {
+        await transitionState(
+          supabase, "payout", payoutRow.id,
+          success ? "completed" : "failed",
+          success ? "paystack transfer.success" : (evt.data.reason ?? "transfer failed"),
+        );
+      }
+
       if (payoutRow?.owner_id) {
+
         const res = await postLedgerEntry(supabase, {
           userId: payoutRow.owner_id,
           accountType: "owner",
