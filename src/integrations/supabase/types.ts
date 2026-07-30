@@ -623,6 +623,53 @@ export type Database = {
         }
         Relationships: []
       }
+      application_recovery_requests: {
+        Row: {
+          application_id: string
+          created_at: string
+          id: string
+          reason: string
+          requested_by: string | null
+          resolution_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          id?: string
+          reason: string
+          requested_by?: string | null
+          resolution_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          id?: string
+          reason?: string
+          requested_by?: string | null
+          resolution_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_recovery_requests_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       applications: {
         Row: {
           agreed_fees: boolean | null
@@ -646,6 +693,10 @@ export type Database = {
           last_name: string
           phone_country: string
           phone_number: string
+          recovered_from_application_id: string | null
+          recovery_eligible_at: string | null
+          recovery_status: string
+          recycle_count: number
           referee1_address: string | null
           referee1_name: string | null
           referee1_phone: string | null
@@ -696,6 +747,10 @@ export type Database = {
           last_name: string
           phone_country: string
           phone_number: string
+          recovered_from_application_id?: string | null
+          recovery_eligible_at?: string | null
+          recovery_status?: string
+          recycle_count?: number
           referee1_address?: string | null
           referee1_name?: string | null
           referee1_phone?: string | null
@@ -746,6 +801,10 @@ export type Database = {
           last_name?: string
           phone_country?: string
           phone_number?: string
+          recovered_from_application_id?: string | null
+          recovery_eligible_at?: string | null
+          recovery_status?: string
+          recycle_count?: number
           referee1_address?: string | null
           referee1_name?: string | null
           referee1_phone?: string | null
@@ -774,7 +833,15 @@ export type Database = {
           vehicle_year?: number | null
           zip_code?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "applications_recovered_from_application_id_fkey"
+            columns: ["recovered_from_application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       auth_event_log: {
         Row: {
@@ -9361,6 +9428,7 @@ export type Database = {
         Returns: string
       }
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
+      can_review_applications: { Args: never; Returns: boolean }
       check_auth_rate_limit: {
         Args: {
           _endpoint: string
@@ -9405,6 +9473,10 @@ export type Database = {
       decide_withdrawal_authorization: {
         Args: { _decision: string; _id: string; _reason?: string }
         Returns: Json
+      }
+      decline_application_recovery: {
+        Args: { _notes?: string; _request_id: string }
+        Returns: undefined
       }
       driver_request_rental_extension: {
         Args: { _rental_id: string }
@@ -9750,6 +9822,14 @@ export type Database = {
         }
         Returns: string
       }
+      recover_application: {
+        Args: { _app_id: string; _notes?: string }
+        Returns: undefined
+      }
+      recycle_application: {
+        Args: { _app_id: string; _notes?: string }
+        Returns: string
+      }
       register_push_device: {
         Args: { _device_label?: string; _platform: string; _token: string }
         Returns: string
@@ -9757,6 +9837,10 @@ export type Database = {
       reject_application: {
         Args: { _app_id: string; _notes?: string; _reason: string }
         Returns: undefined
+      }
+      request_application_recovery: {
+        Args: { _app_id: string; _reason: string }
+        Returns: string
       }
       request_withdrawal_authorization: {
         Args: {
