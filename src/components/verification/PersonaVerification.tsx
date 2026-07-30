@@ -74,6 +74,8 @@ export default function PersonaVerification({
   const [pendingFields, setPendingFields] = useState<Record<string, string>>({});
   const [dlDocId, setDlDocId] = useState<string | null>(null);
   const [dlChecking, setDlChecking] = useState(false);
+  const [failure, setFailure] = useState<ClassifiedFailure | null>(null);
+  const [lastFields, setLastFields] = useState<Record<string, string> | null>(null);
 
   // Drivers MUST present a driver's license in addition to any other
   // identity document. Owners and other roles can choose any accepted doc.
