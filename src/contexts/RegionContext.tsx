@@ -222,7 +222,7 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
           }
           setRegionModeState("manual");
           persistMode("manual");
-          if (locked === "USA" || locked === "Nigeria") {
+          if (locked) {
             setCountryState(locked);
             persistCountry(locked);
           }
@@ -234,10 +234,11 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
           setRegionModeState(rm);
           persistMode(rm);
         }
-        if (pc === "USA" || pc === "Nigeria") {
+        if (pc && String(pc).trim()) {
           setCountryState(pc);
           persistCountry(pc);
         }
+
       } catch {
         /* ignore */
       }
