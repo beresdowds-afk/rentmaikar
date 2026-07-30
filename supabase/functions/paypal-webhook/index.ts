@@ -8,8 +8,12 @@ import {
   recordWebhookEvent,
   markPaymentCompletedIdempotent,
   withRetry,
+  transitionState,
+  applyRefund,
+  applyDispute,
 } from "../_shared/webhook-idempotency.ts";
-import { postRentalPaymentLedger, postLedgerEntry } from "../_shared/wallet-ledger.ts";
+import { postRentalPaymentLedger } from "../_shared/wallet-ledger.ts";
+
 
 const PP_ENV = (Deno.env.get("PAYPAL_ENV") || "sandbox").toLowerCase();
 const PP_BASE = PP_ENV === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
