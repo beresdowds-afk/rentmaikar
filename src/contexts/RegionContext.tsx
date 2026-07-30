@@ -85,7 +85,23 @@ interface RegionContextType {
   /** Built-in regions + every Region Builder region that is ready/published. */
   availableRegions: RegionOption[];
   regionsLoading: boolean;
+  /** Freshness of the region list so the UI can flag cached/offline data. */
+  regionSync: RegionSyncState;
+  /** Force a re-fetch of the allowed-region list (bypasses the offline cache). */
+  refreshRegions: () => Promise<void>;
 }
+
+export interface RegionSyncState {
+  /** Where the currently rendered region list came from. */
+  source: "live" | "cache" | "builtin";
+  /** Epoch ms of the last successful server sync (null when never synced). */
+  lastSyncedAt: number | null;
+  /** Cache is older than the TTL, or the last refresh attempt failed. */
+  stale: boolean;
+  /** Browser reports no connectivity, or the last fetch failed while offline. */
+  offline: boolean;
+  /** A manual/automatic refresh is currently in flight. */
+  refreshing: boolean;
 
 
 // Base config (currency + phone prefix only). Contact channels — WhatsApp, SMS,
