@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { ensureMediaPermissions } from "@/lib/media-permissions";
+import { isAutomationMode } from "@/lib/test-mode";
 
 /**
  * Requests microphone/speaker access on the first user gesture so training
@@ -9,6 +10,10 @@ import { ensureMediaPermissions } from "@/lib/media-permissions";
  * until permission is granted. Once granted we stop listening. If the user
  * denies, we back off silently — feature-specific screens (training, calls)
  * will prompt again via ensureMediaPermissions when the user opts in.
+ *
+ * Skipped entirely in automated/headless sessions: `getUserMedia` never
+ * settles there and the retry-on-gesture listeners keep the main thread busy,
+ * which stalls `page.waitForLoadState` and screenshots in Playwright runs.
  */
 export default function AudioPermissionPrimer() {
   const grantedRef = useRef(false);
@@ -16,6 +21,8 @@ export default function AudioPermissionPrimer() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (isAutomationMode()) return;
+
 
     const tryGrant = async (silent: boolean) => {
       if (grantedRef.current || inFlightRef.current) return;
