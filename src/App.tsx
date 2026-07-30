@@ -454,10 +454,21 @@ const App = () => (
                     }
                   />
 
-
-
+                  {/* Legacy / alternate URL aliases — keep deep links working
+                      instead of dropping visitors on the 404 page. */}
+                  <Route path="/profile/settings" element={<Navigate to="/settings/profile" replace />} />
+                  <Route path="/profile" element={<Navigate to="/settings/profile" replace />} />
+                  <Route path="/settings" element={<Navigate to="/settings/profile" replace />} />
+                  <Route path="/login" element={<Navigate to="/auth" replace />} />
+                  <Route path="/signin" element={<Navigate to="/auth" replace />} />
+                  <Route path="/signup" element={<Navigate to="/auth" replace />} />
+                  <Route path="/register" element={<Navigate to="/driver/register" replace />} />
+                  <Route path="/dashboard" element={<OnboardingRedirect />} />
+                  <Route path="/catalogue" element={<Navigate to="/catalogue/standard" replace />} />
+                  <Route path="/forgot-password" element={<Navigate to="/auth?forgot=1" replace />} />
 
                   <Route path="*" element={<NotFound />} />
+
                   </Routes>
                   </main>
                 </Suspense>

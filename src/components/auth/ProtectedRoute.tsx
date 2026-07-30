@@ -46,10 +46,34 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
         </div>
       );
     }
-    // No role assigned — send home rather than trapping the user.
+    // No role resolved (not yet assigned, or the role lookup failed). Do NOT
+    // bounce back to the landing page — that looks like the app "logged you
+    // out" right after approval. Show an explicit state instead.
     if (userRole === null) {
-      return <Navigate to="/" replace />;
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+          <div className="max-w-md text-center space-y-3">
+            <h1 className="text-xl font-semibold">Your access is still being set up</h1>
+            <p className="text-sm text-muted-foreground">
+              We couldn’t confirm a role on your account yet. If your application was
+              just approved, refresh in a moment — otherwise contact support.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3 pt-2">
+              <button
+                onClick={() => window.location.reload()}
+                className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+              >
+                Refresh
+              </button>
+              <a href="/" className="rounded-md border px-4 py-2 text-sm">
+                Back to home
+              </a>
+            </div>
+          </div>
+        </div>
+      );
     }
+
     if (!allowedRoles.includes(userRole)) {
       return <Navigate to={ROLE_HOME[userRole] ?? '/'} replace />;
     }
