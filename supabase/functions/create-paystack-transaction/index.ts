@@ -136,6 +136,7 @@ Deno.serve(async (req) => {
 
     if (paymentError || !payment?.id) {
       console.error("[create-paystack-transaction] payment insert failed:", paymentError);
+      await completeIdempotencyKey(supabase, idemKey, "failed");
       return new Response(JSON.stringify({ error: "Failed to record payment" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -154,6 +155,14 @@ Deno.serve(async (req) => {
       payment_id: payment.id,
       raw_payload: pay.data,
     });
+
+    const successBody = {
+      reference,
+      access_code: pay.data.access_code,
+      authorization_url: pay.data.authorization_url,
+      payment_id: payment?.id,
+    };
+    await completeIdempotencyKey(supabase, idemKey, "succeeded", successBody);
 
     return new Response(
       JSON.stringify({
