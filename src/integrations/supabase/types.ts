@@ -3167,6 +3167,78 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_disputes: {
+        Row: {
+          amount: number | null
+          correlation_id: string | null
+          created_at: string
+          currency: string | null
+          id: string
+          metadata: Json
+          opened_at: string
+          payment_id: string
+          provider: string
+          provider_reference: string | null
+          reason: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          correlation_id?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          metadata?: Json
+          opened_at?: string
+          payment_id: string
+          provider: string
+          provider_reference?: string | null
+          reason?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          correlation_id?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          metadata?: Json
+          opened_at?: string
+          payment_id?: string
+          provider?: string
+          provider_reference?: string | null
+          reason?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_disputes_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "billing_reconciliation_view"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "payment_disputes_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_failure_codes: {
         Row: {
           actor: string
@@ -3277,6 +3349,7 @@ export type Database = {
           actor: string | null
           actor_kind: string
           attempt: number
+          correlation_id: string | null
           created_at: string
           entity: string
           entity_id: string
@@ -3293,6 +3366,7 @@ export type Database = {
           actor?: string | null
           actor_kind?: string
           attempt?: number
+          correlation_id?: string | null
           created_at?: string
           entity: string
           entity_id: string
@@ -3309,6 +3383,7 @@ export type Database = {
           actor?: string | null
           actor_kind?: string
           attempt?: number
+          correlation_id?: string | null
           created_at?: string
           entity?: string
           entity_id?: string
@@ -3358,6 +3433,7 @@ export type Database = {
       }
       payment_webhook_events: {
         Row: {
+          correlation_id: string | null
           created_at: string
           error: string | null
           event_type: string | null
@@ -3373,6 +3449,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          correlation_id?: string | null
           created_at?: string
           error?: string | null
           event_type?: string | null
@@ -3388,6 +3465,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          correlation_id?: string | null
           created_at?: string
           error?: string | null
           event_type?: string | null
@@ -9084,6 +9162,10 @@ export type Database = {
         Args: { _period_end: string; _period_start: string; _rental_id: string }
         Returns: Json
       }
+      admin_list_disputes: {
+        Args: { _limit?: number; _status?: string }
+        Returns: Json
+      }
       admin_list_withdrawal_authorizations: {
         Args: { _limit?: number; _status?: string }
         Returns: Json
@@ -9105,6 +9187,15 @@ export type Database = {
       }
       admin_release_security_deposit: {
         Args: { _reason?: string; _rental_id: string }
+        Returns: Json
+      }
+      admin_resolve_dispute: {
+        Args: {
+          _dispute_id: string
+          _notes?: string
+          _override_state?: string
+          _resolution: string
+        }
         Returns: Json
       }
       admin_review_persona_inquiry: {
@@ -9646,6 +9737,18 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      record_payment_dispute: {
+        Args: {
+          _amount?: number
+          _correlation_id?: string
+          _currency?: string
+          _payment_id: string
+          _provider: string
+          _provider_reference?: string
+          _reason?: string
+        }
+        Returns: string
       }
       register_push_device: {
         Args: { _device_label?: string; _platform: string; _token: string }

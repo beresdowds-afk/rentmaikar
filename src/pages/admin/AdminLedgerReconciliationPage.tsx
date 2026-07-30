@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Search } from "lucide-react";
+import { Link } from "react-router-dom";
+import { AlertTriangle, CheckCircle2, Gavel, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,13 +96,22 @@ export default function AdminLedgerReconciliationPage() {
 
   return (
     <div className="container mx-auto space-y-6 py-8">
-      <div>
-        <h1 className="text-3xl font-display font-bold">Ledger Reconciliation</h1>
-        <p className="text-muted-foreground">
-          Inspect wallet ledger entries by payment and highlight driver/owner/platform share
-          mismatches.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-display font-bold">Ledger Reconciliation</h1>
+          <p className="text-muted-foreground">
+            Inspect wallet ledger entries by payment and highlight driver/owner/platform share
+            mismatches.
+          </p>
+        </div>
+        <Button variant="outline" asChild>
+          <Link to="/admin/disputes">
+            <Gavel className="mr-2 h-4 w-4" />
+            Dispute escalations
+          </Link>
+        </Button>
       </div>
+
 
       <Card>
         <CardHeader>

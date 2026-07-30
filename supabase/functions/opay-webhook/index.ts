@@ -10,6 +10,11 @@ import {
   transitionState,
   applyRefund,
 } from "../_shared/webhook-idempotency.ts";
+import {
+  createWebhookLogger,
+  deriveCorrelationId,
+  correlationHeaders,
+} from "../_shared/webhook-logger.ts";
 
 
 async function notifyPush(paymentId: string, rentalId: string | null, status: string, amount?: number, currency?: string, reference?: string) {
@@ -48,7 +53,18 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  const logger = createWebhookLogger({
+    provider: "opay",
+    correlationId: deriveCorrelationId(req, "opay", String(externalEventId)),
+    eventType: opayStatus,
+    externalEventId: String(externalEventId),
+    reference,
+  });
+  logger.info("received", { signature_valid: true });
+
   const idem = await recordWebhookEvent(supabase, {
+    logger,
+    correlationId: logger.ctx.correlationId,
     provider: "opay",
     eventType: opayStatus,
     externalEventId: String(externalEventId),
@@ -58,7 +74,7 @@ Deno.serve(async (req) => {
   });
   if (idem.duplicate) {
     return new Response(JSON.stringify({ received: true, duplicate: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, ...correlationHeaders(logger), "Content-Type": "application/json" },
     });
   }
 
@@ -77,12 +93,13 @@ Deno.serve(async (req) => {
   if (tx?.payment_id) {
     let alreadyCompleted = false;
     if (status === "completed") {
-      await transitionState(supabase, "payment", tx.payment_id, "captured", "opay SUCCESS");
-      await transitionState(supabase, "payment", tx.payment_id, "settled", "opay settlement");
+      await transitionState(supabase, "payment", tx.payment_id, "captured", "opay SUCCESS", {}, logger);
+      await transitionState(supabase, "payment", tx.payment_id, "settled", "opay settlement", {}, logger);
       ({ alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id));
     } else if (status === "refunded") {
       // Shared handler: state transition + ledger reversal.
       await applyRefund(supabase, {
+          logger,
         paymentId: tx.payment_id,
         provider: "opay",
         providerReference: reference,
@@ -91,7 +108,7 @@ Deno.serve(async (req) => {
       });
     } else {
       if (status === "failed") {
-        await transitionState(supabase, "payment", tx.payment_id, "failed", failure ?? "opay failure");
+        await transitionState(supabase, "payment", tx.payment_id, "failed", failure ?? "opay failure", {}, logger);
       }
       await supabase.from("payments").update({
         status, failure_reason: failure, processed_at: null,
@@ -113,7 +130,8 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ received: true }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  logger.info("completed", { duration_ms: logger.elapsedMs() });
+  return new Response(JSON.stringify({ received: true, correlation_id: logger.ctx.correlationId }), {
+    headers: { ...corsHeaders, ...correlationHeaders(logger), "Content-Type": "application/json" },
   });
 });

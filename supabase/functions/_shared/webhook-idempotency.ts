@@ -14,6 +14,8 @@
 //
 // deno-lint-ignore-file no-explicit-any
 
+import type { WebhookLogger } from "./webhook-logger.ts";
+
 export interface IdempotencyRecordInput {
   provider: "paystack" | "paypal" | "opay";
   eventType?: string | null;
@@ -24,6 +26,9 @@ export interface IdempotencyRecordInput {
   invoiceId?: string | null;
   receiptId?: string | null;
   payload: unknown;
+  /** Trace key shared by this delivery and every side effect it triggers. */
+  correlationId?: string | null;
+  logger?: WebhookLogger;
 }
 
 export interface IdempotencyResult {
@@ -40,6 +45,8 @@ export async function recordWebhookEvent(
   supabase: any,
   input: IdempotencyRecordInput,
 ): Promise<IdempotencyResult> {
+  const log = input.logger;
+  const correlationId = input.correlationId ?? log?.ctx.correlationId ?? null;
   const row: Record<string, unknown> = {
     provider: input.provider,
     event_type: input.eventType ?? null,
@@ -51,6 +58,7 @@ export async function recordWebhookEvent(
     invoice_id: input.invoiceId ?? null,
     receipt_id: input.receiptId ?? null,
     payload: input.payload,
+    correlation_id: correlationId,
   };
 
   const { data, error } = await supabase
@@ -59,7 +67,10 @@ export async function recordWebhookEvent(
     .select("id")
     .maybeSingle();
 
-  if (!error && data?.id) return { duplicate: false, eventRowId: data.id };
+  if (!error && data?.id) {
+    log?.info("idempotency.recorded", { event_row_id: data.id, duplicate: false });
+    return { duplicate: false, eventRowId: data.id };
+  }
 
   // Unique-violation on (provider, external_event_id) → duplicate delivery.
   const code = (error as any)?.code;
@@ -71,14 +82,21 @@ export async function recordWebhookEvent(
   if (isDuplicate) {
     const { data: existing } = await supabase
       .from("payment_webhook_events")
-      .select("id")
+      .select("id, correlation_id")
       .eq("provider", input.provider)
       .eq("external_event_id", input.externalEventId)
       .maybeSingle();
+    // Log both trace keys so a replay can be tied back to the original delivery.
+    log?.warn("idempotency.replay", {
+      event_row_id: existing?.id ?? null,
+      original_correlation_id: existing?.correlation_id ?? null,
+      duplicate: true,
+    });
     return { duplicate: true, eventRowId: existing?.id ?? null };
   }
 
   // Unknown insert error — do not block webhook processing, but flag it.
+  log?.error("idempotency.insert_failed", { error: message || String(error) });
   console.error(`[webhook-idempotency] insert failed provider=${input.provider}`, error);
   return { duplicate: false, eventRowId: null };
 }
@@ -159,6 +177,9 @@ export type PaymentState =
 /**
  * Move a payment/payout to `toState`. Retries transient failures, never throws.
  * Returns true when the DB accepted the transition.
+ *
+ * Every hop is logged with the delivery's correlation ID so a single trace key
+ * shows the full pending → captured → settled path a callback produced.
  */
 export async function transitionState(
   supabase: any,
@@ -167,25 +188,35 @@ export async function transitionState(
   toState: PaymentState,
   reason?: string,
   metadata: Record<string, unknown> = {},
+  logger?: WebhookLogger,
 ): Promise<boolean> {
+  const correlationId = logger?.ctx.correlationId ?? (metadata.correlation_id as string) ?? null;
   const result = await withRetry(`state.${entity}.${toState}`, async () => {
     const { error } = await supabase.rpc("transition_payment_state", {
       _entity: entity,
       _entity_id: entityId,
       _to_state: toState,
       _reason: reason ?? null,
-      _metadata: metadata,
+      _metadata: { ...metadata, correlation_id: correlationId },
     });
     // An illegal transition is a permanent answer, not a transient fault:
     // surface it as a non-retryable false rather than burning retries.
     if (error) {
       if (/invalid transition|not allowed/i.test(error.message ?? "")) {
+        logger?.warn("state.rejected", { entity, entity_id: entityId, to_state: toState, error: error.message });
         console.warn(`[state] rejected ${entity} ${entityId} → ${toState}: ${error.message}`);
         return false;
       }
       throw error;
     }
     return true;
+  });
+  logger?.[result === true ? "info" : "warn"]("state.transition", {
+    entity,
+    entity_id: entityId,
+    to_state: toState,
+    accepted: result === true,
+    reason: reason ?? null,
   });
   return result === true;
 }
@@ -203,15 +234,20 @@ export async function applyRefund(
     providerReference?: string | null;
     amount?: number | null;
     reason?: string | null;
+    logger?: WebhookLogger;
   },
 ): Promise<void> {
-  const { paymentId, provider, providerReference, amount, reason } = opts;
+  const { paymentId, provider, providerReference, amount, reason, logger } = opts;
 
-  await transitionState(supabase, "payment", paymentId, "refunded", reason ?? "provider refund", {
-    provider,
-    provider_reference: providerReference ?? null,
-    amount: amount ?? null,
-  });
+  await transitionState(
+    supabase,
+    "payment",
+    paymentId,
+    "refunded",
+    reason ?? "provider refund",
+    { provider, provider_reference: providerReference ?? null, amount: amount ?? null },
+    logger,
+  );
 
   await supabase
     .from("payments")
@@ -225,6 +261,7 @@ export async function applyRefund(
     .eq("reference_table", "payments")
     .eq("reference_id", paymentId);
 
+  let reversed = 0;
   for (const entry of entries ?? []) {
     if (entry.status === "reversed") continue;
     await withRetry(`refund.reverse.${entry.id}`, async () => {
@@ -234,12 +271,15 @@ export async function applyRefund(
       });
       if (error) throw error;
     });
+    reversed += 1;
   }
+  logger?.info("refund.applied", { payment_id: paymentId, entries_reversed: reversed });
 }
 
 /**
  * Chargeback / dispute opened at the PSP. Funds are frozen rather than
- * reversed — the ledger stays intact until the dispute resolves.
+ * reversed — the ledger stays intact until the dispute resolves, and an
+ * admin-facing dispute case is opened for escalation/override.
  */
 export async function applyDispute(
   supabase: any,
@@ -248,17 +288,43 @@ export async function applyDispute(
     provider: string;
     providerReference?: string | null;
     reason?: string | null;
+    amount?: number | null;
+    currency?: string | null;
+    logger?: WebhookLogger;
   },
 ): Promise<void> {
-  const { paymentId, provider, providerReference, reason } = opts;
+  const { paymentId, provider, providerReference, reason, amount, currency, logger } = opts;
 
-  await transitionState(supabase, "payment", paymentId, "disputed", reason ?? "chargeback opened", {
-    provider,
-    provider_reference: providerReference ?? null,
-  });
+  await transitionState(
+    supabase,
+    "payment",
+    paymentId,
+    "disputed",
+    reason ?? "chargeback opened",
+    { provider, provider_reference: providerReference ?? null },
+    logger,
+  );
 
   await supabase
     .from("payments")
     .update({ status: "disputed", failure_reason: reason ?? "chargeback opened" })
     .eq("id", paymentId);
+
+  // Open (or refresh) the admin dispute case. Idempotent on
+  // (payment_id, provider_reference) so provider retries never duplicate it.
+  await withRetry(`dispute.record.${paymentId}`, async () => {
+    const { error } = await supabase.rpc("record_payment_dispute", {
+      _payment_id: paymentId,
+      _provider: provider,
+      _provider_reference: providerReference ?? null,
+      _reason: reason ?? null,
+      _amount: amount ?? null,
+      _currency: currency ?? null,
+      _correlation_id: logger?.ctx.correlationId ?? null,
+    });
+    if (error) throw error;
+  });
+  logger?.warn("dispute.opened", { payment_id: paymentId, provider_reference: providerReference ?? null });
+}
+
 }

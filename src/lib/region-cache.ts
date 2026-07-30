@@ -75,7 +75,9 @@ export function mergeRegions(builder: RegionOption[]): RegionOption[] {
   ];
 }
 
-export function readRegionCache(): { regions: RegionOption[]; stale: boolean } | null {
+export function readRegionCache():
+  | { regions: RegionOption[]; stale: boolean; savedAt: number }
+  | null {
   if (!isBrowser()) return null;
   try {
     const raw = window.localStorage.getItem(CACHE_KEY);
@@ -84,9 +86,11 @@ export function readRegionCache(): { regions: RegionOption[]; stale: boolean } |
     if (!parsed || !Array.isArray(parsed.regions)) return null;
     const regions = parsed.regions.filter(isRegion);
     if (regions.length === 0) return null;
+    const savedAt = parsed.savedAt ?? 0;
     return {
       regions: mergeRegions(regions.filter((r) => !r.builtIn)),
-      stale: Date.now() - (parsed.savedAt ?? 0) > REGION_CACHE_TTL_MS,
+      stale: Date.now() - savedAt > REGION_CACHE_TTL_MS,
+      savedAt,
     };
   } catch {
     return null;
