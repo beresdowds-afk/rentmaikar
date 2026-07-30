@@ -8,6 +8,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import PersonaFieldsFallbackDialog, { type PersonaFieldKey, type PersonaFallbackValues } from "./PersonaFieldsFallbackDialog";
 import { UploadDropZone } from "@/components/ui/upload-drop-zone";
+import VerificationFailureCard from "./VerificationFailureCard";
+import { classifyVerificationFailure, type ClassifiedFailure } from "@/lib/verification-failures";
+import { logVerificationEvent, newCorrelationId, reportVerificationFailure } from "@/lib/verification-logger";
+import { withRetry } from "@/lib/verification-retry";
+import { runPreflight } from "@/lib/verification-preflight";
+import { saveVerificationSession, clearVerificationSession } from "@/hooks/useVerificationResume";
 
 interface Props {
   subject?: "self" | "referee";
