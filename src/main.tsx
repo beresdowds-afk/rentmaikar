@@ -28,7 +28,7 @@ if (!root) {
 }
 
 
-import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorBoundary from "./components/errors/ErrorBoundary";
 
 
 createRoot(document.getElementById("root")!).render(
