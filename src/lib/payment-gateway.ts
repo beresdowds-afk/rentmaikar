@@ -224,7 +224,7 @@ export class PaymentGateway {
   async processOwnerPayout(
     ownerId: string,
     amount: number,
-    payoutDetails: { accountNumber?: string; email?: string; payoutAccountId?: string; note?: string }
+    payoutDetails: { accountNumber?: string; email?: string; payoutAccountId?: string; note?: string; authorizationId?: string }
   ): Promise<PaymentResult> {
     if (this.gateway === 'paypal') {
       return this.processPayPalPayout(ownerId, amount, payoutDetails);
@@ -239,14 +239,22 @@ export class PaymentGateway {
   private async processPayPalPayout(
     _ownerId: string,
     amount: number,
-    payoutDetails: { payoutAccountId?: string; note?: string }
+    payoutDetails: { payoutAccountId?: string; note?: string; authorizationId?: string }
   ): Promise<PaymentResult> {
     try {
       if (!payoutDetails.payoutAccountId) {
         return { success: false, error: 'Missing payoutAccountId' };
       }
+      if (!payoutDetails.authorizationId) {
+        return { success: false, error: 'Withdrawal authorization required before payout' };
+      }
       const { data, error } = await supabase.functions.invoke('initiate-paypal-payout', {
-        body: { amount, payoutAccountId: payoutDetails.payoutAccountId, note: payoutDetails.note },
+        body: {
+          amount,
+          payoutAccountId: payoutDetails.payoutAccountId,
+          note: payoutDetails.note,
+          authorizationId: payoutDetails.authorizationId,
+        },
         headers: idempotencyHeaders('payout.paypal', { amount, payoutAccountId: payoutDetails.payoutAccountId }),
       });
       if (error) throw error;
@@ -263,14 +271,22 @@ export class PaymentGateway {
   private async processPaystackTransfer(
     _ownerId: string,
     amount: number,
-    payoutDetails: { payoutAccountId?: string; note?: string }
+    payoutDetails: { payoutAccountId?: string; note?: string; authorizationId?: string }
   ): Promise<PaymentResult> {
     try {
       if (!payoutDetails.payoutAccountId) {
         return { success: false, error: 'Missing payoutAccountId' };
       }
+      if (!payoutDetails.authorizationId) {
+        return { success: false, error: 'Withdrawal authorization required before payout' };
+      }
       const { data, error } = await supabase.functions.invoke('initiate-paystack-transfer', {
-        body: { amount, payoutAccountId: payoutDetails.payoutAccountId, note: payoutDetails.note },
+        body: {
+          amount,
+          payoutAccountId: payoutDetails.payoutAccountId,
+          note: payoutDetails.note,
+          authorizationId: payoutDetails.authorizationId,
+        },
         headers: idempotencyHeaders('payout.paystack', { amount, payoutAccountId: payoutDetails.payoutAccountId }),
       });
       if (error) throw error;

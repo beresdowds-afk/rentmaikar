@@ -4,12 +4,19 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { claimIdempotencyKey, completeIdempotencyKey, duplicateResponse, resolveIdempotencyKey } from "../_shared/payment-idempotency.ts";
 import { postLedgerEntry } from "../_shared/wallet-ledger.ts";
+import {
+  consumeWithdrawalAuthorization,
+  requireWithdrawalAuthorization,
+  transitionState,
+} from "../_shared/withdrawal-authorization.ts";
 
 const BodySchema = z.object({
   amount: z.number().positive(),
   payoutAccountId: z.string().uuid(),
   reason: z.string().max(100).optional(),
+  authorizationId: z.string().uuid(),
 });
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -65,14 +72,46 @@ Deno.serve(async (req) => {
       return json({ error: "Amount exceeds available balance", available }, 400);
     }
 
+    // Dual authorization + velocity/device-risk gate.
+    const authz = await requireWithdrawalAuthorization(supabase, {
+      authorizationId: b.authorizationId,
+      subjectUserId: owner.id,
+      amount: b.amount,
+      currency: acc.currency,
+      requestType: "owner_payout",
+    });
+    if (!authz.ok) {
+      await completeIdempotencyKey(supabase, idemKey, "failed", { error: authz.error });
+      return json({ error: authz.error }, authz.status ?? 403);
+    }
+
     // Guard against duplicate in-flight
     const { count } = await supabase.from("owner_payouts")
       .select("*", { count: "exact", head: true })
-      .eq("owner_id", owner.id).in("status", ["pending", "processing"]);
+      .eq("owner_id", owner.id).in("status", ["pending", "authorized", "captured", "processing"]);
     if ((count ?? 0) > 0) return json({ error: "A payout is already in progress" }, 409);
 
     const reference = `pyt_${crypto.randomUUID().replace(/-/g, "")}`;
     const amountMinor = Math.round(b.amount * 100);
+
+    // Create the payout in the canonical Pending state before touching the PSP.
+    const { data: payout } = await supabase.from("owner_payouts").insert({
+      owner_id: owner.id, payout_account_id: acc.id, provider: "paystack",
+      amount: b.amount, currency: acc.currency,
+      status: "pending",
+      transfer_reference: reference,
+      initiated_by: "owner",
+    }).select("*").maybeSingle();
+
+    if (!payout?.id) {
+      await completeIdempotencyKey(supabase, idemKey, "failed");
+      return json({ error: "Could not create payout record" }, 500);
+    }
+
+    await transitionState(supabase, "payout", payout.id, "authorized", "dual authorization approved", {
+      authorization_id: authz.authorizationId,
+    });
+    await consumeWithdrawalAuthorization(supabase, authz.authorizationId!, payout.id);
 
     const resp = await fetch("https://api.paystack.co/transfer", {
       method: "POST",
@@ -84,41 +123,48 @@ Deno.serve(async (req) => {
     });
     const body = await resp.json();
     if (!resp.ok || !body?.status) {
+      await transitionState(supabase, "payout", payout.id, "failed", body?.message ?? "transfer failed");
+      await supabase.from("owner_payouts")
+        .update({ failure_reason: body?.message ?? "transfer failed", raw_payload: body ?? null })
+        .eq("id", payout.id);
       await completeIdempotencyKey(supabase, idemKey, "failed");
       return json({ error: body?.message ?? "transfer failed" }, 502);
     }
 
-    const { data: payout } = await supabase.from("owner_payouts").insert({
-      owner_id: owner.id, payout_account_id: acc.id, provider: "paystack",
-      amount: b.amount, currency: acc.currency,
-      status: body.data.status === "success" ? "completed" : "processing",
-      transfer_reference: reference, transfer_code: body.data.transfer_code,
-      initiated_by: "owner", raw_payload: body.data,
-    }).select("*").maybeSingle();
+    await supabase.from("owner_payouts")
+      .update({ transfer_code: body.data.transfer_code, raw_payload: body.data })
+      .eq("id", payout.id);
+    await transitionState(supabase, "payout", payout.id, "captured", "transfer submitted to Paystack");
+    if (body.data.status === "success") {
+      await transitionState(supabase, "payout", payout.id, "settled", "Paystack reported success");
+      await transitionState(supabase, "payout", payout.id, "completed", "payout complete");
+    }
 
     // Ledger: reserve the payout against the owner wallet immediately; the
     // webhook flips it to settled or reverses it on failure.
-    if (payout?.id) {
-      const led = await postLedgerEntry(supabase, {
-        userId: owner.id,
-        accountType: "owner",
-        currency: acc.currency,
-        direction: "debit",
-        amount: b.amount,
-        entryType: "payout",
-        idempotencyKey: `payout:${payout.id}:requested`,
-        referenceTable: "owner_payouts",
-        referenceId: payout.id,
-        provider: "paystack",
-        providerReference: reference,
-        description: "Owner payout requested",
-        status: "pending",
-      });
-      if (!led.ok) console.error("[initiate-paystack-transfer] ledger error:", led.error);
-    }
+    const led = await postLedgerEntry(supabase, {
+      userId: owner.id,
+      accountType: "owner",
+      currency: acc.currency,
+      direction: "debit",
+      amount: b.amount,
+      entryType: "payout",
+      idempotencyKey: `payout:${payout.id}:requested`,
+      referenceTable: "owner_payouts",
+      referenceId: payout.id,
+      provider: "paystack",
+      providerReference: reference,
+      description: "Owner payout requested",
+      status: "pending",
+    });
+    if (!led.ok) console.error("[initiate-paystack-transfer] ledger error:", led.error);
 
-    await completeIdempotencyKey(supabase, idemKey, "succeeded", { payout });
-    return json({ payout });
+    const { data: finalPayout } = await supabase.from("owner_payouts")
+      .select("*").eq("id", payout.id).maybeSingle();
+
+    await completeIdempotencyKey(supabase, idemKey, "succeeded", { payout: finalPayout });
+    return json({ payout: finalPayout });
+
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : "unknown" }, 500);
   }

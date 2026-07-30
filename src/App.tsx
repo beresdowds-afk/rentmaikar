@@ -75,6 +75,9 @@ const ReconciliationLogsPage = lazy(() => import("./pages/admin/ReconciliationLo
 const BillingReconciliationPage = lazy(() => import("./pages/admin/BillingReconciliationPage"));
 const AdminInvoiceStatusPage = lazy(() => import("./pages/admin/AdminInvoiceStatusPage"));
 const AdminRentalReconciliationPage = lazy(() => import("./pages/admin/AdminRentalReconciliationPage"));
+const AdminLedgerReconciliationPage = lazy(() => import("./pages/admin/AdminLedgerReconciliationPage"));
+const AdminTreasuryPage = lazy(() => import("./pages/admin/AdminTreasuryPage"));
+
 const AdminDocumentExportAuditPage = lazy(() => import("./pages/admin/AdminDocumentExportAuditPage"));
 const AdminDocumentFailuresPage = lazy(() => import("./pages/admin/AdminDocumentFailuresPage"));
 const AuditLogPage = lazy(() => import("./pages/admin/AuditLogPage"));
@@ -266,6 +269,23 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/admin/ledger-reconciliation"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminLedgerReconciliationPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/treasury"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminTreasuryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
                   <Route
                     path="/admin/export-audit"
                     element={
