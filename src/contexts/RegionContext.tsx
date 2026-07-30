@@ -101,28 +101,10 @@ const regionConfig: Record<string, RegionConfig> = {
   },
 };
 
-const BUILTIN_REGION_OPTIONS: RegionOption[] = [
-  {
-    value: "USA",
-    label: "United States",
-    flag: "🇺🇸",
-    countryCode: "US",
-    currency: "USD",
-    currencySymbol: "$",
-    phonePrefix: "+1",
-    builtIn: true,
-  },
-  {
-    value: "Nigeria",
-    label: "Nigeria",
-    flag: "🇳🇬",
-    countryCode: "NG",
-    currency: "NGN",
-    currencySymbol: "₦",
-    phonePrefix: "+234",
-    builtIn: true,
-  },
-];
+// Built-in launch regions live in region-cache so both the cache layer and the
+// provider agree on the guaranteed-available baseline.
+export { BUILTIN_REGION_OPTIONS } from "@/lib/region-cache";
+
 
 
 const stripPhone = (v: string) => (v || "").replace(/[^\d]/g, "");
