@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
   });
   if (idem.duplicate) {
     return new Response(JSON.stringify({ received: true, duplicate: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, ...correlationHeaders(logger), "Content-Type": "application/json" },
     });
   }
 
@@ -185,6 +185,8 @@ Deno.serve(async (req) => {
           supabase, "payout", payoutRow.id,
           success ? "completed" : "failed",
           success ? "paystack transfer.success" : (evt.data.reason ?? "transfer failed"),
+          {},
+          logger,
         );
       }
 
@@ -209,8 +211,9 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ received: true }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  logger.info("completed", { duration_ms: logger.elapsedMs() });
+  return new Response(JSON.stringify({ received: true, correlation_id: logger.ctx.correlationId }), {
+    headers: { ...corsHeaders, ...correlationHeaders(logger), "Content-Type": "application/json" },
   });
 });
 
