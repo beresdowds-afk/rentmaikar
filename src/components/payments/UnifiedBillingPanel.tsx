@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PaymentMethodPicker } from "@/components/payments/PaymentMethodPicker";
+import { PaymentPreflightGate } from "@/components/payments/PaymentPreflightGate";
+
 import { toast } from "sonner";
 import { FileText, Receipt, Download, Send, RefreshCw, CreditCard } from "lucide-react";
 
@@ -194,21 +196,29 @@ export function UnifiedBillingPanel({ userId, role, country }: Props) {
             </DialogDescription>
           </DialogHeader>
           {payTarget && (
-            <PaymentMethodPicker
-              country={country}
+            <PaymentPreflightGate
+              operation={role === "driver" ? "driver_payment" : "owner_payout"}
               amount={Number(Number(payTarget.total_amount).toFixed(2))}
-              rentalId={payTarget.rental_id ?? undefined}
-              vehicleId={payTarget.vehicle_id ?? undefined}
-              driverId={role === "driver" ? userId : payTarget.driver_id ?? undefined}
-              description={`Invoice ${payTarget.invoice_number} · ${labelFor(payTarget.invoice_type)}`}
-              onSuccess={() => {
-                toast.success("Payment received. Receipt will arrive shortly.");
-                setPayTarget(null);
-                setTimeout(load, 1500);
-              }}
-              onError={() => setPayTarget(null)}
-            />
+              currency={payTarget.currency ?? undefined}
+              context={{ invoice_id: payTarget.id, invoice_type: payTarget.invoice_type }}
+            >
+              <PaymentMethodPicker
+                country={country}
+                amount={Number(Number(payTarget.total_amount).toFixed(2))}
+                rentalId={payTarget.rental_id ?? undefined}
+                vehicleId={payTarget.vehicle_id ?? undefined}
+                driverId={role === "driver" ? userId : payTarget.driver_id ?? undefined}
+                description={`Invoice ${payTarget.invoice_number} · ${labelFor(payTarget.invoice_type)}`}
+                onSuccess={() => {
+                  toast.success("Payment received. Receipt will arrive shortly.");
+                  setPayTarget(null);
+                  setTimeout(load, 1500);
+                }}
+                onError={() => setPayTarget(null)}
+              />
+            </PaymentPreflightGate>
           )}
+
         </DialogContent>
       </Dialog>
     </>

@@ -3167,6 +3167,111 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_failure_codes: {
+        Row: {
+          actor: string
+          category: string
+          code: string
+          created_at: string
+          is_blocking: boolean
+          remediation: string | null
+          retryable: boolean
+          severity: string
+          updated_at: string
+          user_message: string
+        }
+        Insert: {
+          actor?: string
+          category: string
+          code: string
+          created_at?: string
+          is_blocking?: boolean
+          remediation?: string | null
+          retryable?: boolean
+          severity?: string
+          updated_at?: string
+          user_message: string
+        }
+        Update: {
+          actor?: string
+          category?: string
+          code?: string
+          created_at?: string
+          is_blocking?: boolean
+          remediation?: string | null
+          retryable?: boolean
+          severity?: string
+          updated_at?: string
+          user_message?: string
+        }
+        Relationships: []
+      }
+      payment_idempotency_keys: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          idempotency_key: string
+          request_hash: string | null
+          response: Json | null
+          scope: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          idempotency_key: string
+          request_hash?: string | null
+          response?: Json | null
+          scope: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          idempotency_key?: string
+          request_hash?: string | null
+          response?: Json | null
+          scope?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      payment_preflight_log: {
+        Row: {
+          blocking_codes: string[]
+          context: Json
+          created_at: string
+          id: string
+          operation: string
+          passed: boolean
+          user_id: string | null
+          warning_codes: string[]
+        }
+        Insert: {
+          blocking_codes?: string[]
+          context?: Json
+          created_at?: string
+          id?: string
+          operation: string
+          passed: boolean
+          user_id?: string | null
+          warning_codes?: string[]
+        }
+        Update: {
+          blocking_codes?: string[]
+          context?: Json
+          created_at?: string
+          id?: string
+          operation?: string
+          passed?: boolean
+          user_id?: string | null
+          warning_codes?: string[]
+        }
+        Relationships: []
+      }
       payment_webhook_events: {
         Row: {
           created_at: string
@@ -8843,7 +8948,20 @@ export type Database = {
         Args: { p_email: string; p_phone: string; p_username: string }
         Returns: boolean
       }
+      claim_idempotency_key: {
+        Args: {
+          _key: string
+          _request_hash?: string
+          _scope: string
+          _user_id?: string
+        }
+        Returns: Json
+      }
       classify_onboarding_error: { Args: { _msg: string }; Returns: string }
+      complete_idempotency_key: {
+        Args: { _key: string; _response?: Json; _status: string }
+        Returns: undefined
+      }
       complete_onboarding: { Args: never; Returns: string }
       consume_proxy_charge: {
         Args: { _proxy_id: string }
@@ -9064,6 +9182,10 @@ export type Database = {
       }
       normalize_country_label: { Args: { _v: string }; Returns: string }
       onboarding_diagnostics: { Args: never; Returns: Json }
+      payment_preflight: {
+        Args: { _context?: Json; _operation: string }
+        Returns: Json
+      }
       purge_expired_elevenlabs_test_logs: {
         Args: never
         Returns: {
@@ -9092,6 +9214,10 @@ export type Database = {
       revoke_full_access: {
         Args: { _reason?: string; _user_id: string }
         Returns: undefined
+      }
+      run_payment_preflight: {
+        Args: { _context?: Json; _operation: string }
+        Returns: Json
       }
       save_voice_agent_transcript: {
         Args: {
