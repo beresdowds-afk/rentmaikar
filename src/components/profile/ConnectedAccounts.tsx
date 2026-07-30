@@ -80,7 +80,7 @@ export function ConnectedAccounts() {
       const { data, error } = await supabase.auth.linkIdentity({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/profile/settings`,
+          redirectTo: `${window.location.origin}/settings/profile`,
           scopes: 'openid email profile',
           queryParams: { prompt: 'select_account' },
         },
