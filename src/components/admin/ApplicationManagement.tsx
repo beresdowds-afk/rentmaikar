@@ -22,6 +22,7 @@ import { format } from 'date-fns';
 import RefereeVerificationPanel from '@/components/verification/RefereeVerificationPanel';
 import ApplicationPipelineStatusPanel from '@/components/admin/ApplicationPipelineStatusPanel';
 import ApplicationAuditLog from '@/components/admin/ApplicationAuditLog';
+import ApplicationRecoveryPanel from '@/components/admin/ApplicationRecoveryPanel';
 
 type ApplicationType = 'driver' | 'owner';
 type ApplicationStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'needs_info';
