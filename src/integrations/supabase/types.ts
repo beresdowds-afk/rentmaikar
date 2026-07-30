@@ -8254,6 +8254,119 @@ export type Database = {
           },
         ]
       }
+      wallet_accounts: {
+        Row: {
+          account_type: string
+          available_balance: number
+          created_at: string
+          currency: string
+          id: string
+          lifetime_credits: number
+          lifetime_debits: number
+          pending_balance: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_type: string
+          available_balance?: number
+          created_at?: string
+          currency: string
+          id?: string
+          lifetime_credits?: number
+          lifetime_debits?: number
+          pending_balance?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_type?: string
+          available_balance?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          lifetime_credits?: number
+          lifetime_debits?: number
+          pending_balance?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallet_ledger_entries: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          direction: string
+          entry_type: string
+          id: string
+          idempotency_key: string | null
+          metadata: Json
+          provider: string | null
+          provider_reference: string | null
+          reference_id: string | null
+          reference_table: string | null
+          status: string
+          user_id: string
+          wallet_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string
+          created_by?: string | null
+          currency: string
+          description?: string | null
+          direction: string
+          entry_type: string
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json
+          provider?: string | null
+          provider_reference?: string | null
+          reference_id?: string | null
+          reference_table?: string | null
+          status?: string
+          user_id: string
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          direction?: string
+          entry_type?: string
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json
+          provider?: string | null
+          provider_reference?: string | null
+          reference_id?: string | null
+          reference_table?: string | null
+          status?: string
+          user_id?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_ledger_entries_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_deliveries: {
         Row: {
           attempt_number: number
@@ -9071,6 +9184,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      ensure_wallet_account: {
+        Args: { _account_type: string; _currency: string; _user_id: string }
+        Returns: string
+      }
       get_linked_user_ids: {
         Args: { _user_id: string }
         Returns: {
@@ -9079,6 +9196,7 @@ export type Database = {
       }
       get_my_identity_verification: { Args: never; Returns: Json }
       get_my_registration_progress: { Args: never; Returns: Json }
+      get_my_wallet_summary: { Args: { _currency?: string }; Returns: Json }
       get_onboarding_next_step: { Args: never; Returns: Json }
       get_owner_available_balance: {
         Args: { _currency: string; _owner_id: string }
@@ -9186,6 +9304,25 @@ export type Database = {
         Args: { _context?: Json; _operation: string }
         Returns: Json
       }
+      post_wallet_entry: {
+        Args: {
+          _account_type: string
+          _amount: number
+          _currency: string
+          _description?: string
+          _direction: string
+          _entry_type: string
+          _idempotency_key?: string
+          _metadata?: Json
+          _provider?: string
+          _provider_reference?: string
+          _reference_id?: string
+          _reference_table?: string
+          _status?: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       purge_expired_elevenlabs_test_logs: {
         Args: never
         Returns: {
@@ -9210,6 +9347,10 @@ export type Database = {
       reject_application: {
         Args: { _app_id: string; _notes?: string; _reason: string }
         Returns: undefined
+      }
+      reverse_wallet_entry: {
+        Args: { _entry_id: string; _reason?: string }
+        Returns: Json
       }
       revoke_full_access: {
         Args: { _reason?: string; _user_id: string }

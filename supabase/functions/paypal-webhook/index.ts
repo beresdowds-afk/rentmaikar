@@ -9,6 +9,7 @@ import {
   markPaymentCompletedIdempotent,
   withRetry,
 } from "../_shared/webhook-idempotency.ts";
+import { postRentalPaymentLedger, postLedgerEntry } from "../_shared/wallet-ledger.ts";
 
 const PP_ENV = (Deno.env.get("PAYPAL_ENV") || "sandbox").toLowerCase();
 const PP_BASE = PP_ENV === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
@@ -105,6 +106,7 @@ Deno.serve(async (req) => {
         .select("payment_id, rental_id, amount, currency").eq("order_id", orderId).maybeSingle();
       if (tx?.payment_id) {
         const { alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id);
+        await recordPaymentInLedger(supabase, tx.payment_id, "paypal", orderId);
         if (!alreadyCompleted) {
           await withRetry("paypal.receipt.email", async () => {
             const { error } = await supabase.functions.invoke("billing-portal", {
@@ -132,6 +134,28 @@ Deno.serve(async (req) => {
         await supabase.from("payments").update({
           status, failure_reason: eventType,
         }).eq("id", tx.payment_id).neq("status", "completed");
+
+        if (eventType === "PAYMENT.CAPTURE.REFUNDED") {
+          const { data: pay } = await supabase.from("payments")
+            .select("id, driver_id, amount, currency").eq("id", tx.payment_id).maybeSingle();
+          if (pay?.driver_id) {
+            const res = await postLedgerEntry(supabase, {
+              userId: pay.driver_id,
+              accountType: "driver",
+              currency: pay.currency ?? "USD",
+              direction: "credit",
+              amount: Number(pay.amount),
+              entryType: "refund",
+              idempotencyKey: `payment:${pay.id}:refund`,
+              referenceTable: "payments",
+              referenceId: pay.id,
+              provider: "paypal",
+              providerReference: orderId,
+              description: "Payment refunded",
+            });
+            if (!res.ok) console.error("[paypal-webhook] ledger refund error:", res.error);
+          }
+        }
       }
     }
   }
@@ -140,3 +164,25 @@ Deno.serve(async (req) => {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
+
+/** Mirror a completed payment into the wallet ledger. Never throws. */
+// deno-lint-ignore no-explicit-any
+async function recordPaymentInLedger(
+  supabase: any, paymentId: string, provider: string, providerReference: string,
+) {
+  const { data: pay } = await supabase.from("payments")
+    .select("id, driver_id, owner_id, amount, currency").eq("id", paymentId).maybeSingle();
+  if (!pay?.driver_id) return;
+  const results = await postRentalPaymentLedger(supabase, {
+    paymentId: pay.id,
+    driverId: pay.driver_id,
+    ownerId: pay.owner_id,
+    amount: Number(pay.amount),
+    currency: pay.currency ?? "USD",
+    provider,
+    providerReference,
+  });
+  for (const r of results) {
+    if (!r.ok) console.error("[ledger] post failed:", r.error);
+  }
+}

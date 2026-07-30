@@ -3,6 +3,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { resolvePaymentContext } from "../_shared/resolve-payment-context.ts";
+import { claimIdempotencyKey, completeIdempotencyKey, duplicateResponse, resolveIdempotencyKey } from "../_shared/payment-idempotency.ts";
 
 const BodySchema = z.object({
   amount: z.number().positive(),
@@ -33,7 +34,8 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const parsed = BodySchema.safeParse(await req.json());
+    const rawBody = await req.json();
+    const parsed = BodySchema.safeParse(rawBody);
     if (!parsed.success) {
       return new Response(JSON.stringify({ error: parsed.error.flatten().fieldErrors }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -71,6 +73,13 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Duplicate submissions (double-click, retry) must not create two charges.
+    const idemKey = resolveIdempotencyKey(req, rawBody ?? {});
+    const claim = await claimIdempotencyKey(supabase, idemKey, "charge.paystack", driverId, {
+      amount: body.amount, currency: body.currency, rentalId: body.rentalId, vehicleId: body.vehicleId,
+    });
+    if (!claim.claimed) return duplicateResponse(claim, corsHeaders);
+
     const reference = `rmk_${crypto.randomUUID().replace(/-/g, "")}`;
     const amountMinor = Math.round(body.amount * 100);
 
@@ -105,6 +114,7 @@ Deno.serve(async (req) => {
     });
     const pay = await resp.json();
     if (!resp.ok || !pay?.status) {
+      await completeIdempotencyKey(supabase, idemKey, "failed");
       return new Response(JSON.stringify({ error: pay?.message ?? "Paystack init failed" }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -126,6 +136,7 @@ Deno.serve(async (req) => {
 
     if (paymentError || !payment?.id) {
       console.error("[create-paystack-transaction] payment insert failed:", paymentError);
+      await completeIdempotencyKey(supabase, idemKey, "failed");
       return new Response(JSON.stringify({ error: "Failed to record payment" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -144,6 +155,14 @@ Deno.serve(async (req) => {
       payment_id: payment.id,
       raw_payload: pay.data,
     });
+
+    const successBody = {
+      reference,
+      access_code: pay.data.access_code,
+      authorization_url: pay.data.authorization_url,
+      payment_id: payment?.id,
+    };
+    await completeIdempotencyKey(supabase, idemKey, "succeeded", successBody);
 
     return new Response(
       JSON.stringify({

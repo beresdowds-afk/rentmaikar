@@ -8,6 +8,7 @@ import {
   markPaymentCompletedIdempotent,
   withRetry,
 } from "../_shared/webhook-idempotency.ts";
+import { postRentalPaymentLedger, postLedgerEntry } from "../_shared/wallet-ledger.ts";
 
 async function notifyPush(paymentId: string, rentalId: string | null, status: string, amount?: number, currency?: string, reference?: string) {
   const secret = Deno.env.get("CRON_SECRET");
@@ -74,6 +75,7 @@ Deno.serve(async (req) => {
       .select("payment_id, amount, currency, rental_id").eq("reference", reference).maybeSingle();
     if (tx?.payment_id) {
       const { alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id);
+      await recordPaymentInLedger(supabase, tx.payment_id, "paystack", reference);
       await notifyPush(tx.payment_id, tx.rental_id ?? null, "completed", tx.amount ? Number(tx.amount) / 100 : undefined, tx.currency ?? undefined, reference);
       if (!alreadyCompleted) {
         await withRetry("paystack.receipt.email", async () => {
@@ -106,12 +108,31 @@ Deno.serve(async (req) => {
     const ref = evt?.data?.reference ?? evt?.data?.transfer_code;
     if (ref) {
       const success = evt.event === "transfer.success";
-      await supabase.from("owner_payouts").update({
-        status: success ? "completed" : "failed",
-        processed_at: new Date().toISOString(),
-        failure_reason: success ? null : evt.data.reason ?? "transfer failed",
-        raw_payload: evt.data,
-      }).eq("transfer_reference", ref);
+      const { data: payoutRow } = await supabase.from("owner_payouts")
+        .update({
+          status: success ? "completed" : "failed",
+          processed_at: new Date().toISOString(),
+          failure_reason: success ? null : evt.data.reason ?? "transfer failed",
+          raw_payload: evt.data,
+        }).eq("transfer_reference", ref).select("id, owner_id, amount, currency").maybeSingle();
+
+      if (payoutRow?.owner_id) {
+        const res = await postLedgerEntry(supabase, {
+          userId: payoutRow.owner_id,
+          accountType: "owner",
+          currency: payoutRow.currency,
+          direction: success ? "debit" : "credit",
+          amount: Number(payoutRow.amount),
+          entryType: success ? "payout" : "payout_reversal",
+          idempotencyKey: `payout:${payoutRow.id}:${success ? "settled" : "reversed"}`,
+          referenceTable: "owner_payouts",
+          referenceId: payoutRow.id,
+          provider: "paystack",
+          providerReference: ref,
+          description: success ? "Owner payout settled" : "Owner payout failed — funds returned",
+        });
+        if (!res.ok) console.error("[paystack-webhook] ledger payout error:", res.error);
+      }
     }
   }
 
@@ -119,3 +140,28 @@ Deno.serve(async (req) => {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
+
+/**
+ * Mirror a completed payment into the wallet ledger (driver debit +
+ * owner-share credit). Ledger failures are logged, never thrown — the money
+ * has already moved at the provider.
+ */
+async function recordPaymentInLedger(
+  supabase: any, paymentId: string, provider: string, providerReference: string,
+) {
+  const { data: pay } = await supabase.from("payments")
+    .select("id, driver_id, owner_id, amount, currency").eq("id", paymentId).maybeSingle();
+  if (!pay?.driver_id) return;
+  const results = await postRentalPaymentLedger(supabase, {
+    paymentId: pay.id,
+    driverId: pay.driver_id,
+    ownerId: pay.owner_id,
+    amount: Number(pay.amount),
+    currency: pay.currency ?? "NGN",
+    provider,
+    providerReference,
+  });
+  for (const r of results) {
+    if (!r.ok) console.error("[ledger] post failed:", r.error);
+  }
+}

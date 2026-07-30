@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
 import { usePayPalConfig } from "@/hooks/usePayPalConfig";
 import { supabase } from "@/integrations/supabase/client";
+import { idempotencyHeaders } from "@/lib/idempotency";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -51,6 +52,7 @@ export function PayPalCheckout({
           payment_frequency: paymentFrequency,
           description: description ?? `Rentmaikar rental payment`,
         },
+        headers: idempotencyHeaders("charge.paypal", { amount, rentalId, vehicleId, driverId }),
       });
 
       if (error || !data?.order_id) {
