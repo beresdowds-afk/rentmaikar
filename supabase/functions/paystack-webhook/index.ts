@@ -78,6 +78,10 @@ Deno.serve(async (req) => {
     const { data: tx } = await supabase.from("paystack_transactions")
       .select("payment_id, amount, currency, rental_id").eq("reference", reference).maybeSingle();
     if (tx?.payment_id) {
+      // Drive the state machine to captured → settled before flipping the
+      // legacy status column, so the audit trail records every hop.
+      await transitionState(supabase, "payment", tx.payment_id, "captured", "paystack charge.success");
+      await transitionState(supabase, "payment", tx.payment_id, "settled", "paystack settlement");
       const { alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id);
       await recordPaymentInLedger(supabase, tx.payment_id, "paystack", reference);
       await notifyPush(tx.payment_id, tx.rental_id ?? null, "completed", tx.amount ? Number(tx.amount) / 100 : undefined, tx.currency ?? undefined, reference);
@@ -94,6 +98,7 @@ Deno.serve(async (req) => {
         await supabase.from("payment_webhook_events").update({ payment_id: tx.payment_id }).eq("id", idem.eventRowId);
       }
     }
+
   } else if (evt.event === "charge.failed" && reference) {
     await supabase.from("paystack_transactions").update({
       status: "failed",
