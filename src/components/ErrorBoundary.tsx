@@ -32,9 +32,10 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
-  };
 
+window.location.reload();
+
+};
   handleGoHome = () => {
     window.location.href = "/";
   };
