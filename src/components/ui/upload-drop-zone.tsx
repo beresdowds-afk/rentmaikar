@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Upload, Camera, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { prepareImageForUpload, isImage } from '@/lib/image-compression';
+
 
 interface UploadDropZoneProps {
   accept?: string;
