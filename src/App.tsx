@@ -119,10 +119,10 @@ const App = () => (
               <DocumentExpiryInAppNotifier />
               <OnboardingStageToaster /> 
 
-              <SkipToContent /> */
+              <SkipToContent /> 
               <LiveAnnouncer />
 
-              <CookieConsent />
+              <CookieConsent /> */
               <MessageConsent />
               <AudioPermissionPrimer />
 
