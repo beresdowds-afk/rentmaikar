@@ -102,10 +102,7 @@ const queryClient = new QueryClient();
 const PageLoader = () => <PageSkeleton />;
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <RegionProvider>
-        <UserTypeProvider>
+  
           <ErrorBoundary>
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
