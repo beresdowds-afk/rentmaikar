@@ -14,6 +14,7 @@ import { toast } from '@/hooks/use-toast';
 import { UserIdentityCard } from '@/components/profile/UserIdentityCard';
 import { ReverificationBanner } from '@/components/profile/ReverificationBanner';
 import { ProfileAuditHistory } from '@/components/profile/ProfileAuditHistory';
+import { ApplicationAppealPanel } from '@/components/profile/ApplicationAppealPanel';
 import { ConnectedAccounts } from '@/components/profile/ConnectedAccounts';
 import { PersonaNotificationPreference } from '@/components/profile/PersonaNotificationPreference';
 import PWASettingsPanel from '@/components/pwa/PWASettingsPanel';
@@ -303,6 +304,9 @@ export default function ProfileSettingsPage() {
           </Card>
 
           <PersonaNotificationPreference />
+
+          <ApplicationAppealPanel />
+
 
           <PWASettingsPanel />
 
