@@ -114,8 +114,8 @@ const App = () => (
             <TooltipProvider>
 
               <AppLiveSync /> 
-              <MetaPixelRouteTracker /> */
-              <NativeDeepLinkBridge />
+              <MetaPixelRouteTracker /> 
+              <NativeDeepLinkBridge /> */
               <DocumentExpiryInAppNotifier />
               <OnboardingStageToaster />
 
