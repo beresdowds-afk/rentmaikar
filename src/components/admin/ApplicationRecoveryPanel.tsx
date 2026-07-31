@@ -82,7 +82,7 @@ export default function ApplicationRecoveryPanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('application_recovery_requests')
-        .select('id, application_id, reason, status, created_at')
+        .select('id, application_id, reason, status, created_at, documents')
         .eq('status', 'open')
         .order('created_at', { ascending: false });
       if (error) throw error;
