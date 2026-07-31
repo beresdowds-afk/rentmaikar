@@ -40,6 +40,7 @@ interface AlertItem {
 }
 
 export function DriverOverviewTab({ onNavigateTab }: Props) {
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const impersonation = useImpersonation();
   const targetId = impersonation?.role === 'driver' ? impersonation.viewAsUserId : user?.id;
@@ -54,84 +55,112 @@ export function DriverOverviewTab({ onNavigateTab }: Props) {
 
   useEffect(() => {
   if (!targetId) return;
-
   let cancelled = false;
-
-  (async () => {
+  const loadDashboard = async () => {
+    setLoading(true);
     try {
       const now = new Date().toISOString();
-      const in30 = new Date(Date.now() + 30 * 86_400_000).toISOString();
+      const in30Days = new Date(
+        Date.now() + 30 * 24 * 60 * 60 * 1000
+      ).toISOString();
 
-      const insp = await supabase
-        .from("weekly_inspection_reports")
-        .select("week_start_date, submitted_at")
-        .eq("driver_id", targetId)
-        .is("submitted_at", null)
-        .order("week_start_date", { ascending: true })
-        .limit(1)
-        .maybeSingle();
+      const [
+        inspectionResult,
+        docsResult,
+        messagesResult,
+        incidentsResult,
+        trainingResult,
+      ] = await Promise.all([
+        supabase
+          .from("weekly_inspection_reports")
+          .select("week_start_date, submitted_at")
+          .eq("driver_id", targetId)
+          .is("submitted_at", null)
+          .order("week_start_date", { ascending: true })
+          .limit(1)
+          .maybeSingle(),
 
-      console.log("Inspection:", insp);
-if (insp.error) console.error("Inspection error:", insp.error);
+        supabase
+          .from("user_documents")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", targetId)
+          .not("expires_at", "is", null)
+          .gt("expires_at", now)
+          .lt("expires_at", in30Days),
 
-      const docs = await supabase
-        .from("user_documents")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", targetId)
-        .not("expires_at", "is", null)
-        .lt("expires_at", in30)
-        .gt("expires_at", now);
+        supabase
+          .from("inbox_messages")
+          .select("id", { count: "exact", head: true })
+          .eq("recipient_id", targetId)
+          .eq("read", false),
 
-      console.log("Documents:", docs);
-if (docs.error) console.error("Documents error:", docs.error);
+        supabase
+          .from("vehicle_incidents")
+          .select("id", { count: "exact", head: true })
+          .eq("reporter_id", targetId)
+          .in("status", [
+            "reported",
+            "acknowledged",
+            "in_progress",
+          ]),
 
-      const msgs = await supabase
-        .from("inbox_messages")
-        .select("id", { count: "exact", head: true })
-        .eq("recipient_id", targetId)
-        .eq("read", false);
-
-      console.log("Messages:", msgs);
-if (msgs.error) console.error("Messages error:", msgs.error);
-
-      const inc = await supabase
-        .from("vehicle_incidents")
-        .select("id", { count: "exact", head: true })
-        .eq("reporter_id", targetId)
-        .in("status", ["reported", "in_progress", "acknowledged"]);
-
-      console.log("Incidents:", inc);
-if (inc.error) console.error("Incidents error:", inc.error);
-
-      const train = await supabase
-        .from("training_completions")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", targetId);
-
-      console.log("Training:", train);
+        supabase
+          .from("training_completions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", targetId),
+      ]);
 
       if (cancelled) return;
-if (train.error) console.error("Training error:", train.error);
-      
-      const weekStart = insp.data?.week_start_date;
+          setLoading(false);
+      [
+        inspectionResult,
+        docsResult,
+        messagesResult,
+        incidentsResult,
+        trainingResult,
+      ].forEach((result) => {
+        if (result.error) {
+          console.error(result.error);
+        }
+      });
+const DEBUG_DRIVER_OVERVIEW = import.meta.env.DEV;
+
+if (DEBUG_DRIVER_OVERVIEW) {
+  console.group("DriverOverview");
+  console.log("Target ID:", targetId);
+  console.log("Inspection:", insp);
+  console.log("Documents:", docs);
+  console.log("Messages:", msgs);
+  console.log("Incidents:", inc);
+  console.log("Training:", train);
+  console.groupEnd();
+}
+      console.log({
+  targetId,
+  impersonationRole: impersonation?.role,
+  currentUser: user?.id,
+});
+      const weekStart = inspectionResult.data?.week_start_date;
 
       setInspectionDue(
         weekStart
           ? new Date(
-              new Date(weekStart).getTime() + 7 * 86_400_000
+              new Date(weekStart).getTime() +
+                7 * 24 * 60 * 60 * 1000
             ).toISOString()
           : null
       );
 
-      setExpiringDocs(docs.count ?? 0);
-      setUnreadMessages(msgs.count ?? 0);
-      setOpenIncidents(inc.count ?? 0);
-      setTrainingComplete((train.count ?? 0) > 0);
-
-    } catch (err) {
-      console.error("DriverOverviewTab failed:", err);
+      setExpiringDocs(docsResult.count ?? 0);
+      setUnreadMessages(messagesResult.count ?? 0);
+      setOpenIncidents(incidentsResult.count ?? 0);
+      setTrainingComplete((trainingResult.count ?? 0) > 0);
+    } catch (error) {
+      console.error("Failed loading driver dashboard", error);
     }
-  })();
+  };
+
+  loadDashboard();
 
   return () => {
     cancelled = true;
