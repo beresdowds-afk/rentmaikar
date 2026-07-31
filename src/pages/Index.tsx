@@ -21,16 +21,10 @@ const Index = () => {
   const { hasSelectedType } = useUserType();
   const { isOpen, completeTour, resetTour } = useOnboardingTour();
   const navigate = useNavigate();
-  const { user, userRole, isLoading } = useAuth();
+  const { user, userRole, isLoading, isRoleLoading } = useAuth();
 
   // Returning verified users landing on `/` are forwarded straight to their
   // role dashboard — the landing page is for guests only.
-  const {
-    user,
-    userRole,
-    isLoading,
-    isRoleLoading,
-} = useAuth();
 
 useEffect(() => {
     if (isLoading || isRoleLoading) return;
