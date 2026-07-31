@@ -106,26 +106,40 @@ const App = () => (
     <AuthProvider>
       <RegionProvider>
         <UserTypeProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <ErrorBoundary>
+          <ErrorBoundary>
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <RegionProvider>
+        <UserTypeProvider>
+
+          <BrowserRouter>
+
+            <TooltipProvider>
+
               <AppLiveSync />
               <MetaPixelRouteTracker />
               <NativeDeepLinkBridge />
               <DocumentExpiryInAppNotifier />
               <OnboardingStageToaster />
+
               <SkipToContent />
               <LiveAnnouncer />
+
               <CookieConsent />
               <MessageConsent />
               <AudioPermissionPrimer />
-                <Suspense fallback={<PageLoader />}>
-                  <main id="main-content">
+
+              <Toaster />
+              <Sonner />
+
+              <Suspense fallback={<PageLoader />}>
+
+                <main id="main-content">
                   <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
+
+                    <Route path="/" element={<Index />} />
+                    <Route path="/auth" element={<Auth />} />
+                
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/referee-attest" element={<RefereeAttestation />} />
                   <Route path="/proxy/consent" element={<ProxyConsentPage />} />
@@ -504,15 +518,17 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
 
                   </Routes>
-                  </main>
-                </Suspense>
-              </ErrorBoundary>
-            </BrowserRouter>
-          </TooltipProvider>
+                </main>
+
+              </Suspense>
+
+            </TooltipProvider>
+
+          </BrowserRouter>
+
         </UserTypeProvider>
       </RegionProvider>
     </AuthProvider>
   </QueryClientProvider>
-);
-
+</ErrorBoundary>
 export default App;
