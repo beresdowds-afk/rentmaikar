@@ -122,8 +122,8 @@ const App = () => (
               <SkipToContent /> 
               <LiveAnnouncer />
 
-              <CookieConsent /> */
-              <MessageConsent />
+              <CookieConsent />
+              <MessageConsent /> */
               <AudioPermissionPrimer />
 
               <Toaster />
