@@ -528,5 +528,5 @@ const App = () => (
     </AuthProvider>
   </QueryClientProvider>
 </ErrorBoundary>
-  ):
+  );
 export default App;
