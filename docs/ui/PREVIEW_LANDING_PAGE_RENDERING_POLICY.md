@@ -34,7 +34,7 @@ If region detection cannot determine the visitor's location, the application sha
 
 # Policy 2 — Approved Hero Background
 
-The landing page hero section shall always display the approved zoomed-out vehicle background image.
+The landing page hero section shall always display the approved zoomed-out vehicle background image at /src/assets/hero-cars-bg-v2.png.asset.json.
 
 The approved image must satisfy the following requirements:
 
@@ -48,14 +48,14 @@ The approved image must satisfy the following requirements:
 
 # Prohibited Hero Images
 
-The following must never appear as the landing page background:
+The following must never appear in the landing page background:
 
-- Older cropped vehicle images
+- Cropped or partial vehicle images
 - Legacy hero artwork
 - Placeholder images
 - Development assets
 - Cached preview images
-- Previously uploaded hero backgrounds that are no longer designated as current
+ 
 
 ---
 
@@ -87,7 +87,7 @@ After deployment:
 - invalidate image caches
 - invalidate browser caches where appropriate
 - refresh CDN assets
-- purge obsolete hero image references
+ 
 
 The latest approved hero background must become the only image used for rendering.
 
