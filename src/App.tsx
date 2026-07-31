@@ -117,13 +117,13 @@ const App = () => (
               <MetaPixelRouteTracker />
               <NativeDeepLinkBridge />
               <DocumentExpiryInAppNotifier />
-              <OnboardingStageToaster /> 
+              <OnboardingStageToaster />
 
-              <SkipToContent /> 
+              <SkipToContent />
               <LiveAnnouncer />
 
-              <CookieConsent /> 
-              <MessageConsent /> */
+              <CookieConsent />
+              <MessageConsent />
               <AudioPermissionPrimer />
 
               <Toaster />
