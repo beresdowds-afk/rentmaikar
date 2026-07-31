@@ -70,10 +70,10 @@ window.location.reload();
                 <Home className="h-4 w-4" />
                 Go Home
               </Button>
+           <pre>{String(error)}</pre>
             </div>
           </div>
         </div>
-        <pre>{String(error)}</pre>
       );
     }
     return this.props.children;
