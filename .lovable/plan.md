@@ -27,14 +27,56 @@ Fix:
 
 ## 3. Returning verified users → dashboard on sign-in
 
-Problem: `Auth.tsx` and `OnboardingRedirect.tsx` sometimes bounce verified users to `/` (landing).
+## 3. Centralized Post-Login Routing (Stability & Error Prevention)
 
-Fix:
-- Centralize routing in a single `resolvePostLoginRoute(user, profile, roles)` helper in `src/lib/role-home.ts`:
-  - Verified + onboarding_completed_at set → `homeForRole(role)`.
-  - Verified + role in `ROLE_ONBOARDING` and onboarding incomplete → onboarding path.
-  - Everything else → `/onboarding/complete-profile` (never `/`).
-- Update `Auth.tsx` success handler and `OnboardingRedirect.tsx` to use the helper.
+### Problem
+
+The current post-authentication flow can attempt to determine the user's destination before all required authentication state has been fully initialized. When user profile data, role assignments, onboarding status, or region information are still loading, the routing logic may evaluate incomplete data and redirect prematurely.
+
+This can produce the following sequence:
+
+- Landing page renders.
+- Existing authentication session is restored.
+- "Loading your dashboard..." is displayed.
+- Route resolution executes before required data is available.
+- An invalid or incorrect destination is selected, or an exception is thrown.
+- The application falls through to the global `ErrorBoundary`, displaying the generic "Something went wrong" page.
+
+### Required Behaviour
+
+Create a single `resolvePostLoginRoute(user, profile, roles)` helper that executes **only after** all required authentication state has been successfully loaded and validated.
+
+The helper must:
+
+- Wait until authentication initialization has completed.
+- Wait until the user profile has been successfully retrieved.
+- Wait until role assignments have been loaded.
+- Wait until onboarding status has been determined.
+- Return a valid destination only when all required data is available.
+- Never evaluate partially-loaded or undefined state.
+- Never redirect to `/` as a fallback for authenticated users unless explicitly intended.
+- Return a safe fallback route if required data cannot be resolved instead of throwing an exception.
+
+### Routing Rules
+
+- Verified users with completed onboarding → role-specific dashboard.
+- Verified users with incomplete onboarding → appropriate onboarding workflow.
+- Authenticated users with incomplete profile data → profile completion flow.
+- Unauthenticated users → authentication page.
+
+### Stability Requirements
+
+The routing helper must be deterministic and idempotent.
+
+It must:
+
+- Avoid multiple redirects during a single authentication cycle.
+- Prevent redirect loops.
+- Prevent navigation while authentication state is still loading.
+- Handle missing or delayed profile data gracefully.
+- Log routing failures for diagnostics rather than allowing unhandled exceptions to propagate to the global `ErrorBoundary`.
+
+This routing helper should become the single source of truth for all authentication-based navigation and be used consistently by `Auth.tsx`, `OnboardingRedirect.tsx`, deep-link handlers, session restoration, and any future login or onboarding flows.
 
 ## 4. Admin ↔ Admin-Assistant dashboard sync
 
