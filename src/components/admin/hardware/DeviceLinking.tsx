@@ -84,7 +84,7 @@ export const DeviceLinking = () => {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { await load();; }, []);
 
   const availableSims = sims;
   const vehiclesWithDevice = new Set(devices.filter(d => d.vehicle_id).map(d => d.vehicle_id));
@@ -103,8 +103,14 @@ export const DeviceLinking = () => {
       if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       toast.success('SIM linked to device', { description: 'You can now activate the pair.' });
       setLinkSimFor(null); load();
-    } catch (err: any) {
-      toast.error('Link failed', { description: err.message });
+    } catch (err) {
+  toast.error('Link failed', {
+    description:
+      err instanceof Error
+        ? err.message
+        : 'Unexpected error occurred',
+  });
+}
     } finally { setLinking(false); }
   };
 
@@ -117,8 +123,14 @@ export const DeviceLinking = () => {
       });
       if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       setReadiness(data as Readiness);
-    } catch (err: any) {
-      toast.error('Readiness check failed', { description: err.message });
+    } catch (err) {
+  toast.error('Readiness Check failed', {
+    description:
+      err instanceof Error
+        ? err.message
+        : 'Unexpected error occurred',
+  });
+}
     } finally { setCheckingReady(false); }
   };
 
@@ -134,9 +146,16 @@ export const DeviceLinking = () => {
         description: 'Installation is now pending. Confirm installation to enable live map & telemetry.',
       });
       setLinkVehicleFor(null); setPickedVehicle('');
-      load();
-    } catch (err: any) {
-      toast.error('Link failed', { description: err.message });
+      await load(); if (loading) return;
+setLoading(true);
+    } catch (err) {
+  toast.error('Link Failed', {
+    description:
+      err instanceof Error
+        ? err.message
+        : 'Unexpected error occurred',
+  });
+}
     } finally { setVehLinking(false); }
   };
 
@@ -147,9 +166,16 @@ export const DeviceLinking = () => {
       });
       if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       toast.success('Device unlinked from vehicle');
-      load();
-    } catch (err: any) { toast.error('Unlink failed', { description: err.message }); }
-  };
+      await load(); if (loading) return;
+setLoading(true);
+    } catch (err) {
+  toast.error('Unlink Failed', {
+    description:
+      err instanceof Error
+        ? err.message
+        : 'Unexpected error occurred',
+  });
+}
 
   const submitConfirmInstall = async () => {
     if (!confirmInstallFor) return;
@@ -160,9 +186,17 @@ export const DeviceLinking = () => {
       });
       if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       toast.success('Installation confirmed', { description: 'Device is now live on the map.' });
-      setConfirmInstallFor(null); setInstallNotes(''); load();
-    } catch (err: any) {
-      toast.error('Could not confirm', { description: err.message });
+      setConfirmInstallFor(null); setInstallNotes(''); 
+      Await load(); if (loading) return;
+setLoading(true);
+    } catch (err) {
+  toast.error('Could not Confirm', {
+    description:
+      err instanceof Error
+        ? err.message
+        : 'Unexpected error occurred',
+  });
+}
     } finally { setInstalling(false); }
   };
 
@@ -176,9 +210,17 @@ export const DeviceLinking = () => {
       });
       if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       toast.success('Device deactivated', { description: (data as any)?.message });
-      setDeactivateFor(null); setDeactivateReason(''); load();
-    } catch (err: any) {
-      toast.error('Deactivation failed', { description: err.message });
+      setDeactivateFor(null); setDeactivateReason(''); 
+      Await load(); if (loading) return;
+setLoading(true);
+    } catch (err) {
+  toast.error('Deactivation failed', {
+    description:
+      err instanceof Error
+        ? err.message
+        : 'Unexpected error occurred',
+  });
+}
     } finally { setDeactivating(false); }
   };
 
