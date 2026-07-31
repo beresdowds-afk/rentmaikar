@@ -53,44 +53,90 @@ export function DriverOverviewTab({ onNavigateTab }: Props) {
   const [trainingComplete, setTrainingComplete] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!targetId) return;
-    let cancelled = false;
-    (async () => {
+  if (!targetId) return;
+
+  let cancelled = false;
+
+  (async () => {
+    try {
       const now = new Date().toISOString();
       const in30 = new Date(Date.now() + 30 * 86_400_000).toISOString();
-      const client = supabase as any;
 
-      const insp = await client
-        .from('weekly_inspection_reports')
-        .select('week_start_date, submitted_at')
-        .eq('driver_id', targetId)
-        .is('submitted_at', null)
-        .order('week_start_date', { ascending: true })
+      const insp = await supabase
+        .from("weekly_inspection_reports")
+        .select("week_start_date, submitted_at")
+        .eq("driver_id", targetId)
+        .is("submitted_at", null)
+        .order("week_start_date", { ascending: true })
         .limit(1)
         .maybeSingle();
-      const docs = await client
-        .from('user_documents')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', targetId)
-        .not('expires_at', 'is', null)
-        .lt('expires_at', in30)
-        .gt('expires_at', now);
-      const msgs = await client
-        .from('inbox_messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('recipient_id', targetId)
-        .eq('read', false);
-      const inc = await client
-        .from('vehicle_incidents')
-        .select('id', { count: 'exact', head: true })
-        .eq('reporter_id', targetId)
-        .in('status', ['reported', 'in_progress', 'acknowledged']);
-      const train = await client
-        .from('training_completions')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', targetId);
+
+      console.log("Inspection:", insp);
+if (insp.error) console.error("Inspection error:", insp.error);
+
+      const docs = await supabase
+        .from("user_documents")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", targetId)
+        .not("expires_at", "is", null)
+        .lt("expires_at", in30)
+        .gt("expires_at", now);
+
+      console.log("Documents:", docs);
+if (docs.error) console.error("Documents error:", docs.error);
+
+      const msgs = await supabase
+        .from("inbox_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("recipient_id", targetId)
+        .eq("read", false);
+
+      console.log("Messages:", msgs);
+if (msgs.error) console.error("Messages error:", msgs.error);
+
+      const inc = await supabase
+        .from("vehicle_incidents")
+        .select("id", { count: "exact", head: true })
+        .eq("reporter_id", targetId)
+        .in("status", ["reported", "in_progress", "acknowledged"]);
+
+      console.log("Incidents:", inc);
+if (inc.error) console.error("Incidents error:", inc.error);
+
+      const train = await supabase
+        .from("training_completions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", targetId);
+
+      console.log("Training:", train);
 
       if (cancelled) return;
+if (train.error) console.error("Training error:", train.error);
+      
+      const weekStart = insp.data?.week_start_date;
+
+      setInspectionDue(
+        weekStart
+          ? new Date(
+              new Date(weekStart).getTime() + 7 * 86_400_000
+            ).toISOString()
+          : null
+      );
+
+      setExpiringDocs(docs.count ?? 0);
+      setUnreadMessages(msgs.count ?? 0);
+      setOpenIncidents(inc.count ?? 0);
+      setTrainingComplete((train.count ?? 0) > 0);
+
+    } catch (err) {
+      console.error("DriverOverviewTab failed:", err);
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [targetId]);
       const weekStart = insp?.data?.week_start_date as string | undefined;
       // treat report as "due" 7 days after the week starts
       setInspectionDue(weekStart ? new Date(new Date(weekStart).getTime() + 7 * 86_400_000).toISOString() : null);
