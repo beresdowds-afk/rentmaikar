@@ -305,6 +305,9 @@ export default function ProfileSettingsPage() {
 
           <PersonaNotificationPreference />
 
+          <ApplicationAppealPanel />
+
+
           <PWASettingsPanel />
 
           <ConnectedAccounts />
