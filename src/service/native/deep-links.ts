@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
-import { installOnboardingDeepLinkListener } from "@/services/deep-links";
+import { installOnboardingDeepLinkListener } from "@/lib/onboarding-deep-link";
 import { reportError } from "@/lib/error-monitor";
 
 // Native deep-link bridge.
@@ -40,7 +40,7 @@ const NativeDeepLinkBridge = () => {
           } catch (navigationError) {
             reportError(
               navigationError as Error,
-              "warning",
+              "medium",
               "NativeDeepLinkBridge.navigate",
               { target }
             );
@@ -49,7 +49,7 @@ const NativeDeepLinkBridge = () => {
       } catch (error) {
         reportError(
           error as Error,
-          "warning",
+          "medium",
           "NativeDeepLinkBridge.initialisation"
         );
 
@@ -70,7 +70,7 @@ const NativeDeepLinkBridge = () => {
       } catch (error) {
         reportError(
           error as Error,
-          "warning",
+          "medium",
           "NativeDeepLinkBridge.cleanup"
         );
       }

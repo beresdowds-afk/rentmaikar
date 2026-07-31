@@ -13,6 +13,11 @@ import MessageConsent from "@/components/MessageConsent";
 import PageSkeleton from "@/components/PageSkeleton";
 import ErrorBoundary from "@/components/errors/ErrorBoundary";
 import SkipToContent from "@/components/SkipToContent";
+import LiveAnnouncer from "@/components/LiveAnnouncer";
+import MetaPixelRouteTracker from "@/components/MetaPixelRouteTracker";
+import AudioPermissionPrimer from "@/components/AudioPermissionPrimer";
+import NativeDeepLinkBridge from "@/service/native/deep-links";
+import DocumentExpiryInAppNotifier from "@/components/notifications/DocumentExpiryInAppNotifier";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useApplicationApprovalNotifier } from "@/hooks/useApplicationApprovalNotifier";
 import { useNativePush } from "@/hooks/useNativePush";
@@ -97,32 +102,16 @@ const queryClient = new QueryClient();
 const PageLoader = () => <PageSkeleton />;
 
 const App = () => (
-  <ErrorBoundary>
-<BrowserRouter>
-<QueryClientProvider>
-<AuthProvider>
-<RegionProvider>
-<UserTypeProvider>
-<TooltipProvider>
-<AppLiveSync />
-<Routes />
-</TooltipProvider>
-</UserTypeProvider>
-</RegionProvider>
-</AuthProvider>
-</QueryClientProvider>
-</BrowserRouter>
-
-</ErrorBoundary>
-  
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <RegionProvider>
+        <UserTypeProvider>
+          <TooltipProvider>
             <Toaster />
             <Sonner />
             <BrowserRouter>
-           <AuthProvider>
+              <ErrorBoundary>
               <AppLiveSync />
-            </AuthProvider> 
-             </BrowserRouter>
-            
               <MetaPixelRouteTracker />
               <NativeDeepLinkBridge />
               <DocumentExpiryInAppNotifier />

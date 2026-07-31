@@ -56,7 +56,7 @@ window.location.reload();
                 An unexpected error occurred. Please try again or return to the homepage.
               </p>
             </div>
-            {import.meta.env.DEV === "development" && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <pre className="text-left text-xs bg-muted p-4 rounded-lg overflow-auto max-h-40 text-muted-foreground">
                 {this.state.error.message}
               </pre>
