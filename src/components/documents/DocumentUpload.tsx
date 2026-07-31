@@ -279,7 +279,9 @@ export const DocumentUpload = ({ userType, vehicleId, vehicleName }: DocumentUpl
   const handleViewDocument = async (doc: UserDocument) => {
     const url = await getDocumentUrl(doc.file_path);
     if (url) {
-      window.open(url, '_blank');
+      if (typeof window !== 'undefined' && url) {
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
     } else {
       toast.error('Could not load document');
     }
@@ -354,7 +356,11 @@ export const DocumentUpload = ({ userType, vehicleId, vehicleName }: DocumentUpl
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+  if (status === 'CHANNEL_ERROR') {
+    console.error('Realtime subscription failed');
+  }
+});;
     return () => { supabase.removeChannel(channel); };
   }, [user?.id, queryClient]);
 
