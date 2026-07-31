@@ -73,11 +73,10 @@ window.location.reload();
             </div>
           </div>
         </div>
+        <pre>{String(error)}</pre>
       );
     }
-
     return this.props.children;
   }
 }
-
 export default ErrorBoundary;
