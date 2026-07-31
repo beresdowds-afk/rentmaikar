@@ -193,20 +193,43 @@ export default function ApplicationRecoveryPanel() {
                   )}
 
                   {req && (
-                    <div className="text-xs bg-blue-50 text-blue-800 rounded p-2 flex items-start gap-2">
-                      <MessageSquareWarning className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                      <span className="flex-1">Applicant appeal: {req.reason}</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2 text-xs"
-                        onClick={() => decline.mutate(req.id)}
-                        disabled={decline.isPending}
-                      >
-                        Decline
-                      </Button>
+                    <div className="text-xs bg-blue-50 text-blue-800 rounded p-2 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <MessageSquareWarning className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                        <span className="flex-1">Applicant appeal: {req.reason}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-xs"
+                          onClick={() => decline.mutate(req.id)}
+                          disabled={decline.isPending}
+                        >
+                          Decline
+                        </Button>
+                      </div>
+                      {(req.documents ?? []).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pl-5">
+                          {(req.documents ?? []).map((doc) => (
+                            <Button
+                              key={doc.path}
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-xs"
+                              onClick={async () => {
+                                const { data } = await supabase.storage
+                                  .from('appeal-documents')
+                                  .createSignedUrl(doc.path, 300);
+                                if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+                              }}
+                            >
+                              {doc.name}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
+
 
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={() => { setAction({ app, kind: 'recover' }); setNotes(''); }}>
