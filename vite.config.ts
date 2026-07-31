@@ -11,7 +11,13 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // Never let a proxy/CDN or browser hold onto the app shell — stale HTML was
+    // serving an outdated landing page in preview.
+    headers: {
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+    },
   },
+
   plugins: [
     react(),
     mode === "development" && componentTagger(),
