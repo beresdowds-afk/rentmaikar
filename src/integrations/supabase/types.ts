@@ -627,6 +627,7 @@ export type Database = {
         Row: {
           application_id: string
           created_at: string
+          documents: Json
           id: string
           reason: string
           requested_by: string | null
@@ -639,6 +640,7 @@ export type Database = {
         Insert: {
           application_id: string
           created_at?: string
+          documents?: Json
           id?: string
           reason: string
           requested_by?: string | null
@@ -651,6 +653,7 @@ export type Database = {
         Update: {
           application_id?: string
           created_at?: string
+          documents?: Json
           id?: string
           reason?: string
           requested_by?: string | null
@@ -9756,6 +9759,22 @@ export type Database = {
         Returns: string
       }
       mark_all_admin_notifications_read: { Args: never; Returns: number }
+      my_application_appeals: {
+        Args: never
+        Returns: {
+          application_id: string
+          application_status: string
+          application_type: string
+          created_at: string
+          documents: Json
+          id: string
+          reason: string
+          rejection_reason: string
+          resolution_notes: string
+          reviewed_at: string
+          status: string
+        }[]
+      }
       needs_latest_agreement_acceptance: {
         Args: { _agreement_type: string; _region: string }
         Returns: {
@@ -9838,10 +9857,12 @@ export type Database = {
         Args: { _app_id: string; _notes?: string; _reason: string }
         Returns: undefined
       }
-      request_application_recovery: {
-        Args: { _app_id: string; _reason: string }
-        Returns: string
-      }
+      request_application_recovery:
+        | { Args: { _app_id: string; _reason: string }; Returns: string }
+        | {
+            Args: { _app_id: string; _documents?: Json; _reason: string }
+            Returns: string
+          }
       request_withdrawal_authorization: {
         Args: {
           _amount: number
