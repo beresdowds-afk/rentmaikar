@@ -36,12 +36,18 @@ interface RejectedApp {
   recycle_count: number | null;
 }
 
+interface AppealDoc {
+  path: string;
+  name: string;
+}
+
 interface RecoveryRequest {
   id: string;
   application_id: string;
   reason: string;
   status: string;
   created_at: string;
+  documents?: AppealDoc[] | null;
 }
 
 const badgeFor: Record<RecoveryStatus, string> = {
