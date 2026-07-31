@@ -19,9 +19,11 @@ import { homeForRole, type AppRole } from "@/lib/role-home";
 
 const Index = () => {
   const { hasSelectedType } = useUserType();
-  const { isOpen, completeTour, resetTour } = useOnboardingTour();
   const navigate = useNavigate();
   const { user, userRole, isLoading, isRoleLoading } = useAuth();
+  // Guests must see the landing page itself — the tour only auto-opens for
+  // signed-in users so the public hero is never covered by a modal.
+  const { isOpen, completeTour, resetTour } = useOnboardingTour({ autoOpen: !!user });
 
   // Returning verified users landing on `/` are forwarded straight to their
   // role dashboard — the landing page is for guests only.
