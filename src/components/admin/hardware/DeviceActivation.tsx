@@ -31,45 +31,127 @@ export const DeviceActivation = () => {
   const [confirm, setConfirm] = useState<{ open: boolean; device: Device | null; action: 'activate' | 'deactivate' }>({ open: false, device: null, action: 'activate' });
 
   const load = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('iot-admin', { body: { action: 'list_devices' } });
-      if (error) throw error;
-      setDevices((data as any).devices || []);
-    } catch (err: any) {
-      toast.error('Failed to load devices', { description: err.message });
-    } finally {
-      setLoading(false);
+  setLoading(true);
+
+  try {
+    const { data, error } =
+      await supabase.functions.invoke("iot-admin", {
+        body:{
+          action:"list_devices"
+        }
+      });
+
+    if(error){
+      console.error(error);
+      throw error;
     }
-  };
-  useEffect(() => { load(); }, []);
 
-  const active = devices.filter(d => d.status === 'active').length;
-  const inactive = devices.filter(d => d.status === 'inactive').length;
-  const offline = devices.filter(d => d.status === 'offline').length;
+    if(!Array.isArray(data?.devices)){
+      throw new Error(
+        "Invalid response from iot-admin"
+      );
+    }
 
-  const runToggle = async () => {
-    if (!confirm.device) return;
-    setWorking(confirm.device.id);
-    try {
-      const { data, error } = await supabase.functions.invoke('iot-admin', {
-        body: {
-          action: confirm.action === 'activate' ? 'activate_pair' : 'suspend_pair',
-          device_id: confirm.device.id,
-        },
-      });
-      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
-      toast.success(`Device ${confirm.action === 'activate' ? 'activated for live telemetry' : 'suspended'}`, {
-        description: confirm.action === 'activate'
-          ? 'The eSIM is live on Hologram. Link it to a vehicle to see it on the map.'
-          : 'The eSIM has been paused.',
-      });
-      setConfirm({ open: false, device: null, action: 'activate' });
-      load();
-    } catch (err: any) {
-      toast.error('Action failed', { description: err.message });
-    } finally { setWorking(null); }
-  };
+    setDevices(data.devices);
+
+  } catch(err:any){
+
+    console.error(
+      "Device loading failed:",
+      err
+    );
+
+    toast.error(
+      "Failed to load devices",
+      {
+        description:
+          err.message || "Unknown error"
+      }
+    );
+
+  } finally {
+
+    setLoading(false);
+
+  }
+};
+
+
+const runToggle = async () => {
+
+  const device = confirm.device;
+
+  if(!device || !confirm.action)
+    return;
+
+
+  setWorking(device.id);
+
+  try{
+
+    const action =
+      confirm.action === "activate"
+      ? "activate_pair"
+      : "suspend_pair";
+
+
+    const {data,error} =
+      await supabase.functions.invoke(
+        "iot-admin",
+        {
+          body:{
+            action,
+            device_id:device.id
+          }
+        }
+      );
+
+
+    if(error || data?.error){
+
+      throw new Error(
+        error?.message ??
+        data?.error ??
+        "Operation failed"
+      );
+
+    }
+
+
+    toast.success(
+      confirm.action === "activate"
+      ? "Device activated"
+      : "Device suspended"
+    );
+
+
+    setConfirm({
+      open:false,
+      device:null,
+      action:"activate"
+    });
+
+
+    await load();
+
+
+  }catch(err:any){
+
+    toast.error(
+      "Action failed",
+      {
+        description:
+          err.message
+      }
+    );
+
+  }finally{
+
+    setWorking(null);
+
+  }
+
+};
 
   return (
     <div className="space-y-6">
