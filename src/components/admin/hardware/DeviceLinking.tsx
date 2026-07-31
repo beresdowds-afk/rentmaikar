@@ -84,8 +84,13 @@ export const DeviceLinking = () => {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { await load();; }, []);
+  useEffect(() => {
+  const init = async () => {
+    await load();
+  };
 
+  init();
+}, []);
   const availableSims = sims;
   const vehiclesWithDevice = new Set(devices.filter(d => d.vehicle_id).map(d => d.vehicle_id));
   const availableVehicles = vehicles.filter(v => !vehiclesWithDevice.has(v.id));
