@@ -47,19 +47,35 @@ export function DriverDashboardPreview({ userId, userProfile }: DriverDashboardP
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDriverData();
-  }, [userId]);
+  let mounted = true;
 
-  const fetchDriverData = async () => {
+  const load = async () => {
+    if (!userId) return;
+
     try {
       setLoading(true);
 
-      // Fetch driver's price negotiations
-      const { data: negotiationsData } = await supabase
+      const { data, error } = await supabase
         .from('price_negotiations')
         .select('*')
-        .eq('driver_id', userId)
-        .order('created_at', { ascending: false });
+        .eq('driver_id', userId);
+
+      if (!mounted) return;
+
+      if (error) throw error;
+
+      setNegotiations(Array.isArray(data) ? data : []);
+    } finally {
+      if (mounted) setLoading(false);
+    }
+  };
+
+  load();
+
+  return () => {
+    mounted = false;
+  };
+}, [userId]);
 
       setNegotiations(negotiationsData || []);
     } catch (error) {
@@ -86,7 +102,7 @@ export function DriverDashboardPreview({ userId, userProfile }: DriverDashboardP
       <Alert className="bg-amber-50 border-amber-200">
         <Eye className="h-4 w-4 text-amber-600" />
         <AlertDescription className="text-amber-800">
-          <strong>Admin View:</strong> This is a read-only preview of {userProfile.full_name || 'the driver'}'s dashboard. No actions can be taken.
+          <strong>Admin View:</strong> This is a read-only preview of {userProfile?.full_name ?? "Unknown Driver" || 'the driver'}'s dashboard. No actions can be taken.
         </AlertDescription>
       </Alert>
 
@@ -101,7 +117,7 @@ export function DriverDashboardPreview({ userId, userProfile }: DriverDashboardP
               <Users className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-sm text-muted-foreground">Name</p>
-                <p className="font-medium">{userProfile.full_name || 'Not set'}</p>
+                <p className="font-medium">{userProfile?.full_name ?? "Unknown Driver" || 'Not set'}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
