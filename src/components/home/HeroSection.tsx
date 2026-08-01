@@ -152,6 +152,12 @@ const HeroSection = () => {
       {/* ── Main Hero Content (kept in upper half so it never overlaps the cars) ── */}
       <div className="relative z-10 flex flex-col items-center px-5 pt-4 pb-4 gap-4 sm:gap-5">
 
+        {/* Accessible page heading — visually hidden so the hero artwork and
+            CTA layout are untouched, but screen readers and SEO get a single H1. */}
+        <h1 className="sr-only">
+          Rentmaikar — rent a rideshare-ready vehicle or list your car to earn
+        </h1>
+
         {/* DRIVERS & OWNERS CTAs */}
         <div className="flex flex-row gap-3 sm:gap-4 justify-center w-full max-w-2xl">
           {/* DRIVERS */}
