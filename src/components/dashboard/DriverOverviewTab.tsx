@@ -111,7 +111,7 @@ export function DriverOverviewTab({ onNavigateTab }: Props) {
       ]);
 
       if (cancelled) return;
-          setLoading(false);
+      setLoading(false);
       [
         inspectionResult,
         docsResult,
@@ -123,23 +123,7 @@ export function DriverOverviewTab({ onNavigateTab }: Props) {
           console.error(result.error);
         }
       });
-const DEBUG_DRIVER_OVERVIEW = import.meta.env.DEV;
 
-if (DEBUG_DRIVER_OVERVIEW) {
-  console.group("DriverOverview");
-  console.log("Target ID:", targetId);
-  console.log("Inspection:", insp);
-  console.log("Documents:", docs);
-  console.log("Messages:", msgs);
-  console.log("Incidents:", inc);
-  console.log("Training:", train);
-  console.groupEnd();
-}
-      console.log({
-  targetId,
-  impersonationRole: impersonation?.role,
-  currentUser: user?.id,
-});
       const weekStart = inspectionResult.data?.week_start_date;
 
       setInspectionDue(

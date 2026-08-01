@@ -72,18 +72,18 @@ export const DeviceRegistry = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const [simsRes, devRes, plansRes] = await Promise.allSettled([
-  supabase.functions.invoke('iot-admin', { body: { action: 'list_available_sims' } }),
-  supabase.functions.invoke('iot-admin', { body: { action: 'list_devices' } }),
-  supabase.functions.invoke('iot-admin', { body: { action: 'list_plans' } }),
-]);
+      const [simsRes, devRes, plansRes] = await Promise.all([
+        supabase.functions.invoke('iot-admin', { body: { action: 'list_available_sims' } }),
+        supabase.functions.invoke('iot-admin', { body: { action: 'list_devices' } }),
+        supabase.functions.invoke('iot-admin', { body: { action: 'list_plans' } }),
+      ]);
       if (simsRes.error) throw simsRes.error;
       if (devRes.error) throw devRes.error;
-      setSims((simsRes.data as any).sims ?? []);
-      setDevices((devRes.data as any).devices ?? []);
+      setSims((simsRes.data as any)?.sims ?? []);
+      setDevices((devRes.data as any)?.devices ?? []);
       if (!plansRes.error) {
-        setPlans((plansRes.data as any).plans ?? []);
-        setHologramConfigured((plansRes.data as any).configured ?? false);
+        setPlans((plansRes.data as any)?.plans ?? []);
+        setHologramConfigured((plansRes.data as any)?.configured ?? false);
       }
     } catch (err: any) {
       toast.error('Failed to load inventory', { description: err.message });
