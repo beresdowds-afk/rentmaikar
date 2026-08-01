@@ -721,7 +721,7 @@ const Auth = () => {
           </TabsContent>
         </Tabs>
       </Card>
-    </div>
+    </main>
   );
 };
 
