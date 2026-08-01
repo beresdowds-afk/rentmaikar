@@ -488,7 +488,8 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <h1 className="sr-only">Sign in to Rentmaikar</h1>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Link to="/" className="mx-auto mb-4">
