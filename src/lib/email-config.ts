@@ -67,8 +67,8 @@ export const COMPANY_INFO = {
     country: "Nigeria",
     zip: "",
     fullAddress: "Lagos, Nigeria",
-    phone: "+234 803 555 0123",
-    phoneRaw: "+2348035550123",
+    phone: "+234 706 4916 791",
+    phoneRaw: "+2347064916791",
     email: EMAIL_CONFIG.support,
   },
 } as const;
