@@ -43,6 +43,7 @@ export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNo
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center px-4 py-16">
+          <h1 className="sr-only">{label}</h1>
           <Card className="max-w-md w-full border-primary/20">
             <CardHeader className="text-center space-y-3">
               <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
@@ -82,6 +83,7 @@ export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNo
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center px-4 py-16">
+          <h1 className="sr-only">{label}</h1>
           <Card className="max-w-md w-full border-destructive/30">
             <CardHeader className="text-center space-y-3">
               <div className="mx-auto h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
