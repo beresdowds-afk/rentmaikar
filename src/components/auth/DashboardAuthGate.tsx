@@ -75,7 +75,9 @@ export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNo
     );
   }
 
-  if (userRole && !effectiveAllowed.includes(userRole)) {
+  // A signed-in account with no role row must NOT fall through to the
+  // dashboard — treat "no role" the same as "wrong role".
+  if (!userRole || !effectiveAllowed.includes(userRole)) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
