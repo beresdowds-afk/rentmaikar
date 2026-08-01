@@ -166,18 +166,6 @@ if (DEBUG_DRIVER_OVERVIEW) {
     cancelled = true;
   };
 }, [targetId]);
-      const weekStart = insp?.data?.week_start_date as string | undefined;
-      // treat report as "due" 7 days after the week starts
-      setInspectionDue(weekStart ? new Date(new Date(weekStart).getTime() + 7 * 86_400_000).toISOString() : null);
-      setExpiringDocs(docs.count ?? 0);
-      setUnreadMessages(msgs.count ?? 0);
-      setOpenIncidents(inc.count ?? 0);
-      setTrainingComplete((train.count ?? 0) > 0);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [targetId]);
 
   const nextPayment = useMemo(() => {
     if (!activeRental) return null;

@@ -77,14 +77,6 @@ export function DriverDashboardPreview({ userId, userProfile }: DriverDashboardP
   };
 }, [userId]);
 
-      setNegotiations(negotiationsData || []);
-    } catch (error) {
-      console.error('Error fetching driver data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
