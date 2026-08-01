@@ -59,10 +59,19 @@ export function useRealtimeSync(enabled: boolean = true) {
       keys.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
     };
 
+    // Full refetches are expensive and visibly re-render the whole tree, so a
+    // rapid burst of focus/visibility/online events must not stack up.
+    let lastFullRefreshAt = 0;
+    const MIN_FULL_REFRESH_GAP_MS = 15_000;
+
     const refreshAll = () => {
-      lastEventAt = Date.now();
+      const now = Date.now();
+      if (now - lastFullRefreshAt < MIN_FULL_REFRESH_GAP_MS) return;
+      lastFullRefreshAt = now;
+      lastEventAt = now;
       qc.invalidateQueries();
     };
+
 
     // 1. Realtime subscription
     const channel = supabase.channel("global-sync");
