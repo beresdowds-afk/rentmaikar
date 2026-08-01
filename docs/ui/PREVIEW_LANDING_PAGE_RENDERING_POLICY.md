@@ -14,7 +14,7 @@ The landing page preview must accurately represent the production user experienc
 
 ---
 
-# Policy 1 — Policy 1 — Strict Region-Aware Landing Page
+# Policy 1 — Strict Region-Aware Landing Page
 
 The application shall always render a single, fully region-specific landing page that corresponds to the visitor's active region. At no point shall the landing page display content, assets, navigation, pricing, legal information, promotions, or configuration originating from more than one region.
 
