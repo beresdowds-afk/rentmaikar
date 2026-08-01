@@ -91,12 +91,23 @@ export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNo
             </CardHeader>
             <CardContent className="space-y-4 text-center">
               <p className="text-sm text-muted-foreground">
-                Your account is registered as{' '}
-                <span className="font-semibold">{userRole.replace('_', ' ')}</span>.
-                Please head to your own workspace instead.
+                {userRole ? (
+                  <>
+                    Your account is registered as{' '}
+                    <span className="font-semibold">{userRole.replace('_', ' ')}</span>.
+                    Please head to your own workspace instead.
+                  </>
+                ) : (
+                  <>
+                    No role has been assigned to your account yet. Complete your
+                    registration, or contact support if you believe this is an error.
+                  </>
+                )}
               </p>
               <Button asChild>
-                <Link to={ROLE_HOME[userRole]}>Go to my dashboard</Link>
+                <Link to={userRole ? ROLE_HOME[userRole] : '/'}>
+                  {userRole ? 'Go to my dashboard' : 'Back to home'}
+                </Link>
               </Button>
             </CardContent>
           </Card>
