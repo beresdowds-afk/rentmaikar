@@ -88,13 +88,13 @@ export function DriverOverviewTab({ onNavigateTab }: Props) {
           .gt("expires_at", now)
           .lt("expires_at", in30Days),
 
-        supabase
+        (supabase as any)
           .from("inbox_messages")
           .select("id", { count: "exact", head: true })
           .eq("recipient_id", targetId)
           .eq("read", false),
 
-        supabase
+        (supabase as any)
           .from("vehicle_incidents")
           .select("id", { count: "exact", head: true })
           .eq("reporter_id", targetId)
