@@ -108,43 +108,30 @@ export const DeviceRegistry = () => {
 }, []);
 
   const buySim = async () => {
-    if (buySource === 'manual' && !if (!buyIccid.trim()) {
-    toast.error("Iccid required");
-    return;
-}) {
+    if (buySource === 'manual' && !buyIccid.trim()) {
       toast.error('ICCID is required for manual entry');
       return;
     }
     setBuying(true);
     try {
-      const response = await supabase.functions.invoke('iot-admin', {
+      const { data, error } = await supabase.functions.invoke('iot-admin', {
         body: {
           action: 'purchase_sim',
           source: buySource,
-          provider: buySource === 'manual' ? if (!buyProvider.trim()) {
-    toast.error("Provider required");
-    return;
-} || 'manual') : 'hologram',
+          provider: buySource === 'manual' ? (buyProvider.trim() || 'manual') : 'hologram',
           plan_id: buySource === 'hologram' ? Number(buyPlan) : undefined,
-          plan_name: buySource === 'manual' ? if (!buyPlanName.trim()) {
-    toast.error("PlanName required");
-    return;
-} || null) : undefined,
+          plan_name: buySource === 'manual' ? (buyPlanName.trim() || null) : undefined,
           notes: buyNotes || null,
           iccid: buyIccid || undefined,
           msisdn: buyMsisdn || undefined,
           imsi: buyImsi || undefined,
         },
-      }); if (!response) {
-    throw new Error("No response from Edge Function");
-}
-
-const { data, error } = response;
-      if (error || (metadata?: Record<string, unknown>;)?.error) throw new Error(error?.message || (metadata?: Record<string, unknown>;)?.error);
+      });
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       toast.success(buySource === 'manual' ? 'SIM added to inventory' : 'eSIM added to inventory', {
         description: buySource === 'manual'
           ? `Recorded manually under provider "${buyProvider || 'manual'}".`
-          : (metadata?: Record<string, unknown>;)?.hologram_configured
+          : (data as any)?.hologram_configured
             ? 'Provisioned from Hologram pool.'
             : 'Recorded locally — add HOLOGRAM_API_KEY to sync with the provider.',
       });
@@ -164,7 +151,7 @@ const { data, error } = response;
       const { data, error } = await supabase.functions.invoke('iot-admin', {
         body: { action: 'register_device', ...nd },
       });
-      if (error || (metadata?: Record<string, unknown>;)?.error) throw new Error(error?.message || (metadata?: Record<string, unknown>;)?.error);
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       toast.success(`Device ${nd.serial_number} registered`);
       setAddOpen(false);
       setNd({ serial_number: '', imei: '', device_model: 'GPS-01', firmware_version: '', notes: '' });
@@ -182,8 +169,8 @@ const { data, error } = response;
       const { data, error } = await supabase.functions.invoke('iot-admin', {
         body: { action: 'sync_sim', sim_id: id },
       });
-      if (error || (metadata?: Record<string, unknown>;)?.error) throw new Error(error?.message || (metadata?: Record<string, unknown>;)?.error);
-      if ((metadata?: Record<string, unknown>;)?.skipped) toast.info('Hologram not configured — nothing to sync');
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
+      if ((data as any)?.skipped) toast.info('Hologram not configured — nothing to sync');
       else toast.success('SIM state refreshed');
       load();
     } catch (err: any) {
