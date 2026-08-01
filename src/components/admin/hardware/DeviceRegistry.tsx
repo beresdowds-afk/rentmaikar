@@ -201,11 +201,7 @@ export const DeviceRegistry = () => {
               <CardTitle className="flex items-center gap-2"><SimCard className="h-5 w-5" /> SIM / eSIM Inventory</CardTitle>
               <CardDescription>Buy eSIMs from Hologram <strong>or</strong> add SIMs manually from another provider. Each SIM tracks its provider so you know how it was sourced.</CardDescription>
             </div>
-            {buyOpen && (
-    <Dialog
-        open={buyOpen}
-        onOpenChange={setBuyOpen}
-    > onOpenChange={setBuyOpen}>
+            <Dialog open={buyOpen} onOpenChange={setBuyOpen}>
               <DialogTrigger asChild>
                 <Button><ShoppingCart className="mr-2 h-4 w-4" /> Add SIM</Button>
               </DialogTrigger>
@@ -347,11 +343,7 @@ export const DeviceRegistry = () => {
               <CardTitle className="flex items-center gap-2"><Cpu className="h-5 w-5" /> Tracking Devices</CardTitle>
               <CardDescription>Register GPS/tracking devices. Use the <strong>Vehicle Linking</strong> tab to pair a SIM by IMEI and assign to a vehicle.</CardDescription>
             </div>
-            {AddOpen && (
-    <Dialog
-        open={AddOpen}
-        onOpenChange={setAddOpen}
-    > onOpenChange={setAddOpen}>
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> Register device</Button></DialogTrigger>
               <DialogContent>
                 <DialogHeader>
@@ -421,7 +413,5 @@ export const DeviceRegistry = () => {
         </CardContent>
       </Card>
     </div>
-      </Card>
-    </div> 
   );
 };
