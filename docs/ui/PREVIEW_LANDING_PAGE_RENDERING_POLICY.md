@@ -64,7 +64,7 @@ The approved image must satisfy the following requirements:
 
 The following must never appear in the landing page background:
 
-- Cropped or partial vehicle images
+- Cropped, close up images of partial vehicle images
 - Legacy hero artwork
 - Placeholder images
 - Development assets
@@ -78,7 +78,7 @@ The following must never appear in the landing page background:
 Development Preview, Staging, and Production shall all render:
 
 - identical landing page layouts
-- identical hero backgrounds
+- The same hero backgrounds
 - identical responsive behavior
 - identical regional landing page selection logic
 
