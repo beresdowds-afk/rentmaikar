@@ -23,9 +23,7 @@ Fix:
   - `normalizeToE164(raw, expectedCountry)` → returns `{ e164, country }` or throws with a friendly reason.
   - `assertMatchesRegion(parsed, selectedCountry)` — rejects when parsed country ≠ selected region.
 - Wire the helper into every write path: `ProfileSettingsPage.save`, both registration wizards, `PhoneVerification.handleVerifyCode`, admin user-create dialogs.
-- Migration: add `CHECK (phone IS NULL OR public.is_valid_e164(phone))` on `profiles.phone` (trigger already exists — this backs it with a constraint). No data backfill; existing rows stay untouched and are validated on next update.
-
-## 3. Returning verified users → dashboard on sign-in
+- Migration: add `CHECK (phone IS NULL OR public.is_valid_e164(phone))` on `profiles.phone` (trigger already exists — this backs it with a constraint). No data backfill; existing rows stay untouched and are validated on next update
 
 ## 3. Centralized Post-Login Routing (Stability & Error Prevention)
 
