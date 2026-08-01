@@ -88,13 +88,13 @@ export function DriverOverviewTab({ onNavigateTab }: Props) {
           .gt("expires_at", now)
           .lt("expires_at", in30Days),
 
-        supabase
+        (supabase as any)
           .from("inbox_messages")
           .select("id", { count: "exact", head: true })
           .eq("recipient_id", targetId)
           .eq("read", false),
 
-        supabase
+        (supabase as any)
           .from("vehicle_incidents")
           .select("id", { count: "exact", head: true })
           .eq("reporter_id", targetId)
@@ -111,7 +111,7 @@ export function DriverOverviewTab({ onNavigateTab }: Props) {
       ]);
 
       if (cancelled) return;
-          setLoading(false);
+      setLoading(false);
       [
         inspectionResult,
         docsResult,
@@ -123,23 +123,7 @@ export function DriverOverviewTab({ onNavigateTab }: Props) {
           console.error(result.error);
         }
       });
-const DEBUG_DRIVER_OVERVIEW = import.meta.env.DEV;
 
-if (DEBUG_DRIVER_OVERVIEW) {
-  console.group("DriverOverview");
-  console.log("Target ID:", targetId);
-  console.log("Inspection:", insp);
-  console.log("Documents:", docs);
-  console.log("Messages:", msgs);
-  console.log("Incidents:", inc);
-  console.log("Training:", train);
-  console.groupEnd();
-}
-      console.log({
-  targetId,
-  impersonationRole: impersonation?.role,
-  currentUser: user?.id,
-});
       const weekStart = inspectionResult.data?.week_start_date;
 
       setInspectionDue(
@@ -166,18 +150,6 @@ if (DEBUG_DRIVER_OVERVIEW) {
     cancelled = true;
   };
 }, [targetId]);
-      const weekStart = insp?.data?.week_start_date as string | undefined;
-      // treat report as "due" 7 days after the week starts
-      setInspectionDue(weekStart ? new Date(new Date(weekStart).getTime() + 7 * 86_400_000).toISOString() : null);
-      setExpiringDocs(docs.count ?? 0);
-      setUnreadMessages(msgs.count ?? 0);
-      setOpenIncidents(inc.count ?? 0);
-      setTrainingComplete((train.count ?? 0) > 0);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [targetId]);
 
   const nextPayment = useMemo(() => {
     if (!activeRental) return null;

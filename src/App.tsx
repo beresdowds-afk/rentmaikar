@@ -131,7 +131,10 @@ const App = () => (
 
               <Suspense fallback={<PageLoader />}>
 
-                <main id="main-content">
+                {/* Skip-link target only. Pages render their own <main>
+                    landmark, so this wrapper must NOT be a <main> — nested /
+                    duplicate main landmarks break screen-reader navigation. */}
+                <div id="main-content" tabIndex={-1} className="outline-none">
                   <Routes>
 
                     <Route path="/" element={<Index />} />
@@ -515,7 +518,7 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
 
                   </Routes>
-                </main>
+                </div>
 
               </Suspense>
 

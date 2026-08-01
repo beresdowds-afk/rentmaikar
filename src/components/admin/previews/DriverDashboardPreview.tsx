@@ -77,14 +77,6 @@ export function DriverDashboardPreview({ userId, userProfile }: DriverDashboardP
   };
 }, [userId]);
 
-      setNegotiations(negotiationsData || []);
-    } catch (error) {
-      console.error('Error fetching driver data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -102,7 +94,7 @@ export function DriverDashboardPreview({ userId, userProfile }: DriverDashboardP
       <Alert className="bg-amber-50 border-amber-200">
         <Eye className="h-4 w-4 text-amber-600" />
         <AlertDescription className="text-amber-800">
-          <strong>Admin View:</strong> This is a read-only preview of {userProfile?.full_name ?? "Unknown Driver" || 'the driver'}'s dashboard. No actions can be taken.
+          <strong>Admin View:</strong> This is a read-only preview of {userProfile?.full_name ?? 'the driver'}'s dashboard. No actions can be taken.
         </AlertDescription>
       </Alert>
 
@@ -117,7 +109,7 @@ export function DriverDashboardPreview({ userId, userProfile }: DriverDashboardP
               <Users className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-sm text-muted-foreground">Name</p>
-                <p className="font-medium">{userProfile?.full_name ?? "Unknown Driver" || 'Not set'}</p>
+                <p className="font-medium">{userProfile?.full_name ?? 'Not set'}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

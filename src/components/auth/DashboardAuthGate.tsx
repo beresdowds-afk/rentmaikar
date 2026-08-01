@@ -43,6 +43,7 @@ export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNo
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center px-4 py-16">
+          <h1 className="sr-only">{label}</h1>
           <Card className="max-w-md w-full border-primary/20">
             <CardHeader className="text-center space-y-3">
               <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
@@ -75,11 +76,14 @@ export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNo
     );
   }
 
-  if (userRole && !effectiveAllowed.includes(userRole)) {
+  // A signed-in account with no role row must NOT fall through to the
+  // dashboard — treat "no role" the same as "wrong role".
+  if (!userRole || !effectiveAllowed.includes(userRole)) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center px-4 py-16">
+          <h1 className="sr-only">{label}</h1>
           <Card className="max-w-md w-full border-destructive/30">
             <CardHeader className="text-center space-y-3">
               <div className="mx-auto h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
@@ -89,12 +93,23 @@ export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNo
             </CardHeader>
             <CardContent className="space-y-4 text-center">
               <p className="text-sm text-muted-foreground">
-                Your account is registered as{' '}
-                <span className="font-semibold">{userRole.replace('_', ' ')}</span>.
-                Please head to your own workspace instead.
+                {userRole ? (
+                  <>
+                    Your account is registered as{' '}
+                    <span className="font-semibold">{userRole.replace('_', ' ')}</span>.
+                    Please head to your own workspace instead.
+                  </>
+                ) : (
+                  <>
+                    No role has been assigned to your account yet. Complete your
+                    registration, or contact support if you believe this is an error.
+                  </>
+                )}
               </p>
               <Button asChild>
-                <Link to={ROLE_HOME[userRole]}>Go to my dashboard</Link>
+                <Link to={userRole ? ROLE_HOME[userRole] : '/'}>
+                  {userRole ? 'Go to my dashboard' : 'Back to home'}
+                </Link>
               </Button>
             </CardContent>
           </Card>

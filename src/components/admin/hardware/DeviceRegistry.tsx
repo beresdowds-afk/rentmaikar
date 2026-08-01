@@ -72,18 +72,18 @@ export const DeviceRegistry = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const [simsRes, devRes, plansRes] = await Promise.allSettled([
-  supabase.functions.invoke('iot-admin', { body: { action: 'list_available_sims' } }),
-  supabase.functions.invoke('iot-admin', { body: { action: 'list_devices' } }),
-  supabase.functions.invoke('iot-admin', { body: { action: 'list_plans' } }),
-]);
+      const [simsRes, devRes, plansRes] = await Promise.all([
+        supabase.functions.invoke('iot-admin', { body: { action: 'list_available_sims' } }),
+        supabase.functions.invoke('iot-admin', { body: { action: 'list_devices' } }),
+        supabase.functions.invoke('iot-admin', { body: { action: 'list_plans' } }),
+      ]);
       if (simsRes.error) throw simsRes.error;
       if (devRes.error) throw devRes.error;
-      setSims((simsRes.data as any).sims ?? []);
-      setDevices((devRes.data as any).devices ?? []);
+      setSims((simsRes.data as any)?.sims ?? []);
+      setDevices((devRes.data as any)?.devices ?? []);
       if (!plansRes.error) {
-        setPlans((plansRes.data as any).plans ?? []);
-        setHologramConfigured((plansRes.data as any).configured ?? false);
+        setPlans((plansRes.data as any)?.plans ?? []);
+        setHologramConfigured((plansRes.data as any)?.configured ?? false);
       }
     } catch (err: any) {
       toast.error('Failed to load inventory', { description: err.message });
@@ -108,43 +108,30 @@ export const DeviceRegistry = () => {
 }, []);
 
   const buySim = async () => {
-    if (buySource === 'manual' && !if (!buyIccid.trim()) {
-    toast.error("Iccid required");
-    return;
-}) {
+    if (buySource === 'manual' && !buyIccid.trim()) {
       toast.error('ICCID is required for manual entry');
       return;
     }
     setBuying(true);
     try {
-      const response = await supabase.functions.invoke('iot-admin', {
+      const { data, error } = await supabase.functions.invoke('iot-admin', {
         body: {
           action: 'purchase_sim',
           source: buySource,
-          provider: buySource === 'manual' ? if (!buyProvider.trim()) {
-    toast.error("Provider required");
-    return;
-} || 'manual') : 'hologram',
+          provider: buySource === 'manual' ? (buyProvider.trim() || 'manual') : 'hologram',
           plan_id: buySource === 'hologram' ? Number(buyPlan) : undefined,
-          plan_name: buySource === 'manual' ? if (!buyPlanName.trim()) {
-    toast.error("PlanName required");
-    return;
-} || null) : undefined,
+          plan_name: buySource === 'manual' ? (buyPlanName.trim() || null) : undefined,
           notes: buyNotes || null,
           iccid: buyIccid || undefined,
           msisdn: buyMsisdn || undefined,
           imsi: buyImsi || undefined,
         },
-      }); if (!response) {
-    throw new Error("No response from Edge Function");
-}
-
-const { data, error } = response;
-      if (error || (metadata?: Record<string, unknown>;)?.error) throw new Error(error?.message || (metadata?: Record<string, unknown>;)?.error);
+      });
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       toast.success(buySource === 'manual' ? 'SIM added to inventory' : 'eSIM added to inventory', {
         description: buySource === 'manual'
           ? `Recorded manually under provider "${buyProvider || 'manual'}".`
-          : (metadata?: Record<string, unknown>;)?.hologram_configured
+          : (data as any)?.hologram_configured
             ? 'Provisioned from Hologram pool.'
             : 'Recorded locally — add HOLOGRAM_API_KEY to sync with the provider.',
       });
@@ -164,7 +151,7 @@ const { data, error } = response;
       const { data, error } = await supabase.functions.invoke('iot-admin', {
         body: { action: 'register_device', ...nd },
       });
-      if (error || (metadata?: Record<string, unknown>;)?.error) throw new Error(error?.message || (metadata?: Record<string, unknown>;)?.error);
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       toast.success(`Device ${nd.serial_number} registered`);
       setAddOpen(false);
       setNd({ serial_number: '', imei: '', device_model: 'GPS-01', firmware_version: '', notes: '' });
@@ -182,8 +169,8 @@ const { data, error } = response;
       const { data, error } = await supabase.functions.invoke('iot-admin', {
         body: { action: 'sync_sim', sim_id: id },
       });
-      if (error || (metadata?: Record<string, unknown>;)?.error) throw new Error(error?.message || (metadata?: Record<string, unknown>;)?.error);
-      if ((metadata?: Record<string, unknown>;)?.skipped) toast.info('Hologram not configured — nothing to sync');
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
+      if ((data as any)?.skipped) toast.info('Hologram not configured — nothing to sync');
       else toast.success('SIM state refreshed');
       load();
     } catch (err: any) {
@@ -214,11 +201,7 @@ const { data, error } = response;
               <CardTitle className="flex items-center gap-2"><SimCard className="h-5 w-5" /> SIM / eSIM Inventory</CardTitle>
               <CardDescription>Buy eSIMs from Hologram <strong>or</strong> add SIMs manually from another provider. Each SIM tracks its provider so you know how it was sourced.</CardDescription>
             </div>
-            {buyOpen && (
-    <Dialog
-        open={buyOpen}
-        onOpenChange={setBuyOpen}
-    > onOpenChange={setBuyOpen}>
+            <Dialog open={buyOpen} onOpenChange={setBuyOpen}>
               <DialogTrigger asChild>
                 <Button><ShoppingCart className="mr-2 h-4 w-4" /> Add SIM</Button>
               </DialogTrigger>
@@ -360,11 +343,7 @@ const { data, error } = response;
               <CardTitle className="flex items-center gap-2"><Cpu className="h-5 w-5" /> Tracking Devices</CardTitle>
               <CardDescription>Register GPS/tracking devices. Use the <strong>Vehicle Linking</strong> tab to pair a SIM by IMEI and assign to a vehicle.</CardDescription>
             </div>
-            {AddOpen && (
-    <Dialog
-        open={AddOpen}
-        onOpenChange={setAddOpen}
-    > onOpenChange={setAddOpen}>
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> Register device</Button></DialogTrigger>
               <DialogContent>
                 <DialogHeader>
@@ -434,7 +413,5 @@ const { data, error } = response;
         </CardContent>
       </Card>
     </div>
-      </Card>
-    </div> 
   );
 };

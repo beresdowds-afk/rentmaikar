@@ -115,7 +115,6 @@ export const DeviceLinking = () => {
         ? err.message
         : 'Unexpected error occurred',
   });
-}
     } finally { setLinking(false); }
   };
 
@@ -135,7 +134,6 @@ export const DeviceLinking = () => {
         ? err.message
         : 'Unexpected error occurred',
   });
-}
     } finally { setCheckingReady(false); }
   };
 
@@ -151,8 +149,7 @@ export const DeviceLinking = () => {
         description: 'Installation is now pending. Confirm installation to enable live map & telemetry.',
       });
       setLinkVehicleFor(null); setPickedVehicle('');
-      await load(); if (loading) return;
-setLoading(true);
+      await load();
     } catch (err) {
   toast.error('Link Failed', {
     description:
@@ -160,7 +157,6 @@ setLoading(true);
         ? err.message
         : 'Unexpected error occurred',
   });
-}
     } finally { setVehLinking(false); }
   };
 
@@ -171,8 +167,7 @@ setLoading(true);
       });
       if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       toast.success('Device unlinked from vehicle');
-      await load(); if (loading) return;
-setLoading(true);
+      await load();
     } catch (err) {
   toast.error('Unlink Failed', {
     description:
@@ -180,7 +175,9 @@ setLoading(true);
         ? err.message
         : 'Unexpected error occurred',
   });
-}
+    }
+  };
+
 
   const submitConfirmInstall = async () => {
     if (!confirmInstallFor) return;
@@ -192,8 +189,7 @@ setLoading(true);
       if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       toast.success('Installation confirmed', { description: 'Device is now live on the map.' });
       setConfirmInstallFor(null); setInstallNotes(''); 
-      Await load(); if (loading) return;
-setLoading(true);
+      await load();
     } catch (err) {
   toast.error('Could not Confirm', {
     description:
@@ -201,7 +197,6 @@ setLoading(true);
         ? err.message
         : 'Unexpected error occurred',
   });
-}
     } finally { setInstalling(false); }
   };
 
@@ -216,8 +211,7 @@ setLoading(true);
       if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       toast.success('Device deactivated', { description: (data as any)?.message });
       setDeactivateFor(null); setDeactivateReason(''); 
-      Await load(); if (loading) return;
-setLoading(true);
+      await load();
     } catch (err) {
   toast.error('Deactivation failed', {
     description:
@@ -225,7 +219,6 @@ setLoading(true);
         ? err.message
         : 'Unexpected error occurred',
   });
-}
     } finally { setDeactivating(false); }
   };
 

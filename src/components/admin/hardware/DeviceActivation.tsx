@@ -153,6 +153,10 @@ const runToggle = async () => {
 
 };
 
+  const active = devices.filter((d) => d.status === 'active').length;
+  const inactive = devices.filter((d) => d.status === 'inactive').length;
+  const offline = devices.filter((d) => d.status === 'offline').length;
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
