@@ -40,25 +40,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [twoFactorStatus, setTwoFactorStatus] = useState<TwoFactorStatus | null>(null);
   const [twoFactorVerified, setTwoFactorVerified] = useState(false);
 
+  // Users can legitimately hold more than one role row. Resolve deterministically
+  // by priority instead of asking PostgREST for a single row (which errors out
+  // with PGRST116 and leaves the app role-less / flickering).
+  const ROLE_PRIORITY: AppRole[] = [
+    'admin',
+    'admin_assistant',
+    'legal_support',
+    'iot_support',
+    'vehicle_support',
+    'owner',
+    'driver',
+  ];
+
   const fetchUserRole = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-      
+        .eq('user_id', userId);
+
       if (error) {
         console.error('Error fetching user role:', error);
         return null;
       }
-      
-      return data?.role as AppRole | null;
+
+      const roles = (data ?? []).map((r) => r.role as AppRole);
+      if (roles.length === 0) return null;
+
+      return ROLE_PRIORITY.find((r) => roles.includes(r)) ?? roles[0];
     } catch (err) {
       console.error('Error in fetchUserRole:', err);
       return null;
     }
   };
+
 
   const check2FAStatus = async (userId: string): Promise<TwoFactorStatus | null> => {
     try {

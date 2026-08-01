@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { RegionProvider } from "@/contexts/RegionContext";
 import { UserTypeProvider } from "@/contexts/UserTypeContext";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import CookieConsent from "@/components/CookieConsent";
 import MessageConsent from "@/components/MessageConsent";
@@ -27,11 +27,16 @@ import { installOnboardingDeepLinkListener } from "@/lib/onboarding-deep-link";
 // Global background worker: keeps PWA + native mobile builds in sync with the
 // website by streaming DB changes and registering native push devices.
 const AppLiveSync = () => {
-  useRealtimeSync(true);
+  const { user } = useAuth();
+  // Guests on public pages (landing, auth, legal) need no realtime worker —
+  // running it there caused constant global cache invalidation and visible
+  // re-render churn on the landing page.
+  useRealtimeSync(!!user);
   useApplicationApprovalNotifier();
   useNativePush();
   return null;
 };
+
 
 // Lazy-loaded pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
