@@ -74,6 +74,17 @@ It must:
 - Handle missing or delayed profile data gracefully.
 - Log routing failures for diagnostics rather than allowing unhandled exceptions to propagate to the global `ErrorBoundary`.
 
+
+- Maximum authentication initialization timeout (e.g. 10–15 seconds).
+- Maximum profile/role/onboarding fetch timeout.
+- Retry transient network failures with exponential backoff.
+- Distinguish loading, success, failed, and timeout states.
+- If required data cannot be resolved after retries, route to a dedicated recovery page (for example /session-recovery or /account-loading-error) rather than remaining on an infinite loading screen.
+- Allow the user to retry without manually refreshing the browser.
+- Always clear loading indicators after routing succeeds or a recovery route is chosen.
+- Preserve intended deep-link destinations and continue once initialization completes.
+- Emit structured diagnostic logs and telemetry for every routing decision and timeout.
+
 This routing helper should become the single source of truth for all authentication-based navigation and be used consistently by `Auth.tsx`, `OnboardingRedirect.tsx`, deep-link handlers, session restoration, and any future login or onboarding flows.
 
 ## 4. Admin ↔ Admin-Assistant dashboard sync
