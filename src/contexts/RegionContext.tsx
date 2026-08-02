@@ -119,24 +119,35 @@ export interface RegionSyncState {
 // and support email — are loaded from the admin-managed Regional Contact
 // Channels table (public.contact_settings). Empty strings here mean
 // "not yet loaded"; consumers should render conditionally.
-const regionConfig: Record<string, RegionConfig> = {
-  USA: {
-    currency: "USD",
-    currencySymbol: "$",
-    phonePrefix: "+1",
-    whatsappNumber: "",
-    smsNumber: "",
-    supportEmail: "",
-  },
-  Nigeria: {
-    currency: "NGN",
-    currencySymbol: "₦",
-    phonePrefix: "+234",
-    whatsappNumber: "",
-    smsNumber: "",
-    supportEmail: "",
-  },
-};
+useEffect(() => {
+
+  const resolved =
+resolveRegion(
+    result.country,
+    availableRegions
+);
+
+setCountryState(
+    resolved?.value ?? SAFE_DEFAULT
+);
+   if (
+      !availableRegions.some(
+         r=>r.value===country
+      )
+   ){
+
+      setCountryState(SAFE_DEFAULT);
+
+   }
+
+},[
+   availableRegions,
+   country
+]);
+const option =
+availableRegions.find(
+    r=>r.value===country
+);
 
 // Built-in launch regions live in region-cache so both the cache layer and the
 // provider agree on the guaranteed-available baseline.
@@ -178,9 +189,17 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
    * same source of truth after login. The server re-validates and rejects any
    * region the user is not permitted to select.
    */
-  const setCountry = (next: Country) => {
+   const setCountry = (next: Country) => {
     const resolved = resolveRegion(next, availableRegions);
     if (!resolved) return;
+
+    setRegionModeState("manual");
+    persistMode("manual");
+
+    setCountryState(resolved.value);
+    persistCountry(resolved.value);
+
+     if (!resolved) return;
     setCountryState(resolved.value);
     persistCountry(resolved.value);
     try {
@@ -208,7 +227,15 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
       try {
         const result = await detectCountryFromIP();
         if (!cancelled && result.detected) {
-          setCountryState(result.country);
+          const resolved =
+resolveRegion(
+    result.country,
+    availableRegions
+);
+
+setCountryState(
+    resolved?.value ?? SAFE_DEFAULT
+);
           persistCountry(result.country);
         }
       } catch {
@@ -279,7 +306,17 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
           persistMode(rm);
         }
         if (pc && String(pc).trim()) {
-          setCountryState(pc);
+          const resolved =
+resolveRegion(
+    pc,
+    availableRegions
+);
+
+if(resolved){
+
+   setCountryState(resolved.value);
+
+};
           persistCountry(pc);
         }
 
@@ -435,12 +472,11 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
   // no active row exists for a channel.
   const [contactOverrides, setContactOverrides] = useState<
     Record<string, Partial<Pick<RegionConfig, "whatsappNumber" | "smsNumber" | "supportEmail">>>
-  >({ USA: {}, Nigeria: {} });
+  >(const [contactOverrides, setContactOverrides] =
+useState<Record<string,...>>({}););
 
-  const [companyInfoMap, setCompanyInfoMap] = useState<Record<string, CompanyInfo | null>>({
-    USA: null,
-    Nigeria: null,
-  });
+  const [companyInfoMap, setCompanyInfoMap] = useState<Record<string, CompanyInfo | null>>(const [contactOverrides, setContactOverrides] =
+useState<Record<string,...>>({}););
 
   useEffect(() => {
     let cancelled = false;
@@ -450,7 +486,8 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
         .select("region, contact_type, contact_value, is_active")
         .eq("is_active", true);
       if (cancelled || error || !data) return;
-      const next: typeof contactOverrides = { USA: {}, Nigeria: {} };
+      const next: typeof contactOverrides = const [contactOverrides, setContactOverrides] =
+useState<Record<string,...>>({});;
       for (const row of data as Array<{ region: string; contact_type: string; contact_value: string }>) {
         const region = row.region || "USA";
         next[region] ??= {};
@@ -486,7 +523,8 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
         .select("*")
         .eq("is_active", true);
       if (cancelled || error || !data) return;
-      const next: Record<string, CompanyInfo | null> = { USA: null, Nigeria: null };
+      const next: Record<string, CompanyInfo | null> = const [contactOverrides, setContactOverrides] =
+useState<Record<string,...>>({});
       for (const row of data as Array<Record<string, unknown>>) {
         const region = String(row.region ?? "USA");
         next[region] = {
@@ -521,7 +559,7 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
 
   const baseConfig = regionConfig[country] ??
     (() => {
-      const built = builderRegions.find((r) => r.value === country);
+      const built = mergeRegions(builderRegions).find((r) => r.value === country);
       return {
         currency: built?.currency ?? "USD",
         currencySymbol: built?.currencySymbol ?? "$",
