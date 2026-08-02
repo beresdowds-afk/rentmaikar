@@ -176,8 +176,22 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
 
 
   const setCountry = (next: Country) => {
-  // Don't allow manual changes while the region list is still loading.
   if (regionsLoading) return;
+
+  const resolved = resolveRegion(next, availableRegions);
+
+  if (!resolved) return;
+
+  setRegionModeState("manual");
+  persistMode("manual");
+
+  setCountryState(resolved.value);
+  persistCountry(resolved.value);
+
+  void supabase.rpc("set_my_region", {
+    _country: resolved.value,
+  });
+};
 
 
   // Manual selection overrides automatic detection.
@@ -212,7 +226,6 @@ const setRegionMode = (next: RegionMode) => {
   const selectedRegion =
   availableRegions.find(r => r.value === country) ?? null;
 
-  const overrides = contactOverrides?.[country] ?? {};
 
 // First-load auto detection (IP -> timezone -> safe default)
 useEffect(() => {
@@ -404,6 +417,12 @@ const [builderRegions, setBuilderRegions] = useState<RegionOption[]>(
   () => readRegionCache()?.regions.filter((r) => !r.builtIn) ?? []
 );
 
+
+const availableRegions = React.useMemo(
+  () => mergeRegions(builderRegions),
+  [builderRegions]
+);
+
 const [regionsLoading, setRegionsLoading] = useState(
   () => !readRegionCache()
 );
@@ -411,10 +430,8 @@ const [regionsLoading, setRegionsLoading] = useState(
 // This protects against regions being unpublished or removed.
 useEffect(() => {
   if (regionsLoading) return;
-const resolved = resolveRegion(next, availableRegions);
-  if (!resolved) return;
-  
-  const resolved = resolveRegion(
+
+   const resolved = resolveRegion(
     country,
     availableRegions
   );
@@ -435,9 +452,7 @@ const resolved = resolveRegion(next, availableRegions);
   regionsLoading,
 ]);
 
-  const resolved = availableRegions.length
-  ? resolveRegion(country, availableRegions)
-  : null;
+  
 const [regionSync, setRegionSync] = useState<RegionSyncState>(() => {
   const cached = readRegionCache();
 
@@ -452,11 +467,8 @@ const [regionSync, setRegionSync] = useState<RegionSyncState>(() => {
     refreshing: false,
   };
 });
-const availableRegions = React.useMemo(
-  () => mergeRegions(builderRegions),
-  [builderRegions]
-);
 
+const cancelledRef = useRef(false);
 useEffect(() => {
   cancelledRef.current = false;
 
@@ -470,7 +482,7 @@ const loadRegions = useCallback(async () => {
     ...prev,
     refreshing: true,
   }));
-const cancelledRef = useRef(false);
+
   try {
     const { data, error } =
       await supabase.rpc("get_allowed_regions");
@@ -613,8 +625,6 @@ useEffect(() => {
 // ---------------------------------------------------------------------
 // Resolve the active region from the published region list.
 // ---------------------------------------------------------------------
-const selectedRegion =
-  availableRegions.find((r) => r.value === country) ?? null;
 
 // Base configuration.
 // Built-in regions use region-config.
