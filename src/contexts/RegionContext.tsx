@@ -169,20 +169,12 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
  * same source of truth after login. The server re-validates and rejects any
  * region the user is not permitted to select.
  */
-const setCountry = (next: Country) => {
+
+
+  const setCountry = (next: Country) => {
   // Don't allow manual changes while the region list is still loading.
   if (regionsLoading) return;
 
-  const resolved = resolveRegion(next, availableRegions);
-  if (!resolved) return;
-  const availableRegions = React.useMemo(
-  () => mergeRegions(builderRegions),
-  [builderRegions]
-);
-  const resolved = availableRegions.length
-  ? resolveRegion(country, availableRegions)
-  : null;
-  
 
   // Manual selection overrides automatic detection.
   setRegionModeState("manual");
@@ -415,7 +407,9 @@ const [regionsLoading, setRegionsLoading] = useState(
 // This protects against regions being unpublished or removed.
 useEffect(() => {
   if (regionsLoading) return;
-
+const resolved = resolveRegion(next, availableRegions);
+  if (!resolved) return;
+  
   const resolved = resolveRegion(
     country,
     availableRegions
@@ -436,6 +430,10 @@ useEffect(() => {
   country,
   regionsLoading,
 ]);
+
+  const resolved = availableRegions.length
+  ? resolveRegion(country, availableRegions)
+  : null;
 const [regionSync, setRegionSync] = useState<RegionSyncState>(() => {
   const cached = readRegionCache();
 
@@ -450,8 +448,10 @@ const [regionSync, setRegionSync] = useState<RegionSyncState>(() => {
     refreshing: false,
   };
 });
-
-const cancelledRef = useRef(false);
+const availableRegions = React.useMemo(
+  () => mergeRegions(builderRegions),
+  [builderRegions]
+);
 
 useEffect(() => {
   cancelledRef.current = false;
@@ -466,7 +466,7 @@ const loadRegions = useCallback(async () => {
     ...prev,
     refreshing: true,
   }));
-
+const cancelledRef = useRef(false);
   try {
     const { data, error } =
       await supabase.rpc("get_allowed_regions");
