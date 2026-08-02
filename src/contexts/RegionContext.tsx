@@ -175,6 +175,10 @@ const setCountry = (next: Country) => {
 
   const resolved = resolveRegion(next, availableRegions);
   if (!resolved) return;
+  const availableRegions = React.useMemo(
+  () => mergeRegions(builderRegions),
+  [builderRegions]
+);
   const resolved = availableRegions.length
   ? resolveRegion(country, availableRegions)
   : null;
@@ -208,6 +212,11 @@ const setRegionMode = (next: RegionMode) => {
   setRegionModeState(next);
   persistMode(next);
 };
+
+  const selectedRegion =
+  availableRegions.find(r => r.value === country) ?? null;
+
+  const overrides = contactOverrides?.[country] ?? {};
 
 // First-load auto detection (IP -> timezone -> safe default)
 useEffect(() => {
