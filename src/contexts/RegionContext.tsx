@@ -161,31 +161,7 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
 // ---------------------------------------------------------------------
 
 
-// Ensure the currently selected region is still valid.
-// This protects against regions being unpublished or removed.
-useEffect(() => {
-  if (regionsLoading) return;
 
-  const resolved = resolveRegion(
-    country,
-    availableRegions
-  );
-
-  if (!resolved) {
-    setCountryState(SAFE_DEFAULT);
-    persistCountry(SAFE_DEFAULT);
-    return;
-  }
-
-  if (resolved.value !== country) {
-    setCountryState(resolved.value);
-    persistCountry(resolved.value);
-  }
-}, [
-  availableRegions,
-  country,
-  regionsLoading,
-]);
   
 /**
  * Switch region. The value is resolved against the allow-list first, then
@@ -199,6 +175,10 @@ const setCountry = (next: Country) => {
 
   const resolved = resolveRegion(next, availableRegions);
   if (!resolved) return;
+  const resolved = availableRegions.length
+  ? resolveRegion(country, availableRegions)
+  : null;
+  
 
   // Manual selection overrides automatic detection.
   setRegionModeState("manual");
@@ -422,7 +402,31 @@ const [builderRegions, setBuilderRegions] = useState<RegionOption[]>(
 const [regionsLoading, setRegionsLoading] = useState(
   () => !readRegionCache()
 );
+// Ensure the currently selected region is still valid.
+// This protects against regions being unpublished or removed.
+useEffect(() => {
+  if (regionsLoading) return;
 
+  const resolved = resolveRegion(
+    country,
+    availableRegions
+  );
+
+  if (!resolved) {
+    setCountryState(SAFE_DEFAULT);
+    persistCountry(SAFE_DEFAULT);
+    return;
+  }
+
+  if (resolved.value !== country) {
+    setCountryState(resolved.value);
+    persistCountry(resolved.value);
+  }
+}, [
+  availableRegions,
+  country,
+  regionsLoading,
+]);
 const [regionSync, setRegionSync] = useState<RegionSyncState>(() => {
   const cached = readRegionCache();
 
