@@ -20,7 +20,11 @@ import {
   resolveRegion,
   type AllowedRegionRow,
 } from "@/lib/region-cache";
-
+import {
+  regionConfig,
+  contactOverrides,
+  companyInfoMap,
+} from "@/lib/region-config";
 import {
   getStoredCountry,
   getStoredMode,
@@ -613,7 +617,7 @@ const selectedRegion =
   availableRegions.find((r) => r.value === country) ?? null;
 
 // Base configuration.
-// Built-in regions use regionConfig.
+// Built-in regions use region-config.
 // Region Builder regions use their published metadata.
 const baseConfig: RegionConfig =
   regionConfig[country] ??
