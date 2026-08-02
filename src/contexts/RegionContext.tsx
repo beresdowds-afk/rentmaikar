@@ -191,167 +191,225 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
    */
    const setCountry = (next: Country) => {
     const resolved = resolveRegion(next, availableRegions);
-    if (!resolved) return;
+/**
+ * Switch region. The value is resolved against the allow-list first, then
+ * persisted server-side through `set_my_region` so web and mobile read the
+ * same source of truth after login. The server re-validates and rejects any
+ * region the user is not permitted to select.
+ */
+const setCountry = (next: Country) => {
+  // Don't allow manual changes while the region list is still loading.
+  if (regionsLoading) return;
 
-    setRegionModeState("manual");
-    persistMode("manual");
+  const resolved = resolveRegion(next, availableRegions);
+  if (!resolved) return;
 
-    setCountryState(resolved.value);
-    persistCountry(resolved.value);
+  // Manual selection overrides automatic detection.
+  setRegionModeState("manual");
+  persistMode("manual");
 
-     if (!resolved) return;
-    setCountryState(resolved.value);
-    persistCountry(resolved.value);
-    try {
-      void supabase.rpc("set_my_region", { _country: resolved.value }).then(({ error }) => {
-        if (error) console.warn("[region] server rejected region change:", error.message);
-      });
-    } catch {
-      // Offline: the local preference stands and re-syncs on next login.
-    }
+  // Persist the validated region locally.
+  setCountryState(resolved.value);
+  persistCountry(resolved.value);
 
-  };
-
-
-  const setRegionMode = (next: RegionMode) => {
-    setRegionModeState(next);
-    persistMode(next);
-  };
-
-  // First-load auto detection (IP -> timezone -> safe default)
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      if (regionMode !== "auto") return;
-      setIsDetecting(true);
-      try {
-        const result = await detectCountryFromIP();
-        if (!cancelled && result.detected) {
-          const resolved =
-resolveRegion(
-    result.country,
-    availableRegions
-);
-
-setCountryState(
-    resolved?.value ?? SAFE_DEFAULT
-);
-          persistCountry(result.country);
-        }
-      } catch {
-        // keep timezone/stored/default fallback
-      } finally {
-        if (!cancelled) setIsDetecting(false);
+  // Persist the validated region on the server.
+  void supabase
+    .rpc("set_my_region", { _country: resolved.value })
+    .then(({ error }) => {
+      if (error) {
+        console.warn(
+          "[region] server rejected region change:",
+          error.message
+        );
       }
-    };
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [regionMode]);
-
-  // Sync with the signed-in user's profile preference.
-  // Owners/drivers (and any non-admin role) are locked to their registration
-  // region — their dashboard must not flip when they travel. Only admins and
-  // admin assistants may freely switch regions.
-  useEffect(() => {
-    let cancelled = false;
-    const syncProfile = async (userId: string) => {
-      try {
-        const [{ data: profile }, { data: roles }] = await Promise.all([
-          supabase
-            .from("profiles")
-            .select("preferred_country, region_mode")
-            .eq("user_id", userId)
-            .maybeSingle(),
-          supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", userId),
-        ]);
-        if (cancelled) return;
-
-        const roleList = (roles ?? []).map((r: { role: string }) => r.role);
-        const isAdminLike =
-          roleList.includes("admin") || roleList.includes("admin_assistant");
-
-        const pc = (profile?.preferred_country ?? null) as Country | null;
-        const rm = (profile?.region_mode ?? null) as RegionMode | null;
-
-        if (!isAdminLike) {
-          // Lock to registration region. If profile has no region yet
-          // (first sign-in after registration), pin the current detected
-          // country as their permanent region.
-          let locked: Country | null = pc;
-          if (!locked) {
-            locked = getStoredCountry() ?? country;
-            supabase
-              .from("profiles")
-              .update({ preferred_country: locked, region_mode: "manual" })
-              .eq("user_id", userId)
-              .then(() => {});
-          }
-          setRegionModeState("manual");
-          persistMode("manual");
-          if (locked) {
-            setCountryState(locked);
-            persistCountry(locked);
-          }
-          return;
-        }
-
-        // Admins keep their stored preference and switching ability.
-        if (rm === "auto" || rm === "manual") {
-          setRegionModeState(rm);
-          persistMode(rm);
-        }
-        if (pc && String(pc).trim()) {
-          const resolved =
-resolveRegion(
-    pc,
-    availableRegions
-);
-
-if(resolved){
-
-   setCountryState(resolved.value);
-
+    })
+    .catch(() => {
+      // Offline: local preference remains and will sync later.
+    });
 };
-          persistCountry(pc);
+
+const setRegionMode = (next: RegionMode) => {
+  setRegionModeState(next);
+  persistMode(next);
+};
+
+// First-load auto detection (IP -> timezone -> safe default)
+useEffect(() => {
+  let cancelled = false;
+
+  const run = async () => {
+    if (regionMode !== "auto") return;
+
+    // Wait until the allowed region list has loaded.
+    if (regionsLoading) return;
+
+    setIsDetecting(true);
+
+    try {
+      const result = await detectCountryFromIP();
+
+      if (!cancelled && result.detected) {
+        // Only allow published/available regions.
+        const resolved = resolveRegion(
+          result.country,
+          availableRegions
+        );
+
+        const selected = resolved?.value ?? SAFE_DEFAULT;
+
+        setCountryState(selected);
+        persistCountry(selected);
+      }
+    } catch {
+      // Keep timezone/stored/default fallback.
+    } finally {
+      if (!cancelled) {
+        setIsDetecting(false);
+      }
+    }
+  };
+
+  run();
+
+  return () => {
+    cancelled = true;
+  };
+}, [regionMode, regionsLoading, availableRegions]);
+     
+// Sync with the signed-in user's profile preference.
+// Owners/drivers (and any non-admin role) are locked to their registration
+// region. Only admins and admin assistants may freely switch regions.
+useEffect(() => {
+  if (regionsLoading) return;
+
+  let cancelled = false;
+
+  const syncProfile = async (userId: string) => {
+    try {
+      const [{ data: profile }, { data: roles }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("preferred_country, region_mode")
+          .eq("user_id", userId)
+          .maybeSingle(),
+
+        supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId),
+      ]);
+
+      if (cancelled) return;
+
+      const roleList = (roles ?? []).map(
+        (r: { role: string }) => r.role
+      );
+
+      const isAdminLike =
+        roleList.includes("admin") ||
+        roleList.includes("admin_assistant");
+
+      const profileCountry =
+        (profile?.preferred_country ?? null) as Country | null;
+
+      const profileMode =
+        (profile?.region_mode ?? null) as RegionMode | null;
+
+      // Validate the stored country against the published region list.
+      const resolved = profileCountry
+        ? resolveRegion(profileCountry, availableRegions)
+        : null;
+
+      // ------------------------------------------------------------------
+      // Owners / Drivers / Customers
+      // ------------------------------------------------------------------
+      if (!isAdminLike) {
+        let lockedCountry =
+          resolved?.value ??
+          getStoredCountry() ??
+          SAFE_DEFAULT;
+
+        setRegionModeState("manual");
+        persistMode("manual");
+
+        setCountryState(lockedCountry);
+        persistCountry(lockedCountry);
+
+        // First sign-in or unpublished region -> repair profile.
+        if (
+          !profileCountry ||
+          profileCountry !== lockedCountry
+        ) {
+          void supabase
+            .from("profiles")
+            .update({
+              preferred_country: lockedCountry,
+              region_mode: "manual",
+            })
+            .eq("user_id", userId);
         }
 
-      } catch {
-        /* ignore */
+        return;
       }
-    };
 
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) syncProfile(data.user.id);
-    });
+      // ------------------------------------------------------------------
+      // Admin / Admin Assistant
+      // ------------------------------------------------------------------
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session?.user) syncProfile(session.user.id);
-    });
-    return () => {
-      cancelled = true;
-      sub.subscription.unsubscribe();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      if (profileMode === "auto" || profileMode === "manual") {
+        setRegionModeState(profileMode);
+        persistMode(profileMode);
+      }
+
+      if (resolved) {
+        setCountryState(resolved.value);
+        persistCountry(resolved.value);
+      } else {
+        setCountryState(SAFE_DEFAULT);
+        persistCountry(SAFE_DEFAULT);
+      }
+    } catch (error) {
+      console.warn("[region] profile sync failed", error);
+    }
+  };
+
+  void supabase.auth.getUser().then(({ data }) => {
+    if (data.user) {
+      void syncProfile(data.user.id);
+    }
+  });
+
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
+    if (session?.user) {
+      void syncProfile(session.user.id);
+    }
+  });
+
+  return () => {
+    cancelled = true;
+    subscription.unsubscribe();
+  };
+}, [availableRegions, regionsLoading, country]);
 
 
-  // Persist manual selections back to profile if signed in.
-  useEffect(() => {
-    if (regionMode !== "manual") return;
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return;
-      supabase
-        .from("profiles")
-        .update({ preferred_country: country, region_mode: "manual" })
-        .eq("user_id", data.user.id)
-        .then(() => {});
-    });
-  }, [country, regionMode]);
+// Persist manual selections back to the user's profile.
+useEffect(() => {
+  if (regionMode !== "manual") return;
+
+  void supabase.auth.getUser().then(({ data }) => {
+    if (!data.user) return;
+
+    void supabase
+      .from("profiles")
+      .update({
+        preferred_country: country,
+        region_mode: "manual",
+      })
+      .eq("user_id", data.user.id);
+  });
+}, [country, regionMode]);
 
   // ---------------------------------------------------------------------
   // Region Builder regions. The two built-ins are always available; every
@@ -445,170 +503,341 @@ if(resolved){
       )
       .subscribe();
     // Realtime can be delayed or unavailable (offline PWA); revalidate on
-    // resume and on a slow poll so the list self-heals.
-    const onResume = () => {
-      if (document.visibilityState === "visible") loadRegions();
-    };
-    const onOffline = () => setRegionSync((s) => ({ ...s, offline: true, stale: true }));
-    document.addEventListener("visibilitychange", onResume);
-    window.addEventListener("online", onResume);
-    window.addEventListener("offline", onOffline);
-    const poll = window.setInterval(loadRegions, 10 * 60 * 1000);
-    return () => {
-      supabase.removeChannel(channel);
-      document.removeEventListener("visibilitychange", onResume);
-      window.removeEventListener("online", onResume);
-      window.removeEventListener("offline", onOffline);
-      window.clearInterval(poll);
-    };
-  }, [loadRegions]);
+// ---------------------------------------------------------------------
+// Region Builder regions. The two built-ins are always available; every
+// region generated by the admin Region Builder joins the list once it is
+// published and updates automatically.
+// ---------------------------------------------------------------------
 
-  const availableRegions: RegionOption[] = mergeRegions(builderRegions);
+// Seed from the offline cache so the PWA can render immediately.
+const [builderRegions, setBuilderRegions] = useState<RegionOption[]>(
+  () => readRegionCache()?.regions.filter((r) => !r.builtIn) ?? []
+);
 
+const [regionsLoading, setRegionsLoading] = useState(
+  () => !readRegionCache()
+);
 
+const [regionSync, setRegionSync] = useState<RegionSyncState>(() => {
+  const cached = readRegionCache();
 
-  // Load region-specific WhatsApp / SMS / email from the admin-managed
-  // "Regional Contact Channels" table. Falls back to base regionConfig when
-  // no active row exists for a channel.
-  const [contactOverrides, setContactOverrides] = useState<
-    Record<string, Partial<Pick<RegionConfig, "whatsappNumber" | "smsNumber" | "supportEmail">>>
-  >(const [contactOverrides, setContactOverrides] =
-useState<Record<string,...>>({}););
-
-  const [companyInfoMap, setCompanyInfoMap] = useState<Record<string, CompanyInfo | null>>(const [contactOverrides, setContactOverrides] =
-useState<Record<string,...>>({}););
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      const { data, error } = await supabase
-        .from("contact_settings")
-        .select("region, contact_type, contact_value, is_active")
-        .eq("is_active", true);
-      if (cancelled || error || !data) return;
-      const next: typeof contactOverrides = const [contactOverrides, setContactOverrides] =
-useState<Record<string,...>>({});;
-      for (const row of data as Array<{ region: string; contact_type: string; contact_value: string }>) {
-        const region = row.region || "USA";
-        next[region] ??= {};
-        const value = row.contact_value?.trim() || "";
-        if (!value) continue;
-        if (row.contact_type === "whatsapp") next[region].whatsappNumber = stripPhone(value);
-        else if (row.contact_type === "sms") next[region].smsNumber = stripPhone(value);
-        else if (row.contact_type === "email") next[region].supportEmail = value;
-      }
-      setContactOverrides(next);
-    };
-    load();
-    const channel = supabase
-      .channel("contact_settings_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "contact_settings" },
-        () => load(),
-      )
-      .subscribe();
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  // Load per-region company info (drives landing footer + admin panel)
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      const { data, error } = await supabase
-        .from("platform_company_info")
-        .select("*")
-        .eq("is_active", true);
-      if (cancelled || error || !data) return;
-      const next: Record<string, CompanyInfo | null> = const [contactOverrides, setContactOverrides] =
-useState<Record<string,...>>({});
-      for (const row of data as Array<Record<string, unknown>>) {
-        const region = String(row.region ?? "USA");
-        next[region] = {
-          companyName: String(row.company_name ?? ""),
-          phone: String(row.phone ?? ""),
-          phoneRaw: String(row.phone_raw ?? ""),
-          email: String(row.email ?? ""),
-          fullAddress: String(row.full_address ?? ""),
-          address: String(row.address_line ?? ""),
-          city: String(row.city ?? ""),
-          state: String(row.state ?? ""),
-          country: String(row.country_name ?? ""),
-          postalCode: String(row.postal_code ?? ""),
-        };
-      }
-      setCompanyInfoMap(next);
-    };
-    load();
-    const channel = supabase
-      .channel("platform_company_info_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "platform_company_info" },
-        () => load(),
-      )
-      .subscribe();
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const baseConfig = regionConfig[country] ??
-    (() => {
-      const built = mergeRegions(builderRegions).find((r) => r.value === country);
-      return {
-        currency: built?.currency ?? "USD",
-        currencySymbol: built?.currencySymbol ?? "$",
-        phonePrefix: built?.phonePrefix ?? "+1",
-        whatsappNumber: "",
-        smsNumber: "",
-        supportEmail: "",
-      } as RegionConfig;
-    })();
-  const overrides = contactOverrides[country] ?? {};
-  const config: RegionConfig = {
-    ...baseConfig,
-    whatsappNumber: overrides.whatsappNumber || baseConfig.whatsappNumber,
-    smsNumber: overrides.smsNumber || baseConfig.smsNumber,
-    supportEmail: overrides.supportEmail || baseConfig.supportEmail,
+  return {
+    source: cached ? "cache" : "builtin",
+    lastSyncedAt: cached?.savedAt ?? null,
+    stale: cached ? cached.stale : true,
+    offline:
+      typeof navigator !== "undefined"
+        ? !navigator.onLine
+        : false,
+    refreshing: false,
   };
+});
 
-  const getCurrencyIcon = (className = "h-4 w-4") =>
-    config.currency === "NGN" ? (
-      <NairaIcon className={className} />
-    ) : (
-      <DollarSign className={className} />
+const cancelledRef = useRef(false);
+
+useEffect(() => {
+  cancelledRef.current = false;
+
+  return () => {
+    cancelledRef.current = true;
+  };
+}, []);
+
+const loadRegions = useCallback(async () => {
+  setRegionSync((prev) => ({
+    ...prev,
+    refreshing: true,
+  }));
+
+  try {
+    const { data, error } =
+      await supabase.rpc("get_allowed_regions");
+
+    if (cancelledRef.current) return;
+
+    if (error || !data) {
+      setRegionSync((prev) => ({
+        ...prev,
+        stale: true,
+        offline:
+          typeof navigator !== "undefined"
+            ? !navigator.onLine
+            : false,
+        refreshing: false,
+      }));
+
+      setRegionsLoading(false);
+      return;
+    }
+
+    const mapped = mapAllowedRegionRows(
+      data as AllowedRegionRow[]
     );
 
-  return (
-    <RegionContext.Provider
-      value={{
-        country,
-        setCountry,
-        regionMode,
-        setRegionMode,
-        isDetecting,
-        ...config,
-        companyInfo: companyInfoMap[country] ?? null,
-        getCurrencyIcon,
-        config,
-        availableRegions,
-        regionsLoading,
-        regionSync,
-        refreshRegions,
-      }}
-    >
-      {children}
-    </RegionContext.Provider>
+    const builderOnly = mapped.filter(
+      (r) => !r.builtIn
+    );
+
+    setBuilderRegions(builderOnly);
+
+    writeRegionCache(
+      mergeRegions(builderOnly)
+    );
+
+    setRegionSync({
+      source: "live",
+      lastSyncedAt: Date.now(),
+      stale: false,
+      offline: false,
+      refreshing: false,
+    });
+  } catch {
+    if (cancelledRef.current) return;
+
+    setRegionSync((prev) => ({
+      ...prev,
+      stale: true,
+      offline:
+        typeof navigator !== "undefined"
+          ? !navigator.onLine
+          : false,
+      refreshing: false,
+    }));
+  } finally {
+    if (!cancelledRef.current) {
+      setRegionsLoading(false);
+    }
+  }
+}, []);
+
+const refreshRegions = useCallback(async () => {
+  clearRegionCache();
+  await loadRegions();
+}, [loadRegions]);
+
+useEffect(() => {
+  void loadRegions();
+
+  const channel = supabase
+    .channel("region_definitions_available")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "region_definitions",
+      },
+      () => {
+        void loadRegions();
+      }
+    )
+    .subscribe();
+
+  const onResume = () => {
+    if (document.visibilityState === "visible") {
+      void loadRegions();
+    }
+  };
+
+  const onOnline = () => {
+    void loadRegions();
+  };
+
+  const onOffline = () => {
+    setRegionSync((prev) => ({
+      ...prev,
+      offline: true,
+      stale: true,
+    }));
+  };
+
+  document.addEventListener(
+    "visibilitychange",
+    onResume
   );
+
+  window.addEventListener("online", onOnline);
+  window.addEventListener("offline", onOffline);
+
+  const poll = window.setInterval(() => {
+    void loadRegions();
+  }, 10 * 60 * 1000);
+
+  return () => {
+    supabase.removeChannel(channel);
+
+    document.removeEventListener(
+      "visibilitychange",
+      onResume
+    );
+
+    window.removeEventListener(
+      "online",
+      onOnline
+    );
+
+    window.removeEventListener(
+      "offline",
+      onOffline
+    );
+
+    window.clearInterval(poll);
+  };
+}, [loadRegions]);
+
+// ---------------------------------------------------------------------
+// Built-in regions + Region Builder regions
+// ---------------------------------------------------------------------
+const availableRegions = React.useMemo(
+  () => mergeRegions(builderRegions),
+  [builderRegions]
+);
+
+// ---------------------------------------------------------------------
+// Ensure the currently selected region is still valid.
+// If an admin unpublishes a region, automatically fall back to SAFE_DEFAULT.
+// ---------------------------------------------------------------------
+useEffect(() => {
+  if (regionsLoading) return;
+
+  const exists = availableRegions.some(
+    (r) => r.value === country
+  );
+
+  if (exists) return;
+
+  setCountryState(SAFE_DEFAULT);
+  persistCountry(SAFE_DEFAULT);
+}, [availableRegions, country, regionsLoading]);
+// Merge built-in regions with Region Builder regions.
+const availableRegions: RegionOption[] =
+  mergeRegions(builderRegions);
+
+// Ensure the currently selected region is still valid.
+// This protects against regions being unpublished or removed.
+useEffect(() => {
+  if (regionsLoading) return;
+
+  const resolved = resolveRegion(
+    country,
+    availableRegions
+  );
+
+  if (!resolved) {
+    setCountryState(SAFE_DEFAULT);
+    persistCountry(SAFE_DEFAULT);
+    return;
+  }
+
+  if (resolved.value !== country) {
+    setCountryState(resolved.value);
+    persistCountry(resolved.value);
+  }
+}, [
+  availableRegions,
+  country,
+  regionsLoading,
+]);
+
+// ---------------------------------------------------------------------
+// Resolve the active region from the published region list.
+// ---------------------------------------------------------------------
+const selectedRegion =
+  availableRegions.find((r) => r.value === country) ?? null;
+
+// Base configuration.
+// Built-in regions use regionConfig.
+// Region Builder regions use their published metadata.
+const baseConfig: RegionConfig =
+  regionConfig[country] ??
+  {
+    currency: selectedRegion?.currency ?? "USD",
+    currencySymbol: selectedRegion?.currencySymbol ?? "$",
+
+    // Never assume +1 unless the selected region actually uses it.
+    phonePrefix: selectedRegion?.phonePrefix ?? "",
+
+    whatsappNumber: "",
+    smsNumber: "",
+    supportEmail: "",
+  };
+
+// Contact overrides loaded from Regional Contact Channels.
+const overrides = contactOverrides[country] ?? {};
+
+const config: RegionConfig = {
+  ...baseConfig,
+
+  whatsappNumber:
+    overrides.whatsappNumber ??
+    baseConfig.whatsappNumber,
+
+  smsNumber:
+    overrides.smsNumber ??
+    baseConfig.smsNumber,
+
+  supportEmail:
+    overrides.supportEmail ??
+    baseConfig.supportEmail,
+};
+
+// ---------------------------------------------------------------------
+// Currency icon
+// ---------------------------------------------------------------------
+const getCurrencyIcon = (className = "h-4 w-4") => {
+  switch (config.currency) {
+    case "NGN":
+      return <NairaIcon className={className} />;
+
+    default:
+      return <DollarSign className={className} />;
+  }
+};
+
+return (
+  <RegionContext.Provider
+    value={{
+      country,
+      setCountry,
+
+      regionMode,
+      setRegionMode,
+
+      isDetecting,
+
+      currency: config.currency,
+      currencySymbol: config.currencySymbol,
+      phonePrefix: config.phonePrefix,
+      whatsappNumber: config.whatsappNumber,
+      smsNumber: config.smsNumber,
+      supportEmail: config.supportEmail,
+
+      companyInfo:
+        companyInfoMap[country] ?? null,
+
+      getCurrencyIcon,
+
+      config,
+
+      availableRegions,
+      regionsLoading,
+      regionSync,
+      refreshRegions,
+    }}
+  >
+    {children}
+  </RegionContext.Provider>
+);
 };
 
 export const useRegion = () => {
   const context = useContext(RegionContext);
-  if (!context) throw new Error("useRegion must be used within a RegionProvider");
+
+  if (!context) {
+    throw new Error(
+      "useRegion must be used within a RegionProvider"
+    );
+  }
+
   return context;
 };
