@@ -194,29 +194,6 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
 };
 
 
-  // Manual selection overrides automatic detection.
-  setRegionModeState("manual");
-  persistMode("manual");
-
-  // Persist the validated region locally.
-  setCountryState(resolved.value);
-  persistCountry(resolved.value);
-
-  // Persist the validated region on the server.
-  void supabase
-    .rpc("set_my_region", { _country: resolved.value })
-    .then(({ error }) => {
-      if (error) {
-        console.warn(
-          "[region] server rejected region change:",
-          error.message
-        );
-      }
-    })
-    .catch(() => {
-      // Offline: local preference remains and will sync later.
-    });
-};
 
 const setRegionMode = (next: RegionMode) => {
   setRegionModeState(next);
