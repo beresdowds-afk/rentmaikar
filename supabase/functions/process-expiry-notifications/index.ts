@@ -609,13 +609,11 @@ const handler = async (req: Request): Promise<Response> => {
                 const termiiResp = await fetch('https://api.ng.termii.com/api/sms/otp/call', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
+                  // Termii voice OTP accepts ONLY api_key, phone_number and code.
                   body: JSON.stringify({
                     api_key: termiiApiKey,
                     phone_number: recipient.phone.replace('+', ''),
-                    code: item.days_until_expiry * 100,
-                    pin_placeholder: '< code >',
-                    message_text: voiceMsg,
-                    message_type: 'ALPHANUMERIC',
+                    code: 1000 + (item.days_until_expiry % 900),
                   }),
                 });
                 const termiiData = await termiiResp.json();
@@ -726,13 +724,11 @@ const handler = async (req: Request): Promise<Response> => {
                     const tResp = await fetch('https://api.ng.termii.com/api/sms/otp/call', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
+                      // Termii voice OTP accepts ONLY api_key, phone_number and code.
                       body: JSON.stringify({
                         api_key: termiiKey,
                         phone_number: admin.phone.replace('+', ''),
                         code: 5555,
-                        pin_placeholder: '< code >',
-                        message_text: adminVoiceMsg,
-                        message_type: 'ALPHANUMERIC',
                       }),
                     });
                     const tData = await tResp.json();
