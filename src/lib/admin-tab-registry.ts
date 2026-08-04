@@ -52,11 +52,6 @@ export const ADMIN_ONLY_TABS: string[] = [
   'task-portal',
   // CRM
   'admin-assistants',
-  // Docs portal is admin-only as a whole
-  'glossary',
-  'messaging-docs',
-  'email-docs',
-  'voip-docs',
 ];
 
 /**
