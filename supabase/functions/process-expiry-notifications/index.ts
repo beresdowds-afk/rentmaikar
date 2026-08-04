@@ -724,13 +724,11 @@ const handler = async (req: Request): Promise<Response> => {
                     const tResp = await fetch('https://api.ng.termii.com/api/sms/otp/call', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
+                      // Termii voice OTP accepts ONLY api_key, phone_number and code.
                       body: JSON.stringify({
                         api_key: termiiKey,
                         phone_number: admin.phone.replace('+', ''),
                         code: 5555,
-                        pin_placeholder: '< code >',
-                        message_text: adminVoiceMsg,
-                        message_type: 'ALPHANUMERIC',
                       }),
                     });
                     const tData = await tResp.json();
