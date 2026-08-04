@@ -326,13 +326,11 @@ const initiateTermiiCall = async (
     const termiiResponse = await fetch('https://api.ng.termii.com/api/sms/otp/call', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      // Termii voice OTP accepts ONLY api_key, phone_number and code.
       body: JSON.stringify({
         api_key: termiiApiKey,
         phone_number: profile.phone.replace('+', ''),
-        code: notificationNumber * 1000, // Termii requires a code for voice calls
-        pin_placeholder: '< code >',
-        message_text: voiceMessage,
-        message_type: 'ALPHANUMERIC',
+        code: 1000 + (notificationNumber % 9) * 1000 + 111, // 4-digit code
       }),
     });
 

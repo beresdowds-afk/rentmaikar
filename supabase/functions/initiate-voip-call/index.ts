@@ -183,13 +183,11 @@ const handler = async (req: Request): Promise<Response> => {
           const termiiResponse = await fetch('https://api.ng.termii.com/api/sms/otp/call', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            // Termii voice OTP accepts ONLY api_key, phone_number and code.
             body: JSON.stringify({
               api_key: termiiApiKey,
               phone_number: recipient.phoneNumber.replace('+', ''),
               code: 1234,
-              pin_placeholder: '< code >',
-              message_text: 'Connecting you to Rentmaikar support.',
-              message_type: 'ALPHANUMERIC',
             }),
           });
 
