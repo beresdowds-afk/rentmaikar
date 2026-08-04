@@ -64,6 +64,13 @@ export const TAB_PERMISSION_MAP: Record<AdminTabKey, PermissionKey | null> = {
   instagram: 'can_view_reports',
   linkedin: 'can_view_reports',
   google: 'can_view_reports',
+
+  // Docs – reference material. Glossary is always available to assistants;
+  // channel docs follow the communications permission.
+  glossary: null,
+  'messaging-docs': 'can_view_communications',
+  'email-docs': 'can_view_communications',
+  'voip-docs': 'can_view_communications',
 };
 
 /** Compute the list of tabs an assistant is NOT allowed to see. */

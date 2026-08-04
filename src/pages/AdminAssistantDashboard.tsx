@@ -204,7 +204,11 @@ const AdminAssistantDashboard = () => {
     () => Array.from(new Set([...BASE_EXCLUDED_TABS, ...rbacForbidden])),
     [BASE_EXCLUDED_TABS, rbacForbidden],
   );
-  const EXCLUDED_PORTALS: PortalType[] = ['docs', ...(!isFullAdmin && !isAssistant ? (['marketing'] as PortalType[]) : [])];
+  // Docs portal is available to admins and assistants; individual docs tabs are
+  // still gated by the role management portal via TAB_PERMISSION_MAP.
+  const EXCLUDED_PORTALS: PortalType[] = !isFullAdmin && !isAssistant
+    ? (['marketing', 'docs'] as PortalType[])
+    : [];
 
   // Fallback: if the active tab is no longer permitted (e.g. permissions were
   // revoked), bounce the user to the first tab they still have access to.
