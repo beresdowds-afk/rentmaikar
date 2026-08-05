@@ -7,6 +7,7 @@
  */
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAuthenticated } from "../_shared/guard.ts";
 
 const PERSONA_BASE = "https://withpersona.com/api/v1";
 const PERSONA_VERSION = "2023-01-05";
@@ -61,6 +62,11 @@ function collectMismatches(attrs: Record<string, unknown>): Record<string, unkno
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // Signed-in users may reconcile their own verification; cron/service callers
+  // run the scheduled sweep.
+  const caller = await requireAuthenticated(req);
+  if (caller instanceof Response) return caller;
+
   const correlationId = req.headers.get("x-correlation-id") ?? `reconcile-${crypto.randomUUID()}`;
   const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
@@ -95,6 +101,12 @@ Deno.serve(async (req) => {
       .not("inquiry_id", "is", null)
       .order("updated_at", { ascending: true })
       .limit(limit);
+
+    // Least privilege: non-admin callers may only reconcile their own
+    // inquiries. Internal/cron and admin callers run the full sweep.
+    const privileged = caller.internal ||
+      caller.roles.some((r) => r === "admin" || r === "admin_assistant");
+    if (!privileged) query = query.eq("user_id", caller.userId);
 
     if (body.inquiry_id) {
       query = query.eq("inquiry_id", body.inquiry_id);

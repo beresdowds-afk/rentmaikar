@@ -8,6 +8,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3.23.8";
+import { requireInternal } from "../_shared/guard.ts";
 
 const Body = z.object({
   user_id: z.string().uuid(),
@@ -19,6 +20,10 @@ const Body = z.object({
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // Internal-only endpoint: cron secret or service-role bearer required.
+  const denied = requireInternal(req);
+  if (denied) return denied;
   try {
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) {

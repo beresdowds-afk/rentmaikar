@@ -15,6 +15,12 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import TraccarSettingsPanel, { type TraccarValidationState } from "./TraccarSettingsPanel";
 
+/** HTML-escape untrusted values before interpolating them into marker popups. */
+const esc = (v: unknown): string =>
+  String(v ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+
+
 interface TraccarDevice {
   id: number;
   name: string;
@@ -88,16 +94,18 @@ const ClusterLayer = ({ devices, posByDevice, busyCmd, onCommand }: ClusterProps
       const marker = L.marker([p.latitude, p.longitude], { icon: iconFor(d.status) });
       const container = document.createElement("div");
       container.className = "space-y-2 min-w-[220px]";
+      // Device names/addresses come from the external Traccar server, so they
+      // are untrusted input — escape before injecting into the popup markup.
       container.innerHTML = `
-        <div class="font-semibold text-sm">${d.name || d.uniqueId}</div>
+        <div class="font-semibold text-sm">${esc(d.name || d.uniqueId)}</div>
         <div class="grid grid-cols-2 gap-x-2 gap-y-0.5 text-xs">
-          <div class="text-muted-foreground">Status</div><div><b>${d.status}</b></div>
+          <div class="text-muted-foreground">Status</div><div><b>${esc(d.status)}</b></div>
           <div class="text-muted-foreground">Speed</div><div>${speedKmh} km/h</div>
           <div class="text-muted-foreground">Course</div><div>${Math.round(p.course ?? 0)}°</div>
-          <div class="text-muted-foreground">Last fix</div><div>${new Date(p.fixTime).toLocaleString()}</div>
-          <div class="text-muted-foreground">Traccar ID</div><div class="font-mono">${d.id}</div>
+          <div class="text-muted-foreground">Last fix</div><div>${esc(new Date(p.fixTime).toLocaleString())}</div>
+          <div class="text-muted-foreground">Traccar ID</div><div class="font-mono">${esc(d.id)}</div>
         </div>
-        ${p.address ? `<div class="text-xs text-muted-foreground">${p.address}</div>` : ""}
+        ${p.address ? `<div class="text-xs text-muted-foreground">${esc(p.address)}</div>` : ""}
         <div class="flex gap-1 pt-1" data-actions></div>
       `;
       const actions = container.querySelector("[data-actions]")!;

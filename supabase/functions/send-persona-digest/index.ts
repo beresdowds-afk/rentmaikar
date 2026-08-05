@@ -4,9 +4,14 @@
 // Intended to be invoked once per day via pg_cron.
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireInternal } from "../_shared/guard.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // Internal-only endpoint: cron secret or service-role bearer required.
+  const denied = requireInternal(req);
+  if (denied) return denied;
   const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
   const { data: pending, error } = await supa

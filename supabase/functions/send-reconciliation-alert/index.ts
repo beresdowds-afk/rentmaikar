@@ -6,6 +6,7 @@
 
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requireInternal } from "../_shared/guard.ts";
 
 interface AlertPayload {
   alert_type: string;
@@ -17,6 +18,10 @@ interface AlertPayload {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Internal-only endpoint: cron secret or service-role bearer required.
+  const denied = requireInternal(req);
+  if (denied) return denied;
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
