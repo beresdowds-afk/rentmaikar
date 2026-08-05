@@ -23,17 +23,18 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
 
 /** Phone field that must parse to a valid international (E.164) number. */
+const toE164 = (v: string) => {
+  const t = (v || "").trim();
+  return t.startsWith("+") ? t.replace(/\s+/g, "") : `+${t.replace(/[^\d]/g, "")}`;
+};
+
 const refereePhone = (label: string) =>
   z
     .string()
     .min(1, `${label} phone is required`)
     .max(20, "Phone too long")
-    .transform((v) => {
-      const t = (v || "").trim();
-      return t.startsWith("+") ? t : `+${t.replace(/[^\d]/g, "")}`;
-    })
     .refine((v) => {
-      const p = parsePhoneNumberFromString(v);
+      const p = parsePhoneNumberFromString(toE164(v));
       return !!p && p.isValid();
     }, `Enter ${label}'s phone with country code, e.g. +2348012345678`);
 
