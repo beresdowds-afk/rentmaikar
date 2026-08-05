@@ -153,6 +153,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Server-side auth event journal. Supabase rotates refresh tokens on
         // TOKEN_REFRESHED and mints new sessions on SIGNED_IN, which is our
         // defense against session fixation; we simply record the transitions.
+        // Pull auth-layer email/phone changes into profiles (no auth-schema
+        // triggers are permitted, so this is the UPDATE-side sync path).
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          setTimeout(() => {
+            supabase.functions.invoke('sync-auth-identity').catch(() => {});
+          }, 0);
+        }
+
         setTimeout(() => {
           if (event === 'SIGNED_IN') {
             const provider = (session?.user?.app_metadata as any)?.provider ?? 'email';
