@@ -22,6 +22,21 @@ import { RegistrationErrorAlert } from "@/components/registration/RegistrationEr
 import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
 
+/** Phone field that must parse to a valid international (E.164) number. */
+const refereePhone = (label: string) =>
+  z
+    .string()
+    .min(1, `${label} phone is required`)
+    .max(20, "Phone too long")
+    .transform((v) => {
+      const t = (v || "").trim();
+      return t.startsWith("+") ? t : `+${t.replace(/[^\d]/g, "")}`;
+    })
+    .refine((v) => {
+      const p = parsePhoneNumberFromString(v);
+      return !!p && p.isValid();
+    }, `Enter ${label}'s phone with country code, e.g. +2348012345678`);
+
 const driverSchema = z.object({
   firstName: z.string().min(2, "First name is required").max(50, "First name too long"),
   lastName: z.string().min(2, "Last name is required").max(50, "Last name too long"),
