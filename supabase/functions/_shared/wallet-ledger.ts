@@ -173,3 +173,33 @@ export async function postRentalPaymentLedger(
 
   return await postLedgerEntries(supabase, entries);
 }
+
+/**
+ * Unified settlement entry point.
+ *
+ * Delegates the whole financial fan-out for a completed payment to the
+ * `settle_payment_financials` RPC: tax line items, commission split, wallet
+ * ledger postings (driver debit / owner share / platform fee), owner
+ * earnings, subscription activation, invoice creation and audit logging.
+ *
+ * The RPC is idempotent (guarded by `payments.settled_at` plus per-entry
+ * idempotency keys), so webhook retries are safe. Failures are returned,
+ * never thrown — the money has already moved at the provider.
+ */
+export async function settlePaymentFinancials(
+  supabase: any,
+  paymentId: string,
+  provider: string,
+  providerReference?: string | null,
+): Promise<{ ok: boolean; result?: any; error?: string }> {
+  const { data, error } = await supabase.rpc("settle_payment_financials", {
+    _payment_id: paymentId,
+    _provider: provider,
+    _provider_reference: providerReference ?? null,
+  });
+  if (error) {
+    console.error("[settle_payment_financials] failed:", paymentId, error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true, result: data };
+}
