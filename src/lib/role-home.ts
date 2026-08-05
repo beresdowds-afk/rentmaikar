@@ -22,11 +22,27 @@ export const ROLE_HOME: Record<AppRole, string> = {
   vehicle_support: '/support/vehicle',
 };
 
-/** First-login destination for roles that must complete role-specific onboarding. */
-export const ROLE_ONBOARDING: Partial<Record<AppRole, string>> = {
+/**
+ * First-login destination for every role. Driver/owner have dedicated
+ * onboarding flows; all other roles land on their dashboard home, which is an
+ * acceptable "next step" target for gates.
+ */
+export const ROLE_ONBOARDING: Record<AppRole, string> = {
   driver: '/driver/onboarding',
   owner: '/owner/onboarding',
+  admin: ROLE_HOME.admin,
+  admin_assistant: ROLE_HOME.admin_assistant,
+  legal_support: ROLE_HOME.legal_support,
+  iot_support: ROLE_HOME.iot_support,
+  vehicle_support: ROLE_HOME.vehicle_support,
 };
+
+/** Onboarding entry point for a role, falling back to the driver flow. */
+export function onboardingForRole(role: AppRole | null | undefined): string {
+  if (!role) return '/driver/onboarding';
+  return ROLE_ONBOARDING[role] ?? '/driver/onboarding';
+}
+
 
 export function homeForRole(role: AppRole | null | undefined, fallback = '/'): string {
   if (!role) return fallback;
