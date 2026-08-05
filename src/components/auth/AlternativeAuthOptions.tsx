@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { assignRole } from '@/lib/user-provisioning';
+import type { AppRole } from '@/lib/role-home';
 import { lovable } from '@/integrations/lovable/index';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -208,10 +210,7 @@ function PhoneOtpDialog({
         if (error) throw error;
         // Assign role for brand-new users
         if (data.user) {
-          await supabase.from('user_roles').upsert(
-            { user_id: data.user.id, role },
-            { onConflict: 'user_id,role' }
-          );
+          await assignRole(data.user.id, role as AppRole);
           if (name) {
             await supabase.from('profiles').update({ full_name: name }).eq('id', data.user.id);
           }
