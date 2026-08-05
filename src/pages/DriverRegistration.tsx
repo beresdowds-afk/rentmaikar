@@ -16,6 +16,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import PricingHintBanner from "@/components/home/PricingHintBanner";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureAuthUserForApplicant } from "@/lib/user-provisioning";
 import { classifyRegistrationError, type FriendlyRegistrationError } from "@/lib/registration-errors";
 import { RegistrationErrorAlert } from "@/components/registration/RegistrationErrorAlert";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -158,35 +159,13 @@ const DriverRegistration = () => {
     setLastFormData(data);
     setSubmitError(null);
     try {
-      // 1) Ensure an auth user exists for this applicant.
-      // If a different user is signed in, sign them out first so we don't
-      // link the new application to the wrong account.
-      const { data: sessionData } = await supabase.auth.getSession();
-      const currentEmail = sessionData.session?.user?.email?.toLowerCase();
-      if (currentEmail && currentEmail !== data.email.toLowerCase()) {
-        await supabase.auth.signOut();
-      }
-      const { data: sessionAfter } = await supabase.auth.getSession();
-      let userId = sessionAfter.session?.user?.id ?? null;
-
-      if (!userId) {
-        if (!data.password || data.password.length < 8) {
-          throw new Error("Please choose a password with at least 8 characters to create your account.");
-        }
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: data.email,
-          password: data.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth`,
-            data: {
-              full_name: `${data.firstName} ${data.lastName}`.trim(),
-            },
-          },
-        });
-        if (signUpError) throw signUpError;
-        userId = signUpData.user?.id ?? null;
-        if (!userId) throw new Error("Could not create your account. Please try again.");
-      }
+      // 1) Ensure an auth user exists for this applicant (shared helper).
+      const userId = await ensureAuthUserForApplicant({
+        email: data.email,
+        password: data.password,
+        fullName: `${data.firstName} ${data.lastName}`.trim(),
+        requestedRole: 'driver',
+      });
 
       const { error } = await supabase.from('applications').insert({
         user_id: userId,

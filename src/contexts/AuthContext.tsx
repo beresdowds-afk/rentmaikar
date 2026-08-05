@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { assignRole } from '@/lib/user-provisioning';
 
 type AppRole = 'admin' | 'admin_assistant' | 'owner' | 'driver' | 'legal_support' | 'iot_support' | 'vehicle_support';
 
@@ -152,6 +153,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Server-side auth event journal. Supabase rotates refresh tokens on
         // TOKEN_REFRESHED and mints new sessions on SIGNED_IN, which is our
         // defense against session fixation; we simply record the transitions.
+        // Pull auth-layer email/phone changes into profiles (no auth-schema
+        // triggers are permitted, so this is the UPDATE-side sync path).
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          setTimeout(() => {
+            supabase.functions.invoke('sync-auth-identity').catch(() => {});
+          }, 0);
+        }
+
         setTimeout(() => {
           if (event === 'SIGNED_IN') {
             const provider = (session?.user?.app_metadata as any)?.provider ?? 'email';
@@ -219,13 +228,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { error: generic };
       }
 
-      // Safety net only: the trigger already seeded the role. Upsert avoids the
-      // duplicate-key error the previous plain insert produced.
+      // Safety net only: the trigger already provisioned the account. Route
+      // through the single idempotent provisioning RPC instead of a raw upsert.
       if (data.user) {
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .upsert({ user_id: data.user.id, role }, { onConflict: 'user_id,role' });
-        if (roleError) console.error('Error assigning role:', roleError);
+        try {
+          await assignRole(data.user.id, role as AppRole, email.trim().toLowerCase());
+        } catch (roleError) {
+          console.error('Error assigning role:', roleError);
+        }
       }
 
       await logAuthEvent('sign_up_success', { email, metadata: { role } });

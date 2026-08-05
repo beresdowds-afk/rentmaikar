@@ -106,11 +106,23 @@ export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNo
                   </>
                 )}
               </p>
-              <Button asChild>
-                <Link to={userRole ? ROLE_HOME[userRole] : '/'}>
-                  {userRole ? 'Go to my dashboard' : 'Back to home'}
-                </Link>
-              </Button>
+              {userRole ? (
+                <Button asChild>
+                  <Link to={ROLE_HOME[userRole]}>Go to my dashboard</Link>
+                </Button>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <Button asChild>
+                    <Link to="/driver/register">Register as a driver</Link>
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link to="/owner/register">Register as an owner</Link>
+                  </Button>
+                  <Button asChild variant="ghost">
+                    <Link to="/faq">Contact support</Link>
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </main>
