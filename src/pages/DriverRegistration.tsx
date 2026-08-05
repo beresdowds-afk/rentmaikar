@@ -40,17 +40,18 @@ const driverSchema = z.object({
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
   rideshareApproval: z.array(z.string()).min(1, "Select at least one platform"),
   hasDriverLicense: z.boolean().refine(val => val, "Driver license is required"),
-  // Referee 1
+  // Referee 1 — phones must be E.164; the DB enforces this with a trigger, so
+  // validate here to surface an inline error instead of a failed submission.
   referee1Name: z.string().min(2, "Referee 1 name is required").max(100, "Name too long"),
-  referee1Phone: z.string().min(10, "Referee 1 phone is required").max(20, "Phone too long"),
+  referee1Phone: refereePhone("Referee 1"),
   referee1Address: z.string().min(5, "Referee 1 address is required").max(200, "Address too long"),
   // Referee 2
   referee2Name: z.string().min(2, "Referee 2 name is required").max(100, "Name too long"),
-  referee2Phone: z.string().min(10, "Referee 2 phone is required").max(20, "Phone too long"),
+  referee2Phone: refereePhone("Referee 2"),
   referee2Address: z.string().min(5, "Referee 2 address is required").max(200, "Address too long"),
   // Referee 3
   referee3Name: z.string().min(2, "Referee 3 name is required").max(100, "Name too long"),
-  referee3Phone: z.string().min(10, "Referee 3 phone is required").max(20, "Phone too long"),
+  referee3Phone: refereePhone("Referee 3"),
   referee3Address: z.string().min(5, "Referee 3 address is required").max(200, "Address too long"),
   // Security deposit acknowledgment
   securityDepositAcknowledged: z.boolean().refine(val => val, "You must acknowledge the security deposit requirement"),
