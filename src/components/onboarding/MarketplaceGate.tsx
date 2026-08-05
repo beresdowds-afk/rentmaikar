@@ -1,35 +1,30 @@
 import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useProfileCompletion } from '@/hooks/useProfileCompletion';
-import { useIdentityVerification } from '@/hooks/useIdentityVerification';
+import { useOnboardingComplete } from '@/hooks/useOnboardingComplete';
 import PageSkeleton from '@/components/PageSkeleton';
 
 /**
- * Blocks marketplace-only surfaces (renting, listing, checkout) until:
- *  1. Mandatory profile completion fields are filled, AND
- *  2. Persona identity verification has been approved (real-time).
- *
- * Optional profile fields (license, vehicle ownership, payment method) remain
- * skippable. Users pending / failed identity verification are routed to the
- * verification status page for the next action.
+ * Blocks marketplace-only surfaces (renting, listing, checkout) until the
+ * shared `useOnboardingComplete()` predicate is satisfied. Anonymous visitors
+ * are sent to /auth (previously they saw content whose queries then 401'd).
  */
 export const MarketplaceGate = ({ children }: { children: ReactNode }) => {
-  const profile = useProfileCompletion();
-  const identity = useIdentityVerification();
+  const state = useOnboardingComplete();
   const location = useLocation();
-
-  if (profile.isLoading || identity.isLoading || !profile.data || !identity.data) {
-    return <PageSkeleton />;
-  }
-  if (!profile.data.authenticated) return <>{children}</>;
 
   const returnTo = encodeURIComponent(location.pathname + location.search);
 
-  if (!profile.data.mandatory_complete) {
+  if (!state.authenticated) {
+    return <Navigate to={`/auth?returnTo=${returnTo}`} replace state={{ from: location }} />;
+  }
+
+  if (state.isLoading) return <PageSkeleton />;
+
+  if (state.blocker === 'profile_incomplete') {
     return <Navigate to={`/onboarding/complete-profile?returnTo=${returnTo}`} replace />;
   }
 
-  if (!identity.data.is_verified) {
+  if (state.blocker === 'identity_unverified' || state.blocker === 'awaiting_approval') {
     return <Navigate to={`/onboarding/verification-status?returnTo=${returnTo}`} replace />;
   }
 
