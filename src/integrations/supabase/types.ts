@@ -398,7 +398,15 @@ export type Database = {
           old_status?: string | null
           signature_length?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "agreement_signature_audit_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "legal_agreements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       api_key_usage_log: {
         Row: {
@@ -621,7 +629,15 @@ export type Database = {
           message?: string | null
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "application_pipeline_events_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       application_recovery_requests: {
         Row: {
@@ -1059,7 +1075,15 @@ export type Database = {
           vehicle_id?: string | null
           zip_size_bytes?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "document_export_audit_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       driver_behavior_logs: {
         Row: {
@@ -1122,7 +1146,15 @@ export type Database = {
           total_g?: number | null
           vehicle_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "driver_behavior_logs_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       driver_call_ins: {
         Row: {
@@ -1188,7 +1220,22 @@ export type Database = {
           updated_at?: string
           vehicle_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "driver_call_ins_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_call_ins_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       driver_proxy_billing_accounts: {
         Row: {
@@ -1800,7 +1847,22 @@ export type Database = {
           vehicle_id?: string | null
           voip_call_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "expiry_notifications_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "user_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expiry_notifications_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       faq_categories: {
         Row: {
@@ -2503,7 +2565,22 @@ export type Database = {
           updated_at?: string
           vehicle_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "iot_sim_cards_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "iot_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iot_sim_cards_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       iot_sync_schedule: {
         Row: {
@@ -2763,6 +2840,13 @@ export type Database = {
             columns: ["parent_agreement_id"]
             isOneToOne: false
             referencedRelation: "legal_agreements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_agreements_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
@@ -3062,6 +3146,13 @@ export type Database = {
             referencedRelation: "rentals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "owner_earnings_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       owner_payout_accounts: {
@@ -3235,7 +3326,15 @@ export type Database = {
           status?: string
           vehicle_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "payment_defaults_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_disputes: {
         Row: {
@@ -3683,6 +3782,13 @@ export type Database = {
             referencedRelation: "subscription_plans"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "payments_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       paypal_transactions: {
@@ -3766,6 +3872,13 @@ export type Database = {
             columns: ["rental_id"]
             isOneToOne: false
             referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paypal_transactions_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
@@ -5441,6 +5554,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "referee_verifications_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "referee_verifications_persona_inquiry_id_fkey"
             columns: ["persona_inquiry_id"]
             isOneToOne: false
@@ -5952,7 +6072,15 @@ export type Database = {
           vehicle_id?: string | null
           week_start_date?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "rideshare_profile_submissions_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       roadside_partners: {
         Row: {
@@ -6600,6 +6728,27 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "tax_line_items_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "billing_reconciliation_view"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "tax_line_items_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_line_items_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tax_line_items_tax_rule_id_fkey"
             columns: ["tax_rule_id"]
             isOneToOne: false
@@ -6884,7 +7033,15 @@ export type Database = {
           shadow_provider?: string
           vehicle_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "telemetry_shadow_log_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tour_analytics_events: {
         Row: {
@@ -6965,7 +7122,15 @@ export type Database = {
           previous_steps?: Json | null
           tour_name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tour_step_config_audit_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "tour_step_configs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tour_step_configs: {
         Row: {
@@ -7612,6 +7777,13 @@ export type Database = {
             columns: ["call_in_id"]
             isOneToOne: false
             referencedRelation: "driver_call_ins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_geofences_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
@@ -9218,7 +9390,15 @@ export type Database = {
           message: string | null
           status: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "application_pipeline_events_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
