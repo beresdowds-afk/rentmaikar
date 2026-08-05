@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAssistantPermissions } from '@/hooks/useAssistantPermissions';
 import { AdminAssistantManagement } from './AdminAssistantManagement';
 import { SplitPane } from '@/components/ui/split-pane';
 
