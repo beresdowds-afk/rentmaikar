@@ -17,7 +17,7 @@ import {
   deriveCorrelationId,
   correlationHeaders,
 } from "../_shared/webhook-logger.ts";
-import { postRentalPaymentLedger } from "../_shared/wallet-ledger.ts";
+import { settlePaymentFinancials } from "../_shared/wallet-ledger.ts";
 
 
 const PP_ENV = (Deno.env.get("PAYPAL_ENV") || "sandbox").toLowerCase();
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
         await transitionState(supabase, "payment", tx.payment_id, "captured", eventType, {}, logger);
         await transitionState(supabase, "payment", tx.payment_id, "settled", "paypal capture settled", {}, logger);
         const { alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id);
-        await recordPaymentInLedger(supabase, tx.payment_id, "paypal", orderId);
+        await settlePaymentFinancials(supabase, tx.payment_id, "paypal", orderId);
         if (!alreadyCompleted) {
           await withRetry("paypal.receipt.email", async () => {
             const { error } = await supabase.functions.invoke("billing-portal", {
