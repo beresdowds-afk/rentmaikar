@@ -22,6 +22,22 @@ import { RegistrationErrorAlert } from "@/components/registration/RegistrationEr
 import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
 
+/** Phone field that must parse to a valid international (E.164) number. */
+const toE164 = (v: string) => {
+  const t = (v || "").trim();
+  return t.startsWith("+") ? t.replace(/\s+/g, "") : `+${t.replace(/[^\d]/g, "")}`;
+};
+
+const refereePhone = (label: string) =>
+  z
+    .string()
+    .min(1, `${label} phone is required`)
+    .max(20, "Phone too long")
+    .refine((v) => {
+      const p = parsePhoneNumberFromString(toE164(v));
+      return !!p && p.isValid();
+    }, `Enter ${label}'s phone with country code, e.g. +2348012345678`);
+
 const driverSchema = z.object({
   firstName: z.string().min(2, "First name is required").max(50, "First name too long"),
   lastName: z.string().min(2, "Last name is required").max(50, "Last name too long"),
@@ -40,17 +56,18 @@ const driverSchema = z.object({
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
   rideshareApproval: z.array(z.string()).min(1, "Select at least one platform"),
   hasDriverLicense: z.boolean().refine(val => val, "Driver license is required"),
-  // Referee 1
+  // Referee 1 — phones must be E.164; the DB enforces this with a trigger, so
+  // validate here to surface an inline error instead of a failed submission.
   referee1Name: z.string().min(2, "Referee 1 name is required").max(100, "Name too long"),
-  referee1Phone: z.string().min(10, "Referee 1 phone is required").max(20, "Phone too long"),
+  referee1Phone: refereePhone("Referee 1"),
   referee1Address: z.string().min(5, "Referee 1 address is required").max(200, "Address too long"),
   // Referee 2
   referee2Name: z.string().min(2, "Referee 2 name is required").max(100, "Name too long"),
-  referee2Phone: z.string().min(10, "Referee 2 phone is required").max(20, "Phone too long"),
+  referee2Phone: refereePhone("Referee 2"),
   referee2Address: z.string().min(5, "Referee 2 address is required").max(200, "Address too long"),
   // Referee 3
   referee3Name: z.string().min(2, "Referee 3 name is required").max(100, "Name too long"),
-  referee3Phone: z.string().min(10, "Referee 3 phone is required").max(20, "Phone too long"),
+  referee3Phone: refereePhone("Referee 3"),
   referee3Address: z.string().min(5, "Referee 3 address is required").max(200, "Address too long"),
   // Security deposit acknowledgment
   securityDepositAcknowledged: z.boolean().refine(val => val, "You must acknowledge the security deposit requirement"),
@@ -173,8 +190,8 @@ const DriverRegistration = () => {
         first_name: data.firstName,
         last_name: data.lastName,
         email: data.email,
-        phone_country: data.phoneCountry ?? (parsePhoneNumberFromString(data.phoneNumber)?.country === 'NG' ? 'ng' : 'us'),
-        phone_number: data.phoneNumber,
+        phone_country: data.phoneCountry ?? (parsePhoneNumberFromString(toE164(data.phoneNumber))?.country === 'NG' ? 'ng' : 'us'),
+        phone_number: toE164(data.phoneNumber),
         country: data.country,
         city: data.city,
         zip_code: data.zipCode,
@@ -182,13 +199,13 @@ const DriverRegistration = () => {
         rideshare_platforms: data.rideshareApproval,
         has_driver_license: data.hasDriverLicense,
         referee1_name: data.referee1Name,
-        referee1_phone: data.referee1Phone,
+        referee1_phone: toE164(data.referee1Phone),
         referee1_address: data.referee1Address,
         referee2_name: data.referee2Name,
-        referee2_phone: data.referee2Phone,
+        referee2_phone: toE164(data.referee2Phone),
         referee2_address: data.referee2Address,
         referee3_name: data.referee3Name,
-        referee3_phone: data.referee3Phone,
+        referee3_phone: toE164(data.referee3Phone),
         referee3_address: data.referee3Address,
         security_deposit_acknowledged: data.securityDepositAcknowledged,
         agreed_terms: data.agreeTerms,
