@@ -112,6 +112,9 @@ export default function AdminLedgerReconciliationPage() {
         </Button>
       </div>
 
+      <PlatformRevenueCard />
+
+
 
       <Card>
         <CardHeader>
