@@ -7,7 +7,7 @@
  */
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { requireInternal } from "../_shared/guard.ts";
+import { requireAuthenticated } from "../_shared/guard.ts";
 
 const PERSONA_BASE = "https://withpersona.com/api/v1";
 const PERSONA_VERSION = "2023-01-05";
@@ -62,9 +62,10 @@ function collectMismatches(attrs: Record<string, unknown>): Record<string, unkno
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  // Internal-only endpoint: cron secret or service-role bearer required.
-  const denied = requireInternal(req);
-  if (denied) return denied;
+  // Signed-in users may reconcile their own verification; cron/service callers
+  // run the scheduled sweep.
+  const caller = await requireAuthenticated(req);
+  if (caller instanceof Response) return caller;
 
   const correlationId = req.headers.get("x-correlation-id") ?? `reconcile-${crypto.randomUUID()}`;
   const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
