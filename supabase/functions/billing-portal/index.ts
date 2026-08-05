@@ -228,13 +228,23 @@ Deno.serve(async (req) => {
   const action = body.action as string;
 
   try {
-    // ---------- Idempotent invoice create ----------
+    // ---------- Idempotent invoice create (admins / internal only) ----------
     if (action === "create_invoice") {
+      if (!isInternal && !(await isPrivileged(admin, actor_id))) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const {
         rental_id, driver_id, owner_id, vehicle_id, subscription_id, invoice_type,
         amount, tax_amount = 0, currency = "USD", description, line_items = [],
         due_date, recipient_email, region, payment_id, idempotency_key,
       } = body;
+      if (!(Number(amount) >= 0) || !Number.isFinite(Number(amount))) {
+        return new Response(JSON.stringify({ error: "Invalid amount" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const total = Number(amount) + Number(tax_amount || 0);
       const idem = idempotency_key
         ?? (payment_id ? `payment-${payment_id}` : (rental_id ? `rental-${rental_id}-${invoice_type}-${amount}` : null));
@@ -262,27 +272,33 @@ Deno.serve(async (req) => {
     }
 
     if (action === "send_invoice") {
+      if (!isUuid(body.invoice_id)) throw Object.assign(new Error("Invalid invoice_id"), { status: 400 });
+      await assertCanAccess(admin, "invoice", body.invoice_id, actor_id, isInternal);
       const r = await sendInvoiceById(admin, body.invoice_id, actor_id);
       return new Response(JSON.stringify(r), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (action === "send_receipt" || action === "auto_send_receipt_for_payment") {
       let receipt_id = body.receipt_id as string | undefined;
-      if (!receipt_id && body.payment_id) {
+      if (!receipt_id && isUuid(body.payment_id)) {
         const { data: rc } = await admin.from("receipts").select("id").eq("payment_id", body.payment_id).maybeSingle();
         receipt_id = rc?.id;
       }
-      if (!receipt_id) {
+      if (!isUuid(receipt_id)) {
         return new Response(JSON.stringify({ ok: false, error: "receipt not found" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+      await assertCanAccess(admin, "receipt", receipt_id, actor_id, isInternal);
       const r = await sendReceiptById(admin, receipt_id, actor_id);
       return new Response(JSON.stringify(r), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (action === "retry_email") {
       const { kind, id } = body; // kind = 'invoice' | 'receipt'
-      const r = kind === "receipt"
+      if (!isUuid(id)) throw Object.assign(new Error("Invalid id"), { status: 400 });
+      const k = kind === "receipt" ? "receipt" : "invoice";
+      await assertCanAccess(admin, k, id, actor_id, isInternal);
+      const r = k === "receipt"
         ? await sendReceiptById(admin, id, actor_id)
         : await sendInvoiceById(admin, id, actor_id);
       return new Response(JSON.stringify(r), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -290,21 +306,28 @@ Deno.serve(async (req) => {
 
     if (action === "render_html") {
       const { kind, id } = body;
-      const table = kind === "receipt" ? "receipts" : "invoices";
-      const { data, error } = await admin.from(table).select("*").eq("id", id).single();
-      if (error || !data) throw error ?? new Error("Not found");
+      if (!isUuid(id)) throw Object.assign(new Error("Invalid id"), { status: 400 });
+      const k = kind === "receipt" ? "receipt" : "invoice";
+      const data = await assertCanAccess(admin, k, id, actor_id, isInternal);
       await admin.from("invoice_activity_log").insert({
-        entity_type: kind, entity_id: id, action: "viewed", actor_id, channel: "download",
+        entity_type: k, entity_id: id, action: "viewed", actor_id, channel: "download",
       });
-      const html = kind === "receipt" ? renderReceiptPdfHtml(data) : renderInvoicePdfHtml(data);
+      const html = k === "receipt" ? renderReceiptPdfHtml(data) : renderInvoicePdfHtml(data);
       return new Response(html, { headers: { ...corsHeaders, "Content-Type": "text/html" } });
     }
 
+    // ---------- Voiding is an administrative action ----------
     if (action === "void_invoice") {
       const { invoice_id, reason } = body;
+      if (!isUuid(invoice_id)) throw Object.assign(new Error("Invalid invoice_id"), { status: 400 });
+      if (!isInternal && !(await isPrivileged(admin, actor_id))) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       await admin.from("invoices").update({
         status: "void", voided_at: new Date().toISOString(),
-        metadata: { void_reason: reason },
+        metadata: { void_reason: typeof reason === "string" ? reason.slice(0, 500) : null },
       }).eq("id", invoice_id);
       await admin.from("invoice_activity_log").insert({
         entity_type: "invoice", entity_id: invoice_id, action: "voided",
@@ -317,10 +340,11 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e) {
-    console.error("[billing-portal]", e);
-    return new Response(JSON.stringify({ error: String(e) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  } catch (e: any) {
+    const status = typeof e?.status === "number" ? e.status : 500;
+    if (status >= 500) console.error("[billing-portal]", e);
+    return new Response(JSON.stringify({ error: status >= 500 ? "Internal error" : String(e?.message ?? e) }), {
+      status, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
