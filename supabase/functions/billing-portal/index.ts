@@ -168,6 +168,41 @@ async function sendReceiptById(admin: any, receipt_id: string, actor_id: string 
   return { ok: send.ok, email, error: send.ok ? null : send.error };
 }
 
+/** True when the actor holds the admin (or admin_assistant) role. */
+async function isPrivileged(admin: any, actor_id: string | null): Promise<boolean> {
+  if (!actor_id) return false;
+  const { data } = await admin
+    .from("user_roles").select("role").eq("user_id", actor_id)
+    .in("role", ["admin", "admin_assistant"]);
+  return !!data && data.length > 0;
+}
+
+/**
+ * Ownership gate: loads the invoice/receipt and asserts the caller is the
+ * driver or owner on the record, or an admin. Throws a 403-marked error
+ * otherwise so callers can never touch records they do not own.
+ */
+async function assertCanAccess(
+  admin: any, kind: "invoice" | "receipt", id: string,
+  actor_id: string | null, isInternal: boolean,
+): Promise<any> {
+  const table = kind === "receipt" ? "receipts" : "invoices";
+  const { data: row, error } = await admin.from(table).select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  if (!row) { const e: any = new Error("Not found"); e.status = 404; throw e; }
+  if (isInternal) return row;
+  if (actor_id && (row.driver_id === actor_id || row.owner_id === actor_id)) return row;
+  if (await isPrivileged(admin, actor_id)) return row;
+  const e: any = new Error("Forbidden");
+  e.status = 403;
+  throw e;
+}
+
+function isUuid(v: unknown): v is string {
+  return typeof v === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
