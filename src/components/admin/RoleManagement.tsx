@@ -762,72 +762,82 @@ export function RoleManagement() {
                         <p className="mt-1">{formatDate(selectedUser.created_at)}</p>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 pt-2 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleResendReset(selectedUser)}
-                        disabled={resendingId === selectedUser.user_id || !selectedUser.email}
-                        className="gap-1"
-                      >
-                        {resendingId === selectedUser.user_id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                        Resend reset link
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openChangeRoleDialog(selectedUser)}
-                        className="gap-1"
-                      >
-                        <UserPlus className="h-4 w-4" />
-                        Change role
-                      </Button>
-                      <Button
-                        variant={selectedUser.is_active ? 'outline' : 'default'}
-                        size="sm"
-                        onClick={() => openActivationDialog(selectedUser)}
-                        className={`gap-1 ${
-                          selectedUser.is_active
-                            ? 'text-amber-600 border-amber-500/40 hover:bg-amber-500/10'
-                            : ''
-                        }`}
-                        title={
-                          selectedUser.is_active
-                            ? 'Block sign-in and hide this user\'s dashboard until reactivated'
-                            : 'Restore sign-in and dashboard access'
-                        }
-                      >
-                        {selectedUser.is_active ? (
-                          <>
-                            <PowerOff className="h-4 w-4" />
-                            Deactivate
-                          </>
-                        ) : (
-                          <>
-                            <Power className="h-4 w-4" />
-                            Activate
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openDeleteRoleDialog(selectedUser)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Remove role
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Deactivating a user immediately blocks their sign-in, hides their dashboard,
-                      and records the reason in the audit log. Reactivating restores access.
-                      Drivers and owners deactivated here also disappear from the Admin Assistant dashboard.
-                    </p>
+                    {canMutateRoles ? (
+                      <>
+                        <div className="flex flex-wrap gap-2 pt-2 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleResendReset(selectedUser)}
+                            disabled={resendingId === selectedUser.user_id || !selectedUser.email}
+                            className="gap-1"
+                          >
+                            {resendingId === selectedUser.user_id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4" />
+                            )}
+                            Resend reset link
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openChangeRoleDialog(selectedUser)}
+                            className="gap-1"
+                          >
+                            <UserPlus className="h-4 w-4" />
+                            Change role
+                          </Button>
+                          <Button
+                            variant={selectedUser.is_active ? 'outline' : 'default'}
+                            size="sm"
+                            onClick={() => openActivationDialog(selectedUser)}
+                            className={`gap-1 ${
+                              selectedUser.is_active
+                                ? 'text-amber-600 border-amber-500/40 hover:bg-amber-500/10'
+                                : ''
+                            }`}
+                            title={
+                              selectedUser.is_active
+                                ? 'Block sign-in and hide this user\'s dashboard until reactivated'
+                                : 'Restore sign-in and dashboard access'
+                            }
+                          >
+                            {selectedUser.is_active ? (
+                              <>
+                                <PowerOff className="h-4 w-4" />
+                                Deactivate
+                              </>
+                            ) : (
+                              <>
+                                <Power className="h-4 w-4" />
+                                Activate
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openDeleteRoleDialog(selectedUser)}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Remove role
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Deactivating a user immediately blocks their sign-in, hides their dashboard,
+                          and records the reason in the audit log. Reactivating restores access.
+                          Drivers and owners deactivated here also disappear from the Admin Assistant dashboard.
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground pt-2 border-t">
+                        {isAssistant
+                          ? 'You have read-only access to role details. Ask a full admin to change roles, activate, or deactivate an account.'
+                          : 'Role actions require full admin access.'}
+                      </p>
+                    )}
                   </div>
                 );
 
