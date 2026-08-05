@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { corsHeaders } from "../_shared/cors.ts";
+import { settlePaymentFinancials } from "../_shared/wallet-ledger.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHmac } from "node:crypto";
 import { timingSafeEqualHex } from "../_shared/timing-safe.ts";
@@ -96,6 +97,9 @@ Deno.serve(async (req) => {
       await transitionState(supabase, "payment", tx.payment_id, "captured", "opay SUCCESS", {}, logger);
       await transitionState(supabase, "payment", tx.payment_id, "settled", "opay settlement", {}, logger);
       ({ alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id));
+      // Full financial fan-out: tax, commission split, ledger, earnings,
+      // subscription activation, invoice and audit trail.
+      await settlePaymentFinancials(supabase, tx.payment_id, "opay", reference);
     } else if (status === "refunded") {
       // Shared handler: state transition + ledger reversal.
       await applyRefund(supabase, {
