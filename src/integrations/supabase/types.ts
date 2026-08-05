@@ -3695,7 +3695,7 @@ export type Database = {
           failure_reason: string | null
           id: string
           order_id: string
-          owner_id: string
+          owner_id: string | null
           payer_email: string | null
           payer_id: string | null
           payment_id: string | null
@@ -3704,7 +3704,7 @@ export type Database = {
           rental_id: string | null
           status: string
           updated_at: string
-          vehicle_id: string
+          vehicle_id: string | null
         }
         Insert: {
           amount: number
@@ -3715,7 +3715,7 @@ export type Database = {
           failure_reason?: string | null
           id?: string
           order_id: string
-          owner_id: string
+          owner_id?: string | null
           payer_email?: string | null
           payer_id?: string | null
           payment_id?: string | null
@@ -3724,7 +3724,7 @@ export type Database = {
           rental_id?: string | null
           status?: string
           updated_at?: string
-          vehicle_id: string
+          vehicle_id?: string | null
         }
         Update: {
           amount?: number
@@ -3735,7 +3735,7 @@ export type Database = {
           failure_reason?: string | null
           id?: string
           order_id?: string
-          owner_id?: string
+          owner_id?: string | null
           payer_email?: string | null
           payer_id?: string | null
           payment_id?: string | null
@@ -3744,7 +3744,7 @@ export type Database = {
           rental_id?: string | null
           status?: string
           updated_at?: string
-          vehicle_id?: string
+          vehicle_id?: string | null
         }
         Relationships: [
           {
