@@ -45,9 +45,16 @@ export const ProtectedRoute = ({
     return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 
-  if (allowedRoles && (!userRole || !allowedRoles.includes(userRole))) {
+  // Admins bypass role restrictions everywhere (matches DashboardAuthGate).
+  const effectiveAllowed =
+    allowedRoles && !allowedRoles.includes("admin")
+      ? ([...allowedRoles, "admin"] as AppRole[])
+      : allowedRoles;
+
+  if (effectiveAllowed && (!userRole || !effectiveAllowed.includes(userRole))) {
     return <Navigate to={(userRole && ROLE_HOME[userRole]) ?? "/"} replace />;
   }
+
 
   return <>{children}</>;
 };
