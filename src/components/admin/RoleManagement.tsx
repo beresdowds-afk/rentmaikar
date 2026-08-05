@@ -74,6 +74,10 @@ const actionLabels: Record<string, string> = {
 
 export function RoleManagement() {
   const { user } = useAuth();
+  // Admin assistants can read the roster (scoped by their granted
+  // permissions at the database layer), but role mutations stay admin-only.
+  const { isFullAdmin, isAssistant } = useAssistantPermissions();
+  const canMutateRoles = isFullAdmin;
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
