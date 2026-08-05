@@ -221,12 +221,6 @@ export function IoTDevicePurchase() {
         if (payErr) console.error('[iot-purchase] payment record failed', payErr);
       }
 
-      if (gatewayRedirectUrl) {
-        toast.info('Redirecting to payment gateway...');
-        window.location.href = gatewayRedirectUrl;
-        return;
-      }
-
       // Send admin notification
       try {
         await supabase.functions.invoke('send-order-notification', {
@@ -244,6 +238,13 @@ export function IoTDevicePurchase() {
         console.error('Admin notification failed:', notifyError);
         // Don't fail the order if notification fails
       }
+
+      if (gatewayRedirectUrl) {
+        toast.info('Redirecting to payment gateway...');
+        window.location.href = gatewayRedirectUrl;
+        return;
+      }
+
 
       toast.success('Order placed successfully!', {
         description: 'We will confirm your payment and ship the device soon.',
