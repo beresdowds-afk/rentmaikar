@@ -119,7 +119,7 @@ export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNo
                     <Link to="/owner/register">Register as an owner</Link>
                   </Button>
                   <Button asChild variant="ghost">
-                    <Link to="/contact">Contact support</Link>
+                    <Link to="/faq">Contact support</Link>
                   </Button>
                 </div>
               )}
