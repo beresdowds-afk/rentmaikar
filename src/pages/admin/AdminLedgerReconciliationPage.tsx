@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import PlatformRevenueCard from "@/components/admin/PlatformRevenueCard";
+
 
 interface LedgerEntry {
   id: string;
