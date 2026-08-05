@@ -678,38 +678,42 @@ export function RoleManagement() {
                                 <Badge className={roleColors[user.role]}>
                                   {roleLabels[user.role]}
                                 </Badge>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => { e.stopPropagation(); handleResendReset(user); }}
-                                  disabled={resendingId === user.user_id || !user.email}
-                                  className="gap-1"
-                                  title="Resend password-reset email"
-                                >
-                                  {resendingId === user.user_id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Send className="h-4 w-4" />
-                                  )}
-                                  Resend
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => { e.stopPropagation(); openChangeRoleDialog(user); }}
-                                  className="gap-1"
-                                >
-                                  <UserPlus className="h-4 w-4" />
-                                  Change
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => { e.stopPropagation(); openDeleteRoleDialog(user); }}
-                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                {canMutateRoles && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e) => { e.stopPropagation(); handleResendReset(user); }}
+                                      disabled={resendingId === user.user_id || !user.email}
+                                      className="gap-1"
+                                      title="Resend password-reset email"
+                                    >
+                                      {resendingId === user.user_id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Send className="h-4 w-4" />
+                                      )}
+                                      Resend
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e) => { e.stopPropagation(); openChangeRoleDialog(user); }}
+                                      className="gap-1"
+                                    >
+                                      <UserPlus className="h-4 w-4" />
+                                      Change
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => { e.stopPropagation(); openDeleteRoleDialog(user); }}
+                                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
                               </div>
                               <Badge className={`hidden xl:inline-flex ${roleColors[user.role]}`}>
                                 {roleLabels[user.role]}
