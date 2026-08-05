@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyTwilioRequest } from "../_shared/twilio-signature.ts";
 
 // This endpoint handles Twilio <Gather> callbacks from payment default IVR calls.
 // When a driver presses a key during the automated call, Twilio POSTs to this URL.
@@ -27,6 +28,12 @@ const handler = async (req: Request): Promise<Response> => {
     const stage = url.searchParams.get('stage');
 
     const formData = await req.formData();
+
+    // Reject anything that is not a genuine, signed Twilio callback.
+
+    const twilioDenied = await verifyTwilioRequest(req, formData);
+
+    if (twilioDenied) return twilioDenied;
     const digits = formData.get('Digits') as string;
     const callSid = formData.get('CallSid') as string;
     const callerPhone = formData.get('To') as string;

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyTwilioRequest } from "../_shared/twilio-signature.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,6 +29,12 @@ const handler = async (req: Request): Promise<Response> => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const formData = await req.formData();
+
+    // Reject anything that is not a genuine, signed Twilio callback.
+
+    const twilioDenied = await verifyTwilioRequest(req, formData);
+
+    if (twilioDenied) return twilioDenied;
     const digits = formData.get("Digits")?.toString() || "";
     const callerPhone = formData.get("To")?.toString() || "";
     const callSid = formData.get("CallSid")?.toString() || "";
