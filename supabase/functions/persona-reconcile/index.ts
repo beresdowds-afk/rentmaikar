@@ -102,6 +102,12 @@ Deno.serve(async (req) => {
       .order("updated_at", { ascending: true })
       .limit(limit);
 
+    // Least privilege: non-admin callers may only reconcile their own
+    // inquiries. Internal/cron and admin callers run the full sweep.
+    const privileged = caller.internal ||
+      caller.roles.some((r) => r === "admin" || r === "admin_assistant");
+    if (!privileged) query = query.eq("user_id", caller.userId);
+
     if (body.inquiry_id) {
       query = query.eq("inquiry_id", body.inquiry_id);
     } else {
