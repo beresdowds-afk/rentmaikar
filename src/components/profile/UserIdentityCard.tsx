@@ -15,6 +15,16 @@ import { Camera, Copy, Loader2, Check, Trash2, RefreshCw, Settings } from 'lucid
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+
+/**
+ * Normalises a stored avatar reference to a bucket-relative storage path.
+ * Accepts both the current form (bare path) and legacy public URLs.
+ */
+function storagePathOf(stored: string): string | null {
+  const clean = stored.split('?')[0];
+  if (!/^https?:\/\//.test(clean)) return clean.replace(/^\/+/, '') || null;
+  return extractStoragePath(clean, 'profile-photos');
+}
 import {
   validatePassportFile,
   squareCropToBlob,
@@ -42,6 +52,12 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
   const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Passport pictures live in a PRIVATE bucket. `profiles.avatar_url` stores
+  // the storage path; the displayable URL is a short-lived signed URL that we
+  // mint on render. Legacy rows may still hold a full public URL — the
+  // extractor normalises both shapes.
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
+
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
@@ -57,6 +73,21 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
       }
     })();
   }, [user?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!avatarUrl) { setDisplayUrl(null); return; }
+      const path = storagePathOf(avatarUrl);
+      if (!path) { setDisplayUrl(null); return; }
+      const { data } = await supabase.storage
+        .from('profile-photos')
+        .createSignedUrl(path, 60 * 60);
+      if (!cancelled) setDisplayUrl(data?.signedUrl ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [avatarUrl]);
+
 
   const initials = (fullName || user?.email || '?')
     .split(' ')
@@ -108,16 +139,14 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
         .from('profile-photos')
         .upload(path, pendingBlob, { upsert: true, contentType: 'image/jpeg' });
       if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from('profile-photos').getPublicUrl(path);
-      // Bust CDN cache by appending a version.
-      const url = `${pub.publicUrl}?v=${Date.now()}`;
+      // Store the private storage path; a signed URL is minted on render.
       const { error: updErr } = await supabase
         .from('profiles')
-        .update({ avatar_url: url })
+        .update({ avatar_url: path })
         .eq('user_id', user.id);
       if (updErr) throw updErr;
       const hadPrevious = !!avatarUrl;
-      setAvatarUrl(url);
+      setAvatarUrl(path);
       trackOnboardingEvent(hadPrevious ? 'passport_replaced' : 'passport_uploaded', {
         extra: { size_bytes: pendingBlob.size },
       });
@@ -132,7 +161,7 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
 
   const deleteExistingAvatar = async () => {
     if (!avatarUrl) return;
-    const path = extractStoragePath(avatarUrl.split('?')[0], 'profile-photos');
+    const path = storagePathOf(avatarUrl);
     if (!path) return;
     try {
       await supabase.storage.from('profile-photos').remove([path]);
@@ -184,7 +213,7 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
           title="Drag & drop a photo, or click to pick / take one"
         >
           <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-2 border-primary/20 border-dashed">
-            {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
+            {displayUrl && <AvatarImage src={displayUrl} alt={fullName} />}
             <AvatarFallback className="text-xl font-semibold">{initials}</AvatarFallback>
           </Avatar>
           <button
