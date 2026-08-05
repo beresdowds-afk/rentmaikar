@@ -14,6 +14,8 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
+import { assignRole, revokeRole } from '@/lib/user-provisioning';
+import { roleForSupportType } from '@/lib/support-role-map';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { 
@@ -182,22 +184,10 @@ export const SupportUserManagement = () => {
 
       if (staffError) throw staffError;
 
-      const roleMap: Record<string, AppRole> = {
-        'legal': 'legal_support',
-        'iot_installation': 'iot_support',
-        'iot_maintenance': 'iot_support',
-        'vehicle_recall': 'vehicle_support',
-        'vehicle_maintenance': 'vehicle_support',
-      };
 
-      const role: AppRole | undefined = roleMap[newUser.supportType];
+      const role = roleForSupportType(newUser.supportType);
       if (role) {
-        await supabase
-          .from('user_roles')
-          .insert([{
-            user_id: authData.user.id,
-            role: role,
-          }]);
+        await assignRole(authData.user.id, role, newUser.email);
       }
 
       toast.success('Support user registered successfully');
@@ -267,22 +257,10 @@ export const SupportUserManagement = () => {
 
       if (staffError) throw staffError;
 
-      const roleMap: Record<string, AppRole> = {
-        'legal': 'legal_support',
-        'iot_installation': 'iot_support',
-        'iot_maintenance': 'iot_support',
-        'vehicle_recall': 'vehicle_support',
-        'vehicle_maintenance': 'vehicle_support',
-      };
 
-      const role: AppRole | undefined = roleMap[onboardUser.supportType];
+      const role = roleForSupportType(onboardUser.supportType);
       if (role) {
-        await supabase
-          .from('user_roles')
-          .upsert([{
-            user_id: profileData.user_id,
-            role: role,
-          }], { onConflict: 'user_id,role' });
+        await assignRole(profileData.user_id, role, profileData.email);
       }
 
       toast.success('User onboarded as support staff');
@@ -332,21 +310,10 @@ export const SupportUserManagement = () => {
 
       if (staffError) throw staffError;
 
-      const roleMap: Record<string, AppRole> = {
-        'legal': 'legal_support',
-        'iot_installation': 'iot_support',
-        'iot_maintenance': 'iot_support',
-        'vehicle_recall': 'vehicle_support',
-        'vehicle_maintenance': 'vehicle_support',
-      };
       
-      const role: AppRole | undefined = roleMap[supportType];
+      const role = roleForSupportType(supportType);
       if (role) {
-        await supabase
-          .from('user_roles')
-          .delete()
-          .eq('user_id', userId)
-          .eq('role', role);
+        await revokeRole(userId, role);
       }
 
       toast.success('Support staff removed');
@@ -400,22 +367,15 @@ export const SupportUserManagement = () => {
 
       // Handle role change
       if (roleChanged) {
-        const roleMap: Record<string, AppRole> = {
-          'legal': 'legal_support',
-          'iot_installation': 'iot_support',
-          'iot_maintenance': 'iot_support',
-          'vehicle_recall': 'vehicle_support',
-          'vehicle_maintenance': 'vehicle_support',
-        };
 
-        const oldRole = roleMap[member.support_type];
-        const newRole = roleMap[editForm.support_type];
+        const oldRole = roleForSupportType(member.support_type);
+        const newRole = roleForSupportType(editForm.support_type);
 
         if (oldRole && oldRole !== newRole) {
-          await supabase.from('user_roles').delete().eq('user_id', member.user_id).eq('role', oldRole);
+          await revokeRole(member.user_id, oldRole);
         }
         if (newRole) {
-          await supabase.from('user_roles').upsert([{ user_id: member.user_id, role: newRole }], { onConflict: 'user_id,role' });
+          await assignRole(member.user_id, newRole);
         }
       }
 
