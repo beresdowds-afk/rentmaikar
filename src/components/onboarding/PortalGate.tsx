@@ -13,6 +13,9 @@ import {
   type RegistrationProgress,
 } from '@/hooks/useRegistrationProgress';
 import { useOnboardingMachine } from '@/hooks/useOnboardingMachine';
+import { useOnboardingComplete } from '@/hooks/useOnboardingComplete';
+import { useAuth } from '@/contexts/AuthContext';
+import { onboardingForRole, type AppRole } from '@/lib/role-home';
 
 export type Requirement =
   | 'authenticated'
@@ -77,11 +80,14 @@ function buildSteps(p: RegistrationProgress | undefined): Step[] {
   ];
 }
 
-function nextStepPath(p: RegistrationProgress | undefined): string {
+function nextStepPath(
+  p: RegistrationProgress | undefined,
+  fallbackRole?: AppRole | null,
+): string {
   if (!p?.authenticated) return '/auth';
   if (!p.email_verified) return '/verify-email';
-  const role = p.role;
-  const base = role === 'owner' ? '/owner/onboarding' : '/driver/onboarding';
+  const role = (p.role as AppRole | null) ?? fallbackRole ?? null;
+  const base = onboardingForRole(role);
   const stageIdx = STAGE_ORDER[p.stage];
   if (stageIdx < STAGE_ORDER.documents_submitted) return `${base}?step=documents`;
   if (stageIdx < STAGE_ORDER.verification_pending) return `${base}?step=verification`;
@@ -96,6 +102,8 @@ export function PortalGate({
 }: Props) {
   const { data: progress, isLoading } = useRegistrationProgress();
   const { data: machine } = useOnboardingMachine();
+  const { userRole } = useAuth();
+  const onboarding = useOnboardingComplete();
 
   const steps = useMemo(() => buildSteps(progress), [progress]);
   const doneCount = steps.filter((s) => s.done).length;
@@ -127,14 +135,20 @@ export function PortalGate({
       return STAGE_ORDER[progress.stage] >= STAGE_ORDER.documents_submitted;
     if (require === 'verification')
       return STAGE_ORDER[progress.stage] >= STAGE_ORDER.verification_pending;
-    return progress.access_level === 'full' || progress.stage === 'approved';
+    // Shared definition of "fully onboarded" (identity verification included).
+    return onboarding.isComplete;
   })();
 
   if (meets) return <>{children}</>;
 
   const req = REQUIREMENT_COPY[require];
   // Prefer the server-sourced next step; fall back to the local computation.
-  const nextPath = machine?.next_href ?? nextStepPath(progress);
+  const nextPath =
+    onboarding.blocker === 'identity_unverified'
+      ? '/onboarding/verification-status'
+      : onboarding.blocker === 'profile_incomplete'
+        ? '/onboarding/complete-profile'
+        : machine?.next_href ?? nextStepPath(progress, userRole as AppRole | null);
   const remaining = steps.filter((s) => !s.done);
   const nextStepLabel =
     (machine && machine.labels[machine.next_step]) ?? remaining[0]?.label ?? 'Continue onboarding';
