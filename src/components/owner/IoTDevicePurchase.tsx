@@ -167,6 +167,7 @@ export function IoTDevicePurchase() {
     try {
       let finalPaymentMethod = paymentMethod;
       let finalPaymentReference = paymentReference || null;
+      let gatewayRedirectUrl: string | null = null;
 
       // Handle online payment
       if (paymentMethod === 'online') {
@@ -187,12 +188,7 @@ export function IoTDevicePurchase() {
 
         finalPaymentReference = result.transactionId || null;
 
-        // Redirect to payment gateway
-        if (result.redirectUrl) {
-          toast.info('Redirecting to payment gateway...');
-          // In production, would redirect here
-          // For now, we'll simulate a successful payment
-        }
+        gatewayRedirectUrl = result.redirectUrl ?? null;
       }
 
       // Create the order
@@ -209,6 +205,21 @@ export function IoTDevicePurchase() {
       }).select().single();
 
       if (error) throw error;
+
+      // Record the charge in the financial pipeline so the gateway webhook can
+      // settle it: ledger posting, invoice, receipt and audit trail.
+      if (paymentMethod === 'online' && finalPaymentReference) {
+        const { error: payErr } = await supabase.from('payments').insert({
+          driver_id: user.id,
+          amount: pricing.price,
+          currency: pricing.currency,
+          payment_method: 'online',
+          transaction_id: finalPaymentReference,
+          status: 'pending',
+          purpose: 'iot_device',
+        });
+        if (payErr) console.error('[iot-purchase] payment record failed', payErr);
+      }
 
       // Send admin notification
       try {
@@ -227,6 +238,13 @@ export function IoTDevicePurchase() {
         console.error('Admin notification failed:', notifyError);
         // Don't fail the order if notification fails
       }
+
+      if (gatewayRedirectUrl) {
+        toast.info('Redirecting to payment gateway...');
+        window.location.href = gatewayRedirectUrl;
+        return;
+      }
+
 
       toast.success('Order placed successfully!', {
         description: 'We will confirm your payment and ship the device soon.',

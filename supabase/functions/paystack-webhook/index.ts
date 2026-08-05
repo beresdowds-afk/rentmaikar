@@ -17,7 +17,7 @@ import {
   correlationHeaders,
 } from "../_shared/webhook-logger.ts";
 
-import { postRentalPaymentLedger, postLedgerEntry } from "../_shared/wallet-ledger.ts";
+import { postLedgerEntry, settlePaymentFinancials } from "../_shared/wallet-ledger.ts";
 
 async function notifyPush(paymentId: string, rentalId: string | null, status: string, amount?: number, currency?: string, reference?: string) {
   const secret = Deno.env.get("CRON_SECRET");
@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
       await transitionState(supabase, "payment", tx.payment_id, "captured", "paystack charge.success", {}, logger);
       await transitionState(supabase, "payment", tx.payment_id, "settled", "paystack settlement", {}, logger);
       const { alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id);
-      await recordPaymentInLedger(supabase, tx.payment_id, "paystack", reference);
+      await settlePaymentFinancials(supabase, tx.payment_id, "paystack", reference);
       await notifyPush(tx.payment_id, tx.rental_id ?? null, "completed", tx.amount ? Number(tx.amount) / 100 : undefined, tx.currency ?? undefined, reference);
       if (!alreadyCompleted) {
         await withRetry("paystack.receipt.email", async () => {
@@ -217,27 +217,3 @@ Deno.serve(async (req) => {
   });
 });
 
-/**
- * Mirror a completed payment into the wallet ledger (driver debit +
- * owner-share credit). Ledger failures are logged, never thrown — the money
- * has already moved at the provider.
- */
-async function recordPaymentInLedger(
-  supabase: any, paymentId: string, provider: string, providerReference: string,
-) {
-  const { data: pay } = await supabase.from("payments")
-    .select("id, driver_id, owner_id, amount, currency").eq("id", paymentId).maybeSingle();
-  if (!pay?.driver_id) return;
-  const results = await postRentalPaymentLedger(supabase, {
-    paymentId: pay.id,
-    driverId: pay.driver_id,
-    ownerId: pay.owner_id,
-    amount: Number(pay.amount),
-    currency: pay.currency ?? "NGN",
-    provider,
-    providerReference,
-  });
-  for (const r of results) {
-    if (!r.ok) console.error("[ledger] post failed:", r.error);
-  }
-}

@@ -3604,15 +3604,21 @@ export type Database = {
           failure_reason: string | null
           id: string
           notification_sent: boolean
-          owner_id: string
+          owner_id: string | null
+          owner_share_amount: number | null
           payment_frequency: string
           payment_method: string | null
+          platform_fee_amount: number | null
           processed_at: string | null
+          purpose: string
           rental_id: string | null
+          settled_at: string | null
           status: string
+          subscription_plan_id: string | null
+          tax_amount: number
           transaction_id: string | null
           updated_at: string
-          vehicle_id: string
+          vehicle_id: string | null
         }
         Insert: {
           amount: number
@@ -3622,15 +3628,21 @@ export type Database = {
           failure_reason?: string | null
           id?: string
           notification_sent?: boolean
-          owner_id: string
+          owner_id?: string | null
+          owner_share_amount?: number | null
           payment_frequency?: string
           payment_method?: string | null
+          platform_fee_amount?: number | null
           processed_at?: string | null
+          purpose?: string
           rental_id?: string | null
+          settled_at?: string | null
           status?: string
+          subscription_plan_id?: string | null
+          tax_amount?: number
           transaction_id?: string | null
           updated_at?: string
-          vehicle_id: string
+          vehicle_id?: string | null
         }
         Update: {
           amount?: number
@@ -3640,15 +3652,21 @@ export type Database = {
           failure_reason?: string | null
           id?: string
           notification_sent?: boolean
-          owner_id?: string
+          owner_id?: string | null
+          owner_share_amount?: number | null
           payment_frequency?: string
           payment_method?: string | null
+          platform_fee_amount?: number | null
           processed_at?: string | null
+          purpose?: string
           rental_id?: string | null
+          settled_at?: string | null
           status?: string
+          subscription_plan_id?: string | null
+          tax_amount?: number
           transaction_id?: string | null
           updated_at?: string
-          vehicle_id?: string
+          vehicle_id?: string | null
         }
         Relationships: [
           {
@@ -3656,6 +3674,13 @@ export type Database = {
             columns: ["rental_id"]
             isOneToOne: false
             referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_subscription_plan_id_fkey"
+            columns: ["subscription_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -3670,7 +3695,7 @@ export type Database = {
           failure_reason: string | null
           id: string
           order_id: string
-          owner_id: string
+          owner_id: string | null
           payer_email: string | null
           payer_id: string | null
           payment_id: string | null
@@ -3679,7 +3704,7 @@ export type Database = {
           rental_id: string | null
           status: string
           updated_at: string
-          vehicle_id: string
+          vehicle_id: string | null
         }
         Insert: {
           amount: number
@@ -3690,7 +3715,7 @@ export type Database = {
           failure_reason?: string | null
           id?: string
           order_id: string
-          owner_id: string
+          owner_id?: string | null
           payer_email?: string | null
           payer_id?: string | null
           payment_id?: string | null
@@ -3699,7 +3724,7 @@ export type Database = {
           rental_id?: string | null
           status?: string
           updated_at?: string
-          vehicle_id: string
+          vehicle_id?: string | null
         }
         Update: {
           amount?: number
@@ -3710,7 +3735,7 @@ export type Database = {
           failure_reason?: string | null
           id?: string
           order_id?: string
-          owner_id?: string
+          owner_id?: string | null
           payer_email?: string | null
           payer_id?: string | null
           payment_id?: string | null
@@ -3719,7 +3744,7 @@ export type Database = {
           rental_id?: string | null
           status?: string
           updated_at?: string
-          vehicle_id?: string
+          vehicle_id?: string | null
         }
         Relationships: [
           {
@@ -9884,6 +9909,10 @@ export type Database = {
         }
         Returns: Json
       }
+      resolve_tax_jurisdiction: {
+        Args: { _currency: string; _region?: string }
+        Returns: string
+      }
       reverse_wallet_entry: {
         Args: { _entry_id: string; _reason?: string }
         Returns: Json
@@ -9911,6 +9940,14 @@ export type Database = {
         Returns: Json
       }
       set_onboarding_last_visited: { Args: { _step: string }; Returns: Json }
+      settle_payment_financials: {
+        Args: {
+          _payment_id: string
+          _provider?: string
+          _provider_reference?: string
+        }
+        Returns: Json
+      }
       sign_legal_agreement: {
         Args: { _agreement_id: string; _signature: string }
         Returns: {

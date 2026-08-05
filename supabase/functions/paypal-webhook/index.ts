@@ -17,7 +17,7 @@ import {
   deriveCorrelationId,
   correlationHeaders,
 } from "../_shared/webhook-logger.ts";
-import { postRentalPaymentLedger } from "../_shared/wallet-ledger.ts";
+import { settlePaymentFinancials } from "../_shared/wallet-ledger.ts";
 
 
 const PP_ENV = (Deno.env.get("PAYPAL_ENV") || "sandbox").toLowerCase();
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
         await transitionState(supabase, "payment", tx.payment_id, "captured", eventType, {}, logger);
         await transitionState(supabase, "payment", tx.payment_id, "settled", "paypal capture settled", {}, logger);
         const { alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id);
-        await recordPaymentInLedger(supabase, tx.payment_id, "paypal", orderId);
+        await settlePaymentFinancials(supabase, tx.payment_id, "paypal", orderId);
         if (!alreadyCompleted) {
           await withRetry("paypal.receipt.email", async () => {
             const { error } = await supabase.functions.invoke("billing-portal", {
@@ -209,25 +209,3 @@ Deno.serve(async (req) => {
     { headers: { ...corsHeaders, ...correlationHeaders(logger), "Content-Type": "application/json" } },
   );
 });
-
-/** Mirror a completed payment into the wallet ledger. Never throws. */
-// deno-lint-ignore no-explicit-any
-async function recordPaymentInLedger(
-  supabase: any, paymentId: string, provider: string, providerReference: string,
-) {
-  const { data: pay } = await supabase.from("payments")
-    .select("id, driver_id, owner_id, amount, currency").eq("id", paymentId).maybeSingle();
-  if (!pay?.driver_id) return;
-  const results = await postRentalPaymentLedger(supabase, {
-    paymentId: pay.id,
-    driverId: pay.driver_id,
-    ownerId: pay.owner_id,
-    amount: Number(pay.amount),
-    currency: pay.currency ?? "USD",
-    provider,
-    providerReference,
-  });
-  for (const r of results) {
-    if (!r.ok) console.error("[ledger] post failed:", r.error);
-  }
-}

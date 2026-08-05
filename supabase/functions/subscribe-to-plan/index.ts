@@ -13,6 +13,34 @@ function getPayPalBase(mode: string) {
   return mode === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
 }
 
+/**
+ * Create the pending `payments` row that ties a subscription checkout to the
+ * financial pipeline. Once the provider webhook marks it completed,
+ * `settle_payment_financials` activates the plan, posts the ledger entries and
+ * issues the invoice/receipt — even if the user closes the checkout tab.
+ */
+// deno-lint-ignore no-explicit-any
+async function createSubscriptionPayment(
+  supa: any,
+  args: { userId: string; plan: any; reference: string; method: string },
+) {
+  const { data, error } = await supa.from("payments").insert({
+    driver_id: args.userId,
+    amount: Number(args.plan.price),
+    currency: args.plan.currency,
+    payment_method: args.method,
+    transaction_id: args.reference,
+    status: "pending",
+    purpose: `subscription_${args.plan.plan_type}`,
+    subscription_plan_id: args.plan.id,
+  }).select("id").single();
+  if (error) {
+    console.error("[subscribe-to-plan] payment row failed:", error.message);
+    return null;
+  }
+  return data.id as string;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const json = (b: unknown, s = 200) =>
@@ -68,6 +96,9 @@ Deno.serve(async (req) => {
       const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
       if (!secret) return json({ error: "Paystack not configured" }, 503);
       const reference = `sub_${crypto.randomUUID().replace(/-/g, "")}`;
+      const paymentId = await createSubscriptionPayment(supa, {
+        userId, plan, reference, method: "paystack",
+      });
       const resp = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
         headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
@@ -85,6 +116,18 @@ Deno.serve(async (req) => {
         console.error("[subscribe-to-plan] paystack init failed:", pay);
         return json({ error: pay?.message ?? "Paystack init failed", details: pay }, 502);
       }
+      // Link the provider transaction so paystack-webhook can settle it.
+      await supa.from("paystack_transactions").insert({
+        reference,
+        currency: "NGN",
+        amount: Math.round(Number(plan.price) * 100),
+        status: "pending",
+        driver_id: userId,
+        payment_id: paymentId,
+        authorization_url: pay.data.authorization_url,
+        access_code: pay.data.access_code ?? null,
+      });
+
       return json({
         provider: "paystack",
         reference,
@@ -141,6 +184,21 @@ Deno.serve(async (req) => {
         return json({ error: "PayPal order failed", details: order }, 502);
       }
       const approve = (order.links ?? []).find((l: { rel: string; href: string }) => l.rel === "approve")?.href;
+
+      const paypalPaymentId = await createSubscriptionPayment(supa, {
+        userId, plan, reference: order.id, method: "paypal",
+      });
+      // Link the provider transaction so paypal-webhook can settle it.
+      await supa.from("paypal_transactions").insert({
+        order_id: order.id,
+        driver_id: userId,
+        payment_id: paypalPaymentId,
+        amount: Number(plan.price),
+        currency: "USD",
+        status: "pending",
+        raw_order_response: order,
+      });
+
       return json({ provider: "paypal", reference: order.id, checkout_url: approve, plan });
     }
 
