@@ -551,13 +551,17 @@ export function RoleManagement() {
                 Role Management
               </CardTitle>
               <CardDescription>
-                Assign and manage user roles across the platform
+                {canMutateRoles
+                  ? 'Assign and manage user roles across the platform'
+                  : 'Read-only view of the platform roster, scoped to your granted permissions. Role changes are reserved for full admins.'}
               </CardDescription>
             </div>
-            <Button onClick={() => setCreateUserDialogOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Create New User
-            </Button>
+            {canMutateRoles && (
+              <Button onClick={() => setCreateUserDialogOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create New User
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
