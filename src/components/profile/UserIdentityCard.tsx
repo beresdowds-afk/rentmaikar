@@ -42,6 +42,12 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
   const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Passport pictures live in a PRIVATE bucket. `profiles.avatar_url` stores
+  // the storage path; the displayable URL is a short-lived signed URL that we
+  // mint on render. Legacy rows may still hold a full public URL — the
+  // extractor normalises both shapes.
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
+
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
@@ -57,6 +63,21 @@ export function UserIdentityCard({ role, hideSettingsLink }: Props) {
       }
     })();
   }, [user?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!avatarUrl) { setDisplayUrl(null); return; }
+      const path = storagePathOf(avatarUrl);
+      if (!path) { setDisplayUrl(null); return; }
+      const { data } = await supabase.storage
+        .from('profile-photos')
+        .createSignedUrl(path, 60 * 60);
+      if (!cancelled) setDisplayUrl(data?.signedUrl ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [avatarUrl]);
+
 
   const initials = (fullName || user?.email || '?')
     .split(' ')
