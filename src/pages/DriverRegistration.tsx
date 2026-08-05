@@ -16,6 +16,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import PricingHintBanner from "@/components/home/PricingHintBanner";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureAuthUserForApplicant } from "@/lib/user-provisioning";
 import { classifyRegistrationError, type FriendlyRegistrationError } from "@/lib/registration-errors";
 import { RegistrationErrorAlert } from "@/components/registration/RegistrationErrorAlert";
 import { PasswordInput } from "@/components/ui/password-input";
