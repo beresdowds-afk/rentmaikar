@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { assignRole } from '@/lib/user-provisioning';
 
 type AppRole = 'admin' | 'admin_assistant' | 'owner' | 'driver' | 'legal_support' | 'iot_support' | 'vehicle_support';
 
@@ -223,7 +224,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // through the single idempotent provisioning RPC instead of a raw upsert.
       if (data.user) {
         try {
-          await assignRole(data.user.id, role as AppRole, normalizedEmail);
+          await assignRole(data.user.id, role as AppRole, email.trim().toLowerCase());
         } catch (roleError) {
           console.error('Error assigning role:', roleError);
         }
