@@ -234,12 +234,19 @@ const Auth = () => {
         setError(error.message);
       }
     } else {
+      // Drivers and owners must produce an `applications` record, otherwise the
+      // onboarding checklist has no stage to advance. Send them straight into
+      // the registration flow instead of leaving them on a dead-end account.
+      const registrationPath =
+        data.role === 'owner' ? '/owner/register' : '/driver/register';
+
       toast.success('Account created successfully!', {
-        description: 'You can now log in with your credentials.',
+        description: 'Next: complete your registration details.',
       });
-      setActiveTab('login');
       signupForm.reset();
+      navigate(registrationPath, { replace: true });
     }
+
 
     setIsSubmitting(false);
   };

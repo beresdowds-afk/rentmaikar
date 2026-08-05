@@ -203,7 +203,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         password,
         options: {
           emailRedirectTo: redirectUrl,
-          data: { full_name: fullName },
+          // `requested_role` is consumed by the handle_new_user trigger, which
+          // is the single place that provisions profile + role + wallet.
+          data: { full_name: fullName, requested_role: role },
         },
       });
 
@@ -217,10 +219,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { error: generic };
       }
 
+      // Safety net only: the trigger already seeded the role. Upsert avoids the
+      // duplicate-key error the previous plain insert produced.
       if (data.user) {
         const { error: roleError } = await supabase
           .from('user_roles')
-          .insert({ user_id: data.user.id, role });
+          .upsert({ user_id: data.user.id, role }, { onConflict: 'user_id,role' });
         if (roleError) console.error('Error assigning role:', roleError);
       }
 

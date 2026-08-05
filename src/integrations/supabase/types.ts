@@ -9812,6 +9812,14 @@ export type Database = {
         }
         Returns: Json
       }
+      provision_user_account: {
+        Args: {
+          _email?: string
+          _role?: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
       purge_expired_elevenlabs_test_logs: {
         Args: never
         Returns: {
