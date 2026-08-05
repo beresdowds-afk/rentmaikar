@@ -15,6 +15,12 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import TraccarSettingsPanel, { type TraccarValidationState } from "./TraccarSettingsPanel";
 
+/** HTML-escape untrusted values before interpolating them into marker popups. */
+const esc = (v: unknown): string =>
+  String(v ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+
+
 interface TraccarDevice {
   id: number;
   name: string;
