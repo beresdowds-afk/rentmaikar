@@ -219,13 +219,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { error: generic };
       }
 
-      // Safety net only: the trigger already seeded the role. Upsert avoids the
-      // duplicate-key error the previous plain insert produced.
+      // Safety net only: the trigger already provisioned the account. Route
+      // through the single idempotent provisioning RPC instead of a raw upsert.
       if (data.user) {
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .upsert({ user_id: data.user.id, role }, { onConflict: 'user_id,role' });
-        if (roleError) console.error('Error assigning role:', roleError);
+        try {
+          await assignRole(data.user.id, role as AppRole, normalizedEmail);
+        } catch (roleError) {
+          console.error('Error assigning role:', roleError);
+        }
       }
 
       await logAuthEvent('sign_up_success', { email, metadata: { role } });
