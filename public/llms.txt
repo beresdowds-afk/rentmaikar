@@ -16,6 +16,7 @@ vetting, payments and support.
 - [Home](/): What Rentmaikar is, how rentals work, and who it's for.
 - [How It Works](/how-it-works): Step-by-step process for drivers and vehicle owners.
 - [FAQ](/faq): Common questions on renting, listing, payments and verification.
+- [Renting vs. Owning for Rideshare](/guides/renting-vs-owning-for-rideshare): Cost, maintenance, insurance and downtime comparison for rideshare drivers.
 - [Budget Vehicles](/catalogue/budget): Lower-cost rideshare-ready rentals.
 - [Standard Vehicles](/catalogue/standard): Mid-tier rideshare rentals.
 - [Premium Vehicles](/catalogue/premium): Premium and comfort-tier rentals.
