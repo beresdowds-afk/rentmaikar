@@ -50,6 +50,7 @@ export type Database = {
       admin_assistant_permissions: {
         Row: {
           can_approve_applications: boolean
+          can_delete_users: boolean
           can_manage_content: boolean
           can_manage_iot: boolean
           can_manage_payments: boolean
@@ -76,6 +77,7 @@ export type Database = {
         }
         Insert: {
           can_approve_applications?: boolean
+          can_delete_users?: boolean
           can_manage_content?: boolean
           can_manage_iot?: boolean
           can_manage_payments?: boolean
@@ -102,6 +104,7 @@ export type Database = {
         }
         Update: {
           can_approve_applications?: boolean
+          can_delete_users?: boolean
           can_manage_content?: boolean
           can_manage_iot?: boolean
           can_manage_payments?: boolean
@@ -9636,6 +9639,10 @@ export type Database = {
         Returns: string
       }
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
+      can_delete_user_account: {
+        Args: { _target_user_id: string }
+        Returns: boolean
+      }
       can_review_applications: { Args: never; Returns: boolean }
       check_auth_rate_limit: {
         Args: {
