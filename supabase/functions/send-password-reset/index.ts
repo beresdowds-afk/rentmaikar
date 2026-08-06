@@ -102,9 +102,32 @@ Deno.serve(async (req) => {
         }),
       },
     );
-    if (!sendRes.ok) {
-      console.error("reset email send failed:", sendRes.status, await sendRes.text());
+    // Detect failure both from the HTTP status and from a soft-failure body
+    // (send-outbound-email answers 200 with { success: false } when the
+    // provider rejects, e.g. an unverified Resend sender domain).
+    let delivered = sendRes.ok;
+    const rawBody = await sendRes.text();
+    if (delivered) {
+      try {
+        const parsed = JSON.parse(rawBody);
+        if (parsed?.success === false || parsed?.error) delivered = false;
+      } catch { /* non-JSON body — trust the status */ }
     }
+
+    if (!delivered) {
+      console.error("branded reset email failed:", sendRes.status, rawBody);
+      // Fallback: use the built-in auth mailer so the user is never stranded
+      // without a way back into their account.
+      const { error: fallbackErr } = await admin.auth.resetPasswordForEmail(email, {
+        redirectTo: `${siteUrl}/reset-password`,
+      });
+      if (fallbackErr) {
+        console.error("fallback reset email failed:", fallbackErr.message);
+      } else {
+        console.log("reset email delivered via built-in auth mailer");
+      }
+    }
+
 
 
     return ok();
