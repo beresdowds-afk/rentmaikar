@@ -34,6 +34,20 @@ const downloadBlob = (filename: string, body: string, type = 'text/markdown;char
 const slug = (value: string) =>
   value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'item';
 
+/** Content rows store regions inconsistently ("all", "NG", "USA"), so normalise before filtering. */
+const REGION_ALIASES: Record<string, string[]> = {
+  Nigeria: ['nigeria', 'ng', 'nga'],
+  USA: ['usa', 'us', 'united states'],
+};
+
+const matchesRegion = (region: string | null, country: string) => {
+  if (!region) return true;
+  const value = region.trim().toLowerCase();
+  if (!value || value === 'all' || value === 'global') return true;
+  if (value === country.toLowerCase()) return true;
+  return (REGION_ALIASES[country] ?? []).includes(value);
+};
+
 const kindMeta = {
   agreement: { label: 'Agreement', icon: FileText },
   training: { label: 'Training', icon: GraduationCap },
