@@ -68,6 +68,7 @@ const Auth = () => {
   const [unverifiedEmail, setUnverifiedEmail] = useState<string>('');
   const [activeTab, setActiveTab] = useState('login');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showLoginRecovery, setShowLoginRecovery] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
 
   // 2FA state
@@ -184,12 +185,18 @@ const Auth = () => {
     setIsSubmitting(true);
     setError(null);
     setShowEmailVerification(false);
+    setShowLoginRecovery(false);
 
     const { error, userId } = await signIn(data.email, data.password);
 
     if (error) {
-      if (error.message.includes('Invalid login credentials')) {
-        setError('Invalid email or password. Please try again.');
+      if (/invalid (login credentials|email or password)/i.test(error.message)) {
+        setError('Invalid email or password.');
+        // Most failures here are accounts created through Google (no password
+        // set yet) or a forgotten password. Offer both recoveries inline —
+        // shown for every failure, so it never reveals whether the account exists.
+        setShowLoginRecovery(true);
+        forgotPasswordForm.setValue('email', data.email.trim().toLowerCase());
       } else if (error.message.includes('Email not confirmed') || error.message.includes('email_not_confirmed')) {
         setUnverifiedEmail(data.email);
         setShowEmailVerification(true);
@@ -199,6 +206,7 @@ const Auth = () => {
       setIsSubmitting(false);
       return;
     }
+
 
     // Check 2FA status
     if (userId) {
@@ -319,6 +327,7 @@ const Auth = () => {
 
   const handleBackToLogin = () => {
     setShowForgotPassword(false);
+    setShowLoginRecovery(false);
     setResetEmailSent(false);
     setError(null);
     forgotPasswordForm.reset();
@@ -532,9 +541,30 @@ const Auth = () => {
                 {error && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
+                    <AlertDescription>
+                      {error}
+                      {showLoginRecovery && (
+                        <span className="mt-2 block text-sm">
+                          If you created this account with Google, use{' '}
+                          <strong>Continue with Google</strong> below. Otherwise{' '}
+                          <button
+                            type="button"
+                            className="underline underline-offset-2 font-medium"
+                            onClick={() => {
+                              setShowForgotPassword(true);
+                              setShowLoginRecovery(false);
+                              setError(null);
+                            }}
+                          >
+                            reset your password
+                          </button>
+                          .
+                        </span>
+                      )}
+                    </AlertDescription>
                   </Alert>
                 )}
+
                 
                 <div className="space-y-2">
                   <Label htmlFor="login-email">Email</Label>
