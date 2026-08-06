@@ -208,9 +208,14 @@ function PhoneOtpDialog({
       } else {
         const { data, error } = await supabase.auth.verifyOtp({ phone, token: code, type: 'sms' });
         if (error) throw error;
-        // Assign role for brand-new users
+        // Assign role for brand-new users. The signup trigger already seeds a
+        // default role, so a failure here must never block a valid session.
         if (data.user) {
-          await assignRole(data.user.id, role as AppRole);
+          try {
+            await assignRole(data.user.id, role as AppRole);
+          } catch (roleErr) {
+            console.warn('Role assignment after phone sign-in failed:', roleErr);
+          }
           if (name) {
             await supabase.from('profiles').update({ full_name: name }).eq('id', data.user.id);
           }
