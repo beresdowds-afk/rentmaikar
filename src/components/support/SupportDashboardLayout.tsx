@@ -8,6 +8,7 @@ import Footer from '@/components/layout/Footer';
 import { MapPin, RefreshCw, HelpCircle } from 'lucide-react';
 import type { SupportStaff } from '@/types/support';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
+import { StaffSignOutButton } from '@/components/staff/StaffSignOutButton';
 
 interface SupportDashboardLayoutProps {
   title: string;
@@ -85,6 +86,7 @@ export const SupportDashboardLayout = ({
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
+              <StaffSignOutButton />
             </div>
           </div>
 
