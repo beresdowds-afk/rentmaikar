@@ -63,6 +63,28 @@ export function UserDeletionPortal() {
     },
   });
 
+  const { data: deletionLog, refetch: refetchLog } = useQuery({
+    queryKey: ['user-deletion-audit-log'],
+    queryFn: async () => {
+      const { data: log, error } = await supabase
+        .from('admin_audit_log')
+        .select('id, admin_id, target_id, details, created_at')
+        .eq('action', 'user_account_deleted')
+        .order('created_at', { ascending: false })
+        .limit(25);
+      if (error) throw error;
+      return (log ?? []) as Array<{
+        id: string;
+        admin_id: string | null;
+        target_id: string | null;
+        details: any;
+        created_at: string;
+      }>;
+    },
+  });
+
+
+
   const isDeletable = (row: Row) => {
     if (row.roles.length === 0) return isFullAdmin;
     if (isFullAdmin) return true;
