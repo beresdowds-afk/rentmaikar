@@ -59,14 +59,25 @@ export function checkAppConfig(): ConfigCheckResult {
 function cookiesEnabled(): boolean {
   try {
     if (typeof navigator !== 'undefined' && navigator.cookieEnabled === false) return false;
-    document.cookie = 'rm_probe=1; SameSite=Lax; path=/';
-    const ok = document.cookie.includes('rm_probe=1');
-    document.cookie = 'rm_probe=; Max-Age=0; path=/';
-    return ok;
+    // Probe with a few attempts: inside an embedded/partitioned context the
+    // first write can be dropped even though cookies work, which used to
+    // produce a random "third-party cookies blocked" block on Google sign-in.
+    for (let i = 0; i < 3; i++) {
+      const name = `rm_probe${i}`;
+      document.cookie = `${name}=1; SameSite=None; Secure; path=/`;
+      if (!document.cookie.includes(`${name}=1`)) {
+        document.cookie = `${name}=1; SameSite=Lax; path=/`;
+      }
+      const ok = document.cookie.includes(`${name}=1`);
+      document.cookie = `${name}=; Max-Age=0; path=/`;
+      if (ok) return true;
+    }
+    return false;
   } catch {
     return false;
   }
 }
+
 
 function storageAvailable(): boolean {
   try {
@@ -137,10 +148,16 @@ export async function runPreflight(opts: PreflightOptions = {}): Promise<Preflig
   for (const s of cfg.suspicious) warnings.push(issue('config_missing', 'warn', s));
 
   if (browserTooOld()) blocking.push(issue('outdated_browser', 'block'));
-  if (!storageAvailable()) blocking.push(issue('storage_disabled', 'block'));
+  const hasStorage = storageAvailable();
+  if (!hasStorage) blocking.push(issue('storage_disabled', 'block'));
   if (!cookiesEnabled()) {
-    (opts.requireOAuth ? blocking : warnings).push(issue('third_party_cookies_blocked', opts.requireOAuth ? 'block' : 'warn'));
+    // The Supabase session lives in localStorage, so a failed cookie probe is
+    // only advisory when storage works — blocking here caused spurious
+    // "third-party cookies blocked" errors on Google sign-in.
+    const severity: 'block' | 'warn' = opts.requireOAuth && !hasStorage ? 'block' : 'warn';
+    (severity === 'block' ? blocking : warnings).push(issue('third_party_cookies_blocked', severity));
   }
+
 
   if (opts.requireCamera) {
     if (!cameraApiAvailable()) {
