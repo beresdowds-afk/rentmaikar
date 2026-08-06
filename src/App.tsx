@@ -56,6 +56,7 @@ const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const HowItWorksPage = lazy(() => import("./pages/HowItWorksPage"));
+const RentingVsOwning = lazy(() => import("./pages/guides/RentingVsOwning"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const LegalSupportDashboard = lazy(() => import("./pages/LegalSupportDashboard"));
 const IoTSupportDashboard = lazy(() => import("./pages/IoTSupportDashboard"));
@@ -190,6 +191,7 @@ const App = () => (
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/faq" element={<FAQ />} />
                   <Route path="/how-it-works" element={<HowItWorksPage />} />
+                  <Route path="/guides/renting-vs-owning-for-rideshare" element={<RentingVsOwning />} />
                   <Route 
                     path="/admin" 
                     element={

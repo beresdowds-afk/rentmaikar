@@ -329,6 +329,17 @@ const HowItWorksPage = () => {
                 24-hour tracking on every active rental
               </span>
             </div>
+
+            <p className="text-center text-sm text-muted-foreground mt-8">
+              Still weighing your options?{" "}
+              <Link
+                to="/guides/renting-vs-owning-for-rideshare"
+                className="text-primary underline underline-offset-4"
+              >
+                Read our guide: renting vs. owning a car for rideshare
+              </Link>
+              .
+            </p>
           </section>
         </div>
       </main>
