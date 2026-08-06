@@ -97,6 +97,7 @@ import { DriverBehaviorLogs } from "@/components/admin/DriverBehaviorLogs";
 import { CronJobManagement } from "@/components/admin/CronJobManagement";
 import { TaxManagement } from "@/components/admin/TaxManagement";
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
+import { StaffSignOutButton } from '@/components/staff/StaffSignOutButton';
 import { ScrollableStrip } from '@/components/ui/scrollable-strip';
 
 
@@ -294,6 +295,7 @@ const AdminDashboard = () => {
                 <HelpCircle className="h-4 w-4" />
                 Tour
               </Button>
+              <StaffSignOutButton />
             </div>
           </div>
 
