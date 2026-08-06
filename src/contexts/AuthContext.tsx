@@ -182,8 +182,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-      // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+      // THEN check for existing session.
+      // A stale/rotated refresh token left in localStorage makes every
+      // subsequent request fail with `refresh_token_not_found` and leaves the
+      // app stuck half-signed-in. Detect that and clear local storage so the
+      // user simply lands on a clean sign-in form.
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+      const staleToken =
+        !!error &&
+        /refresh[_ ]token|invalid|expired/i.test(error.message ?? '');
+
+      if (staleToken) {
+        try {
+          await supabase.auth.signOut({ scope: 'local' });
+        } catch {
+          /* ignore */
+        }
+        setSession(null);
+        setUser(null);
+        setUserRole(null);
+        setIsRoleLoading(false);
+        setIsLoading(false);
+        return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
 
