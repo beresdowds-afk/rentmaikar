@@ -9,6 +9,7 @@ import { MapPin, RefreshCw, HelpCircle } from 'lucide-react';
 import type { SupportStaff } from '@/types/support';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 import { StaffSignOutButton } from '@/components/staff/StaffSignOutButton';
+import { StaffOnboardingDownloads } from '@/components/staff/StaffOnboardingDownloads';
 
 interface SupportDashboardLayoutProps {
   title: string;
