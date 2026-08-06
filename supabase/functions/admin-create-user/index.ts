@@ -176,8 +176,9 @@ serve(async (req) => {
           category: "auth",
           priority: "high",
           data: {
-            name: full_name,
-            resetLink,
+            firstName: String(full_name || "there").split(" ")[0],
+            resetUrl: resetLink,
+            expiresIn: "24 hours",
             note: `An administrator created your Rentmaikar ${role.replace("_", " ")} account. Please sign in as soon as possible and set your password using this link.`,
           },
         },

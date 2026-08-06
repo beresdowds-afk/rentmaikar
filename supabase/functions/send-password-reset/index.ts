@@ -95,10 +95,9 @@ Deno.serve(async (req) => {
           category: "auth",
           priority: "high",
           data: {
-            name,
-            resetLink: linkData.properties.action_link,
-            note:
-              "You (or someone using your email address) asked to reset the password for your Rentmaikar account. This link expires in 60 minutes. If you did not request it, you can safely ignore this email.",
+            firstName: name,
+            resetUrl: linkData.properties.action_link,
+            expiresIn: "60 minutes",
           },
         }),
       },
