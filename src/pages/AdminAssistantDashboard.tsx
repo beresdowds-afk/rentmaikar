@@ -82,6 +82,7 @@ import { CronJobManagement } from "@/components/admin/CronJobManagement";
 import { TaxManagement } from "@/components/admin/TaxManagement";
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 import { StaffSignOutButton } from '@/components/staff/StaffSignOutButton';
+import { StaffOnboardingDownloads } from '@/components/staff/StaffOnboardingDownloads';
 import { ScrollableStrip } from '@/components/ui/scrollable-strip';
 
 
@@ -325,6 +326,11 @@ const AdminAssistantDashboard = () => {
           {/* Install App Banner */}
           <div className="mb-6">
             <InstallAppBanner appName="Rentmaikar Assistant" />
+          </div>
+
+          {/* Onboarding downloads */}
+          <div className="mb-6">
+            <StaffOnboardingDownloads />
           </div>
 
           {/* Stats Grid */}

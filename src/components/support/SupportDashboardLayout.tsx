@@ -9,6 +9,7 @@ import { MapPin, RefreshCw, HelpCircle } from 'lucide-react';
 import type { SupportStaff } from '@/types/support';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 import { StaffSignOutButton } from '@/components/staff/StaffSignOutButton';
+import { StaffOnboardingDownloads } from '@/components/staff/StaffOnboardingDownloads';
 
 interface SupportDashboardLayoutProps {
   title: string;
@@ -93,6 +94,11 @@ export const SupportDashboardLayout = ({
           {/* Install App Banner */}
           <div className="mb-6">
             <InstallAppBanner appName="Rentmaikar Support" />
+          </div>
+
+          {/* Onboarding downloads */}
+          <div className="mb-6">
+            <StaffOnboardingDownloads />
           </div>
 
           {/* Stats */}
