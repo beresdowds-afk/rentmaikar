@@ -20,7 +20,7 @@ import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
 import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
 import { PasswordInput } from '@/components/ui/password-input';
 import { EmailVerification } from '@/components/auth/EmailVerification';
-import { ROLE_HOME, ROLE_ONBOARDING, type AppRole } from '@/lib/role-home';
+import { ROLE_HOME, ROLE_ONBOARDING, isStaffRole, type AppRole } from '@/lib/role-home';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
