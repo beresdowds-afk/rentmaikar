@@ -20,7 +20,7 @@ import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
 import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
 import { PasswordInput } from '@/components/ui/password-input';
 import { EmailVerification } from '@/components/auth/EmailVerification';
-import { ROLE_HOME, ROLE_ONBOARDING, type AppRole } from '@/lib/role-home';
+import { ROLE_HOME, ROLE_ONBOARDING, isStaffRole, type AppRole } from '@/lib/role-home';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -126,6 +126,13 @@ const Auth = () => {
     };
 
     const routeWithCompletionCheck = async (fallbackTarget: string) => {
+      // Staff accounts (admin, admin assistant, support) operate the platform
+      // and have no driver/owner profile requirements — never trap them in the
+      // completion wizard, which would lock them out of their dashboard.
+      if (isStaffRole(userRole as AppRole)) {
+        finishRedirect(fallbackTarget);
+        return;
+      }
       // OAuth (e.g. Google) users may land here with a bare profile — send
       // them to the completion wizard when mandatory fields are missing.
       const { data: comp } = await supabase.rpc('get_profile_completion_status');
