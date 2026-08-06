@@ -327,6 +327,7 @@ const Auth = () => {
 
   const handleBackToLogin = () => {
     setShowForgotPassword(false);
+    setShowLoginRecovery(false);
     setResetEmailSent(false);
     setError(null);
     forgotPasswordForm.reset();
