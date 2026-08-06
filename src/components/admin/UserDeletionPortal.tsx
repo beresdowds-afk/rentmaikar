@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Loader2, Search, Trash2, ShieldAlert, UserX } from 'lucide-react';
+import { Loader2, Search, Trash2, ShieldAlert, UserX, History as HistoryIcon } from 'lucide-react';
 import { useAssistantPermissions } from '@/hooks/useAssistantPermissions';
 
 type Row = {
@@ -63,6 +63,28 @@ export function UserDeletionPortal() {
     },
   });
 
+  const { data: deletionLog, refetch: refetchLog } = useQuery({
+    queryKey: ['user-deletion-audit-log'],
+    queryFn: async () => {
+      const { data: log, error } = await supabase
+        .from('admin_audit_log')
+        .select('id, admin_id, target_id, details, created_at')
+        .eq('action', 'user_account_deleted')
+        .order('created_at', { ascending: false })
+        .limit(25);
+      if (error) throw error;
+      return (log ?? []) as Array<{
+        id: string;
+        admin_id: string | null;
+        target_id: string | null;
+        details: any;
+        created_at: string;
+      }>;
+    },
+  });
+
+
+
   const isDeletable = (row: Row) => {
     if (row.roles.length === 0) return isFullAdmin;
     if (isFullAdmin) return true;
@@ -97,7 +119,22 @@ export function UserDeletionPortal() {
   const toggleAll = () =>
     setSelected(allSelected ? [] : selectableRows.map(r => r.user_id));
 
+  // Rows the user actually ticked, resolved against the freshest directory data.
+  const selectedRows = useMemo(
+    () => (data ?? []).filter(r => selected.includes(r.user_id)),
+    [data, selected],
+  );
+  // Guardrail: anything selected that is no longer eligible (role changed, row
+  // vanished, or permission scope no longer covers it) blocks the purge.
+  const blockedRows = selectedRows.filter(r => !isDeletable(r));
+  const missingSelections = selected.filter(id => !selectedRows.some(r => r.user_id === id));
+  const guardrailBlocked = blockedRows.length > 0 || missingSelections.length > 0;
+
   const handleDelete = async () => {
+    if (guardrailBlocked) {
+      toast.error('Selection changed — review the summary before deleting.');
+      return;
+    }
     setDeleting(true);
     try {
       const { data: res, error } = await supabase.functions.invoke('admin-delete-users', {
@@ -114,12 +151,14 @@ export function UserDeletionPortal() {
       setConfirmText('');
       setReason('');
       await refetch();
+      await refetchLog();
     } catch (e: any) {
       toast.error(e?.message || 'Deletion failed');
     } finally {
       setDeleting(false);
     }
   };
+
 
   if (permsLoading) {
     return (
@@ -275,6 +314,66 @@ export function UserDeletionPortal() {
         </CardContent>
       </Card>
 
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <HistoryIcon className="h-5 w-5" />
+            Deletion history
+          </CardTitle>
+          <CardDescription>
+            Audit trail of removed accounts — who deleted them, when, and which records were purged.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!deletionLog || deletionLog.length === 0 ? (
+            <p className="py-6 text-center text-muted-foreground">No accounts have been deleted yet.</p>
+          ) : (
+            <ScrollArea className="h-[320px]">
+              <div className="space-y-2 pr-4">
+                {deletionLog.map(entry => {
+                  const purged = entry.details?.purged;
+                  const purgedEntries: Array<[string, number]> =
+                    purged && typeof purged === 'object'
+                      ? Object.entries(purged)
+                          .filter(([, v]) => typeof v === 'number' && (v as number) > 0)
+                          .map(([k, v]) => [k, v as number])
+                      : [];
+                  return (
+                    <div key={entry.id} className="rounded-md border p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="font-medium">
+                          {entry.details?.full_name || entry.details?.email || entry.target_id}
+                        </p>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(entry.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {entry.details?.email || 'No email'} ·{' '}
+                        {(entry.details?.roles ?? []).join(', ') || 'no role'}
+                      </p>
+                      <p className="font-mono text-xs text-muted-foreground">{entry.target_id}</p>
+                      {entry.details?.reason && (
+                        <p className="mt-1 text-sm">Reason: {entry.details.reason}</p>
+                      )}
+                      {purgedEntries.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {purgedEntries.map(([table, count]) => (
+                            <Badge key={table} variant="outline" className="text-xs">
+                              {table.replace(/_/g, ' ')}: {count}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+
       <AlertDialog open={confirmOpen} onOpenChange={o => { if (!deleting) { setConfirmOpen(o); if (!o) setConfirmText(''); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -284,7 +383,50 @@ export function UserDeletionPortal() {
               rentals, payments, subscriptions). This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
           <div className="space-y-3">
+            <div className="rounded-md border">
+              <div className="border-b px-3 py-2 text-sm font-medium">Review before purging</div>
+              <ScrollArea className="max-h-56">
+                <div className="space-y-2 p-3">
+                  {selectedRows.map(row => (
+                    <div key={row.user_id} className="text-sm">
+                      <p className="font-medium">{row.full_name || 'No name'}</p>
+                      <p className="text-muted-foreground">{row.email || 'No email'}</p>
+                      <p className="font-mono text-xs text-muted-foreground">{row.user_id}</p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {row.roles.length === 0 ? (
+                          <Badge variant="outline">No role</Badge>
+                        ) : (
+                          row.roles.map(r => (
+                            <Badge key={r} variant={STAFF_ROLES.includes(r) ? 'destructive' : 'secondary'}>
+                              {r.replace(/_/g, ' ')}
+                            </Badge>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+
+            {guardrailBlocked && (
+              <Alert variant="destructive">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertDescription>
+                  {blockedRows.length > 0
+                    ? `${blockedRows.length} selected account${blockedRows.length === 1 ? '' : 's'} ` +
+                      'no longer pass the role check for your permission level. '
+                    : ''}
+                  {missingSelections.length > 0
+                    ? `${missingSelections.length} selection${missingSelections.length === 1 ? '' : 's'} could not be verified. `
+                    : ''}
+                  Close this dialog and re-select before deleting.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <Input
               placeholder="Reason (optional, saved to the audit log)"
               value={reason}
@@ -299,7 +441,7 @@ export function UserDeletionPortal() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={confirmText !== 'DELETE' || deleting}
+              disabled={confirmText !== 'DELETE' || deleting || guardrailBlocked || selectedRows.length === 0}
               onClick={e => { e.preventDefault(); handleDelete(); }}
             >
               {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -308,6 +450,7 @@ export function UserDeletionPortal() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </>
   );
 }
