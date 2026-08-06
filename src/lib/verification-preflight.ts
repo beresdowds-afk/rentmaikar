@@ -59,14 +59,25 @@ export function checkAppConfig(): ConfigCheckResult {
 function cookiesEnabled(): boolean {
   try {
     if (typeof navigator !== 'undefined' && navigator.cookieEnabled === false) return false;
-    document.cookie = 'rm_probe=1; SameSite=Lax; path=/';
-    const ok = document.cookie.includes('rm_probe=1');
-    document.cookie = 'rm_probe=; Max-Age=0; path=/';
-    return ok;
+    // Probe with a few attempts: inside an embedded/partitioned context the
+    // first write can be dropped even though cookies work, which used to
+    // produce a random "third-party cookies blocked" block on Google sign-in.
+    for (let i = 0; i < 3; i++) {
+      const name = `rm_probe${i}`;
+      document.cookie = `${name}=1; SameSite=None; Secure; path=/`;
+      if (!document.cookie.includes(`${name}=1`)) {
+        document.cookie = `${name}=1; SameSite=Lax; path=/`;
+      }
+      const ok = document.cookie.includes(`${name}=1`);
+      document.cookie = `${name}=; Max-Age=0; path=/`;
+      if (ok) return true;
+    }
+    return false;
   } catch {
     return false;
   }
 }
+
 
 function storageAvailable(): boolean {
   try {
