@@ -48,3 +48,20 @@ export function homeForRole(role: AppRole | null | undefined, fallback = '/'): s
   if (!role) return fallback;
   return ROLE_HOME[role] ?? fallback;
 }
+
+/**
+ * Roles that operate the platform rather than transact on it. Staff accounts
+ * must never be forced through the driver/owner profile-completion wizard —
+ * their profile has no phone / emergency-contact requirements.
+ */
+export const STAFF_ROLES: AppRole[] = [
+  'admin',
+  'admin_assistant',
+  'legal_support',
+  'iot_support',
+  'vehicle_support',
+];
+
+export function isStaffRole(role: AppRole | null | undefined): boolean {
+  return !!role && STAFF_ROLES.includes(role);
+}
