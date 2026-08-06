@@ -191,6 +191,7 @@ const App = () => (
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/faq" element={<FAQ />} />
                   <Route path="/how-it-works" element={<HowItWorksPage />} />
+                  <Route path="/guides/renting-vs-owning-for-rideshare" element={<RentingVsOwning />} />
                   <Route 
                     path="/admin" 
                     element={
