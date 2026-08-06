@@ -317,7 +317,7 @@ export function UserDeletionPortal() {
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5" />
+            <HistoryIcon className="h-5 w-5" />
             Deletion history
           </CardTitle>
           <CardDescription>
