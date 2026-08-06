@@ -75,22 +75,38 @@ Deno.serve(async (req) => {
       if (prof?.full_name) name = String(prof.full_name).split(" ")[0];
     }
 
-    const { error: sendErr } = await admin.functions.invoke("send-outbound-email", {
-      body: {
-        action: "send",
-        to: email,
-        templateName: "password_reset",
-        category: "auth",
-        priority: "high",
-        data: {
-          name,
-          resetLink: linkData.properties.action_link,
-          note:
-            "You (or someone using your email address) asked to reset the password for your Rentmaikar account. This link expires in 60 minutes. If you did not request it, you can safely ignore this email.",
+    // send-outbound-email is guarded by requireServiceRole, which compares the
+    // raw Bearer token — so call it with an explicit service-role header
+    // instead of functions.invoke (which does not always forward it).
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const sendRes = await fetch(
+      `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-outbound-email`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
         },
+        body: JSON.stringify({
+          action: "send",
+          to: email,
+          templateName: "password_reset",
+          category: "auth",
+          priority: "high",
+          data: {
+            name,
+            resetLink: linkData.properties.action_link,
+            note:
+              "You (or someone using your email address) asked to reset the password for your Rentmaikar account. This link expires in 60 minutes. If you did not request it, you can safely ignore this email.",
+          },
+        }),
       },
-    });
-    if (sendErr) console.error("reset email send failed:", sendErr);
+    );
+    if (!sendRes.ok) {
+      console.error("reset email send failed:", sendRes.status, await sendRes.text());
+    }
+
 
     return ok();
   } catch (e) {
