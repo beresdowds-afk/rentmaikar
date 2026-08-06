@@ -126,6 +126,13 @@ const Auth = () => {
     };
 
     const routeWithCompletionCheck = async (fallbackTarget: string) => {
+      // Staff accounts (admin, admin assistant, support) operate the platform
+      // and have no driver/owner profile requirements — never trap them in the
+      // completion wizard, which would lock them out of their dashboard.
+      if (isStaffRole(userRole as AppRole)) {
+        finishRedirect(fallbackTarget);
+        return;
+      }
       // OAuth (e.g. Google) users may land here with a bare profile — send
       // them to the completion wizard when mandatory fields are missing.
       const { data: comp } = await supabase.rpc('get_profile_completion_status');
