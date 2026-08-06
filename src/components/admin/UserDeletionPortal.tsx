@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Loader2, Search, Trash2, ShieldAlert, UserX } from 'lucide-react';
+import { Loader2, Search, Trash2, ShieldAlert, UserX, History as HistoryIcon } from 'lucide-react';
 import { useAssistantPermissions } from '@/hooks/useAssistantPermissions';
 
 type Row = {
