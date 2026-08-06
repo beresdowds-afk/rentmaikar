@@ -184,12 +184,18 @@ const Auth = () => {
     setIsSubmitting(true);
     setError(null);
     setShowEmailVerification(false);
+    setShowLoginRecovery(false);
 
     const { error, userId } = await signIn(data.email, data.password);
 
     if (error) {
-      if (error.message.includes('Invalid login credentials')) {
-        setError('Invalid email or password. Please try again.');
+      if (/invalid (login credentials|email or password)/i.test(error.message)) {
+        setError('Invalid email or password.');
+        // Most failures here are accounts created through Google (no password
+        // set yet) or a forgotten password. Offer both recoveries inline —
+        // shown for every failure, so it never reveals whether the account exists.
+        setShowLoginRecovery(true);
+        forgotPasswordForm.setValue('email', data.email.trim().toLowerCase());
       } else if (error.message.includes('Email not confirmed') || error.message.includes('email_not_confirmed')) {
         setUnverifiedEmail(data.email);
         setShowEmailVerification(true);
@@ -199,6 +205,7 @@ const Auth = () => {
       setIsSubmitting(false);
       return;
     }
+
 
     // Check 2FA status
     if (userId) {
