@@ -1,3 +1,4 @@
+import Seo from "@/components/seo/Seo";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { HelpCircle, Search, Globe } from "lucide-react";
@@ -58,8 +59,26 @@ const FAQ = () => {
     return categories.find(c => c.id === categoryId)?.name || 'Unknown';
   };
 
+  const faqJsonLd = items.length
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: items.slice(0, 25).map((item) => ({
+          "@type": "Question",
+          name: item.question,
+          acceptedAnswer: { "@type": "Answer", text: item.answer },
+        })),
+      }
+    : undefined;
+
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="FAQ — Rentmaikar Rideshare Rentals"
+        description="Answers to common questions about renting a rideshare vehicle, listing your car, payments, verification and support on Rentmaikar."
+        path="/faq"
+        jsonLd={faqJsonLd}
+      />
       <Header />
       <main className="container mx-auto px-4 py-12">
         {/* Hero Section */}

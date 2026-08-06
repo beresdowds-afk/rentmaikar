@@ -1,3 +1,4 @@
+import Seo from "@/components/seo/Seo";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -186,6 +187,11 @@ const HowItWorksPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="How Rentmaikar Works — Rent or List in 4 Steps"
+        description="See how Rentmaikar works for drivers and vehicle owners: sign up, get verified, sign the agreement and start driving or earning — all mediated by Rentmaikar."
+        path="/how-it-works"
+      />
       <Header />
       <PricingHintBanner />
       <main className="pt-8 pb-16">
@@ -232,9 +238,9 @@ const HowItWorksPage = () => {
                             <Icon className="w-6 h-6 text-primary" />
                           </div>
                           <div>
-                            <h3 className="text-lg font-display font-semibold text-foreground mb-2">
+                            <h2 className="text-lg font-display font-semibold text-foreground mb-2">
                               {step.title}
-                            </h3>
+                            </h2>
                             <p className="text-sm text-muted-foreground mb-3">
                               {step.description}
                             </p>

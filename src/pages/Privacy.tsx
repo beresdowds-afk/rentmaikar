@@ -1,3 +1,4 @@
+import Seo from "@/components/seo/Seo";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Shield } from "lucide-react";
@@ -471,6 +472,11 @@ const Privacy = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="Privacy Policy — Rentmaikar"
+        description="How Rentmaikar collects, uses and protects personal data, identity documents and payment information for drivers and vehicle owners."
+        path="/privacy"
+      />
       <Header />
       
       <main className="pt-24 pb-16">
