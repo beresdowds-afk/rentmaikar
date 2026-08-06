@@ -1,3 +1,4 @@
+import Seo from "@/components/seo/Seo";
 import React, { useState, useMemo } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { Search, Filter, MapPin, Calendar, Star, Info } from "lucide-react";
@@ -180,8 +181,22 @@ const Catalogue = () => {
 
   const locations = [...new Set(vehiclesWithDistance.map((v) => v.location))];
 
+  const categoryLabel = (category || "vehicles").replace(/-/g, " ");
+  const catalogueTitle = `${categoryLabel.charAt(0).toUpperCase()}${categoryLabel.slice(1)} Vehicles — Rentmaikar Catalogue`;
+
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title={catalogueTitle.slice(0, 60)}
+        description={`Browse ${categoryLabel} rideshare-ready vehicles available to rent on Rentmaikar, with pricing, location and availability for the USA and Nigeria.`}
+        path={`/catalogue/${category ?? ""}`}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: catalogueTitle,
+          url: `https://rentmaikar.com/catalogue/${category ?? ""}`,
+        }}
+      />
       <Header />
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
