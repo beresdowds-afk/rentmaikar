@@ -17,7 +17,9 @@
     "format": "prettier --write .",
     "check": "npm run lint && npm run typecheck && npm run test",
     "clean": "rm -rf dist node_modules",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "predev": "bunx tsx scripts/generate-sitemap.ts",
+    "prebuild": "bunx tsx scripts/generate-sitemap.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",
