@@ -118,7 +118,7 @@ export const StaffOnboardingDownloads = () => {
 
   const items = useMemo(() => {
     if (!data) return [];
-    return data.filter((item) => !item.region || item.region === country);
+    return data.filter((item) => matchesRegion(item.region, country));
   }, [data, country]);
 
   const handleDownload = (item: OnboardingItem) => {
