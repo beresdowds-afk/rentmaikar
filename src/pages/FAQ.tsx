@@ -233,6 +233,17 @@ const FAQ = () => {
           </ul>
           <p className="text-xs text-muted-foreground mt-4">Last updated: 2026</p>
         </div>
+
+        <p className="max-w-4xl mx-auto mt-8 text-center text-sm text-muted-foreground">
+          Deciding between a rental and buying your own car?{" "}
+          <Link
+            to="/guides/renting-vs-owning-for-rideshare"
+            className="text-primary underline underline-offset-4"
+          >
+            Compare renting vs. owning for rideshare
+          </Link>
+          .
+        </p>
       </main>
       <Footer />
     </div>
