@@ -27,6 +27,7 @@ export const crmTabs: PortalTab[] = [
   { value: "accounts", label: "User Accounts", icon: <UserCircle className="h-4 w-4" />, dataTour: "admin-accounts" },
   { value: "drivers-owners", label: "Drivers & Owners", icon: <Users className="h-4 w-4" /> },
   { value: "roles", label: "Role Management", icon: <Shield className="h-4 w-4" />, dataTour: "admin-roles" },
+  { value: "user-deletion", label: "Account Removal", icon: <UserX className="h-4 w-4" /> },
   { value: "admin-assistants", label: "Admin Assistants", icon: <ShieldCheck className="h-4 w-4" /> },
   { value: "negotiations", label: "Negotiations", icon: <HandshakeIcon className="h-4 w-4" />, dataTour: "admin-negotiations" },
   { value: "approvals", label: "Pending Approvals", icon: <ClipboardList className="h-4 w-4" /> },

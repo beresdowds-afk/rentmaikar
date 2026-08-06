@@ -16,6 +16,7 @@ export const TAB_PERMISSION_MAP: Record<AdminTabKey, PermissionKey | null> = {
   accounts: 'can_view_users',
   'drivers-owners': 'can_manage_users',
   roles: 'can_manage_users',
+  'user-deletion': 'can_delete_users',
   negotiations: 'can_view_rentals',
   approvals: 'can_view_users',
   defaults: 'can_view_payments',
