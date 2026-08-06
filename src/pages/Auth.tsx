@@ -68,6 +68,7 @@ const Auth = () => {
   const [unverifiedEmail, setUnverifiedEmail] = useState<string>('');
   const [activeTab, setActiveTab] = useState('login');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showLoginRecovery, setShowLoginRecovery] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
 
   // 2FA state
