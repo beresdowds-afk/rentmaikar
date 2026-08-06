@@ -289,9 +289,11 @@ const Auth = () => {
       });
 
       if (allowed !== false) {
-        const redirectUrl = `${window.location.origin}/reset-password`;
-        const { error } = await supabase.auth.resetPasswordForEmail(normalized, {
-          redirectTo: redirectUrl,
+        // Delivered through our own Resend pipeline (branded template, the same
+        // path all other transactional mail uses) instead of the built-in auth
+        // mailer, so reset links reliably reach the inbox.
+        const { error } = await supabase.functions.invoke('send-password-reset', {
+          body: { email: normalized, redirectOrigin: window.location.origin },
         });
         // Log outcome server-side without revealing it to the caller.
         await supabase.rpc('log_auth_event', {
@@ -309,6 +311,7 @@ const Auth = () => {
           _metadata: {} as any,
         });
       }
+
 
       // Always respond generically to prevent account enumeration.
       setResetEmailSent(true);
