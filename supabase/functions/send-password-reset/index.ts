@@ -52,6 +52,21 @@ Deno.serve(async (req) => {
       Deno.env.get("SITE_URL") ??
       "https://rentmaikar.com";
 
+    // Primary path: the built-in auth mailer. It is always configured and does
+    // not depend on the project's Resend sender domain being verified.
+    const { error: builtInErr } = await admin.auth.resetPasswordForEmail(email, {
+      redirectTo: `${siteUrl}/reset-password`,
+    });
+
+    if (!builtInErr) {
+      console.log("reset email delivered via built-in auth mailer");
+      return ok();
+    }
+
+    console.error("built-in reset mail failed:", builtInErr.message);
+
+    // Fallback: mint a recovery link ourselves and deliver it through the
+    // branded Resend pipeline. (Requires a verified sender domain.)
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: "recovery",
       email,
@@ -102,35 +117,22 @@ Deno.serve(async (req) => {
         }),
       },
     );
-    // Detect failure both from the HTTP status and from a soft-failure body
-    // (send-outbound-email answers 200 with { success: false } when the
-    // provider rejects, e.g. an unverified Resend sender domain).
-    let delivered = sendRes.ok;
-    const rawBody = await sendRes.text();
-    if (delivered) {
+    // send-outbound-email answers 200 with { success: false } when the provider
+    // rejects (e.g. an unverified Resend sender domain), so check the body too.
+    if (!sendRes.ok) {
+      console.error("branded reset email failed:", sendRes.status, await sendRes.text());
+    } else {
+      const rawBody = await sendRes.text();
       try {
         const parsed = JSON.parse(rawBody);
-        if (parsed?.success === false || parsed?.error) delivered = false;
+        if (parsed?.success === false || parsed?.error) {
+          console.error("branded reset email failed:", rawBody);
+        }
       } catch { /* non-JSON body — trust the status */ }
     }
 
-    if (!delivered) {
-      console.error("branded reset email failed:", sendRes.status, rawBody);
-      // Fallback: use the built-in auth mailer so the user is never stranded
-      // without a way back into their account.
-      const { error: fallbackErr } = await admin.auth.resetPasswordForEmail(email, {
-        redirectTo: `${siteUrl}/reset-password`,
-      });
-      if (fallbackErr) {
-        console.error("fallback reset email failed:", fallbackErr.message);
-      } else {
-        console.log("reset email delivered via built-in auth mailer");
-      }
-    }
-
-
-
     return ok();
+
   } catch (e) {
     console.error("send-password-reset error:", (e as Error)?.message ?? e);
     return ok();
