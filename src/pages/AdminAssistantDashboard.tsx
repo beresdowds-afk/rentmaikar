@@ -22,6 +22,7 @@ import { SocialMediaManagement } from "@/components/admin/SocialMediaManagement"
 import { IoTDeviceOrders } from "@/components/admin/IoTDeviceOrders";
 import { DeviceOrderRevenue } from "@/components/admin/DeviceOrderRevenue";
 import { UserAccountsView } from "@/components/admin/UserAccountsView";
+import { UserDeletionPortal } from "@/components/admin/UserDeletionPortal";
 import { DriversOwnersManagement } from "@/components/admin/DriversOwnersManagement";
 import { RoleManagement } from "@/components/admin/RoleManagement";
 import { DailyPlanManagement } from "@/components/admin/DailyPlanManagement";
@@ -621,6 +622,7 @@ const AdminAssistantDashboard = () => {
               {activeTab === 'applications' && <ApplicationManagement />}
               {activeTab === 'attestation-review' && <NegativeAttestationReviewPanel />}
               {activeTab === 'accounts' && <UserAccountsView />}
+              {activeTab === 'user-deletion' && <UserDeletionPortal />}
               {activeTab === 'drivers-owners' && <DriversOwnersManagement />}
               {activeTab === 'roles' && <RoleManagement />}
               {activeTab === 'admin-assistants' && <AdminAssistantManagement />}
