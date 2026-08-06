@@ -56,6 +56,7 @@ const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const HowItWorksPage = lazy(() => import("./pages/HowItWorksPage"));
+const RentingVsOwning = lazy(() => import("./pages/guides/RentingVsOwning"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const LegalSupportDashboard = lazy(() => import("./pages/LegalSupportDashboard"));
 const IoTSupportDashboard = lazy(() => import("./pages/IoTSupportDashboard"));
