@@ -10039,6 +10039,7 @@ export type Database = {
           logs_deleted: number
         }[]
       }
+      purge_user_account: { Args: { _target_user_id: string }; Returns: Json }
       record_onboarding_rpc_event: {
         Args: {
           _details?: Json
