@@ -96,6 +96,11 @@ export const SupportDashboardLayout = ({
             <InstallAppBanner appName="Rentmaikar Support" />
           </div>
 
+          {/* Onboarding downloads */}
+          <div className="mb-6">
+            <StaffOnboardingDownloads />
+          </div>
+
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" data-tour="stats">
             {stats.map((stat, index) => (
