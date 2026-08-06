@@ -23,6 +23,7 @@ export const PERMISSION_GROUPS: Array<{
       { key: 'can_manage_users', label: 'Manage users', description: 'Edit profiles and toggle active status.' },
       { key: 'can_approve_applications', label: 'Approve / reject registrations', description: 'Approve or reject driver & owner registration applications.' },
       { key: 'can_view_audit_log', label: 'View audit log', description: 'Read admin & role audit history.' },
+      { key: 'can_delete_users', label: 'Delete users', description: 'Permanently delete driver & owner registrations (staff accounts stay admin-only).' },
     ],
   },
   {
@@ -70,7 +71,7 @@ export type PermissionKey =
   | 'can_view_iot' | 'can_manage_iot'
   | 'can_view_communications' | 'can_send_communications'
   | 'can_view_reports' | 'can_manage_content'
-  | 'can_view_audit_log';
+  | 'can_view_audit_log' | 'can_delete_users';
 
 type PermissionRecord = { id: string; user_id: string; notes: string | null } & Record<PermissionKey, boolean>;
 type AssistantRow = PermissionRecord & { full_name: string | null; email: string | null };
@@ -84,7 +85,7 @@ const EMPTY_PERMS: Record<PermissionKey, boolean> = {
   can_view_iot: false, can_manage_iot: false,
   can_view_communications: false, can_send_communications: false,
   can_view_reports: false, can_manage_content: false,
-  can_view_audit_log: false,
+  can_view_audit_log: false, can_delete_users: false,
 };
 
 export function AdminAssistantManagement() {

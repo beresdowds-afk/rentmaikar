@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Building2, UsersRound, Users, Headphones, LayoutGrid, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, ShieldCheck, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail, Wifi, Activity, Clock, Radio, Globe, Star, Calendar, Satellite, Signal } from "lucide-react";
+import { ChevronDown, Building2, UsersRound, Users, Headphones, LayoutGrid, Phone, MessageSquare, UserCircle, HandshakeIcon, ClipboardList, Home, Car, MapPin, Cpu, Package, BarChart3, Tag, Wrench, WifiOff, Ban, Camera, Wallet, KeyRound, Settings, HelpCircle, FileText, UserPlus, Shield, ShieldCheck, Share2, Facebook, Instagram, Linkedin, Chrome, CreditCard, TrendingUp, Webhook, Code, Bell, Flag, GraduationCap, Truck, BookOpen, Mail, Wifi, Activity, Clock, Radio, Globe, Star, Calendar, Satellite, Signal, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -27,6 +27,7 @@ export const crmTabs: PortalTab[] = [
   { value: "accounts", label: "User Accounts", icon: <UserCircle className="h-4 w-4" />, dataTour: "admin-accounts" },
   { value: "drivers-owners", label: "Drivers & Owners", icon: <Users className="h-4 w-4" /> },
   { value: "roles", label: "Role Management", icon: <Shield className="h-4 w-4" />, dataTour: "admin-roles" },
+  { value: "user-deletion", label: "Account Removal", icon: <UserX className="h-4 w-4" /> },
   { value: "admin-assistants", label: "Admin Assistants", icon: <ShieldCheck className="h-4 w-4" /> },
   { value: "negotiations", label: "Negotiations", icon: <HandshakeIcon className="h-4 w-4" />, dataTour: "admin-negotiations" },
   { value: "approvals", label: "Pending Approvals", icon: <ClipboardList className="h-4 w-4" /> },
