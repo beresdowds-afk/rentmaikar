@@ -232,9 +232,9 @@ const HowItWorksPage = () => {
                             <Icon className="w-6 h-6 text-primary" />
                           </div>
                           <div>
-                            <h3 className="text-lg font-display font-semibold text-foreground mb-2">
+                            <h2 className="text-lg font-display font-semibold text-foreground mb-2">
                               {step.title}
-                            </h3>
+                            </h2>
                             <p className="text-sm text-muted-foreground mb-3">
                               {step.description}
                             </p>
