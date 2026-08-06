@@ -540,9 +540,30 @@ const Auth = () => {
                 {error && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
+                    <AlertDescription>
+                      {error}
+                      {showLoginRecovery && (
+                        <span className="mt-2 block text-sm">
+                          If you created this account with Google, use{' '}
+                          <strong>Continue with Google</strong> below. Otherwise{' '}
+                          <button
+                            type="button"
+                            className="underline underline-offset-2 font-medium"
+                            onClick={() => {
+                              setShowForgotPassword(true);
+                              setShowLoginRecovery(false);
+                              setError(null);
+                            }}
+                          >
+                            reset your password
+                          </button>
+                          .
+                        </span>
+                      )}
+                    </AlertDescription>
                   </Alert>
                 )}
+
                 
                 <div className="space-y-2">
                   <Label htmlFor="login-email">Email</Label>
