@@ -97,7 +97,22 @@ export function UserDeletionPortal() {
   const toggleAll = () =>
     setSelected(allSelected ? [] : selectableRows.map(r => r.user_id));
 
+  // Rows the user actually ticked, resolved against the freshest directory data.
+  const selectedRows = useMemo(
+    () => (data ?? []).filter(r => selected.includes(r.user_id)),
+    [data, selected],
+  );
+  // Guardrail: anything selected that is no longer eligible (role changed, row
+  // vanished, or permission scope no longer covers it) blocks the purge.
+  const blockedRows = selectedRows.filter(r => !isDeletable(r));
+  const missingSelections = selected.filter(id => !selectedRows.some(r => r.user_id === id));
+  const guardrailBlocked = blockedRows.length > 0 || missingSelections.length > 0;
+
   const handleDelete = async () => {
+    if (guardrailBlocked) {
+      toast.error('Selection changed — review the summary before deleting.');
+      return;
+    }
     setDeleting(true);
     try {
       const { data: res, error } = await supabase.functions.invoke('admin-delete-users', {
@@ -114,12 +129,14 @@ export function UserDeletionPortal() {
       setConfirmText('');
       setReason('');
       await refetch();
+      await refetchLog();
     } catch (e: any) {
       toast.error(e?.message || 'Deletion failed');
     } finally {
       setDeleting(false);
     }
   };
+
 
   if (permsLoading) {
     return (
