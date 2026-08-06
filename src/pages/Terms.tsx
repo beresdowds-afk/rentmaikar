@@ -1,3 +1,4 @@
+import Seo from "@/components/seo/Seo";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { FileText } from "lucide-react";
@@ -422,6 +423,11 @@ const Terms = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="Terms of Use — Rentmaikar"
+        description="Read the Rentmaikar Terms of Use covering rentals, payments, vehicle listings and platform rules for drivers and owners in the USA and Nigeria."
+        path="/terms"
+      />
       <Header />
       
       <main className="pt-24 pb-16">

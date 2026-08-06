@@ -1,3 +1,4 @@
+import Seo, { SITE_URL } from "@/components/seo/Seo";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
@@ -48,6 +49,27 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="Rentmaikar — Rideshare Vehicle Rentals in the USA & Nigeria"
+        description="Rent a rideshare-ready car for Uber, Lyft or Bolt, or list your vehicle to earn passive income. Admin-managed rentals in the USA and Nigeria."
+        path="/"
+        jsonLd={[
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "Rentmaikar",
+            url: SITE_URL,
+            logo: `${SITE_URL}/pwa-icon-512.png`,
+            areaServed: ["US", "NG"],
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "Rentmaikar",
+            url: SITE_URL,
+          },
+        ]}
+      />
       {/* Header hidden on home — hero has its own embedded nav */}
       <main className={!hasSelectedType ? "pb-24" : ""}>
         <HeroSection />

@@ -1,3 +1,4 @@
+import Seo from "@/components/seo/Seo";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -186,6 +187,11 @@ const HowItWorksPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="How Rentmaikar Works — Rent or List in 4 Steps"
+        description="See how Rentmaikar works for drivers and vehicle owners: sign up, get verified, sign the agreement and start driving or earning — all mediated by Rentmaikar."
+        path="/how-it-works"
+      />
       <Header />
       <PricingHintBanner />
       <main className="pt-8 pb-16">
