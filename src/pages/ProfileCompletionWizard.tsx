@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PhoneNumberField } from '@/components/ui/phone-number-field';
 import { Loader2, CheckCircle2, Info } from 'lucide-react';
+import { isStaffRole, homeForRole, type AppRole } from '@/lib/role-home';
 
 type Step = 'contact' | 'emergency' | 'license' | 'vehicle' | 'payment' | 'done';
 
@@ -33,7 +34,7 @@ const STEP_META: Record<Exclude<Step, 'done'>, {
 
 const ProfileCompletionWizard = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const [params] = useSearchParams();
   const returnTo = params.get('returnTo') || '/';
   const { data: status, refetch, isLoading } = useProfileCompletion();
