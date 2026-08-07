@@ -30,3 +30,16 @@
 .phone-number-input .PhoneInputInput {
   min-width: 0;
 }
+
+/* Neutral (no country selected) state: show a visible globe placeholder so the
+   picker never looks empty and never implies a default country. */
+.phone-number-input .PhoneInputCountryIconImg,
+.phone-number-input .PhoneInputCountryIcon {
+  width: 1.25rem;
+  height: 0.9rem;
+}
+.phone-number-input .PhoneInputCountryIcon--international svg,
+.phone-number-input .PhoneInputCountryIcon--international {
+  color: hsl(var(--muted-foreground));
+  opacity: 1;
+}
