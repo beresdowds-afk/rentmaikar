@@ -17,6 +17,8 @@ import { ProfileAuditHistory } from '@/components/profile/ProfileAuditHistory';
 import { ApplicationAppealPanel } from '@/components/profile/ApplicationAppealPanel';
 import { ConnectedAccounts } from '@/components/profile/ConnectedAccounts';
 import { PersonaNotificationPreference } from '@/components/profile/PersonaNotificationPreference';
+import { RoleSwitchCard } from '@/components/profile/RoleSwitchCard';
+
 import PWASettingsPanel from '@/components/pwa/PWASettingsPanel';
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 import { PhoneNumberInput } from '@/components/ui/phone-number-input';
