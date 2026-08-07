@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Phone, Users, History, Settings, PhoneCall, Globe, Search, Radio } from 'lucide-react';
+import { Phone, Users, History, Settings, PhoneCall, Globe, Search, Radio, UserPlus } from 'lucide-react';
 import { useVoIPCalls } from '@/hooks/useVoIPCalls';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { CallDialer } from './CallDialer';
@@ -10,6 +10,7 @@ import { CallGroups } from './CallGroups';
 import { ActiveCallPanel } from './ActiveCallPanel';
 import { VoIPFeatureSettings } from './VoIPFeatureSettings';
 import { UserCallSearch } from './UserCallSearch';
+import { OutreachContactsPanel } from './OutreachContactsPanel';
 import { ConferenceRoomPanel } from './ConferenceRoomPanel';
 import { IncomingCallAlerts } from '@/components/voice/IncomingCallAlerts';
 import { Badge } from '@/components/ui/badge';
@@ -86,7 +87,7 @@ export const CallCenterPage = () => {
 
       {/* Main Content */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 lg:w-auto lg:inline-grid">
           <TabsTrigger value="dialer" className="flex items-center gap-2">
             <Phone className="h-4 w-4" />
             <span className="hidden sm:inline">Make Call</span>
@@ -94,6 +95,10 @@ export const CallCenterPage = () => {
           <TabsTrigger value="search" className="flex items-center gap-2">
             <Search className="h-4 w-4" />
             <span className="hidden sm:inline">Search Users</span>
+          </TabsTrigger>
+          <TabsTrigger value="contacts" className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4" />
+            <span className="hidden sm:inline">Driver Contacts</span>
           </TabsTrigger>
           <TabsTrigger value="conferences" className="flex items-center gap-2">
             <Radio className="h-4 w-4" />
@@ -126,6 +131,10 @@ export const CallCenterPage = () => {
             onInitiateCall={initiateCall}
             isLoading={isLoading}
           />
+        </TabsContent>
+
+        <TabsContent value="contacts">
+          <OutreachContactsPanel onInitiateCall={initiateCall} isLoading={isLoading} />
         </TabsContent>
 
         <TabsContent value="conferences">

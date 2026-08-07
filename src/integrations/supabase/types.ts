@@ -3089,6 +3089,60 @@ export type Database = {
           },
         ]
       }
+      outreach_contacts: {
+        Row: {
+          contact_type: string
+          converted_user_id: string | null
+          country_code: string | null
+          created_at: string
+          created_by: string | null
+          full_name: string
+          id: string
+          last_contacted_at: string | null
+          notes: string | null
+          phone_e164: string | null
+          raw_phone: string
+          region: string | null
+          source: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          contact_type?: string
+          converted_user_id?: string | null
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          full_name: string
+          id?: string
+          last_contacted_at?: string | null
+          notes?: string | null
+          phone_e164?: string | null
+          raw_phone: string
+          region?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          contact_type?: string
+          converted_user_id?: string | null
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          full_name?: string
+          id?: string
+          last_contacted_at?: string | null
+          notes?: string | null
+          phone_e164?: string | null
+          raw_phone?: string
+          region?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       owner_earnings: {
         Row: {
           amount: number
