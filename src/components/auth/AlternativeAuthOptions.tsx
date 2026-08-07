@@ -12,7 +12,10 @@ import { runPreflight } from '@/lib/verification-preflight';
 
 type Role = 'driver' | 'owner';
 
-export function AlternativeAuthOptions({ defaultRole = 'driver' as Role }) {
+export function AlternativeAuthOptions({
+  defaultRole = 'driver' as Role,
+  showPhone = true,
+}: { defaultRole?: Role; showPhone?: boolean }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [phoneOpen, setPhoneOpen] = useState(false);
   const [googleFailure, setGoogleFailure] = useState<ClassifiedFailure | null>(null);
