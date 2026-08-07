@@ -20,8 +20,11 @@ interface OutreachContact {
   region: string | null;
   source: string | null;
   notes: string | null;
+  email?: string | null;
+  signup_role?: string | null;
   last_contacted_at: string | null;
 }
+
 
 const STATUSES = [
   'prospect',
