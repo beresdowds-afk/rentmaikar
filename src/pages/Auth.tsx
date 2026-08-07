@@ -568,7 +568,32 @@ const Auth = () => {
                   </Alert>
                 )}
 
-                
+                {/* Choose how to sign in: password or a one-time SMS code. */}
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="Sign-in method">
+                  <Button
+                    type="button"
+                    variant={loginMethod === 'email' ? 'default' : 'outline'}
+                    onClick={() => setLoginMethod('email')}
+                    data-testid="login-method-email"
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Email
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={loginMethod === 'phone' ? 'default' : 'outline'}
+                    onClick={() => setLoginMethod('phone')}
+                    data-testid="login-method-phone"
+                  >
+                    <Smartphone className="h-4 w-4 mr-2" />
+                    Phone OTP
+                  </Button>
+                </div>
+
+                {loginMethod === 'phone' ? (
+                  <PhoneOtpPanel mode="signin" defaultRole="driver" />
+                ) : (
+                  <>
                 <div className="space-y-2">
                   <Label htmlFor="login-email">Email</Label>
                   <Input
@@ -611,8 +636,11 @@ const Auth = () => {
                     <p className="text-sm text-destructive">{loginForm.formState.errors.password.message}</p>
                   )}
                 </div>
+                  </>
+                )}
 
                 <AlternativeAuthOptions defaultRole="driver" />
+
               </CardContent>
               
               <CardFooter>
