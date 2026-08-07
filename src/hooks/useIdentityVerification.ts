@@ -115,6 +115,21 @@ export function useIdentityVerification() {
     };
   }, [user, qc]);
 
+  // Platform switch: when an admin disables Persona, every gate reading this
+  // hook must behave as if verification already passed.
+  if (!persona.isLoading && !persona.enabled && !!user) {
+    return {
+      ...query,
+      isLoading: false,
+      data: { ...DEFAULT, ...(query.data ?? {}), authenticated: true, is_verified: true },
+    } as typeof query;
+  }
+
+  if (persona.isLoading) {
+    return { ...query, isLoading: true } as typeof query;
+  }
+
   return query;
+
 }
 
