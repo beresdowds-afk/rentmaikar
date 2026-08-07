@@ -14,6 +14,8 @@ import { logVerificationEvent, newCorrelationId, reportVerificationFailure } fro
 import { withRetry } from "@/lib/verification-retry";
 import { runPreflight } from "@/lib/verification-preflight";
 import { saveVerificationSession, clearVerificationSession } from "@/hooks/useVerificationResume";
+import { usePersonaEnabled } from "@/hooks/usePersonaEnabled";
+
 
 interface Props {
   subject?: "self" | "referee";
