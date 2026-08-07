@@ -641,7 +641,7 @@ const Auth = () => {
                   </>
                 )}
 
-                <AlternativeAuthOptions defaultRole="driver" />
+                <AlternativeAuthOptions defaultRole="driver" showPhone={loginMethod === 'email'} />
 
               </CardContent>
               
