@@ -2,7 +2,9 @@ import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePersonaEnabled } from '@/hooks/usePersonaEnabled';
 import { toast } from 'sonner';
+
 
 
 export type PersonaStatus =
@@ -52,6 +54,8 @@ const DEFAULT: IdentityVerification = {
 export function useIdentityVerification() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const persona = usePersonaEnabled();
+
   const lastStatusRef = useRef<PersonaStatus | null>(null);
 
   const query = useQuery({
@@ -111,6 +115,21 @@ export function useIdentityVerification() {
     };
   }, [user, qc]);
 
+  // Platform switch: when an admin disables Persona, every gate reading this
+  // hook must behave as if verification already passed.
+  if (!persona.isLoading && !persona.enabled && !!user) {
+    return {
+      ...query,
+      isLoading: false,
+      data: { ...DEFAULT, ...(query.data ?? {}), authenticated: true, is_verified: true },
+    } as typeof query;
+  }
+
+  if (persona.isLoading) {
+    return { ...query, isLoading: true } as typeof query;
+  }
+
   return query;
+
 }
 

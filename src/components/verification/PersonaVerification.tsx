@@ -14,6 +14,8 @@ import { logVerificationEvent, newCorrelationId, reportVerificationFailure } fro
 import { withRetry } from "@/lib/verification-retry";
 import { runPreflight } from "@/lib/verification-preflight";
 import { saveVerificationSession, clearVerificationSession } from "@/hooks/useVerificationResume";
+import { usePersonaEnabled } from "@/hooks/usePersonaEnabled";
+
 
 interface Props {
   subject?: "self" | "referee";
@@ -67,6 +69,8 @@ export default function PersonaVerification({
 }: Props) {
   const { country } = useRegion();
   const { user } = useAuth();
+  const personaSwitch = usePersonaEnabled();
+
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [fallbackOpen, setFallbackOpen] = useState(false);
@@ -289,7 +293,20 @@ export default function PersonaVerification({
     await launchInquiry(merged as Record<string, string>);
   }
 
+  // Platform switch is off: identity verification is not required right now.
+  if (!personaSwitch.isLoading && !personaSwitch.enabled) {
+    return (
+      <Alert>
+        <CheckCircle2 className="h-4 w-4 text-green-600" />
+        <AlertDescription>
+          Identity verification is currently not required. You can continue without it.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   if (done) {
+
     return (
       <Button variant="outline" disabled className="gap-2">
         <CheckCircle2 className="h-4 w-4 text-green-600" /> Verification submitted
