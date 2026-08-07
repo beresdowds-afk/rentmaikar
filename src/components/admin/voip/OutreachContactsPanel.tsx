@@ -232,7 +232,9 @@ export const OutreachContactsPanel = ({ onInitiateCall, isLoading }: OutreachCon
                   <TableHead>Phone</TableHead>
                   <TableHead>Region</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Signed up as</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
+
                 </TableRow>
               </TableHeader>
               <TableBody>
