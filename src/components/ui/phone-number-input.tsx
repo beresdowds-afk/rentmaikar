@@ -5,7 +5,6 @@ import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import 'react-phone-number-input/style.css';
 import '@/styles/phone-input.css';
 import { cn } from '@/lib/utils';
-import { useDefaultPhoneCountry } from '@/hooks/useDefaultPhoneCountry';
 import { usePhoneExample } from '@/hooks/usePhoneReference';
 
 export interface PhoneNumberInputProps {
@@ -55,7 +54,6 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
     },
     ref,
   ) => {
-    const autoCountry = useDefaultPhoneCountry();
     // No hardcoded country and no implicit region guess: the picker only
     // pre-selects a country when the caller asks for one explicitly, or when
     // the value itself carries a dialing code. Otherwise it stays neutral so
@@ -72,7 +70,6 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
     const [country, setCountry] = React.useState<Country | undefined>(
       parsedFromValue ?? resolvedDefault,
     );
-    void autoCountry;
 
     // If the value or the resolved default changes (e.g. RegionContext
     // switches, or the async profile lookup lands), reconcile the picker.
