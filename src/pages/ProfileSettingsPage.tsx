@@ -303,9 +303,12 @@ export default function ProfileSettingsPage() {
             </CardContent>
           </Card>
 
+          <RoleSwitchCard />
+
           <PersonaNotificationPreference />
 
           <ApplicationAppealPanel />
+
 
 
           <PWASettingsPanel />
