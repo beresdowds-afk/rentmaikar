@@ -29,13 +29,19 @@ class ErrorBoundary extends Component<Props, State> {
     reportError(error, "critical", "ErrorBoundary", {
       componentStack: errorInfo.componentStack?.slice(0, 1000),
     });
+
+    // A stale cached index.html pointing at deleted asset chunks makes lazy
+    // routes throw "Failed to fetch dynamically imported module". Self-heal
+    // once by evicting caches/service workers and reloading fresh.
+    if (isStaleBundleError(error) && !sessionStorage.getItem(RECOVERY_KEY)) {
+      sessionStorage.setItem(RECOVERY_KEY, "1");
+      void hardReload();
+    }
   }
 
   handleRetry = () => {
-
-window.location.reload();
-
-};
+    void hardReload();
+  };
   handleGoHome = () => {
     window.location.href = "/";
   };
