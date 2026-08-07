@@ -12,7 +12,24 @@ import { registerPWA } from "./pwa/register";
 import "./services";
 import "./plugins";
 
-import ErrorBoundary from "./components/errors/ErrorBoundary";
+import ErrorBoundary, { hardReload, isStaleBundleError } from "./components/errors/ErrorBoundary";
+
+// Vite fires this when a lazy chunk referenced by a stale HTML shell 404s.
+window.addEventListener("vite:preloadError", (event) => {
+  event.preventDefault();
+  if (!sessionStorage.getItem("rmk_bundle_recovery")) {
+    sessionStorage.setItem("rmk_bundle_recovery", "1");
+    void hardReload();
+  }
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  if (isStaleBundleError(event.reason) && !sessionStorage.getItem("rmk_bundle_recovery")) {
+    sessionStorage.setItem("rmk_bundle_recovery", "1");
+    void hardReload();
+  }
+});
+
 
 
 // Initialize monitoring before React starts
