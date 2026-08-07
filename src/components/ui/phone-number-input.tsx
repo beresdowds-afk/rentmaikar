@@ -56,9 +56,11 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
     ref,
   ) => {
     const autoCountry = useDefaultPhoneCountry();
-    // No hardcoded fallback: when neither the caller nor the user's
-    // region/profile resolves a country, the picker stays neutral.
-    const resolvedDefault: Country | undefined = defaultCountry ?? autoCountry;
+    // No hardcoded country and no implicit region guess: the picker only
+    // pre-selects a country when the caller asks for one explicitly, or when
+    // the value itself carries a dialing code. Otherwise it stays neutral so
+    // no flag or calling code is filled in for the user.
+    const resolvedDefault: Country | undefined = defaultCountry;
 
     // Track the picker's current country so the flag/IDD stay consistent with
     // both the value AND the resolved default when it changes asynchronously.
@@ -70,6 +72,7 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
     const [country, setCountry] = React.useState<Country | undefined>(
       parsedFromValue ?? resolvedDefault,
     );
+    void autoCountry;
 
     // If the value or the resolved default changes (e.g. RegionContext
     // switches, or the async profile lookup lands), reconcile the picker.
