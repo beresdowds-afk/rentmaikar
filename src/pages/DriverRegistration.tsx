@@ -538,19 +538,40 @@ const DriverRegistration = () => {
                         )}
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`referee${num}Address`}>Residential Address</Label>
-                      <Input
-                        id={`referee${num}Address`}
-                        placeholder="Full residential address"
-                        {...register(`referee${num}Address` as keyof DriverFormData)}
-                      />
-                      {errors[`referee${num}Address` as keyof typeof errors] && (
-                        <p className="text-destructive text-sm">
-                          {errors[`referee${num}Address` as keyof typeof errors]?.message}
-                        </p>
-                      )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor={`referee${num}Address`}>
+                          Residential Address <span className="text-muted-foreground">(optional)</span>
+                        </Label>
+                        <Input
+                          id={`referee${num}Address`}
+                          placeholder="Full residential address"
+                          {...register(`referee${num}Address` as keyof DriverFormData)}
+                        />
+                        {errors[`referee${num}Address` as keyof typeof errors] && (
+                          <p className="text-destructive text-sm">
+                            {errors[`referee${num}Address` as keyof typeof errors]?.message}
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`referee${num}Email`}>
+                          Email <span className="text-muted-foreground">(optional)</span>
+                        </Label>
+                        <Input
+                          id={`referee${num}Email`}
+                          type="email"
+                          placeholder="referee@example.com"
+                          {...register(`referee${num}Email` as keyof DriverFormData)}
+                        />
+                        {errors[`referee${num}Email` as keyof typeof errors] && (
+                          <p className="text-destructive text-sm">
+                            {errors[`referee${num}Email` as keyof typeof errors]?.message}
+                          </p>
+                        )}
+                      </div>
                     </div>
+
                   </div>
                 ))}
               </div>
