@@ -58,17 +58,22 @@ const driverSchema = z.object({
   hasDriverLicense: z.boolean().refine(val => val, "Driver license is required"),
   // Referee 1 — phones must be E.164; the DB enforces this with a trigger, so
   // validate here to surface an inline error instead of a failed submission.
+  // Home address and email are optional.
   referee1Name: z.string().min(2, "Referee 1 name is required").max(100, "Name too long"),
   referee1Phone: refereePhone("Referee 1"),
-  referee1Address: z.string().min(5, "Referee 1 address is required").max(200, "Address too long"),
+  referee1Address: z.string().max(200, "Address too long").optional().or(z.literal("")),
+  referee1Email: z.string().email("Invalid email address").max(255).optional().or(z.literal("")),
   // Referee 2
   referee2Name: z.string().min(2, "Referee 2 name is required").max(100, "Name too long"),
   referee2Phone: refereePhone("Referee 2"),
-  referee2Address: z.string().min(5, "Referee 2 address is required").max(200, "Address too long"),
+  referee2Address: z.string().max(200, "Address too long").optional().or(z.literal("")),
+  referee2Email: z.string().email("Invalid email address").max(255).optional().or(z.literal("")),
   // Referee 3
   referee3Name: z.string().min(2, "Referee 3 name is required").max(100, "Name too long"),
   referee3Phone: refereePhone("Referee 3"),
-  referee3Address: z.string().min(5, "Referee 3 address is required").max(200, "Address too long"),
+  referee3Address: z.string().max(200, "Address too long").optional().or(z.literal("")),
+  referee3Email: z.string().email("Invalid email address").max(255).optional().or(z.literal("")),
+
   // Security deposit acknowledgment
   securityDepositAcknowledged: z.boolean().refine(val => val, "You must acknowledge the security deposit requirement"),
   agreeTerms: z.boolean().refine(val => val, "You must agree to Terms of Service"),
