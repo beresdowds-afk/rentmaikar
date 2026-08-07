@@ -121,7 +121,8 @@ export default function ProfileSettingsPage() {
       let newPhone: string | null = null;
       if (parsed.data.phone) {
         try {
-          const expected = country === 'Nigeria' ? 'NG' : 'US';
+          // No hardcoded region: fall back to the number's own country code.
+          const expected = regionToDefaultCountry(country);
           newPhone = normalizeToE164(parsed.data.phone, expected).e164;
         } catch (err) {
           const message = err instanceof PhoneValidationError ? err.message : 'Invalid phone number.';

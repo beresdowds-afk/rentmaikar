@@ -151,7 +151,6 @@ const DriverRegistration = () => {
   } = useForm<DriverFormData>({
     resolver: zodResolver(driverSchema),
     defaultValues: {
-      phoneCountry: "us",
       country: "usa",
       rideshareApproval: [],
       hasDriverLicense: false,
