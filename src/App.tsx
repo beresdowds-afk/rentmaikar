@@ -144,6 +144,8 @@ const App = () => (
                   <Routes>
 
                     <Route path="/" element={<Index />} />
+                    <Route path="/index" element={<Navigate to="/" replace />} />
+                    <Route path="/home" element={<Navigate to="/" replace />} />
                     <Route path="/auth" element={<Auth />} />
                 
                   <Route path="/reset-password" element={<ResetPassword />} />
