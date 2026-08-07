@@ -90,7 +90,7 @@ export function AlternativeAuthOptions({
           <span className="bg-card px-2 text-muted-foreground uppercase">Or continue with</span>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className={showPhone ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-1 gap-2'}>
         <Button
           type="button"
           variant="outline"
@@ -107,11 +107,14 @@ export function AlternativeAuthOptions({
           )}
           Google
         </Button>
-        <Button type="button" variant="outline" onClick={() => setPhoneOpen(true)}>
-          <Smartphone className="h-4 w-4 mr-2" />
-          Phone
-        </Button>
+        {showPhone && (
+          <Button type="button" variant="outline" onClick={() => setPhoneOpen(true)}>
+            <Smartphone className="h-4 w-4 mr-2" />
+            Phone
+          </Button>
+        )}
       </div>
+
 
       {googleFailure && (
         <div data-testid="google-sso-error" role="alert">
