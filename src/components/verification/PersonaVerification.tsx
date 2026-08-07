@@ -293,7 +293,20 @@ export default function PersonaVerification({
     await launchInquiry(merged as Record<string, string>);
   }
 
+  // Platform switch is off: identity verification is not required right now.
+  if (!personaSwitch.isLoading && !personaSwitch.enabled) {
+    return (
+      <Alert>
+        <CheckCircle2 className="h-4 w-4 text-green-600" />
+        <AlertDescription>
+          Identity verification is currently not required. You can continue without it.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   if (done) {
+
     return (
       <Button variant="outline" disabled className="gap-2">
         <CheckCircle2 className="h-4 w-4 text-green-600" /> Verification submitted
