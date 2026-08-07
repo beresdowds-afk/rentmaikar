@@ -4,15 +4,18 @@ import flags from 'react-phone-number-input/flags';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import 'react-phone-number-input/style.css';
 import '@/styles/phone-input.css';
+import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useDefaultPhoneCountry } from '@/hooks/useDefaultPhoneCountry';
 import { usePhoneExample } from '@/hooks/usePhoneReference';
 
 export interface PhoneNumberInputProps {
   /** E.164 value, e.g. "+2348012345678". */
   value?: string;
   onChange: (value: string) => void;
-  /** Default ISO country when the value doesn't yet include a calling code. */
+  /**
+   * Default ISO country when the value doesn't yet include a calling code.
+   * Leave undefined to show a neutral picker with no pre-filled dialing code.
+   */
   defaultCountry?: Country;
   /** Notified whenever the flag/country picker changes. */
   onCountryChange?: (country: Country | undefined) => void;
@@ -52,8 +55,11 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
     },
     ref,
   ) => {
-    const autoCountry = useDefaultPhoneCountry();
-    const resolvedDefault: Country = defaultCountry ?? autoCountry;
+    // No hardcoded country and no implicit region guess: the picker only
+    // pre-selects a country when the caller asks for one explicitly, or when
+    // the value itself carries a dialing code. Otherwise it stays neutral so
+    // no flag or calling code is filled in for the user.
+    const resolvedDefault: Country | undefined = defaultCountry;
 
     // Track the picker's current country so the flag/IDD stay consistent with
     // both the value AND the resolved default when it changes asynchronously.
@@ -74,9 +80,11 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [parsedFromValue, resolvedDefault]);
 
-    const example = usePhoneExample(country ?? resolvedDefault);
+    const active = country ?? resolvedDefault;
+    const example = usePhoneExample(active);
     const effectivePlaceholder =
-      placeholder ?? (example ? `e.g. ${example}` : 'Enter phone number');
+      placeholder ??
+      (active && example ? `e.g. ${example}` : 'Select country, then enter your number');
 
     return (
       <PhoneInputBase
@@ -84,11 +92,13 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
         countryCallingCodeEditable={false}
         country={country}
         defaultCountry={resolvedDefault}
+        addInternationalOption
         onCountryChange={(c) => {
           setCountry(c as Country | undefined);
           onCountryChange?.(c as Country | undefined);
         }}
         flags={flags}
+        internationalIcon={() => <Globe className="h-4 w-4 text-muted-foreground" aria-hidden />}
         value={value || undefined}
         onChange={(v) => onChange((v as string) || '')}
         disabled={disabled}

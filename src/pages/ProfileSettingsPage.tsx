@@ -27,6 +27,7 @@ import { z } from 'zod';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { normalizeToE164, PhoneValidationError } from '@/lib/phone-normalize';
 import AddPhoneNumberCard from '@/components/auth/AddPhoneNumberCard';
+import { regionToDefaultCountry } from '@/hooks/useDefaultPhoneCountry';
 
 
 const nameSchema = z.object({
@@ -120,7 +121,8 @@ export default function ProfileSettingsPage() {
       let newPhone: string | null = null;
       if (parsed.data.phone) {
         try {
-          const expected = country === 'Nigeria' ? 'NG' : 'US';
+          // No hardcoded region: fall back to the number's own country code.
+          const expected = regionToDefaultCountry(country);
           newPhone = normalizeToE164(parsed.data.phone, expected).e164;
         } catch (err) {
           const message = err instanceof PhoneValidationError ? err.message : 'Invalid phone number.';
@@ -278,7 +280,7 @@ export default function ProfileSettingsPage() {
                   id="phone"
                   value={phone}
                   onChange={setPhone}
-                  defaultCountry={country === 'Nigeria' ? 'NG' : 'US'}
+                  defaultCountry={regionToDefaultCountry(country)}
                   disabled={loading || saving}
                   autoComplete="tel"
                   placeholder="Enter phone number"

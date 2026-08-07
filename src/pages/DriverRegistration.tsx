@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,6 +21,8 @@ import { classifyRegistrationError, type FriendlyRegistrationError } from "@/lib
 import { RegistrationErrorAlert } from "@/components/registration/RegistrationErrorAlert";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePersonaEnabled } from "@/hooks/usePersonaEnabled";
+import { refereeDetailsRequired } from "@/lib/referee-requirements";
 
 /** Phone field that must parse to a valid international (E.164) number. */
 const toE164 = (v: string) => {
@@ -38,7 +40,22 @@ const refereePhone = (label: string) =>
       return !!p && p.isValid();
     }, `Enter ${label}'s phone with country code, e.g. +2348012345678`);
 
-const driverSchema = z.object({
+/**
+ * Referee address/email are conditionally required — see
+ * `refereeDetailsRequired()`. `detailsRequired` is driven by the admin's
+ * identity-gating switch plus the application type.
+ */
+const buildDriverSchema = (detailsRequired: boolean) => {
+  const refereeAddress = (label: string) =>
+    detailsRequired
+      ? z.string().min(5, `${label} home address is required`).max(200, "Address too long")
+      : z.string().max(200, "Address too long").optional().or(z.literal(""));
+  const refereeEmail = (label: string) =>
+    detailsRequired
+      ? z.string().min(1, `${label} email is required`).email("Invalid email address").max(255)
+      : z.string().email("Invalid email address").max(255).optional().or(z.literal(""));
+
+  return z.object({
   firstName: z.string().min(2, "First name is required").max(50, "First name too long"),
   lastName: z.string().min(2, "Last name is required").max(50, "Last name too long"),
   email: z.string().email("Invalid email address").max(255, "Email too long"),
@@ -58,21 +75,21 @@ const driverSchema = z.object({
   hasDriverLicense: z.boolean().refine(val => val, "Driver license is required"),
   // Referee 1 — phones must be E.164; the DB enforces this with a trigger, so
   // validate here to surface an inline error instead of a failed submission.
-  // Home address and email are optional.
+  // Home address and email are conditionally required.
   referee1Name: z.string().min(2, "Referee 1 name is required").max(100, "Name too long"),
   referee1Phone: refereePhone("Referee 1"),
-  referee1Address: z.string().max(200, "Address too long").optional().or(z.literal("")),
-  referee1Email: z.string().email("Invalid email address").max(255).optional().or(z.literal("")),
+  referee1Address: refereeAddress("Referee 1"),
+  referee1Email: refereeEmail("Referee 1"),
   // Referee 2
   referee2Name: z.string().min(2, "Referee 2 name is required").max(100, "Name too long"),
   referee2Phone: refereePhone("Referee 2"),
-  referee2Address: z.string().max(200, "Address too long").optional().or(z.literal("")),
-  referee2Email: z.string().email("Invalid email address").max(255).optional().or(z.literal("")),
+  referee2Address: refereeAddress("Referee 2"),
+  referee2Email: refereeEmail("Referee 2"),
   // Referee 3
   referee3Name: z.string().min(2, "Referee 3 name is required").max(100, "Name too long"),
   referee3Phone: refereePhone("Referee 3"),
-  referee3Address: z.string().max(200, "Address too long").optional().or(z.literal("")),
-  referee3Email: z.string().email("Invalid email address").max(255).optional().or(z.literal("")),
+  referee3Address: refereeAddress("Referee 3"),
+  referee3Email: refereeEmail("Referee 3"),
 
   // Security deposit acknowledgment
   securityDepositAcknowledged: z.boolean().refine(val => val, "You must acknowledge the security deposit requirement"),
@@ -80,9 +97,10 @@ const driverSchema = z.object({
   agreePrivacy: z.boolean().refine(val => val, "You must agree to Privacy Policy"),
   agreeIoT: z.boolean().refine(val => val, "You must consent to IoT tracking"),
   agreeFees: z.boolean().refine(val => val, "You must acknowledge the late payment and default policy"),
-});
+  });
+};
 
-type DriverFormData = z.infer<typeof driverSchema>;
+type DriverFormData = z.infer<ReturnType<typeof buildDriverSchema>>;
 
 const usaCities = [
   "Washington DC",
@@ -114,6 +132,15 @@ const DriverRegistration = () => {
   // password) and reuse the session so we don't create a duplicate account.
   const alreadySignedIn = !!user;
 
+  // Referee address/email are only mandatory while the admin keeps identity
+  // (Persona) gating switched on for an application type that needs vetting.
+  const { enabled: personaEnabled } = usePersonaEnabled();
+  const refereeDetailsMandatory = refereeDetailsRequired(personaEnabled, "driver");
+  const driverSchema = useMemo(
+    () => buildDriverSchema(refereeDetailsMandatory),
+    [refereeDetailsMandatory],
+  );
+
   const {
     register,
     handleSubmit,
@@ -124,7 +151,6 @@ const DriverRegistration = () => {
   } = useForm<DriverFormData>({
     resolver: zodResolver(driverSchema),
     defaultValues: {
-      phoneCountry: "us",
       country: "usa",
       rideshareApproval: [],
       hasDriverLicense: false,
@@ -498,7 +524,8 @@ const DriverRegistration = () => {
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   Please provide details for three referees who can vouch for your character.
-                  Name and phone number are required — home address and email are optional.
+                  Name and phone number are always required — home address and email are{" "}
+                  {refereeDetailsMandatory ? "also required for identity verification" : "optional"}.
 
                 </p>
 
@@ -543,7 +570,10 @@ const DriverRegistration = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label htmlFor={`referee${num}Address`}>
-                          Residential Address <span className="text-muted-foreground">(optional)</span>
+                          Residential Address{" "}
+                          {!refereeDetailsMandatory && (
+                            <span className="text-muted-foreground">(optional)</span>
+                          )}
                         </Label>
                         <Input
                           id={`referee${num}Address`}
@@ -558,7 +588,10 @@ const DriverRegistration = () => {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor={`referee${num}Email`}>
-                          Email <span className="text-muted-foreground">(optional)</span>
+                          Email{" "}
+                          {!refereeDetailsMandatory && (
+                            <span className="text-muted-foreground">(optional)</span>
+                          )}
                         </Label>
                         <Input
                           id={`referee${num}Email`}

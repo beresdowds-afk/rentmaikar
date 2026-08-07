@@ -113,7 +113,6 @@ const OwnerRegistration = () => {
   } = useForm<OwnerFormData>({
     resolver: zodResolver(createOwnerSchema(currentCountry)),
     defaultValues: {
-      phoneCountry: "us",
       country: "usa",
       hasRegistration: false,
       hasInsurance: false,
@@ -365,7 +364,7 @@ const OwnerRegistration = () => {
                     render={({ field }) => (
                       <PhoneNumberInput
                         id="owner-phone"
-                        defaultCountry={currentCountry === 'nigeria' ? 'NG' : 'US'}
+                        defaultCountry={currentCountry === 'nigeria' ? 'NG' : currentCountry === 'usa' ? 'US' : undefined}
                         value={field.value}
                         onChange={(v) => {
                           field.onChange(v);
