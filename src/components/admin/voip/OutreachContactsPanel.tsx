@@ -266,6 +266,16 @@ export const OutreachContactsPanel = ({ onInitiateCall, isLoading }: OutreachCon
                         </SelectContent>
                       </Select>
                     </TableCell>
+                    <TableCell>
+                      {contact.signup_role ? (
+                        <Badge variant="outline" className="capitalize">
+                          {contact.signup_role === 'owner' ? 'Vehicle owner' : 'Driver'}
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
