@@ -58,6 +58,8 @@ import { VehiclePickupManagement } from "@/components/admin/VehiclePickupManagem
 import { ApplicationManagement } from "@/components/admin/ApplicationManagement";
 import { AdminAssistantManagement } from "@/components/admin/AdminAssistantManagement";
 import { PhoneOtpProviderSettings } from "@/components/admin/PhoneOtpProviderSettings";
+import { PersonaVerificationSettings } from "@/components/admin/PersonaVerificationSettings";
+
 import { PortalNavigation, type PortalType } from "@/components/admin/PortalNavigation";
 import { AdminNotificationsBell } from "@/components/admin/AdminNotificationsBell";
 
