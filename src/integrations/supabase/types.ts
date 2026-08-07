@@ -720,12 +720,15 @@ export type Database = {
           recovery_status: string
           recycle_count: number
           referee1_address: string | null
+          referee1_email: string | null
           referee1_name: string | null
           referee1_phone: string | null
           referee2_address: string | null
+          referee2_email: string | null
           referee2_name: string | null
           referee2_phone: string | null
           referee3_address: string | null
+          referee3_email: string | null
           referee3_name: string | null
           referee3_phone: string | null
           referees_verification_status: string
@@ -774,12 +777,15 @@ export type Database = {
           recovery_status?: string
           recycle_count?: number
           referee1_address?: string | null
+          referee1_email?: string | null
           referee1_name?: string | null
           referee1_phone?: string | null
           referee2_address?: string | null
+          referee2_email?: string | null
           referee2_name?: string | null
           referee2_phone?: string | null
           referee3_address?: string | null
+          referee3_email?: string | null
           referee3_name?: string | null
           referee3_phone?: string | null
           referees_verification_status?: string
@@ -828,12 +834,15 @@ export type Database = {
           recovery_status?: string
           recycle_count?: number
           referee1_address?: string | null
+          referee1_email?: string | null
           referee1_name?: string | null
           referee1_phone?: string | null
           referee2_address?: string | null
+          referee2_email?: string | null
           referee2_name?: string | null
           referee2_phone?: string | null
           referee3_address?: string | null
+          referee3_email?: string | null
           referee3_name?: string | null
           referee3_phone?: string | null
           referees_verification_status?: string
