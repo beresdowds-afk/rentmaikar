@@ -4,6 +4,7 @@ import flags from 'react-phone-number-input/flags';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import 'react-phone-number-input/style.css';
 import '@/styles/phone-input.css';
+import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePhoneExample } from '@/hooks/usePhoneReference';
 
@@ -97,6 +98,7 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
           onCountryChange?.(c as Country | undefined);
         }}
         flags={flags}
+        internationalIcon={() => <Globe className="h-4 w-4 text-muted-foreground" aria-hidden />}
         value={value || undefined}
         onChange={(v) => onChange((v as string) || '')}
         disabled={disabled}
