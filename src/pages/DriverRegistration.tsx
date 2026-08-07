@@ -497,7 +497,9 @@ const DriverRegistration = () => {
                   Referees (3 Required)
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Please provide details for three referees who can vouch for your character
+                  Please provide details for three referees who can vouch for your character.
+                  Name and phone number are required — home address and email are optional.
+
                 </p>
 
                 {[1, 2, 3].map((num) => (
