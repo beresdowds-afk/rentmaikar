@@ -148,7 +148,9 @@ function PhoneOtpDialog({
   const [code, setCode] = useState('');
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [provider, setProvider] = useState<Provider>('supabase');
+  // Default to the custom Twilio/Termii pipeline: Supabase-native phone auth
+  // is not provisioned for this project, so it would fail silently.
+  const [provider, setProvider] = useState<Provider>('custom');
   const { remaining, canSend, trigger } = useResendCooldown('sms', phone);
 
   useEffect(() => {
@@ -164,6 +166,25 @@ function PhoneOtpDialog({
     })();
   }, [open]);
 
+  /** Surface the real edge function error instead of "non-2xx status code". */
+  const invokeOtp = async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke('phone-otp-custom', { body });
+    if (error) {
+      let detail = error.message;
+      const ctx = (error as { context?: Response }).context;
+      if (ctx && typeof ctx.text === 'function') {
+        try {
+          const raw = await ctx.text();
+          const parsed = JSON.parse(raw);
+          detail = parsed?.error ?? raw ?? detail;
+        } catch { /* keep default message */ }
+      }
+      throw new Error(detail);
+    }
+    if ((data as any)?.error) throw new Error((data as any).error);
+    return data as any;
+  };
+
   const sendCode = async () => {
     if (!phone.startsWith('+') || phone.length < 8) {
       toast.error('Enter your phone in international format (e.g. +15551234567)');
@@ -174,16 +195,13 @@ function PhoneOtpDialog({
     try {
       await trigger(async () => {
         if (provider === 'custom') {
-          const { data, error } = await supabase.functions.invoke('phone-otp-custom', {
-            body: { action: 'send', phone },
-          });
-          if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
+          await invokeOtp({ action: 'send', phone });
         } else {
           const { error } = await supabase.auth.signInWithOtp({ phone });
           if (error) throw error;
         }
       });
-      toast.success('Verification code sent');
+      toast.success(`Verification code sent to ${phone}`);
       setStep('code');
     } catch (e) {
       toast.error((e as Error).message || 'Could not send code');
@@ -197,14 +215,16 @@ function PhoneOtpDialog({
     setVerifying(true);
     try {
       if (provider === 'custom') {
-        const { data, error } = await supabase.functions.invoke('phone-otp-custom', {
-          body: { action: 'verify', phone, code, full_name: name, role },
+        const data = await invokeOtp({ action: 'verify', phone, code, full_name: name, role });
+        // Exchange the one-time token for a real session (no password involved).
+        const { error: sessionErr } = await supabase.auth.verifyOtp({
+          token_hash: data.token_hash as string,
+          type: 'email',
         });
-        if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
-        const tempPassword = (data as any).temp_password as string;
-        // Sign in using the returned temporary password
-        const { error: signInErr } = await supabase.auth.signInWithPassword({ phone, password: tempPassword });
-        if (signInErr) throw signInErr;
+        if (sessionErr) throw sessionErr;
+        if (data.is_new_user && name) {
+          await supabase.from('profiles').update({ full_name: name }).eq('user_id', data.user_id);
+        }
       } else {
         const { data, error } = await supabase.auth.verifyOtp({ phone, token: code, type: 'sms' });
         if (error) throw error;
@@ -217,7 +237,7 @@ function PhoneOtpDialog({
             console.warn('Role assignment after phone sign-in failed:', roleErr);
           }
           if (name) {
-            await supabase.from('profiles').update({ full_name: name }).eq('id', data.user.id);
+            await supabase.from('profiles').update({ full_name: name }).eq('user_id', data.user.id);
           }
         }
       }
@@ -228,6 +248,7 @@ function PhoneOtpDialog({
     } finally {
       setVerifying(false);
     }
+
   };
 
   return (
