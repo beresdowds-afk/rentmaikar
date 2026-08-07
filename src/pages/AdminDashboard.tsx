@@ -633,9 +633,11 @@ const AdminDashboard = () => {
               {activeTab === 'admin-assistants' && (
                 <div className="space-y-6">
                   <AdminAssistantManagement />
+                  <PersonaVerificationSettings />
                   <PhoneOtpProviderSettings />
                 </div>
               )}
+
               {activeTab === 'negotiations' && <AdminPriceNegotiation />}
               {activeTab === 'approvals' && (
                 <Card className="p-6">
