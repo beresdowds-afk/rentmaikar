@@ -14,7 +14,8 @@ import { AlternativeAuthOptions } from '@/components/auth/AlternativeAuthOptions
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, AlertCircle, User, Users, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
+import { Loader2, AlertCircle, User, Users, ArrowLeft, Mail, CheckCircle, Smartphone } from 'lucide-react';
+import PhoneOtpPanel from '@/components/auth/PhoneOtpPanel';
 import { toast } from 'sonner';
 import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
 import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
@@ -68,6 +69,7 @@ const Auth = () => {
   const [unverifiedEmail, setUnverifiedEmail] = useState<string>('');
   const [activeTab, setActiveTab] = useState('login');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [showLoginRecovery, setShowLoginRecovery] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
 
