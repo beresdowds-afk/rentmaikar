@@ -305,7 +305,10 @@ export default function ProfileSettingsPage() {
             </CardContent>
           </Card>
 
+          <AddPhoneNumberCard />
+
           <RoleSwitchCard />
+
 
           <PersonaNotificationPreference />
 
