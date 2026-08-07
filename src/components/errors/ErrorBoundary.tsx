@@ -3,6 +3,35 @@ import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { reportError } from "@/lib/error-monitor";
 
+const RECOVERY_KEY = "rmk_bundle_recovery";
+
+/** Detects crashes caused by a stale HTML shell referencing deleted chunks. */
+export function isStaleBundleError(error: unknown): boolean {
+  const msg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  return /dynamically imported module|Importing a module script failed|ChunkLoadError|Loading chunk|Failed to fetch dynamically/i.test(
+    msg,
+  );
+}
+
+/** Evict service workers + caches, then reload with a cache-busting param. */
+export async function hardReload() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch {
+    /* best effort */
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.set("_r", Date.now().toString(36));
+  window.location.replace(url.toString());
+}
+
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
@@ -29,13 +58,19 @@ class ErrorBoundary extends Component<Props, State> {
     reportError(error, "critical", "ErrorBoundary", {
       componentStack: errorInfo.componentStack?.slice(0, 1000),
     });
+
+    // A stale cached index.html pointing at deleted asset chunks makes lazy
+    // routes throw "Failed to fetch dynamically imported module". Self-heal
+    // once by evicting caches/service workers and reloading fresh.
+    if (isStaleBundleError(error) && !sessionStorage.getItem(RECOVERY_KEY)) {
+      sessionStorage.setItem(RECOVERY_KEY, "1");
+      void hardReload();
+    }
   }
 
   handleRetry = () => {
-
-window.location.reload();
-
-};
+    void hardReload();
+  };
   handleGoHome = () => {
     window.location.href = "/";
   };
