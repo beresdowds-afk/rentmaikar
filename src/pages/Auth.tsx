@@ -14,7 +14,8 @@ import { AlternativeAuthOptions } from '@/components/auth/AlternativeAuthOptions
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, AlertCircle, User, Users, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
+import { Loader2, AlertCircle, User, Users, ArrowLeft, Mail, CheckCircle, Smartphone } from 'lucide-react';
+import PhoneOtpPanel from '@/components/auth/PhoneOtpPanel';
 import { toast } from 'sonner';
 import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
 import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
@@ -68,6 +69,7 @@ const Auth = () => {
   const [unverifiedEmail, setUnverifiedEmail] = useState<string>('');
   const [activeTab, setActiveTab] = useState('login');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [showLoginRecovery, setShowLoginRecovery] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
 
@@ -568,7 +570,32 @@ const Auth = () => {
                   </Alert>
                 )}
 
-                
+                {/* Choose how to sign in: password or a one-time SMS code. */}
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="Sign-in method">
+                  <Button
+                    type="button"
+                    variant={loginMethod === 'email' ? 'default' : 'outline'}
+                    onClick={() => setLoginMethod('email')}
+                    data-testid="login-method-email"
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Email
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={loginMethod === 'phone' ? 'default' : 'outline'}
+                    onClick={() => setLoginMethod('phone')}
+                    data-testid="login-method-phone"
+                  >
+                    <Smartphone className="h-4 w-4 mr-2" />
+                    Phone OTP
+                  </Button>
+                </div>
+
+                {loginMethod === 'phone' ? (
+                  <PhoneOtpPanel mode="signin" defaultRole="driver" />
+                ) : (
+                  <>
                 <div className="space-y-2">
                   <Label htmlFor="login-email">Email</Label>
                   <Input
@@ -611,22 +638,28 @@ const Auth = () => {
                     <p className="text-sm text-destructive">{loginForm.formState.errors.password.message}</p>
                   )}
                 </div>
+                  </>
+                )}
 
-                <AlternativeAuthOptions defaultRole="driver" />
+                <AlternativeAuthOptions defaultRole="driver" showPhone={loginMethod === 'email'} />
+
               </CardContent>
               
-              <CardFooter>
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Signing in...
-                    </>
-                  ) : (
-                    'Sign In'
-                  )}
-                </Button>
-              </CardFooter>
+              {loginMethod === 'email' && (
+                <CardFooter>
+                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      'Sign In'
+                    )}
+                  </Button>
+                </CardFooter>
+              )}
+
             </form>
           </TabsContent>
 

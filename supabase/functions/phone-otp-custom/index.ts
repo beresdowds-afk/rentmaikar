@@ -134,7 +134,76 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
 
-    if (action === "send") {
+    // Resolve the caller when the request is made from a signed-in session.
+    // Used by the "add a phone number to my existing account" flow.
+    const authedUserId = async (): Promise<string | null> => {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
+      if (!jwt) return null;
+      const { data, error } = await admin.auth.getUser(jwt);
+      if (error) return null;
+      return data?.user?.id ?? null;
+    };
+
+    if (action === "link_send" || action === "link_verify") {
+      const callerId = await authedUserId();
+      if (!callerId) return jsonRes({ error: "You must be signed in to add a phone number." }, 401);
+
+      // The number must not already belong to a different account.
+      const ownerId = await findUserIdByPhone(admin, phone);
+      if (ownerId && ownerId !== callerId) {
+        return jsonRes(
+          { error: "That phone number is already linked to another account." },
+          409,
+        );
+      }
+
+      if (action === "link_verify") {
+        if (!code || typeof code !== "string") return jsonRes({ error: "Missing code" }, 400);
+        const code_hash = await sha256(code);
+        const { data: rows, error: readErr } = await admin
+          .from("phone_otp_codes")
+          .select("*")
+          .eq("phone", phone)
+          .is("consumed_at", null)
+          .gt("expires_at", new Date().toISOString())
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (readErr) throw readErr;
+        const row = rows?.[0];
+        if (!row) return jsonRes({ error: "That code has expired. Please request a new one." }, 400);
+        if ((row.attempts ?? 0) >= 5) {
+          return jsonRes({ error: "Too many incorrect attempts. Request a new code." }, 429);
+        }
+        if (row.code_hash !== code_hash) {
+          await admin.from("phone_otp_codes")
+            .update({ attempts: (row.attempts ?? 0) + 1 }).eq("id", row.id);
+          return jsonRes({ error: "Incorrect code" }, 400);
+        }
+        await admin.from("phone_otp_codes")
+          .update({ consumed_at: new Date().toISOString() }).eq("id", row.id);
+
+        // Attach the verified number to the EXISTING account — no new user,
+        // no new profile, no session change.
+        const { error: updErr } = await admin.auth.admin.updateUserById(callerId, {
+          phone,
+          phone_confirm: true,
+        } as any);
+        if (updErr) throw updErr;
+
+        const { error: profErr } = await admin
+          .from("profiles")
+          .update({ phone, phone_verified: true })
+          .eq("user_id", callerId);
+        if (profErr) console.error("profile phone link failed:", profErr.message);
+
+        return jsonRes({ success: true, linked: true, user_id: callerId });
+      }
+      // link_send falls through to the shared send path below.
+    }
+
+    if (action === "send" || action === "link_send") {
+
       // Rate limit: max 3 in the last 10 minutes per phone.
       const since = new Date(Date.now() - 10 * 60_000).toISOString();
       const { count } = await admin
