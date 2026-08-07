@@ -67,6 +67,8 @@ export default function PersonaVerification({
 }: Props) {
   const { country } = useRegion();
   const { user } = useAuth();
+  const personaSwitch = usePersonaEnabled();
+
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [fallbackOpen, setFallbackOpen] = useState(false);
