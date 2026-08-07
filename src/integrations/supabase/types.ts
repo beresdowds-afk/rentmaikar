@@ -3096,6 +3096,7 @@ export type Database = {
           country_code: string | null
           created_at: string
           created_by: string | null
+          email: string | null
           full_name: string
           id: string
           last_contacted_at: string | null
@@ -3103,6 +3104,7 @@ export type Database = {
           phone_e164: string | null
           raw_phone: string
           region: string | null
+          signup_role: string | null
           source: string | null
           status: string
           updated_at: string
@@ -3113,6 +3115,7 @@ export type Database = {
           country_code?: string | null
           created_at?: string
           created_by?: string | null
+          email?: string | null
           full_name: string
           id?: string
           last_contacted_at?: string | null
@@ -3120,6 +3123,7 @@ export type Database = {
           phone_e164?: string | null
           raw_phone: string
           region?: string | null
+          signup_role?: string | null
           source?: string | null
           status?: string
           updated_at?: string
@@ -3130,6 +3134,7 @@ export type Database = {
           country_code?: string | null
           created_at?: string
           created_by?: string | null
+          email?: string | null
           full_name?: string
           id?: string
           last_contacted_at?: string | null
@@ -3137,6 +3142,7 @@ export type Database = {
           phone_e164?: string | null
           raw_phone?: string
           region?: string | null
+          signup_role?: string | null
           source?: string | null
           status?: string
           updated_at?: string
@@ -4990,6 +4996,8 @@ export type Database = {
           registration_stage:
             | Database["public"]["Enums"]["registration_stage_enum"]
             | null
+          role_change_used: boolean
+          role_changed_at: string | null
           stage_updated_at: string | null
           suspended_call_in_id: string | null
           suspended_reason: string | null
@@ -5040,6 +5048,8 @@ export type Database = {
           registration_stage?:
             | Database["public"]["Enums"]["registration_stage_enum"]
             | null
+          role_change_used?: boolean
+          role_changed_at?: string | null
           stage_updated_at?: string | null
           suspended_call_in_id?: string | null
           suspended_reason?: string | null
@@ -5090,6 +5100,8 @@ export type Database = {
           registration_stage?:
             | Database["public"]["Enums"]["registration_stage_enum"]
             | null
+          role_change_used?: boolean
+          role_changed_at?: string | null
           stage_updated_at?: string | null
           suspended_call_in_id?: string | null
           suspended_reason?: string | null
@@ -9891,6 +9903,7 @@ export type Database = {
       get_my_activation_blockers: { Args: never; Returns: Json }
       get_my_identity_verification: { Args: never; Returns: Json }
       get_my_registration_progress: { Args: never; Returns: Json }
+      get_my_role_change_status: { Args: never; Returns: Json }
       get_my_wallet_summary: { Args: { _currency?: string }; Returns: Json }
       get_onboarding_next_step: { Args: never; Returns: Json }
       get_owner_available_balance: {
@@ -10326,6 +10339,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      switch_primary_role: {
+        Args: { _new_role: Database["public"]["Enums"]["app_role"] }
+        Returns: Json
       }
       transition_payment_state: {
         Args: {

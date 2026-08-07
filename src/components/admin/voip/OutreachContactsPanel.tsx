@@ -20,8 +20,11 @@ interface OutreachContact {
   region: string | null;
   source: string | null;
   notes: string | null;
+  email?: string | null;
+  signup_role?: string | null;
   last_contacted_at: string | null;
 }
+
 
 const STATUSES = [
   'prospect',
@@ -229,7 +232,9 @@ export const OutreachContactsPanel = ({ onInitiateCall, isLoading }: OutreachCon
                   <TableHead>Phone</TableHead>
                   <TableHead>Region</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Signed up as</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
+
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -261,6 +266,16 @@ export const OutreachContactsPanel = ({ onInitiateCall, isLoading }: OutreachCon
                         </SelectContent>
                       </Select>
                     </TableCell>
+                    <TableCell>
+                      {contact.signup_role ? (
+                        <Badge variant="outline" className="capitalize">
+                          {contact.signup_role === 'owner' ? 'Vehicle owner' : 'Driver'}
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
