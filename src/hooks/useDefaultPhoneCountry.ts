@@ -22,9 +22,11 @@ export const REGION_TO_ISO: Record<string, Country> = {
  * Resolves the safest ISO country fallback for a given region label.
  * Falls back to `US` only when the region is genuinely unknown.
  */
-export function regionToDefaultCountry(region: string | null | undefined): Country {
-  if (!region) return 'US';
-  return REGION_TO_ISO[region] ?? REGION_TO_ISO[region.toUpperCase()] ?? 'US';
+export function regionToDefaultCountry(
+  region: string | null | undefined,
+): Country | undefined {
+  if (!region) return undefined;
+  return REGION_TO_ISO[region] ?? REGION_TO_ISO[region.toUpperCase()];
 }
 
 /**
@@ -34,16 +36,19 @@ export function regionToDefaultCountry(region: string | null | undefined): Count
  *   1. Country encoded in the user's stored E.164 phone number
  *   2. `profiles.preferred_country`
  *   3. Current `RegionContext.country` (region-aware fallback)
- *   4. `US` (last-resort default)
+ *
+ * Returns `undefined` when nothing is known — the phone input then shows a
+ * neutral country picker (no pre-filled dialing code or flag) so the user
+ * chooses their own country.
  *
  * Guarantees every phone input across web, iOS and Android (Capacitor webview)
  * initializes to the correct dialing code and stays consistent as the user
  * updates their profile or switches region.
  */
-export function useDefaultPhoneCountry(): Country {
+export function useDefaultPhoneCountry(): Country | undefined {
   const { country } = useRegion();
-  const fallback: Country = regionToDefaultCountry(country);
-  const [iso, setIso] = useState<Country>(fallback);
+  const fallback = regionToDefaultCountry(country);
+  const [iso, setIso] = useState<Country | undefined>(fallback);
 
   // Keep in sync when the region changes before the async profile lookup
   // resolves — this is what makes the input truly region-aware.
@@ -66,9 +71,8 @@ export function useDefaultPhoneCountry(): Country {
       if (cancelled) return;
       const parsed = data?.phone ? parsePhoneNumberFromString(data.phone) : null;
       if (parsed?.country) return setIso(parsed.country as Country);
-      if (data?.preferred_country) {
-        return setIso(regionToDefaultCountry(data.preferred_country));
-      }
+      const preferred = regionToDefaultCountry(data?.preferred_country);
+      if (preferred) return setIso(preferred);
       // Leave region fallback in place.
     })();
     return () => {

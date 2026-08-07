@@ -365,7 +365,7 @@ const OwnerRegistration = () => {
                     render={({ field }) => (
                       <PhoneNumberInput
                         id="owner-phone"
-                        defaultCountry={currentCountry === 'nigeria' ? 'NG' : 'US'}
+                        defaultCountry={currentCountry === 'nigeria' ? 'NG' : currentCountry === 'usa' ? 'US' : undefined}
                         value={field.value}
                         onChange={(v) => {
                           field.onChange(v);

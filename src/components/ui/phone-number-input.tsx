@@ -12,7 +12,10 @@ export interface PhoneNumberInputProps {
   /** E.164 value, e.g. "+2348012345678". */
   value?: string;
   onChange: (value: string) => void;
-  /** Default ISO country when the value doesn't yet include a calling code. */
+  /**
+   * Default ISO country when the value doesn't yet include a calling code.
+   * Leave undefined to show a neutral picker with no pre-filled dialing code.
+   */
   defaultCountry?: Country;
   /** Notified whenever the flag/country picker changes. */
   onCountryChange?: (country: Country | undefined) => void;
@@ -53,7 +56,9 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
     ref,
   ) => {
     const autoCountry = useDefaultPhoneCountry();
-    const resolvedDefault: Country = defaultCountry ?? autoCountry;
+    // No hardcoded fallback: when neither the caller nor the user's
+    // region/profile resolves a country, the picker stays neutral.
+    const resolvedDefault: Country | undefined = defaultCountry ?? autoCountry;
 
     // Track the picker's current country so the flag/IDD stay consistent with
     // both the value AND the resolved default when it changes asynchronously.
@@ -74,9 +79,11 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [parsedFromValue, resolvedDefault]);
 
-    const example = usePhoneExample(country ?? resolvedDefault);
+    const active = country ?? resolvedDefault;
+    const example = usePhoneExample(active);
     const effectivePlaceholder =
-      placeholder ?? (example ? `e.g. ${example}` : 'Enter phone number');
+      placeholder ??
+      (active && example ? `e.g. ${example}` : 'Select country, then enter your number');
 
     return (
       <PhoneInputBase
@@ -84,6 +91,7 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
         countryCallingCodeEditable={false}
         country={country}
         defaultCountry={resolvedDefault}
+        addInternationalOption
         onCountryChange={(c) => {
           setCountry(c as Country | undefined);
           onCountryChange?.(c as Country | undefined);

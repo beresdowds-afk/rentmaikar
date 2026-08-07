@@ -27,6 +27,7 @@ import { z } from 'zod';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { normalizeToE164, PhoneValidationError } from '@/lib/phone-normalize';
 import AddPhoneNumberCard from '@/components/auth/AddPhoneNumberCard';
+import { regionToDefaultCountry } from '@/hooks/useDefaultPhoneCountry';
 
 
 const nameSchema = z.object({
@@ -278,7 +279,7 @@ export default function ProfileSettingsPage() {
                   id="phone"
                   value={phone}
                   onChange={setPhone}
-                  defaultCountry={country === 'Nigeria' ? 'NG' : 'US'}
+                  defaultCountry={regionToDefaultCountry(country)}
                   disabled={loading || saving}
                   autoComplete="tel"
                   placeholder="Enter phone number"
