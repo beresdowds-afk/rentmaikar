@@ -26,6 +26,8 @@ import { useRegion } from '@/contexts/RegionContext';
 import { z } from 'zod';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { normalizeToE164, PhoneValidationError } from '@/lib/phone-normalize';
+import AddPhoneNumberCard from '@/components/auth/AddPhoneNumberCard';
+
 
 const nameSchema = z.object({
   full_name: z
