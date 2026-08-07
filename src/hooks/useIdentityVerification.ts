@@ -54,6 +54,8 @@ const DEFAULT: IdentityVerification = {
 export function useIdentityVerification() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const persona = usePersonaEnabled();
+
   const lastStatusRef = useRef<PersonaStatus | null>(null);
 
   const query = useQuery({
