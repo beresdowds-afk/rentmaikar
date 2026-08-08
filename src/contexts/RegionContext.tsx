@@ -177,8 +177,9 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
 
   // Guards that keep the switcher stable: once the user picks a region we
   // never let auto-detection or a profile re-sync overwrite that choice.
-  const manualSelectRef = useRef(false);
-  const autoDetectedRef = useRef(false);
+  // The manual flag is persisted so it also survives reloads.
+  const manualSelectRef = useRef(getManualPick());
+  const autoDetectedRef = useRef(getManualPick());
   const syncedUserRef = useRef<string | null>(null);
 
   const setCountry = (next: Country) => {
@@ -190,6 +191,7 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
 
   manualSelectRef.current = true;
   autoDetectedRef.current = true;
+  persistManualPick(true);
 
   setRegionModeState("manual");
   persistMode("manual");
@@ -201,6 +203,7 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
     _country: resolved.value,
   });
 };
+
 
 
 // ---------------------------------------------------------------------
