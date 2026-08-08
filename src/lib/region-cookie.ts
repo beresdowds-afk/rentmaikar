@@ -2,7 +2,9 @@ import type { Country, RegionMode } from "@/contexts/RegionContext";
 
 const COUNTRY_COOKIE = "preferred-country";
 const MODE_COOKIE = "region-mode";
+const MANUAL_PICK_COOKIE = "region-manual-pick";
 const ONE_YEAR = 60 * 60 * 24 * 365;
+
 
 const isBrowser = () => typeof document !== "undefined";
 
