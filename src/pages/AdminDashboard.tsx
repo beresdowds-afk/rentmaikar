@@ -205,7 +205,9 @@ const AdminDashboard = () => {
   const { rates, isLoading: ratesLoading, convertToUSD, refetch: refetchRates } = useCurrencyConversion();
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
   const [approvingId, setApprovingId] = useState<number | null>(null);
-  const [portalView, setPortalView] = useState<PortalType>('support');
+  const [portalViewRaw, setPortalViewRaw] = usePersistedTab('support', 'portal');
+  const portalView = portalViewRaw as PortalType;
+  const setPortalView = setPortalViewRaw as (v: PortalType) => void;
   const [activeTab, setActiveTab] = usePersistedTab('task-portal');
   const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
 
