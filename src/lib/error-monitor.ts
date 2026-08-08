@@ -58,21 +58,13 @@ async function flushErrors() {
       userId: user?.id || "anonymous",
     }));
 
-    // Log to admin_audit_log for centralized tracking
+    // NOTE: client errors are NOT written to admin_audit_log — that table is
+    // admin-only (RLS) and normal users' inserts were failing on every flush.
     for (const report of enriched) {
-      await supabase.from("admin_audit_log").insert({
-        admin_id: report.userId || "00000000-0000-0000-0000-000000000000",
-        action: "client_error",
-        target_table: "client_errors",
-        details: {
-          message: report.message,
-          severity: report.severity,
-          context: report.context,
-          url: report.url,
-          stack: report.stack,
-          user_agent: report.userAgent,
-          metadata: report.metadata,
-        } as any,
+      console.warn("[ErrorMonitor]", report.severity, report.context ?? "", report.message, {
+        url: report.url,
+        userId: report.userId,
+        metadata: report.metadata,
       });
     }
   } catch {
