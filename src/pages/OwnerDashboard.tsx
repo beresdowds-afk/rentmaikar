@@ -791,7 +791,8 @@ export default function OwnerDashboard() {
                   <Button variant="outline">Update Bank Details</Button>
                 </CardContent>
               </Card>
-              </div>
+              </div></PortalGate>
+
             </TabsContent>
 
             {/* Settings Tab */}
