@@ -443,7 +443,9 @@ useEffect(() => {
       // Signed out: allow the next user to sync fresh.
       syncedUserRef.current = null;
       manualSelectRef.current = false;
+      persistManualPick(false);
     }
+
   });
 
   return () => {
