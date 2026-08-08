@@ -30,7 +30,10 @@ import {
   getStoredMode,
   persistCountry,
   persistMode,
+  getManualPick,
+  persistManualPick,
 } from "@/lib/region-cookie";
+
 
 /**
  * Regions are no longer a closed set. "USA" and "Nigeria" are the built-in
