@@ -2,6 +2,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROLE_HOME, type AppRole } from "@/lib/role-home";
+import { rememberReturnTo } from "@/lib/return-to";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
