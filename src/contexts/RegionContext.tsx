@@ -397,8 +397,13 @@ useEffect(() => {
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange((_event, session) => {
+  } = supabase.auth.onAuthStateChange((_event, session) => {
     if (session?.user) {
       void syncProfile(session.user.id);
+    } else {
+      // Signed out: allow the next user to sync fresh.
+      syncedUserRef.current = null;
+      manualSelectRef.current = false;
     }
   });
 
@@ -406,7 +411,8 @@ useEffect(() => {
     cancelled = true;
     subscription.unsubscribe();
   };
-}, [availableRegions, regionsLoading, country]);
+}, [availableRegions, regionsLoading]);
+
 
 
 // Persist manual selections back to the user's profile.
