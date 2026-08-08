@@ -22,6 +22,7 @@ import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
 import { PasswordInput } from '@/components/ui/password-input';
 import { EmailVerification } from '@/components/auth/EmailVerification';
 import { ROLE_HOME, ROLE_ONBOARDING, isStaffRole, type AppRole } from '@/lib/role-home';
+import { isRestorablePath, readReturnTo, clearReturnTo } from '@/lib/return-to';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -79,7 +80,14 @@ const Auth = () => {
   const [twoFAPhone, setTwoFAPhone] = useState<string>('');
   const [twoFAChannel, setTwoFAChannel] = useState<string>('sms');
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+  // Where to send the user after a successful sign-in. Router state is lost on a
+  // hard refresh of /auth, so fall back to the sessionStorage copy written by
+  // ProtectedRoute — that keeps deep links intact across reloads.
+  const navState = location.state as { from?: { pathname: string; search?: string; hash?: string } } | null;
+  const fromState = navState?.from
+    ? `${navState.from.pathname}${navState.from.search ?? ''}${navState.from.hash ?? ''}`
+    : null;
+  const from = (isRestorablePath(fromState) ? fromState : readReturnTo()) || '/';
 
   // Deep-link support: `/auth?forgot=1` opens the forgot-password view directly
   // (used from the "Request a new reset link" button on the ResetPassword page).
@@ -124,8 +132,11 @@ const Auth = () => {
     if (userRole === null) return; // still hydrating role
 
     const finishRedirect = (target: string) => {
-      const isRoleHomeRoute = Object.values(ROLE_HOME).includes(from);
-      navigate(isRoleHomeRoute && from !== '/' ? from : target, { replace: true });
+      // Honour any real destination the user was trying to reach (deep links,
+      // tab query params, role homes) instead of dropping them on a default page.
+      const destination = from !== '/' && isRestorablePath(from) ? from : target;
+      clearReturnTo();
+      navigate(destination, { replace: true });
     };
 
     const routeWithCompletionCheck = async (fallbackTarget: string) => {

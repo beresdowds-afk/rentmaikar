@@ -74,6 +74,7 @@ import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
 import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
 import PageSkeleton from '@/components/PageSkeleton';
 import { WithdrawalAuthorizationGate } from '@/components/payments/WithdrawalAuthorizationGate';
+import { usePersistedTab } from '@/hooks/usePersistedTab';
 
 
 
@@ -93,7 +94,7 @@ export default function OwnerDashboard() {
   const { country, currency } = useRegion();
   const { user, userRole } = useAuth();
   const isAdminView = userRole === 'admin';
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = usePersistedTab('overview');
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
