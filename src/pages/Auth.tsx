@@ -22,6 +22,7 @@ import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
 import { PasswordInput } from '@/components/ui/password-input';
 import { EmailVerification } from '@/components/auth/EmailVerification';
 import { ROLE_HOME, ROLE_ONBOARDING, isStaffRole, type AppRole } from '@/lib/role-home';
+import { isRestorablePath, readReturnTo, clearReturnTo } from '@/lib/return-to';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -131,8 +132,11 @@ const Auth = () => {
     if (userRole === null) return; // still hydrating role
 
     const finishRedirect = (target: string) => {
-      const isRoleHomeRoute = Object.values(ROLE_HOME).includes(from);
-      navigate(isRoleHomeRoute && from !== '/' ? from : target, { replace: true });
+      // Honour any real destination the user was trying to reach (deep links,
+      // tab query params, role homes) instead of dropping them on a default page.
+      const destination = from !== '/' && isRestorablePath(from) ? from : target;
+      clearReturnTo();
+      navigate(destination, { replace: true });
     };
 
     const routeWithCompletionCheck = async (fallbackTarget: string) => {
