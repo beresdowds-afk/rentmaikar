@@ -571,7 +571,7 @@ export default function OwnerDashboard() {
               </PortalGate>
             </TabsContent>
 
-
+       {/* Vehicles Tab */}
        <TabsContent value="vehicles" className="space-y-6">
   <PortalGate
     portal="My Vehicles"
