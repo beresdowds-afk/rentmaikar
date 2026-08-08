@@ -108,8 +108,11 @@ export function UnifiedBillingPanel({ userId, role, country }: Props) {
           <div>
             <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> Billing & Payments</CardTitle>
             <CardDescription>
-              All charges — rental, security deposit, training, insurance, roadside, IoT device, rent-to-own, fines and more.
-            </CardDescription>
+  {role === "owner"
+    ? "View invoices, receipts, IoT device charges and other owner-related payments."
+    : "View rental charges, deposits, training, fines and other driver-related payments."
+  }
+</CardDescription>
           </div>
           <Button size="sm" variant="outline" onClick={load} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
