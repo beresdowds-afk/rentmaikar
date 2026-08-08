@@ -290,7 +290,12 @@ useEffect(() => {
   let cancelled = false;
 
   const syncProfile = async (userId: string) => {
+    // Only sync once per signed-in user — re-running on every region change
+    // made the admin switcher snap back to the stored profile value.
+    if (syncedUserRef.current === userId) return;
+    syncedUserRef.current = userId;
     try {
+
       const [{ data: profile }, { data: roles }] = await Promise.all([
         supabase
           .from("profiles")
