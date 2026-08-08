@@ -238,24 +238,9 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
       const { error: pErr } = await supabase.from('profiles').update(updates).eq('user_id', user.id);
       if (pErr) throw pErr;
 
-      // 5. Audit trail
-      if (requiresReverification) {
-        await supabase.from('admin_audit_log').insert({
-          admin_id: user.id,
-          action: 'profile_contact_changed',
-          target_table: 'profiles',
-          target_id: user.id,
-          details: {
-            platform: isNative ? Capacitor.getPlatform() : 'web',
-            email_changed: emailChanged,
-            phone_changed: phoneChanged,
-            old_email: initial.email,
-            new_email: emailChanged ? trimmedEmail : undefined,
-            old_phone: initial.phone,
-            new_phone: phoneChanged ? normPhone : undefined,
-          },
-        }).then(() => {}, () => {});
-      }
+      // 5. Audit trail — handled server-side by the profile_settings_audit
+      // trigger. Client-side writes to admin_audit_log are blocked by RLS
+      // (admin-only), so we intentionally don't insert here.
 
       setInitial({ fullName: fullName.trim(), email: trimmedEmail, phone: normPhone });
       setEmail(trimmedEmail);
