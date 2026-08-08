@@ -9986,7 +9986,9 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: { Args: never; Returns: boolean }
+      is_admin:
+        | { Args: never; Returns: boolean }
+        | { Args: { _user_id: string }; Returns: boolean }
       is_allowed_region: { Args: { _country: string }; Returns: boolean }
       is_any_support_staff: { Args: { _user_id: string }; Returns: boolean }
       is_support_staff: {
