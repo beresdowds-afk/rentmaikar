@@ -175,12 +175,21 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
  */
 
 
+  // Guards that keep the switcher stable: once the user picks a region we
+  // never let auto-detection or a profile re-sync overwrite that choice.
+  const manualSelectRef = useRef(false);
+  const autoDetectedRef = useRef(false);
+  const syncedUserRef = useRef<string | null>(null);
+
   const setCountry = (next: Country) => {
   if (regionsLoading) return;
 
   const resolved = resolveRegion(next, availableRegions);
 
   if (!resolved) return;
+
+  manualSelectRef.current = true;
+  autoDetectedRef.current = true;
 
   setRegionModeState("manual");
   persistMode("manual");
@@ -192,6 +201,7 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
     _country: resolved.value,
   });
 };
+
 
 // ---------------------------------------------------------------------
 // Region Builder regions. The two built-ins are always available; every
