@@ -79,7 +79,14 @@ const Auth = () => {
   const [twoFAPhone, setTwoFAPhone] = useState<string>('');
   const [twoFAChannel, setTwoFAChannel] = useState<string>('sms');
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+  // Where to send the user after a successful sign-in. Router state is lost on a
+  // hard refresh of /auth, so fall back to the sessionStorage copy written by
+  // ProtectedRoute — that keeps deep links intact across reloads.
+  const navState = location.state as { from?: { pathname: string; search?: string; hash?: string } } | null;
+  const fromState = navState?.from
+    ? `${navState.from.pathname}${navState.from.search ?? ''}${navState.from.hash ?? ''}`
+    : null;
+  const from = (isRestorablePath(fromState) ? fromState : readReturnTo()) || '/';
 
   // Deep-link support: `/auth?forgot=1` opens the forgot-password view directly
   // (used from the "Request a new reset link" button on the ResetPassword page).
