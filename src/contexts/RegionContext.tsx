@@ -243,7 +243,12 @@ useEffect(() => {
     // Wait until the allowed region list has loaded.
     if (regionsLoading) return;
 
+    // Detect once per session, and never after a manual selection.
+    if (autoDetectedRef.current || manualSelectRef.current) return;
+    autoDetectedRef.current = true;
+
     setIsDetecting(true);
+
 
     try {
       const result = await detectCountryFromIP();
