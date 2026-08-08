@@ -345,8 +345,13 @@ useEffect(() => {
           getStoredCountry() ??
           SAFE_DEFAULT;
 
+        // Non-admins are locked to their registration region.
+        manualSelectRef.current = false;
+        persistManualPick(false);
+
         setRegionModeState("manual");
         persistMode("manual");
+
 
         setCountryState(lockedCountry);
         persistCountry(lockedCountry);
