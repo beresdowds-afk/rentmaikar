@@ -175,12 +175,21 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
  */
 
 
+  // Guards that keep the switcher stable: once the user picks a region we
+  // never let auto-detection or a profile re-sync overwrite that choice.
+  const manualSelectRef = useRef(false);
+  const autoDetectedRef = useRef(false);
+  const syncedUserRef = useRef<string | null>(null);
+
   const setCountry = (next: Country) => {
   if (regionsLoading) return;
 
   const resolved = resolveRegion(next, availableRegions);
 
   if (!resolved) return;
+
+  manualSelectRef.current = true;
+  autoDetectedRef.current = true;
 
   setRegionModeState("manual");
   persistMode("manual");
@@ -192,6 +201,7 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
     _country: resolved.value,
   });
 };
+
 
 // ---------------------------------------------------------------------
 // Region Builder regions. The two built-ins are always available; every
@@ -233,7 +243,12 @@ useEffect(() => {
     // Wait until the allowed region list has loaded.
     if (regionsLoading) return;
 
+    // Detect once per session, and never after a manual selection.
+    if (autoDetectedRef.current || manualSelectRef.current) return;
+    autoDetectedRef.current = true;
+
     setIsDetecting(true);
+
 
     try {
       const result = await detectCountryFromIP();
@@ -275,7 +290,12 @@ useEffect(() => {
   let cancelled = false;
 
   const syncProfile = async (userId: string) => {
+    // Only sync once per signed-in user — re-running on every region change
+    // made the admin switcher snap back to the stored profile value.
+    if (syncedUserRef.current === userId) return;
+    syncedUserRef.current = userId;
     try {
+
       const [{ data: profile }, { data: roles }] = await Promise.all([
         supabase
           .from("profiles")
@@ -343,8 +363,11 @@ useEffect(() => {
       }
 
       // ------------------------------------------------------------------
-      // Admin / Admin Assistant
+      // Admin / Admin Assistant — free to switch; never override a choice
+      // the admin has already made in this session.
       // ------------------------------------------------------------------
+
+      if (manualSelectRef.current) return;
 
       if (profileMode === "auto" || profileMode === "manual") {
         setRegionModeState(profileMode);
@@ -352,12 +375,14 @@ useEffect(() => {
       }
 
       if (resolved) {
+        autoDetectedRef.current = true;
         setCountryState(resolved.value);
         persistCountry(resolved.value);
-      } else {
+      } else if (profileMode === "manual") {
         setCountryState(SAFE_DEFAULT);
         persistCountry(SAFE_DEFAULT);
       }
+
     } catch (error) {
       console.warn("[region] profile sync failed", error);
     }
@@ -372,8 +397,13 @@ useEffect(() => {
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange((_event, session) => {
+
     if (session?.user) {
       void syncProfile(session.user.id);
+    } else {
+      // Signed out: allow the next user to sync fresh.
+      syncedUserRef.current = null;
+      manualSelectRef.current = false;
     }
   });
 
@@ -381,7 +411,8 @@ useEffect(() => {
     cancelled = true;
     subscription.unsubscribe();
   };
-}, [availableRegions, regionsLoading, country]);
+}, [availableRegions, regionsLoading]);
+
 
 
 // Persist manual selections back to the user's profile.
