@@ -363,8 +363,11 @@ useEffect(() => {
       }
 
       // ------------------------------------------------------------------
-      // Admin / Admin Assistant
+      // Admin / Admin Assistant — free to switch; never override a choice
+      // the admin has already made in this session.
       // ------------------------------------------------------------------
+
+      if (manualSelectRef.current) return;
 
       if (profileMode === "auto" || profileMode === "manual") {
         setRegionModeState(profileMode);
@@ -372,12 +375,14 @@ useEffect(() => {
       }
 
       if (resolved) {
+        autoDetectedRef.current = true;
         setCountryState(resolved.value);
         persistCountry(resolved.value);
-      } else {
+      } else if (profileMode === "manual") {
         setCountryState(SAFE_DEFAULT);
         persistCountry(SAFE_DEFAULT);
       }
+
     } catch (error) {
       console.warn("[region] profile sync failed", error);
     }
