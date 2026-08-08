@@ -397,7 +397,7 @@ useEffect(() => {
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange((_event, session) => {
-  } = supabase.auth.onAuthStateChange((_event, session) => {
+
     if (session?.user) {
       void syncProfile(session.user.id);
     } else {
