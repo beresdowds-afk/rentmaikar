@@ -30,7 +30,10 @@ import {
   getStoredMode,
   persistCountry,
   persistMode,
+  getManualPick,
+  persistManualPick,
 } from "@/lib/region-cookie";
+
 
 /**
  * Regions are no longer a closed set. "USA" and "Nigeria" are the built-in
@@ -177,8 +180,9 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
 
   // Guards that keep the switcher stable: once the user picks a region we
   // never let auto-detection or a profile re-sync overwrite that choice.
-  const manualSelectRef = useRef(false);
-  const autoDetectedRef = useRef(false);
+  // The manual flag is persisted so it also survives reloads.
+  const manualSelectRef = useRef(getManualPick());
+  const autoDetectedRef = useRef(getManualPick());
   const syncedUserRef = useRef<string | null>(null);
 
   const setCountry = (next: Country) => {
@@ -190,6 +194,7 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
 
   manualSelectRef.current = true;
   autoDetectedRef.current = true;
+  persistManualPick(true);
 
   setRegionModeState("manual");
   persistMode("manual");
@@ -201,6 +206,7 @@ export const RegionProvider = ({ children }: { children: ReactNode }) => {
     _country: resolved.value,
   });
 };
+
 
 
 // ---------------------------------------------------------------------
@@ -339,8 +345,13 @@ useEffect(() => {
           getStoredCountry() ??
           SAFE_DEFAULT;
 
+        // Non-admins are locked to their registration region.
+        manualSelectRef.current = false;
+        persistManualPick(false);
+
         setRegionModeState("manual");
         persistMode("manual");
+
 
         setCountryState(lockedCountry);
         persistCountry(lockedCountry);
@@ -363,11 +374,38 @@ useEffect(() => {
       }
 
       // ------------------------------------------------------------------
-      // Admin / Admin Assistant — free to switch; never override a choice
-      // the admin has already made in this session.
+      // Admin / Admin Assistant — free to switch. A previously made manual
+      // selection (this session or a past one) always wins; we only push it
+      // back to the profile so other devices converge on the same region.
       // ------------------------------------------------------------------
 
-      if (manualSelectRef.current) return;
+      if (manualSelectRef.current) {
+        const localPick = resolveRegion(
+          getStoredCountry() ?? country,
+          availableRegions,
+        );
+
+        if (localPick) {
+          setRegionModeState("manual");
+          persistMode("manual");
+          setCountryState(localPick.value);
+          persistCountry(localPick.value);
+
+          if (profileCountry !== localPick.value || profileMode !== "manual") {
+            void supabase
+              .from("profiles")
+              .update({
+                preferred_country: localPick.value,
+                region_mode: "manual",
+              })
+              .eq("user_id", userId);
+          }
+          return;
+        }
+        // Stored pick is no longer published — fall through to the profile.
+        manualSelectRef.current = false;
+        persistManualPick(false);
+      }
 
       if (profileMode === "auto" || profileMode === "manual") {
         setRegionModeState(profileMode);
@@ -376,12 +414,18 @@ useEffect(() => {
 
       if (resolved) {
         autoDetectedRef.current = true;
+        // The stored profile region is an explicit admin choice too.
+        if (profileMode === "manual") {
+          manualSelectRef.current = true;
+          persistManualPick(true);
+        }
         setCountryState(resolved.value);
         persistCountry(resolved.value);
       } else if (profileMode === "manual") {
         setCountryState(SAFE_DEFAULT);
         persistCountry(SAFE_DEFAULT);
       }
+
 
     } catch (error) {
       console.warn("[region] profile sync failed", error);
@@ -404,7 +448,9 @@ useEffect(() => {
       // Signed out: allow the next user to sync fresh.
       syncedUserRef.current = null;
       manualSelectRef.current = false;
+      persistManualPick(false);
     }
+
   });
 
   return () => {

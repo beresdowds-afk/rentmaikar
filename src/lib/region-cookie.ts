@@ -2,7 +2,9 @@ import type { Country, RegionMode } from "@/contexts/RegionContext";
 
 const COUNTRY_COOKIE = "preferred-country";
 const MODE_COOKIE = "region-mode";
+const MANUAL_PICK_COOKIE = "region-manual-pick";
 const ONE_YEAR = 60 * 60 * 24 * 365;
+
 
 const isBrowser = () => typeof document !== "undefined";
 
@@ -46,3 +48,22 @@ export const persistMode = (mode: RegionMode) => {
   if (isBrowser()) window.localStorage.setItem(MODE_COOKIE, mode);
   writeCookie(MODE_COOKIE, mode);
 };
+
+/**
+ * Remembers that the region was explicitly chosen by the user (admins).
+ * Survives reloads so a profile re-sync or IP detection can never silently
+ * replace a deliberate selection.
+ */
+export const getManualPick = (): boolean => {
+  const fromLocal = isBrowser()
+    ? window.localStorage.getItem(MANUAL_PICK_COOKIE)
+    : null;
+  return (fromLocal || readCookie(MANUAL_PICK_COOKIE)) === "1";
+};
+
+export const persistManualPick = (value: boolean) => {
+  const raw = value ? "1" : "0";
+  if (isBrowser()) window.localStorage.setItem(MANUAL_PICK_COOKIE, raw);
+  writeCookie(MANUAL_PICK_COOKIE, raw);
+};
+
