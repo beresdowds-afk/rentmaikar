@@ -38,13 +38,18 @@ export const ProtectedRoute = ({
     );
   }
 
+  const fullPath = `${location.pathname}${location.search}${location.hash}`;
+
   if (!user || !session) {
+    rememberReturnTo(fullPath);
     return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 
   if (twoFactorStatus?.requires_2fa && !twoFactorVerified) {
+    rememberReturnTo(fullPath);
     return <Navigate to="/auth" replace state={{ from: location }} />;
   }
+
 
   // Admins bypass role restrictions everywhere (matches DashboardAuthGate).
   const effectiveAllowed =
