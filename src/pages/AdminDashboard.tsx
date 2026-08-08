@@ -103,6 +103,7 @@ import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 import { StaffSignOutButton } from '@/components/staff/StaffSignOutButton';
 import { StaffOnboardingDownloads } from '@/components/staff/StaffOnboardingDownloads';
 import { ScrollableStrip } from '@/components/ui/scrollable-strip';
+import { usePersistedTab } from '@/hooks/usePersistedTab';
 
 
 // Mock financial data - in production, this would come from the database
@@ -205,7 +206,7 @@ const AdminDashboard = () => {
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [portalView, setPortalView] = useState<PortalType>('support');
-  const [activeTab, setActiveTab] = useState<string>('task-portal');
+  const [activeTab, setActiveTab] = usePersistedTab('task-portal');
   const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
 
   // Calculate converted values

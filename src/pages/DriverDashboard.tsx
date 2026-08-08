@@ -80,11 +80,12 @@ import {
   Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePersistedTab } from '@/hooks/usePersistedTab';
 
 export default function DriverDashboard() {
   const { country, currency } = useRegion();
   const { user, userRole } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = usePersistedTab('overview');
   const isAdminView = userRole === 'admin';
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
