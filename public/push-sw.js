@@ -9,8 +9,8 @@ self.addEventListener('push', (event) => {
   const title = payload.title || 'Rentmaikar';
   const options = {
     body: payload.body || '',
-    icon: payload.icon || '/favicon.ico',
-    badge: payload.badge || '/favicon.ico',
+    icon: payload.icon || '/pwa-icon-192.png',
+    badge: payload.badge || '/favicon.png',
     data: {
       url: payload.url || '/',
       deepLink: payload.deepLink || null,
