@@ -61,8 +61,10 @@ serve(async (req) => {
   const diagAuthorized =
     isDiagRequest && !!diagToken && req.headers.get("x-diag-token") === diagToken;
 
-  let user: { email?: string | null } = { email: "diagnostics" };
-  let admin: ReturnType<typeof createClient> | null = null;
+  // deno-lint-ignore no-explicit-any
+  let user: any = { email: "diagnostics" };
+  // deno-lint-ignore no-explicit-any
+  let admin: any = null;
   let supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   if (!diagAuthorized) {
     const gate = await requireAdmin(req);
