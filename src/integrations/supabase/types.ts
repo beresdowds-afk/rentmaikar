@@ -7370,6 +7370,48 @@ export type Database = {
         }
         Relationships: []
       }
+      telemetry_ingest_runs: {
+        Row: {
+          analytics_emitted: number
+          broker_reachable: boolean
+          created_at: string
+          degraded_reason: string | null
+          devices_seen: number
+          duration_ms: number | null
+          error: string | null
+          events_processed: number
+          id: string
+          provider: string | null
+          source: string
+        }
+        Insert: {
+          analytics_emitted?: number
+          broker_reachable?: boolean
+          created_at?: string
+          degraded_reason?: string | null
+          devices_seen?: number
+          duration_ms?: number | null
+          error?: string | null
+          events_processed?: number
+          id?: string
+          provider?: string | null
+          source: string
+        }
+        Update: {
+          analytics_emitted?: number
+          broker_reachable?: boolean
+          created_at?: string
+          degraded_reason?: string | null
+          devices_seen?: number
+          duration_ms?: number | null
+          error?: string | null
+          events_processed?: number
+          id?: string
+          provider?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
       telemetry_providers: {
         Row: {
           api_key_secret_name: string | null
@@ -8587,6 +8629,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vehicle_telemetry_state: {
+        Row: {
+          battery: number | null
+          created_at: string
+          fuel: number | null
+          ignition: boolean | null
+          last_event_at: string | null
+          last_event_type: string | null
+          last_source: string | null
+          latitude: number | null
+          longitude: number | null
+          payload: Json
+          speed: number | null
+          temperature: number | null
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          battery?: number | null
+          created_at?: string
+          fuel?: number | null
+          ignition?: boolean | null
+          last_event_at?: string | null
+          last_event_type?: string | null
+          last_source?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          payload?: Json
+          speed?: number | null
+          temperature?: number | null
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          battery?: number | null
+          created_at?: string
+          fuel?: number | null
+          ignition?: boolean | null
+          last_event_at?: string | null
+          last_event_type?: string | null
+          last_source?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          payload?: Json
+          speed?: number | null
+          temperature?: number | null
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: []
       }
       vehicles: {
         Row: {
