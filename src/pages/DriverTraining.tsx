@@ -96,12 +96,12 @@ const DriverTraining = () => {
       }
     } else {
       setCompletions((prev) => [...prev, moduleId]);
-      toast.success("Module completed! 🎉");
+      toast.success("Module submitted for compliance review ✅");
 
       if (completions.length + 1 === modules.length) {
-        // Refresh schedule is recorded server-side by complete_training_module.
+        // Refresh schedule is recorded server-side once admins verify every module.
         toast.success(
-          "Congratulations! You've completed all training modules! 🎓",
+          "All modules submitted! Your training is pending admin verification.",
           { duration: 5000 }
         );
       }

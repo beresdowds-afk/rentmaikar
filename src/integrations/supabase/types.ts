@@ -7434,22 +7434,34 @@ export type Database = {
           completed_at: string
           id: string
           module_id: string
+          review_notes: string | null
           score: number | null
           user_id: string
+          verification_status: string
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           completed_at?: string
           id?: string
           module_id: string
+          review_notes?: string | null
           score?: number | null
           user_id: string
+          verification_status?: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           completed_at?: string
           id?: string
           module_id?: string
+          review_notes?: string | null
           score?: number | null
           user_id?: string
+          verification_status?: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {
@@ -9762,6 +9774,24 @@ export type Database = {
         Args: { _limit?: number; _status?: string }
         Returns: Json
       }
+      admin_list_pending_training_completions: {
+        Args: { _status?: string }
+        Returns: {
+          completed_at: string
+          email: string
+          full_name: string
+          id: string
+          module_id: string
+          module_region: string
+          module_title: string
+          phone: string
+          review_notes: string
+          score: number
+          user_id: string
+          verification_status: string
+          verified_at: string
+        }[]
+      }
       admin_list_withdrawal_authorizations: {
         Args: { _limit?: number; _status?: string }
         Returns: Json
@@ -9853,6 +9883,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      admin_review_training_completion: {
+        Args: { _approve: boolean; _completion_id: string; _notes?: string }
+        Returns: Json
       }
       admin_revoke_proxy_billing: {
         Args: { _proxy_id: string; _reason: string }
@@ -10183,6 +10217,7 @@ export type Database = {
       }
       get_my_registration_progress: { Args: never; Returns: Json }
       get_my_role_change_status: { Args: never; Returns: Json }
+      get_my_training_status: { Args: never; Returns: Json }
       get_my_wallet_summary: { Args: { _currency?: string }; Returns: Json }
       get_onboarding_next_step: { Args: never; Returns: Json }
       get_owner_available_balance: {
