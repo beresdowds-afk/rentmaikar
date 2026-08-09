@@ -176,6 +176,8 @@ export default function PersonaVerification({
     setFailure(null);
     const correlationId = newCorrelationId();
     setLastFields(finalFields);
+    const attempt = await recordAttempt({ status: "started", correlation_id: correlationId });
+    setAttemptId(attempt);
     try {
       // Device/browser pre-flight: catch denied cameras, blocked storage and
       // offline devices before burning a Persona inquiry.
@@ -187,6 +189,11 @@ export default function PersonaVerification({
         await logVerificationEvent({
           stage: "identity", step: "preflight", outcome: "failed",
           provider: "persona", failure: classified, correlationId,
+        });
+        await updateAttempt(attempt, {
+          status: "failed", error_code: blocker.code,
+          error_detail: String(blocker.detail ?? "preflight blocked").slice(0, 400),
+          completed_at: new Date().toISOString(),
         });
         setLoading(false);
         return;
@@ -207,6 +214,7 @@ export default function PersonaVerification({
             region: country,
             fields: finalFields,
             correlation_id: correlationId,
+            chosen_id_class: chosenIdClass ?? undefined,
             drivers_license_document_id: requiresDriversLicense ? dlDocId : undefined,
           },
           headers: { "x-correlation-id": correlationId },
@@ -214,6 +222,7 @@ export default function PersonaVerification({
         if (error) throw error;
         return data;
       }, { stage: "identity", step: "create_inquiry", provider: "persona", correlationId });
+
 
       if (data?.provider_configured === false) {
         toast.info("Verification queued — provider will be enabled soon");
