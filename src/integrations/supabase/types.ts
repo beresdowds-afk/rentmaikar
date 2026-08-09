@@ -7350,6 +7350,60 @@ export type Database = {
         }
         Relationships: []
       }
+      twilio_message_templates: {
+        Row: {
+          body: string
+          channel: string
+          country_code: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          language: string
+          name: string
+          placeholders: string[]
+          template_key: string
+          twilio_content_sid: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body: string
+          channel?: string
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          language?: string
+          name: string
+          placeholders?: string[]
+          template_key: string
+          twilio_content_sid?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          channel?: string
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          language?: string
+          name?: string
+          placeholders?: string[]
+          template_key?: string
+          twilio_content_sid?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       two_factor_audit_log: {
         Row: {
           action: string
