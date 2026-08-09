@@ -11,6 +11,7 @@ export const SUPPORT_TYPE_ROLE: Record<string, AppRole> = {
   iot_maintenance: 'iot_support',
   vehicle_recall: 'vehicle_support',
   vehicle_maintenance: 'vehicle_support',
+  insurance: 'insurance_support',
 };
 
 export function roleForSupportType(supportType: string): AppRole | undefined {

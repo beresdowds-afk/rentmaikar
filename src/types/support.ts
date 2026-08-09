@@ -1,6 +1,10 @@
 // Support task types and interfaces
 
-export type SupportTaskType = 'legal' | 'iot_installation' | 'iot_maintenance' | 'vehicle_recall' | 'vehicle_maintenance';
+export type SupportTaskType = 'legal' | 'iot_installation' | 'iot_maintenance' | 'vehicle_recall' | 'vehicle_maintenance' | 'insurance';
+
+export type InsuranceTaskStatus = 'open' | 'reviewing' | 'awaiting_documents' | 'quote_sent' | 'escalated' | 'resolved' | 'closed';
+
+export type VerificationState = 'not_submitted' | 'pending_verification' | 'verified' | 'rejected';
 
 export type LegalTaskStatus = 'open' | 'document_review' | 'pending_signature' | 'escalated' | 'resolved' | 'closed';
 
@@ -39,6 +43,16 @@ export interface SupportTask {
   legal_status?: LegalTaskStatus;
   iot_status?: IoTTaskStatus;
   vehicle_status?: VehicleTaskStatus;
+  insurance_status?: InsuranceTaskStatus;
+
+  // Staff feedback / admin verification
+  verification_state?: VerificationState;
+  staff_feedback?: string;
+  staff_resolved_at?: string;
+  staff_resolved_by?: string;
+  verified_at?: string;
+  verified_by?: string;
+  verification_notes?: string;
   
   // Assignment
   assigned_to?: string;
@@ -135,6 +149,23 @@ export const VEHICLE_STATUS_CONFIG: Record<VehicleTaskStatus, { label: string; c
   quality_check: { label: 'Quality Check', color: 'bg-teal-500', icon: 'ClipboardCheck' },
   completed: { label: 'Completed', color: 'bg-green-500', icon: 'CheckCircle' },
   escalated: { label: 'Escalated', color: 'bg-red-600', icon: 'AlertTriangle' },
+};
+
+export const INSURANCE_STATUS_CONFIG: Record<InsuranceTaskStatus, { label: string; color: string; icon: string }> = {
+  open: { label: 'Open', color: 'bg-blue-500', icon: 'FileText' },
+  reviewing: { label: 'Reviewing', color: 'bg-yellow-500', icon: 'Search' },
+  awaiting_documents: { label: 'Awaiting Documents', color: 'bg-orange-500', icon: 'Upload' },
+  quote_sent: { label: 'Quote Sent', color: 'bg-indigo-500', icon: 'Send' },
+  escalated: { label: 'Escalated', color: 'bg-red-500', icon: 'AlertTriangle' },
+  resolved: { label: 'Resolved', color: 'bg-green-500', icon: 'CheckCircle' },
+  closed: { label: 'Closed', color: 'bg-gray-500', icon: 'XCircle' },
+};
+
+export const VERIFICATION_STATE_CONFIG: Record<VerificationState, { label: string; color: string }> = {
+  not_submitted: { label: 'Awaiting Feedback', color: 'bg-muted text-foreground' },
+  pending_verification: { label: 'Pending Admin Verification', color: 'bg-amber-500 text-white' },
+  verified: { label: 'Verified by Admin', color: 'bg-green-600 text-white' },
+  rejected: { label: 'Sent Back for Rework', color: 'bg-destructive text-destructive-foreground' },
 };
 
 export const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string }> = {

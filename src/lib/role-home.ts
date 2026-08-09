@@ -10,7 +10,8 @@ export type AppRole =
   | 'driver'
   | 'legal_support'
   | 'iot_support'
-  | 'vehicle_support';
+  | 'vehicle_support'
+  | 'insurance_support';
 
 export const ROLE_HOME: Record<AppRole, string> = {
   admin: '/admin',
@@ -20,6 +21,7 @@ export const ROLE_HOME: Record<AppRole, string> = {
   legal_support: '/support/legal',
   iot_support: '/support/iot',
   vehicle_support: '/support/vehicle',
+  insurance_support: '/support/insurance',
 };
 
 /**
@@ -35,6 +37,7 @@ export const ROLE_ONBOARDING: Record<AppRole, string> = {
   legal_support: ROLE_HOME.legal_support,
   iot_support: ROLE_HOME.iot_support,
   vehicle_support: ROLE_HOME.vehicle_support,
+  insurance_support: ROLE_HOME.insurance_support,
 };
 
 /** Onboarding entry point for a role, falling back to the driver flow. */
@@ -60,6 +63,7 @@ export const STAFF_ROLES: AppRole[] = [
   'legal_support',
   'iot_support',
   'vehicle_support',
+  'insurance_support',
 ];
 
 export function isStaffRole(role: AppRole | null | undefined): boolean {

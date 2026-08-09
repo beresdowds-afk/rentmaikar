@@ -34,6 +34,7 @@ import {
   LEGAL_STATUS_CONFIG, 
   IOT_STATUS_CONFIG, 
   VEHICLE_STATUS_CONFIG,
+  INSURANCE_STATUS_CONFIG,
   PRIORITY_CONFIG,
   CITIES_BY_REGION,
   type SupportTaskType,
@@ -112,6 +113,7 @@ const TASK_TYPE_OPTIONS: { value: SupportTaskType; label: string; icon: typeof S
   { value: 'iot_maintenance', label: 'IoT Maintenance', icon: Cpu },
   { value: 'vehicle_recall', label: 'Vehicle Recall', icon: Car },
   { value: 'vehicle_maintenance', label: 'Vehicle Maintenance', icon: Car },
+  { value: 'insurance', label: 'Insurance Support', icon: Shield },
 ];
 
 export const AdminSupportTaskManagement = () => {
@@ -286,11 +288,13 @@ export const AdminSupportTaskManagement = () => {
     setIsCreating(true);
     try {
       // Determine initial status based on task type
-      const statusField = newTask.task_type === 'legal' ? 'legal_status' 
-        : newTask.task_type.startsWith('iot_') ? 'iot_status' 
+      const statusField = newTask.task_type === 'legal' ? 'legal_status'
+        : newTask.task_type === 'insurance' ? 'insurance_status'
+        : newTask.task_type.startsWith('iot_') ? 'iot_status'
         : 'vehicle_status';
-      
+
       const initialStatus = newTask.task_type === 'legal' ? 'open'
+        : newTask.task_type === 'insurance' ? 'open'
         : newTask.task_type.startsWith('iot_') ? 'assigned'
         : 'reported';
 
@@ -389,13 +393,14 @@ export const AdminSupportTaskManagement = () => {
       if (staffError) throw staffError;
 
       // Add role to user_roles
-      type SupportRole = 'legal_support' | 'iot_support' | 'vehicle_support';
+      type SupportRole = 'legal_support' | 'iot_support' | 'vehicle_support' | 'insurance_support';
       const roleMap: Record<string, SupportRole> = {
         'legal': 'legal_support',
         'iot_installation': 'iot_support',
         'iot_maintenance': 'iot_support',
         'vehicle_recall': 'vehicle_support',
         'vehicle_maintenance': 'vehicle_support',
+        'insurance': 'insurance_support',
       };
 
       const role = roleMap[newStaff.support_type];
@@ -461,6 +466,7 @@ export const AdminSupportTaskManagement = () => {
     if (task.legal_status) return LEGAL_STATUS_CONFIG[task.legal_status as keyof typeof LEGAL_STATUS_CONFIG];
     if (task.iot_status) return IOT_STATUS_CONFIG[task.iot_status as keyof typeof IOT_STATUS_CONFIG];
     if (task.vehicle_status) return VEHICLE_STATUS_CONFIG[task.vehicle_status as keyof typeof VEHICLE_STATUS_CONFIG];
+    if (task.insurance_status) return INSURANCE_STATUS_CONFIG[task.insurance_status as keyof typeof INSURANCE_STATUS_CONFIG];
     return { label: 'Unknown', color: 'bg-gray-500' };
   };
 
