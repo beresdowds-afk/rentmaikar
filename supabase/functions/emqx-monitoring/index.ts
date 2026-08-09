@@ -162,6 +162,8 @@ Deno.serve(async (req) => {
 
     let result: any;
 
+    try {
+
     switch (action) {
       case 'stats': {
         const [stats, metrics] = await Promise.all([
