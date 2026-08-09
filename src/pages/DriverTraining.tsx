@@ -99,23 +99,11 @@ const DriverTraining = () => {
       toast.success("Module completed! 🎉");
 
       if (completions.length + 1 === modules.length) {
+        // Refresh schedule is recorded server-side by complete_training_module.
         toast.success(
           "Congratulations! You've completed all training modules! 🎓",
           { duration: 5000 }
         );
-        await supabase
-          .from("training_refresh_requirements")
-          .upsert(
-            {
-              user_id: userId,
-              last_completed_at: new Date().toISOString(),
-              next_due_at: new Date(
-                Date.now() + 180 * 24 * 60 * 60 * 1000
-              ).toISOString(),
-              status: "completed",
-            },
-            { onConflict: "user_id" }
-          );
       }
     }
   };
