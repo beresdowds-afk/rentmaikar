@@ -226,6 +226,7 @@ export default function PersonaVerification({
 
       if (data?.provider_configured === false) {
         toast.info("Verification queued — provider will be enabled soon");
+        await updateAttempt(attempt, { status: "failed", error_code: "provider_not_configured" });
         onComplete?.(null);
         return;
       }
@@ -234,6 +235,12 @@ export default function PersonaVerification({
       const sessionToken: string | null = data?.session_token ?? null;
       const envId: string | null = data?.environment_id ?? null;
       const hostedUrl: string | undefined = data?.hosted_url;
+
+      await updateAttempt(attempt, {
+        status: "launched",
+        inquiry_id: inquiryId,
+        template_id: data?.template_id ?? null,
+      });
 
       // Persist a resume marker so a refresh / closed tab / backgrounded app
       // continues the same inquiry instead of restarting from scratch.
@@ -257,6 +264,10 @@ export default function PersonaVerification({
               stage: "identity", step: "inquiry_complete", outcome: "succeeded",
               provider: "persona", correlationId, context: { inquiry_id: id ?? inquiryId, status },
             });
+            void updateAttempt(attempt, {
+              status: "completed", result: status ?? "completed",
+              inquiry_id: id ?? inquiryId, completed_at: new Date().toISOString(),
+            });
             toast.success(`Verification submitted (${status})`);
             onComplete?.(id ?? inquiryId);
           },
@@ -267,6 +278,10 @@ export default function PersonaVerification({
               stage: "identity", step: "inquiry_cancelled", outcome: "failed",
               provider: "persona", failure: classified, correlationId,
             });
+            void updateAttempt(attempt, {
+              status: "cancelled", result: "user_cancelled",
+              completed_at: new Date().toISOString(),
+            });
           },
           onError: (e: any) => {
             const classified = classifyVerificationFailure(e, { correlationId });
@@ -274,6 +289,11 @@ export default function PersonaVerification({
             void logVerificationEvent({
               stage: "identity", step: "sdk_error", outcome: "failed",
               provider: "persona", failure: classified, correlationId,
+            });
+            void updateAttempt(attempt, {
+              status: "failed", error_code: classified?.code ?? "sdk_error",
+              error_detail: String(e?.message ?? e).slice(0, 400),
+              completed_at: new Date().toISOString(),
             });
             if (hostedUrl) window.open(hostedUrl, "_blank", "noopener,noreferrer");
           },
@@ -288,7 +308,13 @@ export default function PersonaVerification({
         stage: "identity", step: "create_inquiry", provider: "persona", correlationId,
       }));
       setFailure(classified);
+      await updateAttempt(attempt, {
+        status: "failed", error_code: classified?.code ?? "create_inquiry_failed",
+        error_detail: String(e?.message ?? e).slice(0, 400),
+        completed_at: new Date().toISOString(),
+      });
     } finally {
+
       setLoading(false);
     }
   }
