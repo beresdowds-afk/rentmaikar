@@ -28,6 +28,7 @@ import {
   UserPlus,
   Trash2,
   RefreshCw,
+  Shield,
   History,
 } from 'lucide-react';
 import { 
@@ -67,6 +68,10 @@ interface SupportTaskRow {
   legal_status?: string;
   iot_status?: string;
   vehicle_status?: string;
+  insurance_status?: string;
+  verification_state?: string;
+  staff_feedback?: string;
+  staff_resolved_at?: string;
   assigned_to?: string;
   vehicle_id?: string;
   device_id?: string;
