@@ -15,6 +15,8 @@ import { withRetry } from "@/lib/verification-retry";
 import { runPreflight } from "@/lib/verification-preflight";
 import { saveVerificationSession, clearVerificationSession } from "@/hooks/useVerificationResume";
 import { usePersonaEnabled } from "@/hooks/usePersonaEnabled";
+import { acceptedGovernmentIds, driversLicenceRequired } from "@/lib/government-id";
+
 
 
 interface Props {
@@ -81,9 +83,12 @@ export default function PersonaVerification({
   const [failure, setFailure] = useState<ClassifiedFailure | null>(null);
   const [lastFields, setLastFields] = useState<Record<string, string> | null>(null);
 
-  // Drivers MUST present a driver's license in addition to any other
-  // identity document. Owners and other roles can choose any accepted doc.
-  const requiresDriversLicense = subject === "self" && subjectRole === "driver";
+  // Persona verifies a government-issued photo ID only. Drivers must present a
+  // driver's licence; every other role (owners, driver-nominated referees,
+  // payment proxies, staff) may present any government ID valid in their region.
+  const requiresDriversLicense = driversLicenceRequired(subjectRole);
+  const acceptedIds = acceptedGovernmentIds(subjectRole, country);
+
 
   useEffect(() => { loadPersonaSdk().catch(() => {/* fallback to hosted */}); }, []);
 
@@ -316,16 +321,30 @@ export default function PersonaVerification({
 
   return (
     <div className="space-y-3">
+      {!requiresDriversLicense && (
+        <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-1">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <IdCard className="h-4 w-4" />
+            Government-issued photo ID required
+          </div>
+          <p className="text-xs text-muted-foreground">
+            We only verify a valid government ID issued in your region. Accepted documents:{" "}
+            {acceptedIds.map((o) => o.label).join(", ")}.
+          </p>
+        </div>
+      )}
+
       {requiresDriversLicense && (
         <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium">
             <IdCard className="h-4 w-4" />
-            Driver's license (required for drivers)
+            Driver's licence (the only accepted ID for drivers)
           </div>
           <p className="text-xs text-muted-foreground">
-            All drivers must upload a valid driver's license in addition to any
-            other identity document requested by Persona.
+            Drivers must verify with a valid government-issued driver's licence.
+            No other document type is accepted for this role.
           </p>
+
           {dlChecking ? (
             <p className="text-xs text-muted-foreground">Checking uploaded documents…</p>
           ) : dlDocId ? (

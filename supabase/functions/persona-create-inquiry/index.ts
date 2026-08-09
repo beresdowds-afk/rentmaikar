@@ -10,6 +10,11 @@ import {
   userRoleTagForRole,
   type PersonaSubjectRole,
 } from "../_shared/persona-templates.ts";
+import {
+  governmentIdPersonaAttributes,
+  driversLicenceRequired,
+} from "../_shared/government-id.ts";
+
 
 
 const Body = z.object({
@@ -26,7 +31,9 @@ const Body = z.object({
     id_type: z.string().max(40).optional(),
     birthdate: z.string().max(20).optional(),
   }).partial().optional(),
+  drivers_license_document_id: z.string().uuid().optional(),
 });
+
 
 const PERSONA_BASE = "https://withpersona.com/api/v1";
 const PERSONA_VERSION = "2023-01-05";
@@ -112,7 +119,30 @@ Deno.serve(async (req) => {
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Government-ID-only policy: drivers must have a driver's licence on file
+    // before an inquiry is opened. Every other role verifies with any valid
+    // government ID accepted in their region.
+    if (driversLicenceRequired(canonicalRole)) {
+      let dlQuery = supa
+        .from("user_documents")
+        .select("id")
+        .eq("user_id", userData.user.id)
+        .eq("document_type", "drivers_license")
+        .limit(1);
+      if (parsed.data.drivers_license_document_id) {
+        dlQuery = dlQuery.eq("id", parsed.data.drivers_license_document_id);
+      }
+      const { data: dlDoc } = await dlQuery.maybeSingle();
+      if (!dlDoc) {
+        return new Response(JSON.stringify({
+          error: "drivers_license_required",
+          detail: "Drivers must upload a valid driver's licence before identity verification.",
+        }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     const { template_id, env_id } = await resolveTemplate(supa, country, canonicalRole ?? undefined);
+
 
     if (!apiKey || !template_id) {
       const { data, error } = await supa.from("persona_inquiries").insert({
@@ -130,6 +160,8 @@ Deno.serve(async (req) => {
     }
 
     const roleAttrs = personaRoleAttributes(canonicalRole);
+    const govIdAttrs = governmentIdPersonaAttributes(canonicalRole, country);
+
     const userRoleTag = userRoleTagForRole(canonicalRole);
     const subjectRefValue = parsed.data.subject_ref ?? userData.user.id;
     const referenceId = canonicalRole
@@ -149,9 +181,11 @@ Deno.serve(async (req) => {
           attributes: {
             "inquiry-template-id": template_id,
             "reference-id": referenceId,
-            tags: roleAttrs.tags,
+            tags: [...roleAttrs.tags, ...govIdAttrs.tags],
             fields: {
               ...roleAttrs.fields,
+              ...govIdAttrs.fields,
+
               "name-first": parsed.data.fields?.name_first,
               "name-last": parsed.data.fields?.name_last,
               "email-address": parsed.data.fields?.email,
@@ -194,7 +228,7 @@ Deno.serve(async (req) => {
       inquiry_id: inquiryId,
       template_id: template_id,
       status: "pending",
-      raw_payload: { user_role: userRoleTag, subject_role: canonicalRole ?? null, reference_id: referenceId, response: body },
+      raw_payload: { user_role: userRoleTag, subject_role: canonicalRole ?? null, reference_id: referenceId, government_id: govIdAttrs.fields, response: body },
     }).select().single();
     if (error) throw error;
 
