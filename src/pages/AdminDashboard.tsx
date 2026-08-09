@@ -10,6 +10,7 @@ import { TraccarDashboard } from "@/components/admin/TraccarDashboard";
 import { SyncScheduleSettings } from "@/components/admin/SyncScheduleSettings";
 import BillingReconciliationPage from "@/pages/admin/BillingReconciliationPage";
 import TourStepConfigPage from "@/pages/admin/TourStepConfigPage";
+import TwilioTemplateManager from "@/components/admin/TwilioTemplateManager";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
 import AdminVehicleCataloguePage from "@/pages/admin/AdminVehicleCataloguePage";
 import UserUuidAssignmentsPage from "@/pages/admin/UserUuidAssignmentsPage";
@@ -760,6 +761,7 @@ const AdminDashboard = () => {
                     <TabsTrigger value="policies">Policy Versions</TabsTrigger>
                     <TabsTrigger value="legal-templates">Legal Agreements</TabsTrigger>
                     <TabsTrigger value="tour-guides">Tour Guides</TabsTrigger>
+                    <TabsTrigger value="message-templates">Message Templates</TabsTrigger>
                   </TabsList>
                   <TabsContent value="faq">
                     <FAQManagement />
@@ -772,6 +774,9 @@ const AdminDashboard = () => {
                   </TabsContent>
                   <TabsContent value="tour-guides">
                     <TourStepConfigPage />
+                  </TabsContent>
+                  <TabsContent value="message-templates">
+                    <TwilioTemplateManager />
                   </TabsContent>
                 </Tabs>
               )}
