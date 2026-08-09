@@ -53,7 +53,7 @@ export const EMQX_PROFILES: Record<string, EMQXBrokerProfile> = {
     tcpUrl: 'mqtt://localhost:1883',
     wssUrl: 'wss://localhost:8084/mqtt',
     sslUrl: 'mqtts://localhost:8883',
-    apiUrl: 'http://localhost:8443/api/v5',
+    apiUrl: 'http://localhost:18083/api/v5',
     apiVersion: 'v5',
   },
 };
