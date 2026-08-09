@@ -14,6 +14,34 @@ export interface CookieConsentRecord {
 const STORAGE_KEY = "rentmaikar_cookie_consent_v2";
 const LEGACY_KEY = "rentmaikar_cookie_consent";
 const CURRENT_VERSION = 1;
+// Long-lived cookie so a signed-out visitor's choice survives beyond
+// localStorage clears / different tabs. 400 days is the browser maximum.
+const COOKIE_NAME = "rentmaikar_cc";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 400;
+
+function readCookie(): CookieConsentRecord | null {
+  try {
+    const match = document.cookie
+      .split("; ")
+      .find(row => row.startsWith(`${COOKIE_NAME}=`));
+    if (!match) return null;
+    const parsed = JSON.parse(decodeURIComponent(match.split("=").slice(1).join("="))) as CookieConsentRecord;
+    if (!parsed?.preferences) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCookie(record: CookieConsentRecord) {
+  try {
+    const value = encodeURIComponent(JSON.stringify(record));
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${COOKIE_NAME}=${value}; Path=/; Max-Age=${COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
+  } catch {
+    // ignore
+  }
+}
 
 export const DEFAULT_PREFS: CookiePreferences = {
   necessary: true,
@@ -33,6 +61,11 @@ function readStorage(): CookieConsentRecord | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw) as CookieConsentRecord;
+    const cookieRecord = readCookie();
+    if (cookieRecord) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cookieRecord));
+      return cookieRecord;
+    }
     const legacy = localStorage.getItem(LEGACY_KEY);
     if (legacy) {
       const migrated: CookieConsentRecord = {
@@ -56,6 +89,7 @@ function writeStorage(prefs: CookiePreferences): CookieConsentRecord {
     version: CURRENT_VERSION,
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
+  writeCookie(record);
   window.dispatchEvent(new CustomEvent("cookie-consent-changed", { detail: record }));
   return record;
 }
@@ -118,6 +152,7 @@ export function useCookieConsent() {
       if (cancelled) return;
       if (remote) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+        writeCookie(remote);
         setRecord(remote);
         window.dispatchEvent(new CustomEvent("cookie-consent-changed", { detail: remote }));
       } else {
@@ -159,6 +194,7 @@ export function useCookieConsent() {
   const revoke = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LEGACY_KEY);
+    document.cookie = `${COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
     setRecord(null);
     window.dispatchEvent(new CustomEvent("cookie-consent-changed", { detail: null }));
   }, []);

@@ -10166,6 +10166,10 @@ export type Database = {
         }
         Returns: Json
       }
+      profile_privileged_fields_unchanged: {
+        Args: { _new: Database["public"]["Tables"]["profiles"]["Row"] }
+        Returns: boolean
+      }
       provision_user_account: {
         Args: {
           _email?: string
