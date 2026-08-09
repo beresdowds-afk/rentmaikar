@@ -26,7 +26,7 @@ export function useTelemetryProvider() {
       .order("priority", { ascending: true })
       .limit(1)
       .maybeSingle();
-    setActive(((data?.name as TelemetryProviderName) ?? "emqx"));
+    setActive(((data?.name as TelemetryProviderName) ?? "traccar"));
     setLoading(false);
   }, []);
 
