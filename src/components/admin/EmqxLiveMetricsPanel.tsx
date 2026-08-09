@@ -43,6 +43,7 @@ interface State {
   stats: Record<string, number> | null;
   metrics: Record<string, number> | null;
   unavailable: { reason: string; hint: string } | null;
+  derivedNote: string | null;
   config: Record<string, unknown> | null;
   updatedAt: Date | null;
 }
@@ -55,6 +56,7 @@ export function EmqxLiveMetricsPanel() {
     stats: null,
     metrics: null,
     unavailable: null,
+    derivedNote: null,
     config: null,
     updatedAt: null,
   });
@@ -75,6 +77,7 @@ export function EmqxLiveMetricsPanel() {
           metrics: null,
           config: data.config ?? null,
           unavailable: { reason: data.reason, hint: data.hint },
+          derivedNote: null,
           updatedAt: new Date(),
         });
         return;
@@ -88,6 +91,7 @@ export function EmqxLiveMetricsPanel() {
         stats: stats ?? null,
         metrics: metrics ?? null,
         unavailable: null,
+        derivedNote: data?.data?.derived ? (data.data.derivedNote as string) : null,
         config: data?.config ?? null,
         updatedAt: new Date(),
       });
