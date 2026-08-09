@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { IoTAuditTrailPanel } from "./IoTAuditTrailPanel";
 import { VehiclePicker } from "./VehiclePicker";
 import { HologramDevicesPanel } from "./HologramDevicesPanel";
+import { DeviceIdentityPanel } from "./DeviceIdentityPanel";
 import { HologramAccountPanel } from "./HologramAccountPanel";
 
 
