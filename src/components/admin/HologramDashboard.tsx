@@ -568,6 +568,45 @@ export function HologramDashboard() {
                   )}
                 </div>
 
+                <div className="rounded-md border p-3 space-y-3">
+                  <p className="text-xs font-medium">Lifecycle &amp; plan</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm" variant="outline"
+                      disabled={!configured || !selected.provider_sim_id || busy === "resume_sim"}
+                      onClick={() => run("resume_sim", { sim_id: selected.provider_sim_id })}
+                    >Resume</Button>
+                    <Button
+                      size="sm" variant="outline"
+                      disabled={!configured || !selected.provider_sim_id || busy === "suspend_sim"}
+                      onClick={() => run("suspend_sim", { sim_id: selected.provider_sim_id })}
+                    >Suspend</Button>
+                    <Button
+                      size="sm" variant="outline"
+                      disabled={!configured || !selected.provider_sim_id || !planId || busy === "change_plan"}
+                      onClick={() => run("change_plan", { sim_id: selected.provider_sim_id, plan_id: Number(planId) })}
+                      title={planId ? "Change plan" : "Set a plan ID in Operations first"}
+                    >Change plan</Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number" inputMode="numeric" placeholder="Monthly limit (MB)"
+                      value={limitMb} onChange={(e) => setLimitMb(e.target.value)} className="max-w-[180px]"
+                    />
+                    <Button
+                      size="sm" variant="outline"
+                      disabled={!configured || !selected.provider_sim_id || limitMb === "" || busy === "set_data_limit"}
+                      onClick={() => run("set_data_limit", {
+                        sim_id: selected.provider_sim_id,
+                        limit_bytes: Math.round(Number(limitMb) * 1_000_000),
+                      })}
+                    >Set data limit</Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">0 MB removes the cap (unlimited).</p>
+                </div>
+
+
+
                 {selected.metadata && Object.keys(selected.metadata).length > 0 && (
                   <details className="rounded-md border p-3">
                     <summary className="text-xs font-medium cursor-pointer">Raw provider payload</summary>
