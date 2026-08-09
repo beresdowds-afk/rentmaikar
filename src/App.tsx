@@ -65,6 +65,7 @@ const InsuranceSupportDashboard = lazy(() => import("./pages/InsuranceSupportDas
 const DriverTraining = lazy(() => import("./pages/DriverTraining"));
 const RefereeAttestation = lazy(() => import("./pages/RefereeAttestation"));
 const MobileCallIn = lazy(() => import("./pages/MobileCallIn"));
+const MobileNotificationPreferences = lazy(() => import("./pages/MobileNotificationPreferences"));
 const PaymentReceipt = lazy(() => import("./pages/PaymentReceipt"));
 const ReconciliationLogsPage = lazy(() => import("./pages/admin/ReconciliationLogsPage"));
 const BillingReconciliationPage = lazy(() => import("./pages/admin/BillingReconciliationPage"));
@@ -156,6 +157,8 @@ const App = () => (
                   <Route path="/proxy/consent" element={<ProxyConsentPage />} />
                   <Route path="/m/call-in" element={<ProtectedRoute><MobileCallIn /></ProtectedRoute>} />
                   <Route path="/m/call-in/:type" element={<ProtectedRoute><MobileCallIn /></ProtectedRoute>} />
+                  <Route path="/m/settings/notifications" element={<ProtectedRoute><MobileNotificationPreferences /></ProtectedRoute>} />
+                  <Route path="/m/notifications" element={<Navigate to="/m/settings/notifications" replace />} />
                   <Route path="/driver/register" element={<DriverRegistration />} />
                   <Route path="/owner/register" element={<OwnerRegistration />} />
                   <Route path="/register/driver" element={<Navigate to="/driver/register" replace />} />
