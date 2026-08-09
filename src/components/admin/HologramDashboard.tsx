@@ -245,12 +245,15 @@ export function HologramDashboard() {
       </div>
 
       <Tabs defaultValue="sims" className="w-full">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="sims">SIM Inventory</TabsTrigger>
+          <TabsTrigger value="devices">Devices</TabsTrigger>
+          <TabsTrigger value="account">Account &amp; Plans</TabsTrigger>
           <TabsTrigger value="ops">Operations</TabsTrigger>
           <TabsTrigger value="setup">API Setup</TabsTrigger>
           <TabsTrigger value="audit">Audit Trail</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="sims" className="space-y-4">
           <div className="flex items-center gap-2 flex-wrap">
