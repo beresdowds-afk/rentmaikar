@@ -30,8 +30,8 @@ const LEVELS: Record<number, string> = {
   1: "Tracker only",
   2: "SIM + tracker",
   3: "+ Vehicle",
-  4: "+ EMQX",
-  5: "+ Driver",
+  4: "+ Driver",
+  5: "+ Tracking service",
 };
 
 export const DeviceIdentityPanel = () => {
