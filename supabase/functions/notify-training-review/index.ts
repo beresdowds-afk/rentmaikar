@@ -35,16 +35,37 @@ Deno.serve(async (req) => {
         ? "Compliance training complete"
         : "Training module verified"
       : "Training module needs to be retaken";
-    const body = approved
-      ? training_complete
-        ? "All required modules are verified. Your training is now up to date."
-        : `"${module_title}" was verified by the compliance team.`
-      : `"${module_title}" was rejected${notes ? `: ${notes}` : ""}. Please retake it.`;
-
     const supa = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // When the last module clears, tell the driver when the next refresh is due.
+    let nextDueAt: string | null = null;
+    if (approved && training_complete) {
+      const { data: refresh } = await supa
+        .from("training_refresh_requirements")
+        .select("next_due_at")
+        .eq("user_id", user_id)
+        .maybeSingle();
+      nextDueAt = (refresh as { next_due_at?: string } | null)?.next_due_at ?? null;
+    }
+    const dueLabel = nextDueAt
+      ? new Date(nextDueAt).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+      : null;
+
+    const body = approved
+      ? training_complete
+        ? `All required modules are verified. Your training is now up to date.${
+          dueLabel ? ` Next refresh due ${dueLabel}.` : ""
+        }`
+        : `"${module_title}" was verified by the compliance team.`
+      : `"${module_title}" was rejected${notes ? `: ${notes}` : ""}. Please retake it.`;
+
 
     const pushRes = await fetch(
       `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-push-notification`,
@@ -59,7 +80,11 @@ Deno.serve(async (req) => {
           event: "training_review",
           title,
           body,
-          data: { route: "/driver/training", approved: String(approved) },
+          data: {
+            route: "/driver/training",
+            approved: String(approved),
+            ...(nextDueAt ? { next_due_at: nextDueAt } : {}),
+          },
         }),
       },
     ).then((r) => r.json()).catch(() => ({ ok: false }));
@@ -70,7 +95,12 @@ Deno.serve(async (req) => {
       to_identifier: user_id,
       subject: title,
       body,
-      metadata: { event: "training_review", approved, training_complete },
+      metadata: {
+        event: "training_review",
+        approved,
+        training_complete,
+        next_due_at: nextDueAt,
+      },
     }).then(() => {}, () => {});
 
     return new Response(JSON.stringify({ ok: true, push: pushRes }), {
