@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+
 import { Shield, Loader2, CheckCircle2, IdCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRegion } from "@/contexts/RegionContext";
