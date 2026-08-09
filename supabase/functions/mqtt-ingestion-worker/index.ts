@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
       if (!resp.ok) {
         const detail = await resp.text();
         const { reason } = classifyManagementFailure(resp.status, detail);
-        throw Object.assign(new Error(reason), { reason });
+        throw Object.assign(new Error(reason), { reason, detail, status: resp.status });
       }
       return resp.json();
     };
