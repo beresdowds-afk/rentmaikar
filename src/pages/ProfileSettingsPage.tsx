@@ -17,6 +17,7 @@ import { ProfileAuditHistory } from '@/components/profile/ProfileAuditHistory';
 import { ApplicationAppealPanel } from '@/components/profile/ApplicationAppealPanel';
 import { ConnectedAccounts } from '@/components/profile/ConnectedAccounts';
 import { PersonaNotificationPreference } from '@/components/profile/PersonaNotificationPreference';
+import { MessagingPreferencesPanel } from '@/components/profile/MessagingPreferencesPanel';
 import { RoleSwitchCard } from '@/components/profile/RoleSwitchCard';
 
 import PWASettingsPanel from '@/components/pwa/PWASettingsPanel';
@@ -313,8 +314,10 @@ export default function ProfileSettingsPage() {
 
           <RoleSwitchCard />
 
+          <MessagingPreferencesPanel />
 
           <PersonaNotificationPreference />
+
 
           <ApplicationAppealPanel />
 
