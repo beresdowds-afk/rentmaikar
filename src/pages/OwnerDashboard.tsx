@@ -25,6 +25,9 @@ import { OwnerWeeklyReportReview } from '@/components/inspection/OwnerWeeklyRepo
 import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { OwnerRentToOwnListing } from '@/components/owner/OwnerRentToOwnListing';
 import { VehiclePickupLocation } from '@/components/owner/VehiclePickupLocation';
+import { VehiclePhotoManager } from '@/components/owner/VehiclePhotoManager';
+import { useQueryClient } from '@tanstack/react-query';
+
 import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import { VehicleDocumentUpload } from '@/components/documents/VehicleDocumentUpload';
 import { OwnerInsuranceSupport } from '@/components/owner/OwnerInsuranceSupport';
@@ -93,6 +96,8 @@ const FALLBACK_CATEGORY_YEARS: Record<string, string> = {
 export default function OwnerDashboard() {
   const { country, currency } = useRegion();
   const { user, userRole } = useAuth();
+  const queryClient = useQueryClient();
+
   const isAdminView = userRole === 'admin';
   const [activeTab, setActiveTab] = usePersistedTab('overview');
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
@@ -587,9 +592,28 @@ export default function OwnerDashboard() {
       ) : (
         dbVehicles.map(vehicle => (
           <Card key={vehicle.id}>
-            {/* existing vehicle card */}
+            <CardHeader>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <CardTitle className="text-lg">
+                    {vehicle.year} {vehicle.make} {vehicle.model}
+                  </CardTitle>
+                  <CardDescription>{vehicle.license_plate}</CardDescription>
+                </div>
+                <Badge variant="secondary" className="capitalize">{vehicle.status}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <VehiclePhotoManager
+                vehicleId={vehicle.id}
+                ownerId={(vehicle as any).owner_id}
+                photoUrls={((vehicle as any).photo_urls as string[]) || []}
+                onChange={() => queryClient.invalidateQueries({ queryKey: ['owner-vehicles'] })}
+              />
+            </CardContent>
           </Card>
         ))
+
       )}
     </div>
 
@@ -643,9 +667,19 @@ export default function OwnerDashboard() {
                         {dbVehicles.map(vehicle => (
                           <div key={vehicle.id} className="flex items-center justify-between p-4 border rounded-lg">
                             <div className="flex items-center gap-4">
-                              <div className="h-12 w-12 bg-muted rounded-lg flex items-center justify-center">
-                                <Car className="h-6 w-6" />
-                              </div>
+                              {((vehicle as any).photo_urls?.[0]) ? (
+                                <img
+                                  src={(vehicle as any).photo_urls[0]}
+                                  alt={`${vehicle.make} ${vehicle.model}`}
+                                  loading="lazy"
+                                  className="h-12 w-12 rounded-lg object-cover border"
+                                />
+                              ) : (
+                                <div className="h-12 w-12 bg-muted rounded-lg flex items-center justify-center">
+                                  <Car className="h-6 w-6" />
+                                </div>
+                              )}
+
                               <div>
                                 <p className="font-medium">{vehicle.make} {vehicle.model}</p>
                                 <p className="text-sm text-muted-foreground">{vehicle.license_plate}</p>

@@ -8183,6 +8183,7 @@ export type Database = {
           make: string
           model: string
           owner_id: string
+          photo_urls: string[]
           pickup_address: string | null
           pickup_city: string | null
           pickup_instructions: string | null
@@ -8203,6 +8204,7 @@ export type Database = {
           make: string
           model: string
           owner_id: string
+          photo_urls?: string[]
           pickup_address?: string | null
           pickup_city?: string | null
           pickup_instructions?: string | null
@@ -8223,6 +8225,7 @@ export type Database = {
           make?: string
           model?: string
           owner_id?: string
+          photo_urls?: string[]
           pickup_address?: string | null
           pickup_city?: string | null
           pickup_instructions?: string | null

@@ -159,10 +159,20 @@ export function RentToOwnSearch() {
 
                 return (
                   <Card key={listing.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                    {/* Vehicle Image Placeholder */}
-                    <div className="h-40 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
-                      <Car className="h-16 w-16 text-primary/40" />
-                    </div>
+                    {/* Vehicle Image */}
+                    {(listing.vehicle as any)?.photo_urls?.[0] ? (
+                      <img
+                        src={(listing.vehicle as any).photo_urls[0]}
+                        alt={`${listing.vehicle?.year ?? ''} ${listing.vehicle?.make ?? ''} ${listing.vehicle?.model ?? ''}`.trim()}
+                        loading="lazy"
+                        className="h-40 w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-40 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+                        <Car className="h-16 w-16 text-primary/40" />
+                      </div>
+                    )}
+
 
                     <CardContent className="p-4">
                       {/* Vehicle Info */}
