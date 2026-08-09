@@ -41,7 +41,7 @@ export function TrainingComplianceBanner() {
             : `${remaining} of ${data.total_modules} required modules outstanding. Training must be completed and verified.`}
         </span>
         <Button asChild size="sm" className="shrink-0">
-          <Link to="/driver-training">
+          <Link to="/driver/training">
             {rejected ? 'Retake training' : 'Continue training'}
           </Link>
         </Button>

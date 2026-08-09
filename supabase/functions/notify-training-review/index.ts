@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
           event: "training_review",
           title,
           body,
-          data: { route: "/driver-training", approved: String(approved) },
+          data: { route: "/driver/training", approved: String(approved) },
         }),
       },
     ).then((r) => r.json()).catch(() => ({ ok: false }));

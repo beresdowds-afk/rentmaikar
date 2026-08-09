@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
           event: "training_reminder",
           title: "Compliance training required",
           body,
-          data: { route: "/driver-training" },
+          data: { route: "/driver/training" },
         }),
       }).catch(() => {});
       notified++;
