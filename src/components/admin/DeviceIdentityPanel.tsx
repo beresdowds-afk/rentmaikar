@@ -46,7 +46,7 @@ export const DeviceIdentityPanel = () => {
     const { data, error } = await supabase
       .from("device_identities")
       .select(
-        "id,identity_key,bundle_level,status,iccid,sim_provider,imei,serial_number,license_plate,vin,mqtt_client_id,topic_prefix,driver_id,owner_id,last_synced_at",
+        "id,identity_key,bundle_level,status,iccid,sim_provider,imei,serial_number,license_plate,vin,mqtt_client_id,topic_prefix,telemetry_provider,driver_id,owner_id,last_synced_at",
       )
       .order("bundle_level", { ascending: false })
       .limit(500);
@@ -116,7 +116,7 @@ export const DeviceIdentityPanel = () => {
           <div>
             <CardTitle>Device identity registry</CardTitle>
             <CardDescription>
-              One record per tracker bundling ((((SIM + tracker) + vehicle) + EMQX) + driver).
+              One record per tracker bundling ((((SIM + tracker) + vehicle) + driver) + EMQX/Traccar tracking).
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={rebuild} disabled={rebuilding}>
@@ -144,8 +144,8 @@ export const DeviceIdentityPanel = () => {
                     <TableHead>SIM</TableHead>
                     <TableHead>Tracker</TableHead>
                     <TableHead>Vehicle</TableHead>
-                    <TableHead>EMQX</TableHead>
                     <TableHead>Driver</TableHead>
+                    <TableHead>Tracking</TableHead>
                     <TableHead>Synced</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -183,12 +183,14 @@ export const DeviceIdentityPanel = () => {
                           <div>{r.license_plate ?? "—"}</div>
                           <div className="text-muted-foreground font-mono">{r.vin}</div>
                         </TableCell>
-                        <TableCell className="text-xs">
-                          <div className="font-mono">{r.mqtt_client_id ?? "—"}</div>
-                          <div className="text-muted-foreground font-mono">{r.topic_prefix}</div>
-                        </TableCell>
                         <TableCell className="text-xs font-mono">
                           {r.driver_id ? r.driver_id.slice(0, 8) : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <div className="uppercase">{r.telemetry_provider ?? "—"}</div>
+                          <div className="text-muted-foreground font-mono">
+                            {r.mqtt_client_id ?? r.topic_prefix ?? ""}
+                          </div>
                         </TableCell>
                         <TableCell className="text-xs">
                           {new Date(r.last_synced_at).toLocaleString()}
