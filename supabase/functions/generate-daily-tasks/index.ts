@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { requireCronSecret } from "../_shared/cron-auth.ts";
+import { requireCronSecretAsync } from "../_shared/cron-auth.ts";
 import { isCallerAdmin } from "../_shared/admin-auth.ts";
 
 const corsHeaders = {
@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
   }
 
   // Allow: (1) cron via x-cron-secret or service-role bearer, OR (2) authenticated admin user.
-  const cronDenied = requireCronSecret(req);
+  const cronDenied = await requireCronSecretAsync(req);
   if (cronDenied) {
     const isAdmin = await isCallerAdmin(req);
     if (!isAdmin) return cronDenied;
