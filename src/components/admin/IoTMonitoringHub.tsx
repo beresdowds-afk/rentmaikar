@@ -823,6 +823,8 @@ export const IoTMonitoringHub = () => {
         {/* ── EMQX BROKER ──────────────────────────────── */}
         <TabsContent value="emqx">
           <div className="space-y-4">
+            <EmqxLiveMetricsPanel />
+            <ServerOrchestratorStatusCard />
             <EmqxBrokerStatusCard />
             <EmqxEndpointSettings />
             {/* Broker Profiles */}
