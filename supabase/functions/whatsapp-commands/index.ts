@@ -10,6 +10,31 @@ import {
 } from "../_shared/whatsapp-templates.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { verifyTwilioRequestRaw } from "../_shared/twilio-signature.ts";
+import {
+  preloadTemplates,
+  templateFromCache,
+  countryCodeForPhone,
+} from "../_shared/message-templates.ts";
+
+/** Keyword replies that admins can override from the template manager. */
+const KEYWORD_TEMPLATE_KEYS: Record<string, string> = {
+  PAY: "kw_pay",
+  PAYMENT: "kw_pay",
+  STATUS: "kw_status",
+  BALANCE: "kw_balance",
+  HELP: "kw_help",
+  SUPPORT: "kw_help",
+  DOCS: "kw_doc",
+  DOC: "kw_doc",
+  HUMAN: "kw_human",
+  STOP: "kw_stop",
+  START: "kw_start",
+};
+
+const supportPhoneFor = (region: string): string =>
+  region === "NIGERIA"
+    ? (Deno.env.get("TWILIO_PHONE_NUMBER_NG") ?? "")
+    : (Deno.env.get("TWILIO_PHONE_NUMBER") ?? "");
 
 
 const corsHeaders = {
@@ -1427,7 +1452,20 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // ─── Admin-managed template override (falls back to built-in copy) ───
+    const templateKey = KEYWORD_TEMPLATE_KEYS[command];
+    if (templateKey) {
+      await preloadTemplates(supabase);
+      const managed = templateFromCache(templateKey, "whatsapp", countryCodeForPhone(from), {
+        first_name: profile?.full_name?.split(" ")[0] || "there",
+        portal_link: "https://rentmaikar.lovable.app",
+        support_phone: supportPhoneFor(region),
+      });
+      if (managed) responseMessage = managed;
+    }
+
     await sendWhatsAppMessage(from, responseMessage);
+
 
     // ─── Track inbound + outbound messages ───
     await trackWhatsAppMessage(supabase, {

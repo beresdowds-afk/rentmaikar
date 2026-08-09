@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getRegionConfig, getFromNumber, checkRateLimit, checkGlobalRateLimit } from "../_shared/sms-config.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
+import { resolveMessage, countryCodeForPhone } from "../_shared/message-templates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -236,7 +237,28 @@ const handler = async (req: Request): Promise<Response> => {
 
     const regionConfig = getRegionConfig(body.phone);
     const isNigeria = body.phone.startsWith('+234');
-    const message = getMessageContent(body);
+    // Admin-managed template first; hardcoded copy stays as the safety net.
+    const sym = body.currency ? getCurrencySymbol(body.currency) : '$';
+    const message = await resolveMessage({
+      key: body.notificationType,
+      channel: body.channel === 'whatsapp' ? 'whatsapp' : 'sms',
+      countryCode: countryCodeForPhone(body.phone),
+      values: {
+        first_name: body.name ? sanitizeString(body.name) : 'there',
+        vehicle_name: body.vehicleInfo ? sanitizeString(body.vehicleInfo) : 'your vehicle',
+        amount_display: body.amount !== undefined && body.amount !== null ? `${sym}${body.amount}` : '',
+        currency: body.currency ?? '',
+        due_date: body.dueDate ? `on ${sanitizeString(body.dueDate)}` : '',
+        document_type: body.documentType ? sanitizeString(body.documentType) : 'document',
+        ticket_id: body.ticketId ? `#${sanitizeString(body.ticketId)}` : '',
+        verification_code: body.verificationCode ?? '',
+        device: body.device ? `from ${sanitizeString(body.device)}` : '',
+        custom_message: body.customMessage
+          ? sanitizeString(body.customMessage)
+          : 'You have a new notification. Please log in to view details.',
+      },
+      fallback: getMessageContent(body),
+    });
 
     if (isNigeria) {
       // ─── TERMII (Nigeria) ───
