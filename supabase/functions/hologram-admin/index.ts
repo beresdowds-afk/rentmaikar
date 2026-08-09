@@ -14,17 +14,38 @@ const Body = z.object({
     "import_sims",
     "activate_sim",
     "suspend_sim",
+    "resume_sim",
+    "change_plan",
+    "set_data_limit",
     "sync_usage",
     "sync_one_usage",
     "link_sim",
     "unlink_sim",
+    // Full dashboard embedding
+    "account",
+    "list_orgs",
+    "list_plans",
+    "list_tags",
+    "list_devices",
+    "get_device",
+    "device_location",
+    "device_data",
+    "rename_device",
+    "send_sms",
   ]),
   sim_id: z.string().min(1).max(64).optional(),
   sim_row_id: z.string().uuid().optional(),
   plan_id: z.number().int().positive().optional(),
+  zone: z.string().min(1).max(32).optional(),
+  limit_bytes: z.number().int().min(0).optional(),
+  device_id_ext: z.union([z.string().min(1).max(64), z.number().int()]).optional(),
+  name: z.string().min(1).max(120).optional(),
+  message: z.string().min(1).max(1600).optional(),
+  limit: z.number().int().min(1).max(500).optional(),
   vehicle_id: z.string().uuid().nullable().optional(),
   device_id: z.string().uuid().nullable().optional(),
 });
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
