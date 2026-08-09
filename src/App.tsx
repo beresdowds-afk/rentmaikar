@@ -503,6 +503,16 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/settings/notifications"
+                    element={
+                      <ProtectedRoute>
+                        <NotificationPreferencesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/notification-preferences" element={<Navigate to="/settings/notifications" replace />} />
+
                   <Route path="/onboarding-redirect" element={<OnboardingRedirect />} />
                   <Route path="/verify-email" element={<OnboardingRedirect />} />
                   <Route
