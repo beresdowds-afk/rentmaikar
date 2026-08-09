@@ -1,6 +1,6 @@
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import { Seo } from '@/components/seo/Seo';
+import Seo from '@/components/seo/Seo';
 import { MessagingPreferencesPanel } from '@/components/profile/MessagingPreferencesPanel';
 import { PersonaNotificationPreference } from '@/components/profile/PersonaNotificationPreference';
 import { Button } from '@/components/ui/button';
