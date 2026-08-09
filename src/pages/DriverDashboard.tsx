@@ -56,6 +56,7 @@ import { SubscriptionGate } from '@/components/subscriptions/SubscriptionGate';
 import { PortalGate } from '@/components/onboarding/PortalGate';
 import { OnboardingReconciliationBanner } from '@/components/onboarding/OnboardingReconciliationBanner';
 import { OnboardingChecklist } from '@/components/onboarding/OnboardingChecklist';
+import { TrainingComplianceBanner } from '@/components/dashboard/TrainingComplianceBanner';
 import { DriverOverviewTab } from '@/components/dashboard/DriverOverviewTab';
 import { useNavigate } from 'react-router-dom';
 import {
