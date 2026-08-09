@@ -59,12 +59,17 @@ function toDeploymentEndpoint(
 
 export async function getEmqxManagementConfig(): Promise<EmqxManagementConfig> {
   const envUrl = Deno.env.get("EMQX_API_URL");
+  const envMqttHost = Deno.env.get("EMQX_MQTT_HOST") || null;
+  // Deployment-specific default: the MQTT/deployment host on 8443 with /api/v5.
+  const envDerived = envUrl ||
+    buildUrl(envMqttHost, DEFAULT_MANAGEMENT_PORT, DEFAULT_BASE_PATH) ||
+    DEFAULT_URL;
   const fallback: EmqxManagementConfig = {
-    apiUrl: envUrl || DEFAULT_URL,
+    apiUrl: toDeploymentEndpoint(envDerived, "serverless", DEFAULT_BASE_PATH),
     managementHost: null,
-    managementPort: null,
-    apiBasePath: "/api/v5",
-    mqttHost: Deno.env.get("EMQX_MQTT_HOST") || null,
+    managementPort: DEFAULT_MANAGEMENT_PORT,
+    apiBasePath: DEFAULT_BASE_PATH,
+    mqttHost: envMqttHost,
     mqttPort: Number(Deno.env.get("EMQX_MQTT_PORT")) || 8883,
     managementEnabled: true,
     deploymentType: "serverless",
@@ -85,24 +90,31 @@ export async function getEmqxManagementConfig(): Promise<EmqxManagementConfig> {
     const v = Array.isArray(rows) ? rows[0]?.value : null;
     if (!v || typeof v !== "object") return fallback;
 
-    const basePath = typeof v.api_base_path === "string" && v.api_base_path ? v.api_base_path : "/api/v5";
+    const basePath = typeof v.api_base_path === "string" && v.api_base_path ? v.api_base_path : DEFAULT_BASE_PATH;
+    const deploymentType = (v.deployment_type as EmqxManagementConfig["deploymentType"]) || "serverless";
+    const port = v.management_port ? Number(v.management_port) : DEFAULT_MANAGEMENT_PORT;
+    const host = v.management_host ?? null;
     const built = typeof v.api_url === "string" && v.api_url
       ? v.api_url.replace(/\/$/, "")
-      : buildUrl(v.management_host, v.management_port ? Number(v.management_port) : null, basePath);
+      : buildUrl(host, port, basePath) ||
+        buildUrl(v.mqtt_host ?? fallback.mqttHost, port, basePath);
+
+    const apiUrl = toDeploymentEndpoint(built || fallback.apiUrl, deploymentType, basePath);
 
     return {
-      apiUrl: built || fallback.apiUrl,
-      managementHost: v.management_host ?? null,
-      managementPort: v.management_port ? Number(v.management_port) : null,
+      apiUrl,
+      managementHost: host,
+      managementPort: port,
       apiBasePath: basePath,
       mqttHost: v.mqtt_host ?? fallback.mqttHost,
       mqttPort: v.mqtt_port ? Number(v.mqtt_port) : fallback.mqttPort,
       managementEnabled: v.management_enabled !== false,
-      deploymentType: (v.deployment_type as EmqxManagementConfig["deploymentType"]) || "serverless",
+      deploymentType,
       source: "settings",
     };
   } catch {
     return fallback;
+
   }
 }
 
