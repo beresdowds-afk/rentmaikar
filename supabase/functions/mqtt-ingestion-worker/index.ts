@@ -79,10 +79,20 @@ Deno.serve(async (req) => {
     ];
 
     if (!vehicleIds.length) {
+      // Nothing to pull: still probe the broker so the dashboard shows real health.
+      let probeOk = false;
+      let probeReason: string | null = null;
+      try {
+        await emqxFetch("/stats");
+        probeOk = true;
+      } catch (e) {
+        probeReason = (e as { reason?: string }).reason ?? "request_failed";
+      }
       return await finish({
         source: "mqtt_worker",
         provider: "emqx",
-        broker_reachable: true,
+        broker_reachable: probeOk,
+        degraded_reason: probeReason,
         devices_seen: 0,
         events_processed: 0,
       });
