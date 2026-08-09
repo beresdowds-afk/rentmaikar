@@ -667,9 +667,19 @@ export default function OwnerDashboard() {
                         {dbVehicles.map(vehicle => (
                           <div key={vehicle.id} className="flex items-center justify-between p-4 border rounded-lg">
                             <div className="flex items-center gap-4">
-                              <div className="h-12 w-12 bg-muted rounded-lg flex items-center justify-center">
-                                <Car className="h-6 w-6" />
-                              </div>
+                              {((vehicle as any).photo_urls?.[0]) ? (
+                                <img
+                                  src={(vehicle as any).photo_urls[0]}
+                                  alt={`${vehicle.make} ${vehicle.model}`}
+                                  loading="lazy"
+                                  className="h-12 w-12 rounded-lg object-cover border"
+                                />
+                              ) : (
+                                <div className="h-12 w-12 bg-muted rounded-lg flex items-center justify-center">
+                                  <Car className="h-6 w-6" />
+                                </div>
+                              )}
+
                               <div>
                                 <p className="font-medium">{vehicle.make} {vehicle.model}</p>
                                 <p className="text-sm text-muted-foreground">{vehicle.license_plate}</p>
