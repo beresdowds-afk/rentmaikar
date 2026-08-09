@@ -65,10 +65,126 @@ serve(async (req) => {
   }
   const twilioAuth = `Basic ${btoa(`${accountSid}:${authToken}`)}`;
 
+  // ---------- GET ?diagnostics=1 : verify configuration without sending ----------
+  if (req.method === "GET" && new URL(req.url).searchParams.get("diagnostics")) {
+    const envNames = [
+      "TWILIO_ACCOUNT_SID",
+      "TWILIO_AUTH_TOKEN",
+      "TWILIO_API_KEY",
+      "TWILIO_API_SECRET",
+      "TWILIO_PHONE_NUMBER",
+      "TWILIO_WHATSAPP_NUMBER",
+      "TWILIO_MESSAGING_SERVICE_SID",
+      "TWILIO_TWIML_APP_SID",
+      "TWILIO_CUSTOMER_PROFILE_SID",
+      "TWILIO_A2P_BRAND_SID",
+      "TWILIO_A2P_CAMPAIGN_SID",
+    ];
+    const env: Record<string, boolean> = {};
+    for (const n of envNames) env[n] = Boolean(Deno.env.get(n));
+
+    const checks: Record<string, unknown> = {};
+
+    // 1. Account credentials
+    const accRes = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}.json`,
+      { headers: { Authorization: twilioAuth } },
+    );
+    const acc = await accRes.json().catch(() => ({}));
+    checks.account = accRes.ok
+      ? { ok: true, friendlyName: acc.friendly_name, status: acc.status, type: acc.type }
+      : { ok: false, status: accRes.status, error: acc.message ?? "auth failed" };
+
+    // 2. Sender phone numbers owned by the account
+    const numRes = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/IncomingPhoneNumbers.json?PageSize=50`,
+      { headers: { Authorization: twilioAuth } },
+    );
+    const nums = await numRes.json().catch(() => ({}));
+    const owned: string[] = (nums.incoming_phone_numbers ?? []).map((n: any) => n.phone_number);
+    const smsNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
+    const waNumber = Deno.env.get("TWILIO_WHATSAPP_NUMBER");
+    checks.phoneNumber = {
+      ok: numRes.ok && !!smsNumber && owned.includes(smsNumber),
+      configured: smsNumber ?? null,
+      ownedCount: owned.length,
+      note: smsNumber && !owned.includes(smsNumber)
+        ? "Configured number is not owned by this account (or is a Messaging Service sender)"
+        : undefined,
+    };
+    checks.whatsappNumber = {
+      ok: !!waNumber,
+      configured: waNumber ?? null,
+      note: waNumber && !owned.includes(waNumber.replace("whatsapp:", ""))
+        ? "WhatsApp senders are managed separately from Incoming Phone Numbers — verify in Twilio WhatsApp senders"
+        : undefined,
+    };
+
+    // 3. Messaging service
+    const msSid = Deno.env.get("TWILIO_MESSAGING_SERVICE_SID");
+    if (msSid) {
+      const msRes = await fetch(
+        `https://messaging.twilio.com/v1/Services/${msSid}`,
+        { headers: { Authorization: twilioAuth } },
+      );
+      const ms = await msRes.json().catch(() => ({}));
+      checks.messagingService = msRes.ok
+        ? { ok: true, friendlyName: ms.friendly_name, statusCallback: ms.status_callback ?? null }
+        : { ok: false, status: msRes.status, error: ms.message ?? "lookup failed" };
+    } else {
+      checks.messagingService = { ok: false, error: "TWILIO_MESSAGING_SERVICE_SID not set" };
+    }
+
+    // 4. Customer profile (trust hub)
+    const cpSid = Deno.env.get("TWILIO_CUSTOMER_PROFILE_SID");
+    if (cpSid) {
+      const cpRes = await fetch(
+        `https://trusthub.twilio.com/v1/CustomerProfiles/${cpSid}`,
+        { headers: { Authorization: twilioAuth } },
+      );
+      const cp = await cpRes.json().catch(() => ({}));
+      checks.customerProfile = cpRes.ok
+        ? { ok: cp.status === "twilio-approved", status: cp.status, friendlyName: cp.friendly_name }
+        : { ok: false, status: cpRes.status, error: cp.message ?? "lookup failed" };
+    } else {
+      checks.customerProfile = { ok: false, error: "TWILIO_CUSTOMER_PROFILE_SID not set" };
+    }
+
+    // 5. API key (used for VoIP access tokens)
+    const apiKey = Deno.env.get("TWILIO_API_KEY");
+    if (apiKey) {
+      const keyRes = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Keys/${apiKey}.json`,
+        { headers: { Authorization: twilioAuth } },
+      );
+      const key = await keyRes.json().catch(() => ({}));
+      checks.apiKey = keyRes.ok
+        ? { ok: true, friendlyName: key.friendly_name }
+        : { ok: false, status: keyRes.status, error: key.message ?? "lookup failed" };
+    } else {
+      checks.apiKey = { ok: false, error: "TWILIO_API_KEY not set" };
+    }
+
+    // 6. Webhook signature validation readiness
+    const baseUrl = `${supabaseUrl}/functions/v1`;
+    checks.webhooks = {
+      signatureValidationEnabled: Boolean(authToken),
+      endpoints: {
+        incomingMessages: `${baseUrl}/twilio-webhook`,
+        whatsappCommands: `${baseUrl}/whatsapp-commands`,
+        voipStatusCallback: `${baseUrl}/voip-status-callback`,
+        recordingStatusCallback: `${baseUrl}/recording-status-callback`,
+      },
+    };
+
+    return json({ env, checks, checkedBy: user.email, checkedAt: new Date().toISOString() });
+  }
+
   // ---------- GET: poll delivery status by SID ----------
   if (req.method === "GET") {
     const url = new URL(req.url);
     const sid = url.searchParams.get("sid");
+
     if (!sid || !/^[A-Z]{2}[0-9a-fA-F]{32}$/.test(sid)) {
       return json({ error: "Invalid or missing 'sid'" }, 400);
     }
