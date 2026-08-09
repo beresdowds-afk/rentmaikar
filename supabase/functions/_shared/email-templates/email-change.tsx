@@ -7,6 +7,7 @@ import {
   Button,
   Container,
   Head,
+  Img,
   Heading,
   Html,
   Link,
@@ -37,6 +38,13 @@ export const EmailChangeEmail = ({
     <Preview>Confirm your email change for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
+        <Img
+          src="https://rentmaikar.com/pwa-icon-192.png"
+          width="48"
+          height="48"
+          alt="Rentmaikar"
+          style={logo}
+        />
         <Heading style={h1}>Confirm your email change</Heading>
         <Text style={text}>
           You requested to change your email address for {siteName} from{' '}
@@ -66,26 +74,39 @@ export const EmailChangeEmail = ({
 
 export default EmailChangeEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
+const main = { backgroundColor: '#ffffff', fontFamily: "'Inter', 'Outfit', -apple-system, Segoe UI, Arial, sans-serif" }
+const container = {
+  padding: '32px 28px',
+  maxWidth: '560px',
+  border: '1px solid hsl(220, 15%, 90%)',
+  borderRadius: '16px',
+}
+const logo = { margin: '0 0 24px' }
+const brandBar = {
+  fontSize: '12px',
+  color: 'hsl(220, 15%, 45%)',
+  borderTop: '1px solid hsl(220, 15%, 90%)',
+  paddingTop: '16px',
+  margin: '32px 0 0',
+}
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: 'hsl(220, 25%, 10%)',
   margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
-  color: '#55575d',
+  color: 'hsl(220, 15%, 45%)',
   lineHeight: '1.5',
   margin: '0 0 25px',
 }
 const link = { color: 'inherit', textDecoration: 'underline' }
 const button = {
-  backgroundColor: '#000000',
+  backgroundColor: 'hsl(220, 60%, 20%)',
   color: '#ffffff',
   fontSize: '14px',
-  borderRadius: '8px',
+  borderRadius: '12px',
   padding: '12px 20px',
   textDecoration: 'none',
 }
