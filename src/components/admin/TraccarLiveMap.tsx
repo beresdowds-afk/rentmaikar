@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import TraccarSettingsPanel, { type TraccarValidationState } from "./TraccarSettingsPanel";
+import { useTelemetryProvider, sendTelemetryCommand } from "@/hooks/useTelemetryProvider";
 
 /** HTML-escape untrusted values before interpolating them into marker popups. */
 const esc = (v: unknown): string =>
@@ -145,6 +146,7 @@ export default function TraccarLiveMap() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyCmd, setBusyCmd] = useState<number | null>(null);
+  const { active: activeProvider } = useTelemetryProvider();
 
   const call = useCallback(async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("traccar-admin", { body });
