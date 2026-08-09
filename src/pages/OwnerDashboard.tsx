@@ -545,7 +545,7 @@ export default function OwnerDashboard() {
             </TabsContent>
 
             {/* Insurance Tab */}
-            <TabsContent value="insurance support" className="space-y-6">
+            <TabsContent value="insurance" className="space-y-6">
   <PortalGate portal="Insurance & Roadside" require="authenticated">
     <div className="space-y-6">
       <OwnerInsuranceSupport />
