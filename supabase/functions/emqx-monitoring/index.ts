@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireCronSecret } from "../_shared/cron-auth.ts";
+import { getEmqxManagementConfig, classifyManagementFailure } from "../_shared/emqx-config.ts";
+import { getEmqxCredentials } from "../_shared/emqx-credentials.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
