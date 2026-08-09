@@ -67,11 +67,20 @@ Deno.serve(async (req) => {
     if (uErr || !u?.user) return json({ error: "Unauthenticated" }, 401);
     const actor = u.user.id;
     const { data: isAdmin } = await supa.rpc("has_role", { _user_id: actor, _role: "admin" });
-    if (!isAdmin) return json({ error: "Admin only" }, 403);
+    let allowed = !!isAdmin;
+    if (!allowed) {
+      const { data: isIot } = await supa.rpc("has_role", { _user_id: actor, _role: "iot_support" });
+      allowed = !!isIot;
+    }
+    if (!allowed) return json({ error: "Admin only" }, 403);
 
     const parsed = Body.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
-    const { action, sim_id, sim_row_id, plan_id, vehicle_id, device_id } = parsed.data;
+    const {
+      action, sim_id, sim_row_id, plan_id, zone, limit_bytes,
+      device_id_ext, name, message, limit, vehicle_id, device_id,
+    } = parsed.data;
+
 
     const audit = async (
       row: { action: string; sim_id?: string | null; vehicle_id?: string | null; device_id?: string | null; details?: Record<string, unknown> },
