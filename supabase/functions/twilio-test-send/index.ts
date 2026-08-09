@@ -75,8 +75,9 @@ serve(async (req) => {
     const envNames = [
       "TWILIO_ACCOUNT_SID",
       "TWILIO_AUTH_TOKEN",
-      "TWILIO_API_KEY",
-      "TWILIO_API_SECRET",
+      "TWILIO_API_KEY_SID",
+      "TWILIO_API_KEY_SECRET",
+
       "TWILIO_PHONE_NUMBER",
       "TWILIO_WHATSAPP_NUMBER",
       "TWILIO_MESSAGING_SERVICE_SID",
