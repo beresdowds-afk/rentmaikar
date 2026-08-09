@@ -1906,6 +1906,57 @@ export type Database = {
         }
         Relationships: []
       }
+      emqx_credential_versions: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          api_key_masked: string
+          api_secret_masked: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          retired_at: string | null
+          status: string
+          vault_key_id: string
+          vault_secret_id: string
+          verification_result: Json | null
+          verified_at: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          api_key_masked: string
+          api_secret_masked: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          retired_at?: string | null
+          status?: string
+          vault_key_id: string
+          vault_secret_id: string
+          verification_result?: Json | null
+          verified_at?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          api_key_masked?: string
+          api_secret_masked?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          retired_at?: string | null
+          status?: string
+          vault_key_id?: string
+          vault_secret_id?: string
+          verification_result?: Json | null
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       expiry_notifications: {
         Row: {
           created_at: string
@@ -10157,6 +10208,28 @@ export type Database = {
         }
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
+      emqx_activate_credentials: {
+        Args: { _version_id: string }
+        Returns: Json
+      }
+      emqx_read_credentials: {
+        Args: { _version_id?: string }
+        Returns: {
+          api_key: string
+          api_secret: string
+          id: string
+          status: string
+        }[]
+      }
+      emqx_record_verification: {
+        Args: { _ok: boolean; _result: Json; _version_id: string }
+        Returns: undefined
+      }
+      emqx_rollback_credentials: { Args: never; Returns: Json }
+      emqx_stage_credentials: {
+        Args: { _api_key: string; _api_secret: string; _notes?: string }
+        Returns: string
+      }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
@@ -10358,6 +10431,7 @@ export type Database = {
         Returns: string
       }
       mark_all_admin_notifications_read: { Args: never; Returns: number }
+      mask_secret_value: { Args: { _v: string }; Returns: string }
       move_to_dlq: {
         Args: {
           dlq_name: string

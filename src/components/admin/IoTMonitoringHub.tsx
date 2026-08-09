@@ -17,6 +17,8 @@ import {
   Server, Database, HardDrive, Router
 } from 'lucide-react';
 import { TelemetryProviderSwitch } from './TelemetryProviderSwitch';
+import { EmqxSecretRotationPanel } from './EmqxSecretRotationPanel';
+
 import TraccarLiveMap from './TraccarLiveMap';
 import { IoTSimCardsPanel } from './IoTSimCardsPanel';
 import { supabase } from '@/integrations/supabase/client';
@@ -293,7 +295,9 @@ export const IoTMonitoringHub = () => {
 
         <TabsContent value="providers" className="space-y-4">
           <TelemetryProviderSwitch />
+          <EmqxSecretRotationPanel />
           <IoTSimCardsPanel />
+
         </TabsContent>
 
         <TabsContent value="livemap" className="space-y-4">
