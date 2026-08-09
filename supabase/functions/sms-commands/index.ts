@@ -554,6 +554,12 @@ const handler = async (req: Request): Promise<Response> => {
     // ─── Country detection from recipient number ───
     const { region, code: countryCode } = detectCountry(from, to);
 
+    // Warm admin-managed message templates for this request.
+    setTemplateCountry(countryCode);
+    await preloadTemplates();
+
+
+
     console.log(`[SMS Command] From: ${from}, To: ${to || "N/A"}, Body: ${command}, Region: ${region}, Country: ${countryCode}`);
 
     // ════════════════════════════════════════════════
