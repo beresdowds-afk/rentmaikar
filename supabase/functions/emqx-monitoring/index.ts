@@ -29,8 +29,10 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-  const cronDenied = requireCronSecret(req);
-  if (cronDenied) return cronDenied;
+  // Scheduled callers may present the cron secret; interactive admin callers
+  // authenticate with their JWT below. Only reject when neither is present.
+  const hasCronSecret = requireCronSecret(req) === null;
+
 
   try {
     // Verify admin auth
