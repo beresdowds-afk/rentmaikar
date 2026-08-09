@@ -207,3 +207,7 @@ verify_jwt = false
 #   send-sms-notification      — requires logged-in admin
 #   send-task-notification     — requires logged-in admin
 # ─────────────────────────────────────────────
+
+# Shared email queue worker (called by pg_cron wake trigger; authenticated)
+[functions.process-email-queue]
+verify_jwt = true
