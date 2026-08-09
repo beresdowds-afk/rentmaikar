@@ -5549,6 +5549,168 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_billing_accounts: {
+        Row: {
+          billing_currency: string
+          config: Json
+          created_at: string
+          display_name: string
+          id: string
+          is_active: boolean
+          last_sync_detail: string | null
+          last_sync_status: string | null
+          last_synced_at: string | null
+          provider: string
+          sync_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          billing_currency?: string
+          config?: Json
+          created_at?: string
+          display_name: string
+          id?: string
+          is_active?: boolean
+          last_sync_detail?: string | null
+          last_sync_status?: string | null
+          last_synced_at?: string | null
+          provider: string
+          sync_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          billing_currency?: string
+          config?: Json
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          last_sync_detail?: string | null
+          last_sync_status?: string | null
+          last_synced_at?: string | null
+          provider?: string
+          sync_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      provider_billing_events: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          device_id: string | null
+          event_type: string
+          external_id: string | null
+          id: string
+          occurred_at: string
+          period_end: string | null
+          period_start: string | null
+          provider: string
+          quantity: number | null
+          raw: Json
+          reconciled_at: string | null
+          reconciled_by: string | null
+          reconciliation_note: string | null
+          sim_id: string | null
+          source: string
+          status: string
+          unit: string | null
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          device_id?: string | null
+          event_type?: string
+          external_id?: string | null
+          id?: string
+          occurred_at?: string
+          period_end?: string | null
+          period_start?: string | null
+          provider: string
+          quantity?: number | null
+          raw?: Json
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_note?: string | null
+          sim_id?: string | null
+          source?: string
+          status?: string
+          unit?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          device_id?: string | null
+          event_type?: string
+          external_id?: string | null
+          id?: string
+          occurred_at?: string
+          period_end?: string | null
+          period_start?: string | null
+          provider?: string
+          quantity?: number | null
+          raw?: Json
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_note?: string | null
+          sim_id?: string | null
+          source?: string
+          status?: string
+          unit?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: []
+      }
+      provider_credential_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          masked: Json
+          notes: string | null
+          provider: string
+          status: string
+          updated_at: string
+          vault_ids: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          masked?: Json
+          notes?: string | null
+          provider: string
+          status?: string
+          updated_at?: string
+          vault_ids?: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          masked?: Json
+          notes?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          vault_ids?: Json
+        }
+        Relationships: []
+      }
       proxy_action_idempotency: {
         Row: {
           action: string
@@ -10185,6 +10347,10 @@ export type Database = {
         Args: { _limit?: number; _status?: string }
         Returns: Json
       }
+      admin_provider_billing_summary: {
+        Args: { _end?: string; _start?: string }
+        Returns: Json
+      }
       admin_provision_rental_from_negotiation: {
         Args: {
           _end_date: string
@@ -10836,6 +11002,11 @@ export type Database = {
       profile_privileged_fields_unchanged: {
         Args: { _new: Database["public"]["Tables"]["profiles"]["Row"] }
         Returns: boolean
+      }
+      provider_read_credentials: { Args: { _provider: string }; Returns: Json }
+      provider_write_credentials: {
+        Args: { _notes?: string; _provider: string; _values: Json }
+        Returns: string
       }
       provision_user_account: {
         Args: {

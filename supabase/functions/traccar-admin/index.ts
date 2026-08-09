@@ -93,6 +93,8 @@ Deno.serve(async (req) => {
       return json({ ok: true, state: data });
     }
 
+    await traccar.ensureReady();
+
     if (!traccar.isConfigured()) {
       return json({
         ok: true,

@@ -40,6 +40,7 @@ export const ADMIN_ONLY_TABS: string[] = [
   'hardware',
   'mqtt-credentials',
   'fees',
+  'provider-billing',
   'secrets',
   'api-keys',
   'webhooks',

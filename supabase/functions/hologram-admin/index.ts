@@ -95,6 +95,8 @@ Deno.serve(async (req) => {
       } as never);
     };
 
+    await hologram.ensureReady();
+
     if (!hologram.isConfigured()) {
       return json({
         ok: true,

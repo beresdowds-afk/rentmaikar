@@ -3,11 +3,13 @@
 // All responses are `{ success, data | error }`. Rate limited -> HTTP 429.
 // Supabase Edge Function compatible.
 
+import { ensureProviderConfig, providerConfigSource, providerOverride } from "./provider-config.ts";
+
 const BASE = "https://dashboard.hologram.io/api/1";
 
 function creds() {
-  const apiKey = Deno.env.get("HOLOGRAM_API_KEY");
-  const orgId = Deno.env.get("HOLOGRAM_ORG_ID");
+  const apiKey = providerOverride("hologram", "api_key") ?? Deno.env.get("HOLOGRAM_API_KEY");
+  const orgId = providerOverride("hologram", "org_id") ?? Deno.env.get("HOLOGRAM_ORG_ID");
   if (!apiKey || !orgId) return null;
   return { apiKey, orgId };
 }
@@ -70,6 +72,15 @@ function withOrg(path: string, extra: Record<string, string | number | undefined
 }
 
 export const hologram = {
+  /** Warm admin-managed credentials before any sync getter is used. */
+  async ensureReady() {
+    await ensureProviderConfig("hologram");
+  },
+
+  configSource() {
+    return providerConfigSource("hologram");
+  },
+
   isConfigured() {
     return !!creds();
   },

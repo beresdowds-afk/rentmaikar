@@ -126,6 +126,8 @@ serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const action = String(body?.action || "");
 
+  await hologram.ensureReady();
+
   try {
     switch (action) {
       case "list_plans": {

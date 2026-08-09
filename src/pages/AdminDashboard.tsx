@@ -8,6 +8,7 @@ import { IoTMonitoringHub } from "@/components/admin/IoTMonitoringHub";
 import { HologramDashboard } from "@/components/admin/HologramDashboard";
 import { TraccarDashboard } from "@/components/admin/TraccarDashboard";
 import { SyncScheduleSettings } from "@/components/admin/SyncScheduleSettings";
+import ProviderBillingDashboard from '@/components/admin/ProviderBillingDashboard';
 import BillingReconciliationPage from "@/pages/admin/BillingReconciliationPage";
 import TourStepConfigPage from "@/pages/admin/TourStepConfigPage";
 import TwilioTemplateManager from "@/components/admin/TwilioTemplateManager";
@@ -809,6 +810,7 @@ const AdminDashboard = () => {
               {activeTab === 'traccar' && <TraccarDashboard />}
               {activeTab === 'sync-schedule' && <SyncScheduleSettings />}
               {activeTab === 'reconciliation' && <BillingReconciliationPage />}
+              {activeTab === 'provider-billing' && <ProviderBillingDashboard />}
               {activeTab === 'hardware' && <HardwareManagement />}
               {activeTab === 'mqtt-credentials' && <VehicleMqttCredentials readOnly={false} />}
               {activeTab === 'driver-behavior' && <DriverBehaviorLogs />}
