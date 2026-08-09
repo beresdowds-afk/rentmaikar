@@ -54,9 +54,24 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  const gate = await requireAdmin(req);
-  if ("error" in gate) return gate.error;
-  const { user, admin, supabaseUrl } = gate;
+  // Read-only diagnostics may also be authorized with the operator diag token
+  const diagToken = Deno.env.get("TWILIO_DIAG_TOKEN");
+  const isDiagRequest =
+    req.method === "GET" && new URL(req.url).searchParams.get("diagnostics") !== null;
+  const diagAuthorized =
+    isDiagRequest && !!diagToken && req.headers.get("x-diag-token") === diagToken;
+
+  let user: { email?: string | null } = { email: "diagnostics" };
+  let admin: ReturnType<typeof createClient> | null = null;
+  let supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  if (!diagAuthorized) {
+    const gate = await requireAdmin(req);
+    if ("error" in gate) return gate.error;
+    user = gate.user;
+    admin = gate.admin;
+    supabaseUrl = gate.supabaseUrl;
+  }
+
 
   const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
   const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
