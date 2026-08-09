@@ -189,6 +189,17 @@ export default function TraccarLiveMap() {
   const sendCommand = async (deviceId: number, type: "engineStop" | "engineResume") => {
     setBusyCmd(deviceId);
     try {
+      if (activeProvider && activeProvider !== "traccar") {
+        // Route through the active provider selected in Admin → Telemetry Provider.
+        const dev = devices.find((d) => d.id === deviceId);
+        const res = await sendTelemetryCommand({
+          command: type === "engineStop" ? "immobilize" : "mobilize",
+          deviceId: dev?.uniqueId,
+        });
+        if (res?.ok) toast.success(`${type === "engineStop" ? "Immobilize" : "Mobilize"} sent via ${res.provider.toUpperCase()}`);
+        else toast.error(`Command rejected by ${activeProvider.toUpperCase()}: ${res?.error ?? "unknown error"}`);
+        return;
+      }
       const res = await call({ action: "send_command", device_id: deviceId, command: type });
       if (res?.ok) {
         toast.success(`${type === "engineStop" ? "Immobilize" : "Mobilize"} command sent`);
