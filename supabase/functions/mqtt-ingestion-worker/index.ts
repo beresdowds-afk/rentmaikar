@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
       if (!resp.ok) {
         const detail = await resp.text();
         const { reason } = classifyManagementFailure(resp.status, detail);
-        throw Object.assign(new Error(reason), { reason });
+        throw Object.assign(new Error(reason), { reason, detail, status: resp.status });
       }
       return resp.json();
     };
@@ -82,17 +82,22 @@ Deno.serve(async (req) => {
       // Nothing to pull: still probe the broker so the dashboard shows real health.
       let probeOk = false;
       let probeReason: string | null = null;
+      let probeError: string | null = null;
       try {
-        await emqxFetch("/stats");
+        // Serverless forbids /stats; /clients is permitted on every plan.
+        await emqxFetch("/clients?limit=1");
         probeOk = true;
       } catch (e) {
-        probeReason = (e as { reason?: string }).reason ?? "request_failed";
+        const err = e as { reason?: string; detail?: string; status?: number | null };
+        probeReason = err.reason ?? "request_failed";
+        probeError = `credential_source=${creds.source} status=${err.status ?? "n/a"} url=${apiUrl} detail=${(err.detail ?? "").slice(0, 200)}`;
       }
       return await finish({
         source: "mqtt_worker",
         provider: "emqx",
         broker_reachable: probeOk,
         degraded_reason: probeReason,
+        error: probeError,
         devices_seen: 0,
         events_processed: 0,
       });
