@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import TraccarSettingsPanel, { type TraccarValidationState } from "./TraccarSettingsPanel";
+import { useTelemetryProvider, sendTelemetryCommand } from "@/hooks/useTelemetryProvider";
 
 /** HTML-escape untrusted values before interpolating them into marker popups. */
 const esc = (v: unknown): string =>
@@ -145,6 +146,7 @@ export default function TraccarLiveMap() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyCmd, setBusyCmd] = useState<number | null>(null);
+  const { active: activeProvider } = useTelemetryProvider();
 
   const call = useCallback(async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("traccar-admin", { body });
@@ -189,6 +191,17 @@ export default function TraccarLiveMap() {
   const sendCommand = async (deviceId: number, type: "engineStop" | "engineResume") => {
     setBusyCmd(deviceId);
     try {
+      if (activeProvider && activeProvider !== "traccar") {
+        // Route through the active provider selected in Admin → Telemetry Provider.
+        const dev = devices.find((d) => d.id === deviceId);
+        const res = await sendTelemetryCommand({
+          command: type === "engineStop" ? "immobilize" : "mobilize",
+          deviceId: dev?.uniqueId,
+        });
+        if (res?.ok) toast.success(`${type === "engineStop" ? "Immobilize" : "Mobilize"} sent via ${res.provider.toUpperCase()}`);
+        else toast.error(`Command rejected by ${activeProvider.toUpperCase()}: ${res?.error ?? "unknown error"}`);
+        return;
+      }
       const res = await call({ action: "send_command", device_id: deviceId, command: type });
       if (res?.ok) {
         toast.success(`${type === "engineStop" ? "Immobilize" : "Mobilize"} command sent`);
@@ -217,6 +230,11 @@ export default function TraccarLiveMap() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <MapPin className="h-5 w-5" /> Live Vehicle Tracking Map (Traccar)
+              {activeProvider && (
+                <Badge variant={activeProvider === "traccar" ? "secondary" : "outline"}>
+                  Commands via {activeProvider.toUpperCase()}
+                </Badge>
+              )}
             </CardTitle>
             <CardDescription>
               Clustered markers scale to large fleets. Auto-refreshes every 15 s. Command audit at{" "}

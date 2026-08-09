@@ -134,4 +134,44 @@ export async function getTelemetryAdapter(): Promise<TelemetryAdapter> {
   return name === "traccar" ? traccarAdapter : emqxAdapter;
 }
 
+export async function getActiveProviderName(): Promise<TelemetryProviderName> {
+  const { name } = await fetchActiveProvider();
+  return name === "traccar" ? "traccar" : "emqx";
+}
+
+export function isProviderConfigured(name: TelemetryProviderName): boolean {
+  if (name === "traccar") {
+    return Boolean(
+      Deno.env.get("TRACCAR_BASE_URL") &&
+        (Deno.env.get("TRACCAR_API_TOKEN") ||
+          Deno.env.get("TRACCAR_TOKEN") ||
+          (Deno.env.get("TRACCAR_EMAIL") && Deno.env.get("TRACCAR_PASSWORD"))),
+    );
+  }
+  return Boolean(Deno.env.get("EMQX_API_URL") && Deno.env.get("EMQX_API_KEY") && Deno.env.get("EMQX_API_SECRET"));
+}
+
+export async function testProvider(
+  name: TelemetryProviderName,
+): Promise<{ ok: boolean; configured: boolean; status?: number; error?: string }> {
+  const configured = isProviderConfigured(name);
+  if (!configured) return { ok: false, configured: false, error: `${name} secrets missing` };
+  try {
+    if (name === "traccar") {
+      const base = Deno.env.get("TRACCAR_BASE_URL")!;
+      const token = Deno.env.get("TRACCAR_API_TOKEN") ?? Deno.env.get("TRACCAR_TOKEN") ?? "";
+      const res = await fetch(`${base}/api/server`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      });
+      return { ok: res.ok, configured: true, status: res.status };
+    }
+    const url = Deno.env.get("EMQX_API_URL")!;
+    const auth = "Basic " + btoa(`${Deno.env.get("EMQX_API_KEY")}:${Deno.env.get("EMQX_API_SECRET")}`);
+    const res = await fetch(`${url}/nodes`, { headers: { Authorization: auth } });
+    return { ok: res.ok, configured: true, status: res.status };
+  } catch (e) {
+    return { ok: false, configured: true, error: String(e) };
+  }
+}
+
 export const adapters = { emqx: emqxAdapter, traccar: traccarAdapter };
