@@ -182,13 +182,46 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case 'stats': {
-        const [stats, metrics] = await Promise.all([
-          emqxFetch('/stats'),
-          emqxFetch('/metrics'),
-        ]);
-        result = { stats, metrics };
+        // Serverless deployments forbid cluster-wide endpoints (/stats, /metrics -> 403).
+        // Fall back to per-resource listings and derive the same headline counters.
+        try {
+          const [stats, metrics] = await Promise.all([
+            emqxFetch('/stats'),
+            emqxFetch('/metrics'),
+          ]);
+          result = { stats, metrics, derived: false };
+        } catch (e) {
+          if (!(e instanceof EmqxUnavailable) || (e.httpStatus !== 403 && e.httpStatus !== 404)) throw e;
+          const countOf = async (path: string) => {
+            try {
+              const r = await emqxFetch(`${path}?limit=1`);
+              return Number(r?.meta?.count ?? r?.meta?.hasnext === false ? r?.meta?.count ?? 0 : 0) || 0;
+            } catch {
+              return 0;
+            }
+          };
+          const [connections, subscriptions, topics] = await Promise.all([
+            countOf('/clients'),
+            countOf('/subscriptions'),
+            countOf('/topics'),
+          ]);
+          result = {
+            derived: true,
+            derivedNote:
+              'Serverless plan: cluster metrics endpoints are restricted, counts derived from client/subscription/topic listings.',
+            stats: {
+              'connections.count': connections,
+              'live_connections.count': connections,
+              'sessions.count': connections,
+              'subscriptions.count': subscriptions,
+              'topics.count': topics,
+            },
+            metrics: null,
+          };
+        }
         break;
       }
+
 
       case 'nodes': {
         result = await emqxFetch('/nodes');
