@@ -9,6 +9,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type Channel = 'sms' | 'whatsapp';
 
@@ -62,7 +72,9 @@ export function MessagingPreferencesPanel() {
     void load();
   }, [load]);
 
-  const toggle = async (channel: Channel, enabled: boolean) => {
+  const [pending, setPending] = useState<{ channel: Channel; enabled: boolean } | null>(null);
+
+  const applyToggle = async (channel: Channel, enabled: boolean) => {
     const previous = optedOut[channel];
     setOptedOut((s) => ({ ...s, [channel]: !enabled }));
     setSaving(channel);
@@ -84,6 +96,13 @@ export function MessagingPreferencesPanel() {
     });
     void load();
   };
+
+  const toggle = (channel: Channel, enabled: boolean) => setPending({ channel, enabled });
+
+  const pendingLabel = pending
+    ? CHANNELS.find((c) => c.key === pending.channel)?.label ?? pending.channel
+    : '';
+
 
   return (
     <Card>
@@ -160,6 +179,32 @@ export function MessagingPreferencesPanel() {
           </>
         )}
       </CardContent>
+
+      <AlertDialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pending?.enabled ? `Turn on ${pendingLabel}?` : `Turn off ${pendingLabel}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pending?.enabled
+                ? `We will start sending ${pendingLabel.toLowerCase()} to ${phone ?? 'your phone number'} again, including payment reminders and rental updates.`
+                : `We will stop sending ${pendingLabel.toLowerCase()} to ${phone ?? 'your phone number'}. You may miss payment reminders and rental updates. Essential emails will still be sent.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pending) void applyToggle(pending.channel, pending.enabled);
+                setPending(null);
+              }}
+            >
+              {pending?.enabled ? 'Turn on' : 'Turn off'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
