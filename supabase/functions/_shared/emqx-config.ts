@@ -17,14 +17,45 @@ export interface EmqxManagementConfig {
   source: "settings" | "env" | "default";
 }
 
-const DEFAULT_URL = "https://broker.rentmaikar.com:18083/api/v5";
+const DEFAULT_MANAGEMENT_PORT = 8443;
+const DEFAULT_BASE_PATH = "/api/v5";
+const DEFAULT_URL = `https://broker.rentmaikar.com:${DEFAULT_MANAGEMENT_PORT}${DEFAULT_BASE_PATH}`;
+
+/** Console/dashboard ports that never serve the management API on hosted plans. */
+const CONSOLE_PORTS = new Set([18083, 443, 80]);
 
 function buildUrl(host?: string | null, port?: number | null, basePath?: string | null): string | null {
   if (!host) return null;
   const clean = String(host).replace(/^https?:\/\//, "").replace(/\/$/, "");
-  const path = (basePath || "/api/v5").startsWith("/") ? basePath || "/api/v5" : `/${basePath}`;
+  const path = (basePath || DEFAULT_BASE_PATH).startsWith("/") ? basePath || DEFAULT_BASE_PATH : `/${basePath}`;
   return `https://${clean}${port ? `:${port}` : ""}${path}`;
 }
+
+/**
+ * Force a deployment-specific management endpoint: port 8443 with an /api/v5 base path.
+ * Hosted (serverless/dedicated) deployments expose the management API there, not on the
+ * console host/port. Self-hosted deployments are left untouched.
+ */
+function toDeploymentEndpoint(
+  rawUrl: string,
+  deploymentType: EmqxManagementConfig["deploymentType"],
+  basePath: string,
+): string {
+  if (deploymentType === "self_hosted") return rawUrl.replace(/\/$/, "");
+  try {
+    const u = new URL(rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl}`);
+    u.protocol = "https:";
+    const port = u.port ? Number(u.port) : null;
+    if (!port || CONSOLE_PORTS.has(port)) u.port = String(DEFAULT_MANAGEMENT_PORT);
+    const path = (basePath || DEFAULT_BASE_PATH).replace(/\/$/, "");
+    u.pathname = path.startsWith("/") ? path : `/${path}`;
+    u.search = "";
+    return u.toString().replace(/\/$/, "");
+  } catch {
+    return rawUrl.replace(/\/$/, "");
+  }
+}
+
 
 export async function getEmqxManagementConfig(): Promise<EmqxManagementConfig> {
   const envUrl = Deno.env.get("EMQX_API_URL");
