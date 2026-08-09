@@ -66,6 +66,29 @@ export const TwilioTestSendPanel = () => {
     return json;
   };
 
+  const runDiagnostics = async () => {
+    setDiagLoading(true);
+    setDiag(null);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Not signed in");
+      const res = await fetch(
+        `https://bwvocmhcledbwqlpcswp.functions.supabase.co/twilio-test-send?diagnostics=1`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+      setDiag(json);
+      toast.success("Twilio diagnostics complete");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setDiagLoading(false);
+    }
+  };
+
+
   const handleSend = async () => {
     setError(null);
     setStatus(null);
