@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { SupportTaskVerificationQueue } from '@/components/admin/SupportTaskVerificationQueue';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { 
@@ -536,6 +537,8 @@ export const AdminSupportTaskManagement = () => {
 
           {/* Tasks Tab */}
           <TabsContent value="tasks" className="space-y-4">
+            <SupportTaskVerificationQueue />
+
             {/* Filters and Create Button */}
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-1">
