@@ -393,17 +393,39 @@ export default function PersonaVerification({
   return (
     <div className="space-y-3">
       {!requiresDriversLicense && (
-        <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-1">
+        <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium">
             <IdCard className="h-4 w-4" />
-            Government-issued photo ID required
+            Accepted government IDs for your role and region
+            {country && <Badge variant="outline" className="ml-1">{country}</Badge>}
           </div>
           <p className="text-xs text-muted-foreground">
-            We only verify a valid government ID issued in your region. Accepted documents:{" "}
-            {acceptedIds.map((o) => o.label).join(", ")}.
+            {policyLoading
+              ? "Loading the accepted document list…"
+              : "We only verify a valid government-issued photo ID. Choose the document you will present:"}
           </p>
+          <ul className="text-xs text-muted-foreground list-disc pl-5">
+            {acceptedIds.map((o) => <li key={o.code}>{o.label}</li>)}
+          </ul>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {acceptedIds.map((o) => (
+              <button
+                key={o.code}
+                type="button"
+                onClick={() => setChosenIdClass(o.code)}
+                className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                  chosenIdClass === o.code
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
+
 
       {requiresDriversLicense && (
         <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-2">
