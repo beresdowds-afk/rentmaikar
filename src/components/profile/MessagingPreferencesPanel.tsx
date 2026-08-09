@@ -179,6 +179,32 @@ export function MessagingPreferencesPanel() {
           </>
         )}
       </CardContent>
+
+      <AlertDialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pending?.enabled ? `Turn on ${pendingLabel}?` : `Turn off ${pendingLabel}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pending?.enabled
+                ? `We will start sending ${pendingLabel.toLowerCase()} to ${phone ?? 'your phone number'} again, including payment reminders and rental updates.`
+                : `We will stop sending ${pendingLabel.toLowerCase()} to ${phone ?? 'your phone number'}. You may miss payment reminders and rental updates. Essential emails will still be sent.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pending) void applyToggle(pending.channel, pending.enabled);
+                setPending(null);
+              }}
+            >
+              {pending?.enabled ? 'Turn on' : 'Turn off'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
