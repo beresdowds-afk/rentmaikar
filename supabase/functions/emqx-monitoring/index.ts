@@ -195,7 +195,8 @@ Deno.serve(async (req) => {
           const countOf = async (path: string) => {
             try {
               const r = await emqxFetch(`${path}?limit=1`);
-              return Number(r?.meta?.count ?? r?.meta?.hasnext === false ? r?.meta?.count ?? 0 : 0) || 0;
+              const meta = r?.meta ?? {};
+              return Number(meta.count ?? (Array.isArray(r?.data) ? r.data.length : 0)) || 0;
             } catch {
               return 0;
             }
