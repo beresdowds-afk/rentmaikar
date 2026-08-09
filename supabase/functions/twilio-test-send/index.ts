@@ -157,7 +157,7 @@ serve(async (req) => {
     }
 
     // 5. API key (used for VoIP access tokens)
-    const apiKey = Deno.env.get("TWILIO_API_KEY");
+    const apiKey = Deno.env.get("TWILIO_API_KEY_SID") ?? Deno.env.get("TWILIO_API_KEY");
     if (apiKey) {
       const keyRes = await fetch(
         `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Keys/${apiKey}.json`,
