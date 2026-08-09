@@ -230,6 +230,11 @@ export default function TraccarLiveMap() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <MapPin className="h-5 w-5" /> Live Vehicle Tracking Map (Traccar)
+              {activeProvider && (
+                <Badge variant={activeProvider === "traccar" ? "secondary" : "outline"}>
+                  Commands via {activeProvider.toUpperCase()}
+                </Badge>
+              )}
             </CardTitle>
             <CardDescription>
               Clustered markers scale to large fleets. Auto-refreshes every 15 s. Command audit at{" "}
