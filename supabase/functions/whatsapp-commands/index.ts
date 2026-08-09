@@ -10,6 +10,7 @@ import {
 } from "../_shared/whatsapp-templates.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { verifyTwilioRequestRaw } from "../_shared/twilio-signature.ts";
+import { isOptedOut, setOptOut, isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
 import {
   preloadTemplates,
   templateFromCache,
