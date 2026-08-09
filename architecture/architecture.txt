@@ -1,7 +1,26 @@
 architecture/
 |
-|-- rentmaikar-system-overview.md
-|-- traccar-emqx-integration.md
-|-- resident-orchestrator.md
+|-- rentmaikar-system-overview.md   (see docs/architecture/CommunicationArchitecture.md)
+|-- traccar-emqx-integration.md     (see docs/architecture/TraccarResponsibilities.md
+|                                        + docs/architecture/EmqxResponsibilities.md)
+|-- resident-ochestrator.md
 |-- aws-data-lake-plan.md
 |-- security-model.md
+
+Canonical responsibility split (see docs/architecture/):
+
+Cellular Network -> Hologram -> { Traccar (or alternative), EMQX } -> RentMaikar Core
+RentMaikar Core -> Driver App | Owner Portal | Admin Portal -> APIs & Services
+                -> Notifications, Analytics, Billing, Marketplace
+
+- RentMaikar Core : identity, org, fleet, vehicle/driver/device lifecycle,
+                    provisioning & commissioning orchestration, billing,
+                    marketplace, notifications, API management, security, audit.
+- Hologram        : cellular connectivity, eSIM provisioning, SIM lifecycle,
+                    carrier selection/switching, activation, suspension,
+                    data usage monitoring, network diagnostics.
+- Traccar (alt)   : GPS tracking, trips, routes, historical playback, geofencing,
+                    telemetry, driver behaviour, event generation.
+- EMQX            : MQTT messaging, device authentication, real-time telemetry,
+                    command delivery, event streaming, sensor comms, OTA messaging.
+- Persona         : identity verification only (independent of all connectivity).
