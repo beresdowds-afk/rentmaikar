@@ -31,7 +31,9 @@ const Body = z.object({
     id_type: z.string().max(40).optional(),
     birthdate: z.string().max(20).optional(),
   }).partial().optional(),
+  drivers_license_document_id: z.string().uuid().optional(),
 });
+
 
 const PERSONA_BASE = "https://withpersona.com/api/v1";
 const PERSONA_VERSION = "2023-01-05";
