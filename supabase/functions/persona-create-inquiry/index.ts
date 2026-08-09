@@ -160,6 +160,8 @@ Deno.serve(async (req) => {
     }
 
     const roleAttrs = personaRoleAttributes(canonicalRole);
+    const govIdAttrs = governmentIdPersonaAttributes(canonicalRole, country);
+
     const userRoleTag = userRoleTagForRole(canonicalRole);
     const subjectRefValue = parsed.data.subject_ref ?? userData.user.id;
     const referenceId = canonicalRole
