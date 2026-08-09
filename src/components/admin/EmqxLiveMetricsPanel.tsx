@@ -172,7 +172,11 @@ export function EmqxLiveMetricsPanel() {
           </Alert>
         ) : (
           <>
+            {state.derivedNote && (
+              <p className="text-xs text-muted-foreground">{state.derivedNote}</p>
+            )}
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+
               {LIVE_METRICS.map((m) => {
                 const Icon = m.icon;
                 return (
