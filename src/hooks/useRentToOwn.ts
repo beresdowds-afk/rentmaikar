@@ -166,7 +166,7 @@ export function useRentToOwn() {
       .from('rent_to_own_listings')
       .select(`
         *,
-        vehicle:vehicles(id, make, model, year, license_plate),
+        vehicle:vehicles(id, make, model, year, license_plate, photo_urls),
         owner_profile:profiles!rent_to_own_listings_owner_id_fkey(full_name, email, phone)
       `)
       .order('created_at', { ascending: false });
@@ -198,7 +198,7 @@ export function useRentToOwn() {
       .from('rent_to_own_agreements')
       .select(`
         *,
-        vehicle:vehicles(id, make, model, year, license_plate),
+        vehicle:vehicles(id, make, model, year, license_plate, photo_urls),
         driver_profile:profiles!rent_to_own_agreements_driver_id_fkey(full_name, email, phone),
         owner_profile:profiles!rent_to_own_agreements_owner_id_fkey(full_name, email, phone)
       `)
