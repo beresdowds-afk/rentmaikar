@@ -84,9 +84,9 @@ const DriverTraining = () => {
   const completeModule = async (moduleId: string) => {
     if (!userId) return;
 
-    const { error } = await supabase
-      .from("training_completions")
-      .insert({ user_id: userId, module_id: moduleId });
+    const { error } = await supabase.rpc("complete_training_module", {
+      _module_id: moduleId,
+    });
 
     if (error) {
       if (error.code === "23505") {
