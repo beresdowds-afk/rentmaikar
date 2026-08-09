@@ -131,6 +131,19 @@ export default function AdminPersonaInquiriesPage() {
         </Button>
       </div>
 
+      <Tabs defaultValue="inquiries" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="inquiries">Inquiries</TabsTrigger>
+          <TabsTrigger value="attempts">Attempt audit trail</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="attempts">
+          <PersonaAttemptsAudit />
+        </TabsContent>
+
+        <TabsContent value="inquiries" className="space-y-4">
+
+
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Filters</CardTitle>
