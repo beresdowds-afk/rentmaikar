@@ -263,7 +263,108 @@ Deno.serve(async (req) => {
       return json({ ok: true, row });
     }
 
+    /* ---------------- Read-only dashboard mirrors ---------------- */
+
+    if (action === "account") {
+      const r = await hologram.me();
+      return json({ ok: r.ok, org_id: hologram.orgId(), ...r });
+    }
+
+    if (action === "list_orgs") {
+      const r = await hologram.listOrganizations();
+      return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "list_plans") {
+      const r = await hologram.listPlans();
+      return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "list_tags") {
+      const r = await hologram.listTags();
+      return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "list_devices") {
+      const r = await hologram.listDevices(limit ?? 100);
+      return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "get_device") {
+      if (device_id_ext === undefined) return json({ error: "device_id_ext required" }, 400);
+      const r = await hologram.getDevice(device_id_ext);
+      return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "device_location") {
+      if (device_id_ext === undefined) return json({ error: "device_id_ext required" }, 400);
+      const r = await hologram.getDeviceLocation(device_id_ext);
+      return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "device_data") {
+      if (device_id_ext === undefined) return json({ error: "device_id_ext required" }, 400);
+      const r = await hologram.getDeviceData(device_id_ext, limit ?? 25);
+      return json({ ok: r.ok, ...r });
+    }
+
+    /* ---------------- Write operations ---------------- */
+
+    if (action === "rename_device") {
+      if (device_id_ext === undefined || !name) return json({ error: "device_id_ext and name required" }, 400);
+      const r = await hologram.setDeviceName(device_id_ext, name);
+      await audit({
+        action: "hologram_device_renamed",
+        details: { device_id_ext, name, ok: r.ok },
+      });
+      return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "send_sms") {
+      if (device_id_ext === undefined || !message) return json({ error: "device_id_ext and message required" }, 400);
+      const r = await hologram.sendSms(Number(device_id_ext), message);
+      await audit({
+        action: "hologram_sms_sent",
+        details: { device_id_ext, length: message.length, ok: r.ok },
+      });
+      return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "resume_sim") {
+      if (!sim_id) return json({ error: "sim_id required" }, 400);
+      const r = await hologram.resumeSim(sim_id);
+      if (r.ok) {
+        await supa
+          .from("iot_sim_cards")
+          .update({ status: "live", suspended_at: null })
+          .eq("provider_sim_id", sim_id);
+      }
+      await audit({ action: "hologram_sim_resumed", details: { provider_sim_id: sim_id, ok: r.ok } });
+      return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "change_plan") {
+      if (!sim_id || !plan_id) return json({ error: "sim_id and plan_id required" }, 400);
+      const r = await hologram.changePlan(sim_id, plan_id, zone);
+      await audit({ action: "hologram_sim_plan_changed", details: { provider_sim_id: sim_id, plan_id, zone, ok: r.ok } });
+      return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "set_data_limit") {
+      if (!sim_id || limit_bytes === undefined) return json({ error: "sim_id and limit_bytes required" }, 400);
+      const r = await hologram.setDataLimit(sim_id, limit_bytes);
+      if (r.ok) {
+        await supa
+          .from("iot_sim_cards")
+          .update({ data_limit_mb: Math.round(limit_bytes / 1_000_000) })
+          .eq("provider_sim_id", sim_id);
+      }
+      await audit({ action: "hologram_sim_data_limit_set", details: { provider_sim_id: sim_id, limit_bytes, ok: r.ok } });
+      return json({ ok: r.ok, ...r });
+    }
+
     return json({ error: "Unsupported action" }, 400);
+
   } catch (e) {
     console.error("hologram-admin error", e);
     return json({ error: (e as Error).message }, 500);
