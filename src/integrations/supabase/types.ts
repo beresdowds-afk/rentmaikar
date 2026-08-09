@@ -4966,6 +4966,8 @@ export type Database = {
         Row: {
           access_level: Database["public"]["Enums"]["access_level_enum"]
           avatar_url: string | null
+          cookie_consent: Json | null
+          cookie_consent_at: string | null
           created_at: string | null
           daily_plan_forbidden: boolean | null
           daily_plan_forbidden_at: string | null
@@ -5018,6 +5020,8 @@ export type Database = {
         Insert: {
           access_level?: Database["public"]["Enums"]["access_level_enum"]
           avatar_url?: string | null
+          cookie_consent?: Json | null
+          cookie_consent_at?: string | null
           created_at?: string | null
           daily_plan_forbidden?: boolean | null
           daily_plan_forbidden_at?: string | null
@@ -5070,6 +5074,8 @@ export type Database = {
         Update: {
           access_level?: Database["public"]["Enums"]["access_level_enum"]
           avatar_url?: string | null
+          cookie_consent?: Json | null
+          cookie_consent_at?: string | null
           created_at?: string | null
           daily_plan_forbidden?: boolean | null
           daily_plan_forbidden_at?: string | null
@@ -9967,6 +9973,7 @@ export type Database = {
         }[]
       }
       get_my_activation_blockers: { Args: never; Returns: Json }
+      get_my_cookie_consent: { Args: never; Returns: Json }
       get_my_identity_verification: { Args: never; Returns: Json }
       get_my_registration_progress: { Args: never; Returns: Json }
       get_my_role_change_status: { Args: never; Returns: Json }
@@ -10248,6 +10255,7 @@ export type Database = {
         Args: { _context?: Json; _operation: string }
         Returns: Json
       }
+      save_my_cookie_consent: { Args: { _prefs: Json }; Returns: Json }
       save_voice_agent_transcript: {
         Args: {
           _agent_id: string
