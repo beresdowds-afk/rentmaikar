@@ -20,6 +20,8 @@ import { TelemetryProviderSwitch } from './TelemetryProviderSwitch';
 import { EmqxSecretRotationPanel } from './EmqxSecretRotationPanel';
 import { EmqxEndpointSettings } from './EmqxEndpointSettings';
 import { EmqxBrokerStatusCard } from './EmqxBrokerStatusCard';
+import { EmqxLiveMetricsPanel } from './EmqxLiveMetricsPanel';
+import { ServerOrchestratorStatusCard } from './ServerOrchestratorStatusCard';
 
 import TraccarLiveMap from './TraccarLiveMap';
 import { IoTSimCardsPanel } from './IoTSimCardsPanel';
@@ -823,6 +825,8 @@ export const IoTMonitoringHub = () => {
         {/* ── EMQX BROKER ──────────────────────────────── */}
         <TabsContent value="emqx">
           <div className="space-y-4">
+            <EmqxLiveMetricsPanel />
+            <ServerOrchestratorStatusCard />
             <EmqxBrokerStatusCard />
             <EmqxEndpointSettings />
             {/* Broker Profiles */}

@@ -135,19 +135,29 @@ class ResidentOrchestrator {
     return events;
   }
 
-  private async persistAnalytics(events: AnalyticsEvent[], src: VehicleEvent) {
+  /**
+   * Persistence + analytics are authoritative on the server: the browser only
+   * forwards the raw event to the `telemetry-ingest` edge function, which runs
+   * the same orchestrator core, upserts vehicle state and writes analytics.
+   * The local instance stays as a low-latency UI mirror.
+   */
+  private async persistAnalytics(_events: AnalyticsEvent[], src: VehicleEvent) {
     try {
-      const rows = events.map((e) => ({
-        vehicle_id: e.vehicleId,
-        category: e.category,
-        event_type: (e.data as Record<string, unknown>).type as string ?? "unknown",
-        severity: ((e.data as Record<string, unknown>).severity as string) ?? "info",
-        source: src.source,
-        payload: e.data,
-      }));
-      await supabase.from("vehicle_analytics_events" as never).insert(rows as never);
+      await supabase.functions.invoke("telemetry-ingest", {
+        body: {
+          events: [
+            {
+              source: src.source,
+              vehicleId: src.vehicleId,
+              eventType: src.eventType,
+              timestamp: src.timestamp,
+              payload: src.payload,
+            },
+          ],
+        },
+      });
     } catch (e) {
-      console.warn("orchestrator: supabase insert skipped", e);
+      console.warn("orchestrator: server ingest skipped", e);
     }
   }
 
