@@ -104,8 +104,9 @@ export const useSupportTasks = ({ taskTypes, autoFetch = true }: UseSupportTasks
     
     try {
       // Determine which status field to update
-      const statusField = taskType === 'legal' ? 'legal_status' 
-        : taskType.startsWith('iot_') ? 'iot_status' 
+      const statusField = taskType === 'legal' ? 'legal_status'
+        : taskType === 'insurance' ? 'insurance_status'
+        : taskType.startsWith('iot_') ? 'iot_status'
         : 'vehicle_status';
       
       // Get current task to record previous status
@@ -170,15 +171,22 @@ export const useSupportTasks = ({ taskTypes, autoFetch = true }: UseSupportTasks
         }]);
       
       if (error) throw error;
-      
-      toast.success('Update added successfully');
+
+      // Submitting feedback auto-resolves the task and queues it for admin verification
+      await fetchTasks();
+
+      toast.success(
+        updateType === 'feedback'
+          ? 'Feedback submitted — task marked resolved, awaiting admin verification'
+          : 'Update added successfully'
+      );
       return { success: true };
     } catch (err: unknown) {
       console.error('Error adding update:', err);
       toast.error('Failed to add update');
       return { success: false, error: err instanceof Error ? err.message : 'An error occurred' };
     }
-  }, [user]);
+  }, [user, fetchTasks]);
 
   // Fetch task updates/history
   const fetchTaskUpdates = useCallback(async (taskId: string): Promise<SupportTaskUpdate[]> => {

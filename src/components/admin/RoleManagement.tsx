@@ -19,7 +19,7 @@ import { useAssistantPermissions } from '@/hooks/useAssistantPermissions';
 import { AdminAssistantManagement } from './AdminAssistantManagement';
 import { SplitPane } from '@/components/ui/split-pane';
 
-type AppRole = 'admin' | 'admin_assistant' | 'owner' | 'driver' | 'legal_support' | 'iot_support' | 'vehicle_support';
+type AppRole = 'admin' | 'admin_assistant' | 'owner' | 'driver' | 'legal_support' | 'iot_support' | 'vehicle_support' | 'insurance_support';
 
 interface UserWithRole {
   id: string;
@@ -52,6 +52,7 @@ const roleLabels: Record<AppRole, string> = {
   legal_support: 'Legal Support',
   iot_support: 'IoT Support',
   vehicle_support: 'Vehicle Support',
+  insurance_support: 'Insurance Support',
 };
 
 const roleColors: Record<AppRole, string> = {
@@ -62,6 +63,7 @@ const roleColors: Record<AppRole, string> = {
   legal_support: 'bg-blue-500 text-white',
   iot_support: 'bg-purple-500 text-white',
   vehicle_support: 'bg-orange-500 text-white',
+  insurance_support: 'bg-teal-500 text-white',
 };
 
 const actionLabels: Record<string, string> = {
@@ -1189,6 +1191,7 @@ export function RoleManagement() {
                           'legal_support',
                           'iot_support',
                           'vehicle_support',
+                          'insurance_support',
                         ] as AppRole[]
                       ).map((role) => (
                         <SelectItem key={role} value={role}>

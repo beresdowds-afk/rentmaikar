@@ -45,6 +45,7 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
     if (userRole === 'legal_support') return '/support/legal';
     if (userRole === 'iot_support') return '/support/iot';
     if (userRole === 'vehicle_support') return '/support/vehicle';
+    if (userRole === 'insurance_support') return '/support/insurance';
     // Fallback based on userType context
     return userType === 'driver' ? '/driver/dashboard' : '/owner/dashboard';
   };

@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { SupportTask } from '@/types/support';
-import { PRIORITY_CONFIG } from '@/types/support';
+import { PRIORITY_CONFIG, VERIFICATION_STATE_CONFIG } from '@/types/support';
 
 interface StatusConfigItem {
   label: string;
@@ -59,7 +59,8 @@ export const SupportTaskCard = ({
   const [feedbackContent, setFeedbackContent] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const currentStatus = task.legal_status || task.iot_status || task.vehicle_status || 'unknown';
+  const currentStatus = task.legal_status || task.iot_status || task.vehicle_status || task.insurance_status || 'unknown';
+  const verification = VERIFICATION_STATE_CONFIG[task.verification_state || 'not_submitted'];
   const statusInfo = statusConfig[currentStatus] || { label: currentStatus, color: 'bg-muted' };
   const priorityInfo = PRIORITY_CONFIG[task.priority];
 
@@ -101,6 +102,9 @@ export const SupportTaskCard = ({
             <Badge variant="outline" className={priorityInfo.color === 'bg-red-500' ? 'border-destructive text-destructive' : ''}>
               {priorityInfo.label}
             </Badge>
+            {task.verification_state && task.verification_state !== 'not_submitted' && (
+              <Badge className={verification.color}>{verification.label}</Badge>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -207,21 +211,23 @@ export const SupportTaskCard = ({
 
           <Dialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="gap-1">
                 <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Feedback</span>
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add Feedback</DialogTitle>
+                <DialogTitle>Submit Feedback &amp; Resolve</DialogTitle>
                 <DialogDescription>
-                  Add notes or feedback about this task
+                  Describe the work you completed. Submitting feedback marks this task
+                  resolved and sends it to an admin for verification and approval.
                 </DialogDescription>
               </DialogHeader>
               
               <div className="space-y-4 pt-4">
                 <Textarea
-                  placeholder="Enter your feedback or notes..."
+                  placeholder="What did you do to resolve this task?"
                   value={feedbackContent}
                   onChange={(e) => setFeedbackContent(e.target.value)}
                   rows={4}
@@ -232,7 +238,7 @@ export const SupportTaskCard = ({
                   disabled={!feedbackContent.trim() || isUpdating}
                   className="w-full"
                 >
-                  {isUpdating ? 'Submitting...' : 'Submit Feedback'}
+                  {isUpdating ? 'Submitting...' : 'Submit feedback & mark resolved'}
                 </Button>
               </div>
             </DialogContent>
