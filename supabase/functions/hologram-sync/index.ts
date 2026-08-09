@@ -21,6 +21,8 @@ serve(async (req) => {
     });
   }
 
+  await hologram.ensureReady();
+
   if (!hologram.isConfigured()) {
     return new Response(JSON.stringify({ ok: true, skipped: true, reason: "hologram_not_configured" }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
