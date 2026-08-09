@@ -102,7 +102,8 @@ const emailWrapper = (content: string, title: string) => `
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">🚗 Rentmaikar</div>
+      <img src="https://rentmaikar.com/pwa-icon-192.png" width="64" height="64" alt="Rentmaikar" style="display:block;margin:0 auto 12px;border-radius:14px;" />
+      <div class="logo">Rentmaikar</div>
     </div>
     ${content}
     <div class="footer">
