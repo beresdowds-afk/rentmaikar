@@ -9,6 +9,7 @@ import {
   adapters,
   getActiveProviderName,
   isProviderConfigured,
+  sendCommandWithFallback,
   testProvider,
   type TelemetryProviderName,
 } from "../_shared/telemetry-client.ts";
