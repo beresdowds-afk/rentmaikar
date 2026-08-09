@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { preloadTemplates, templateFromCache } from "../_shared/message-templates.ts";
+import { isOptedOut, setOptOut, isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
 import {
   smsConfig,
   getRegionConfig,
@@ -594,7 +595,7 @@ const handler = async (req: Request): Promise<Response> => {
         supabase, from, rawBody, region,
         profile?.user_id, profile?.full_name
       );
-      await sendSMS(from, emergencyMsg, { numberType: "emergency", supabase });
+      await sendSMS(from, emergencyMsg, { numberType: "emergency", supabase, allowOptedOut: true });
 
       // Log emergency
       try {
@@ -869,7 +870,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // ─── Send response ───
-    await sendSMS(from, responseMessage, { supabase });
+    await sendSMS(from, responseMessage, { supabase, allowOptedOut: command === "HELP" });
 
     // ─── Log to unified_message_log ───
     try {
