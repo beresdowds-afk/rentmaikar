@@ -82,12 +82,48 @@ export default function PersonaVerification({
   const [dlChecking, setDlChecking] = useState(false);
   const [failure, setFailure] = useState<ClassifiedFailure | null>(null);
   const [lastFields, setLastFields] = useState<Record<string, string> | null>(null);
+  const [chosenIdClass, setChosenIdClass] = useState<string | null>(null);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
 
-  // Persona verifies a government-issued photo ID only. Drivers must present a
-  // driver's licence; every other role (owners, driver-nominated referees,
-  // payment proxies, staff) may present any government ID valid in their region.
-  const requiresDriversLicense = driversLicenceRequired(subjectRole);
-  const acceptedIds = acceptedGovernmentIds(subjectRole, country);
+  // Persona verifies a government-issued photo ID only. The accepted set is
+  // admin-configurable per region and role (persona_id_class_rules), with the
+  // built-in policy as the fallback.
+  const { policy, isLoading: policyLoading } = usePersonaIdPolicy(subjectRole, country);
+  const requiresDriversLicense = policy.requiresDriversLicence;
+  const acceptedIds = policy.options;
+
+  useEffect(() => {
+    setChosenIdClass((prev) =>
+      prev && acceptedIds.some((o) => o.code === prev) ? prev : acceptedIds[0]?.code ?? null,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(acceptedIds)]);
+
+  /** Append-only audit row for each verification attempt. */
+  async function recordAttempt(patch: Record<string, unknown>): Promise<string | null> {
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from("persona_verification_attempts")
+      .insert({
+        user_id: user.id,
+        subject_role: subjectRole ?? null,
+        subject_type: subject,
+        region: country ?? null,
+        offered_id_classes: acceptedIds as any,
+        chosen_id_class: chosenIdClass,
+        ...patch,
+      } as any)
+      .select("id")
+      .single();
+    if (error) { console.warn("[persona] attempt log failed", error.message); return null; }
+    return (data as any)?.id ?? null;
+  }
+
+  async function updateAttempt(id: string | null, patch: Record<string, unknown>) {
+    if (!id) return;
+    await supabase.from("persona_verification_attempts").update(patch as any).eq("id", id);
+  }
+
 
 
   useEffect(() => { loadPersonaSdk().catch(() => {/* fallback to hosted */}); }, []);
