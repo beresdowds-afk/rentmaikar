@@ -5675,6 +5675,42 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_credential_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          masked: Json
+          notes: string | null
+          provider: string
+          status: string
+          updated_at: string
+          vault_ids: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          masked?: Json
+          notes?: string | null
+          provider: string
+          status?: string
+          updated_at?: string
+          vault_ids?: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          masked?: Json
+          notes?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          vault_ids?: Json
+        }
+        Relationships: []
+      }
       proxy_action_idempotency: {
         Row: {
           action: string
@@ -10966,6 +11002,11 @@ export type Database = {
       profile_privileged_fields_unchanged: {
         Args: { _new: Database["public"]["Tables"]["profiles"]["Row"] }
         Returns: boolean
+      }
+      provider_read_credentials: { Args: { _provider: string }; Returns: Json }
+      provider_write_credentials: {
+        Args: { _notes?: string; _provider: string; _values: Json }
+        Returns: string
       }
       provision_user_account: {
         Args: {
