@@ -85,3 +85,58 @@ export async function prepareImageForUpload(
     throw new Error('Could not process this image. Please try a different photo.');
   }
 }
+
+/**
+ * Generates a small JPEG thumbnail (default 480px, ~0.15MB) used for fast
+ * grid/mobile rendering. Full-size originals stay untouched for the gallery.
+ */
+export async function createThumbnail(
+  file: File,
+  { maxWidthOrHeight = 480, maxSizeMB = 0.15 }: PrepareOptions = {},
+): Promise<File | null> {
+  if (!isImage(file)) return null;
+  try {
+    const source = isHeic(file) ? await heicToJpeg(file) : file;
+    const thumb = await imageCompression(source, {
+      maxSizeMB,
+      maxWidthOrHeight,
+      useWebWorker: true,
+      fileType: 'image/jpeg',
+      initialQuality: 0.7,
+    });
+    return renamed(source, thumb);
+  } catch {
+    return null;
+  }
+}
+
+export interface ImageValidationResult {
+  ok: boolean;
+  error?: string;
+}
+
+/** Cheap client-side content check: type, size and decodable pixel dimensions. */
+export async function validateImageFile(
+  file: File,
+  { maxSizeMB = 10, accepted = ['image/jpeg', 'image/png', 'image/webp'], minDimension = 200 } = {},
+): Promise<ImageValidationResult> {
+  if (!isImage(file)) return { ok: false, error: `${file.name} is not an image file.` };
+  if (!isHeic(file) && !accepted.includes(file.type)) {
+    return { ok: false, error: `${file.name} must be a JPG, PNG or WebP image.` };
+  }
+  if (file.size > maxSizeMB * 1024 * 1024) {
+    return { ok: false, error: `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)}MB — the limit is ${maxSizeMB}MB.` };
+  }
+  if (file.size < 1024) return { ok: false, error: `${file.name} looks empty or corrupted.` };
+  try {
+    const bitmap = await createImageBitmap(file);
+    const { width, height } = bitmap;
+    bitmap.close?.();
+    if (width < minDimension || height < minDimension) {
+      return { ok: false, error: `${file.name} is too small (${width}x${height}px). Use at least ${minDimension}px.` };
+    }
+  } catch {
+    return { ok: false, error: `${file.name} could not be read as an image.` };
+  }
+  return { ok: true };
+}
