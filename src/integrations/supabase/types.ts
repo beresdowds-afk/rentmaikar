@@ -3024,6 +3024,45 @@ export type Database = {
           },
         ]
       }
+      messaging_opt_outs: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          last_keyword: string | null
+          opted_in_at: string | null
+          opted_out_at: string | null
+          phone: string
+          source: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          id?: string
+          last_keyword?: string | null
+          opted_in_at?: string | null
+          opted_out_at?: string | null
+          phone: string
+          source?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          last_keyword?: string | null
+          opted_in_at?: string | null
+          opted_out_at?: string | null
+          phone?: string
+          source?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       mqtt_telemetry_logs: {
         Row: {
           data_type: string
@@ -10213,6 +10252,10 @@ export type Database = {
         | { Args: { _user_id: string }; Returns: boolean }
       is_allowed_region: { Args: { _country: string }; Returns: boolean }
       is_any_support_staff: { Args: { _user_id: string }; Returns: boolean }
+      is_messaging_opted_out: {
+        Args: { _channel?: string; _phone: string }
+        Returns: boolean
+      }
       is_support_staff: {
         Args: {
           _type: Database["public"]["Enums"]["support_task_type"]
@@ -10309,6 +10352,7 @@ export type Database = {
         Returns: boolean
       }
       normalize_country_label: { Args: { _v: string }; Returns: string }
+      normalize_msisdn: { Args: { _phone: string }; Returns: string }
       onboarding_diagnostics: { Args: never; Returns: Json }
       payment_preflight: {
         Args: { _context?: Json; _operation: string }
@@ -10444,6 +10488,17 @@ export type Database = {
           _turns: Json
         }
         Returns: string
+      }
+      set_messaging_opt_out: {
+        Args: {
+          _channel?: string
+          _keyword?: string
+          _opted_out: boolean
+          _phone: string
+          _source?: string
+          _user_id?: string
+        }
+        Returns: undefined
       }
       set_my_region: {
         Args: { _country: string; _mode?: string }
