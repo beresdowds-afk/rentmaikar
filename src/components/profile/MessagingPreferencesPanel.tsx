@@ -72,7 +72,9 @@ export function MessagingPreferencesPanel() {
     void load();
   }, [load]);
 
-  const toggle = async (channel: Channel, enabled: boolean) => {
+  const [pending, setPending] = useState<{ channel: Channel; enabled: boolean } | null>(null);
+
+  const applyToggle = async (channel: Channel, enabled: boolean) => {
     const previous = optedOut[channel];
     setOptedOut((s) => ({ ...s, [channel]: !enabled }));
     setSaving(channel);
@@ -94,6 +96,13 @@ export function MessagingPreferencesPanel() {
     });
     void load();
   };
+
+  const toggle = (channel: Channel, enabled: boolean) => setPending({ channel, enabled });
+
+  const pendingLabel = pending
+    ? CHANNELS.find((c) => c.key === pending.channel)?.label ?? pending.channel
+    : '';
+
 
   return (
     <Card>
