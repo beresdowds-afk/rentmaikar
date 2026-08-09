@@ -12,7 +12,7 @@ import {
 } from "../_shared/persona-templates.ts";
 import {
   governmentIdPersonaAttributes,
-  driversLicenceRequired,
+  resolveGovIdPolicy,
 } from "../_shared/government-id.ts";
 
 
@@ -31,6 +31,8 @@ const Body = z.object({
     id_type: z.string().max(40).optional(),
     birthdate: z.string().max(20).optional(),
   }).partial().optional(),
+  chosen_id_class: z.string().max(20).optional(),
+  correlation_id: z.string().max(80).optional(),
   drivers_license_document_id: z.string().uuid().optional(),
 });
 
@@ -122,7 +124,13 @@ Deno.serve(async (req) => {
     // Government-ID-only policy: drivers must have a driver's licence on file
     // before an inquiry is opened. Every other role verifies with any valid
     // government ID accepted in their region.
-    if (driversLicenceRequired(canonicalRole)) {
+    // Admin-configurable accepted ID classes (public.persona_id_class_rules)
+    const { data: idRules } = await supa
+      .from("persona_id_class_rules")
+      .select("country_code, subject_role, accepted_classes, requires_drivers_license, is_active");
+    const idPolicy = resolveGovIdPolicy(canonicalRole, country, (idRules ?? []) as any);
+
+    if (idPolicy.requiresDriversLicence) {
       let dlQuery = supa
         .from("user_documents")
         .select("id")
@@ -160,7 +168,18 @@ Deno.serve(async (req) => {
     }
 
     const roleAttrs = personaRoleAttributes(canonicalRole);
-    const govIdAttrs = governmentIdPersonaAttributes(canonicalRole, country);
+    const baseGovIdAttrs = governmentIdPersonaAttributes(canonicalRole, country);
+    const govIdAttrs = {
+      tags: baseGovIdAttrs.tags,
+      fields: {
+        ...baseGovIdAttrs.fields,
+        "accepted-id-classes": idPolicy.options.map((o) => o.code).join(","),
+        "government-id-requirement": idPolicy.requiresDriversLicence
+          ? "drivers_license"
+          : "any_government_id",
+        ...(parsed.data.chosen_id_class ? { "selected-id-class": parsed.data.chosen_id_class } : {}),
+      },
+    };
 
     const userRoleTag = userRoleTagForRole(canonicalRole);
     const subjectRefValue = parsed.data.subject_ref ?? userData.user.id;
