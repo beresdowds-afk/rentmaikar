@@ -610,32 +610,37 @@ const handler = async (req: Request): Promise<Response> => {
     // ════════════════════════════════════════════════
     // Priority 2: Opt-out (before profile check to ensure compliance)
     // ════════════════════════════════════════════════
-    if (isOptOut(rawBody)) {
+    if (isOptOut(rawBody) || isStopKeyword(rawBody)) {
       const { data: profile } = await supabase
-        .from("profiles").select("user_id").eq("phone", from).single();
+        .from("profiles").select("user_id").eq("phone", from).maybeSingle();
 
-      if (profile) {
-        const msg = await handleOptOut(supabase, profile.user_id, from);
-        await sendSMS(from, msg, { supabase });
-      } else {
-        // Even unregistered users get opt-out confirmation (TCPA compliance)
-        await sendSMS(from, SMS_TEMPLATES.optOutConfirm(), { supabase });
-      }
+      // Registered or not, the number is suppressed and gets one final confirmation.
+      const msg = await handleOptOut(
+        supabase,
+        (profile as { user_id?: string } | null)?.user_id ?? null,
+        from,
+        command,
+      );
+      await sendSMS(from, msg, { supabase, allowOptedOut: true });
       return new Response("OK", { status: 200, headers: corsHeaders });
     }
 
     // ════════════════════════════════════════════════
     // Priority 3: Opt-in (START)
     // ════════════════════════════════════════════════
-    if (command === "START") {
+    if (isStartKeyword(rawBody)) {
       const { data: profile } = await supabase
-        .from("profiles").select("user_id").eq("phone", from).single();
-      if (profile) {
-        const msg = await handleOptIn(supabase, profile.user_id);
-        await sendSMS(from, msg, { supabase });
-      }
+        .from("profiles").select("user_id").eq("phone", from).maybeSingle();
+      const msg = await handleOptIn(
+        supabase,
+        (profile as { user_id?: string } | null)?.user_id ?? null,
+        from,
+        command,
+      );
+      await sendSMS(from, msg, { supabase, allowOptedOut: true });
       return new Response("OK", { status: 200, headers: corsHeaders });
     }
+
 
     // ─── Find user ───
     const { data: profile } = await supabase
