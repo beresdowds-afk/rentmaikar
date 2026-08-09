@@ -313,8 +313,10 @@ export default function ProfileSettingsPage() {
 
           <RoleSwitchCard />
 
+          <MessagingPreferencesPanel />
 
           <PersonaNotificationPreference />
+
 
           <ApplicationAppealPanel />
 
