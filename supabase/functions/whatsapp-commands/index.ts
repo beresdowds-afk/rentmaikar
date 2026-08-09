@@ -1457,7 +1457,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (templateKey) {
       await preloadTemplates(supabase);
       const managed = templateFromCache(templateKey, "whatsapp", countryCodeForPhone(from), {
-        first_name: profile?.first_name || "there",
+        first_name: profile?.full_name?.split(" ")[0] || "there",
         portal_link: "https://rentmaikar.lovable.app",
         support_phone: supportPhoneFor(region),
       });
