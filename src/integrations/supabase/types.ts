@@ -9810,6 +9810,10 @@ export type Database = {
         Returns: undefined
       }
       complete_onboarding: { Args: never; Returns: string }
+      complete_training_module: {
+        Args: { _module_id: string; _score?: number }
+        Returns: string
+      }
       consume_proxy_charge: {
         Args: { _proxy_id: string }
         Returns: {
