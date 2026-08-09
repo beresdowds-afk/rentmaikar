@@ -25,6 +25,9 @@ import { OwnerWeeklyReportReview } from '@/components/inspection/OwnerWeeklyRepo
 import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { OwnerRentToOwnListing } from '@/components/owner/OwnerRentToOwnListing';
 import { VehiclePickupLocation } from '@/components/owner/VehiclePickupLocation';
+import { VehiclePhotoManager } from '@/components/owner/VehiclePhotoManager';
+import { useQueryClient } from '@tanstack/react-query';
+
 import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import { VehicleDocumentUpload } from '@/components/documents/VehicleDocumentUpload';
 import { OwnerInsuranceSupport } from '@/components/owner/OwnerInsuranceSupport';
