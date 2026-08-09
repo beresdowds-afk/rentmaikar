@@ -11,6 +11,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { logPipelineEvent } from "../_shared/pipeline-events.ts";
+import { isOptedOut } from "../_shared/opt-out.ts";
 
 const Body = z.object({
   application_id: z.string().uuid(),
@@ -101,6 +102,11 @@ async function sendEmail(to: string, name: string, driverName: string, link: str
 }
 
 async function sendTwilio(to: string, body: string, channel: "sms" | "whatsapp"): Promise<ChannelResult> {
+  if (await isOptedOut(to, channel)) {
+    console.log(`[opt-out] Suppressed ${channel} to ${to}`);
+    return { channel, provider: "twilio", ok: false, skipped: true };
+  }
+
   if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) {
     return { channel, provider: "twilio", ok: false, skipped: true };
   }

@@ -9,6 +9,7 @@ import {
   paymentReceiptEmail,
 } from "../_shared/email-templates.ts";
 import { requireCronSecret } from "../_shared/cron-auth.ts";
+import { isOptedOut } from "../_shared/opt-out.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,6 +29,11 @@ interface PaymentConfirmation {
 }
 
 const sendWhatsAppMessage = async (to: string, message: string) => {
+  if (await isOptedOut(to, "whatsapp")) {
+    console.log(`[opt-out] Suppressed WhatsApp to ${to}`);
+    return null;
+  }
+
   const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
   const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
   const fromNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
