@@ -234,6 +234,9 @@ export default function AdminPersonaInquiriesPage() {
           </Table>
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </div>
+
   );
 }
