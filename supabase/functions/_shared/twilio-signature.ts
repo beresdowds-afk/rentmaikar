@@ -92,3 +92,24 @@ export async function verifyTwilioRequest(
   }
   return null;
 }
+
+/**
+ * Convenience wrapper for handlers that parse the request body themselves
+ * later on: clones the request, parses the form-encoded body and validates
+ * the `X-Twilio-Signature` header. Returns a 403 `Response` when invalid,
+ * `null` when the request is a genuine Twilio callback.
+ *
+ * Fails closed when TWILIO_AUTH_TOKEN is not configured.
+ */
+export async function verifyTwilioRequestRaw(
+  req: Request,
+  opts: TwilioVerifyOptions = {},
+): Promise<Response | null> {
+  let params: URLSearchParams;
+  try {
+    params = new URLSearchParams(await req.clone().text());
+  } catch {
+    params = new URLSearchParams();
+  }
+  return verifyTwilioRequest(req, params as unknown as FormData, opts);
+}

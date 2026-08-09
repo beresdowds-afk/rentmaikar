@@ -9,6 +9,7 @@ import {
   detectTemplateLanguage,
 } from "../_shared/whatsapp-templates.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
+import { verifyTwilioRequestRaw } from "../_shared/twilio-signature.ts";
 
 
 const corsHeaders = {
@@ -600,6 +601,9 @@ const handler = async (req: Request): Promise<Response> => {
     const contentType = req.headers.get("content-type") || "";
 
     if (contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data")) {
+      // Inbound WhatsApp/SMS commands must be genuine Twilio callbacks.
+      const denied = await verifyTwilioRequestRaw(req);
+      if (denied) return denied;
       const formData = await req.formData();
       from = formData.get("From")?.toString().replace("whatsapp:", "") || "";
       rawBody = formData.get("Body")?.toString().trim() || "";
