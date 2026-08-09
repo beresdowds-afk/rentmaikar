@@ -61,6 +61,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const LegalSupportDashboard = lazy(() => import("./pages/LegalSupportDashboard"));
 const IoTSupportDashboard = lazy(() => import("./pages/IoTSupportDashboard"));
 const VehicleSupportDashboard = lazy(() => import("./pages/VehicleSupportDashboard"));
+const InsuranceSupportDashboard = lazy(() => import("./pages/InsuranceSupportDashboard"));
 const DriverTraining = lazy(() => import("./pages/DriverTraining"));
 const RefereeAttestation = lazy(() => import("./pages/RefereeAttestation"));
 const MobileCallIn = lazy(() => import("./pages/MobileCallIn"));
@@ -231,6 +232,14 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['vehicle_support', 'admin']}>
                         <VehicleSupportDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/support/insurance" 
+                    element={
+                      <ProtectedRoute allowedRoles={['insurance_support', 'admin']}>
+                        <InsuranceSupportDashboard />
                       </ProtectedRoute>
                     } 
                   />
