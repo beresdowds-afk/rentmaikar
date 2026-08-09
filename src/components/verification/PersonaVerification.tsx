@@ -83,9 +83,12 @@ export default function PersonaVerification({
   const [failure, setFailure] = useState<ClassifiedFailure | null>(null);
   const [lastFields, setLastFields] = useState<Record<string, string> | null>(null);
 
-  // Drivers MUST present a driver's license in addition to any other
-  // identity document. Owners and other roles can choose any accepted doc.
-  const requiresDriversLicense = subject === "self" && subjectRole === "driver";
+  // Persona verifies a government-issued photo ID only. Drivers must present a
+  // driver's licence; every other role (owners, driver-nominated referees,
+  // payment proxies, staff) may present any government ID valid in their region.
+  const requiresDriversLicense = driversLicenceRequired(subjectRole);
+  const acceptedIds = acceptedGovernmentIds(subjectRole, country);
+
 
   useEffect(() => { loadPersonaSdk().catch(() => {/* fallback to hosted */}); }, []);
 
