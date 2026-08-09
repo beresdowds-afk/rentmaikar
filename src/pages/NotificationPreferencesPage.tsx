@@ -13,6 +13,7 @@ export default function NotificationPreferencesPage() {
       <Seo
         title="Notification Preferences | Rentmaikar"
         description="Manage your SMS and WhatsApp notification preferences for Rentmaikar rental updates, payment reminders and support messages."
+        path="/settings/notifications"
         noindex
       />
       <Header />
