@@ -293,7 +293,9 @@ export const IoTMonitoringHub = () => {
 
         <TabsContent value="providers" className="space-y-4">
           <TelemetryProviderSwitch />
+          <EmqxSecretRotationPanel />
           <IoTSimCardsPanel />
+
         </TabsContent>
 
         <TabsContent value="livemap" className="space-y-4">
