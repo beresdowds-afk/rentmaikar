@@ -132,7 +132,22 @@ const classifyIntent = (message: string): ClassifiedIntent => {
 
 // ═══════════════════════════════════════════════════════════
 // SMS Message Templates (160-char SMS-friendly)
+//
+// Admin-managed copy in public.twilio_message_templates wins when a matching
+// active template exists; the literals below stay as the fallback.
 // ═══════════════════════════════════════════════════════════
+
+/** Country code (US/NG) for the number being replied to, set per request. */
+let currentCountry: string | null = null;
+export const setTemplateCountry = (code: string | null) => {
+  currentCountry = code;
+};
+
+const ov = (
+  key: string,
+  values: Record<string, string | number | undefined | null>,
+  fallback: string,
+): string => templateFromCache(key, "sms", currentCountry, values) ?? fallback;
 
 const SMS_TEMPLATES = {
   welcome: (name: string) =>
@@ -142,43 +157,79 @@ const SMS_TEMPLATES = {
     `Rentmaikar: We don't recognize this number. Register at rentmaikar.lovable.app to get started.`,
 
   paymentDue: (amount: string, vehicle: string, link: string) =>
-    `Rentmaikar: ${amount} due for ${vehicle}. Pay now: ${link} Reply BALANCE for details.`,
+    ov(
+      "kw_pay",
+      { amount_display: amount, vehicle_name: vehicle, portal_link: link },
+      `Rentmaikar: ${amount} due for ${vehicle}. Pay now: ${link} Reply BALANCE for details.`,
+    ),
 
   noPaymentDue: () =>
     `Rentmaikar: No outstanding payments. You're all caught up! Reply STATUS for rental info.`,
 
   rentalStatus: (vehicle: string, rate: string, freq: string) =>
-    `Rentmaikar: Active rental - ${vehicle} at ${rate}/${freq}. Reply PAY to pay or BALANCE for breakdown.`,
+    ov(
+      "kw_status",
+      { vehicle_name: vehicle, amount_display: rate, frequency: freq },
+      `Rentmaikar: Active rental - ${vehicle} at ${rate}/${freq}. Reply PAY to pay or BALANCE for breakdown.`,
+    ),
 
   noRental: () =>
     `Rentmaikar: No active rental found. Browse vehicles at rentmaikar.lovable.app/catalogue`,
 
   balance: (amount: string) =>
-    `Rentmaikar: Outstanding balance: ${amount}. Reply PAY to settle now.`,
+    ov(
+      "kw_balance",
+      { amount_display: amount },
+      `Rentmaikar: Outstanding balance: ${amount}. Reply PAY to settle now.`,
+    ),
 
   balanceClear: () =>
     `Rentmaikar: No outstanding balance. You're current! Reply STATUS for rental info.`,
 
   help: (supportPhone: string) =>
-    `Rentmaikar: Commands - PAY: Pay now, STATUS: Rental info, BALANCE: Check due, DOC: Upload docs, STOP: Opt out. Call ${supportPhone}`,
+    ov(
+      "kw_help",
+      { support_phone: supportPhone },
+      `Rentmaikar: Commands - PAY: Pay now, STATUS: Rental info, BALANCE: Check due, DOC: Upload docs, STOP: Opt out. Call ${supportPhone}`,
+    ),
 
   docStatus: (pending: number, missing: number) =>
-    `Rentmaikar: Docs - ${missing} missing, ${pending} pending review. Upload at rentmaikar.lovable.app/driver/dashboard`,
+    ov(
+      "kw_doc",
+      {
+        pending_count: pending,
+        missing_count: missing,
+        portal_link: "rentmaikar.lovable.app/driver/dashboard",
+      },
+      `Rentmaikar: Docs - ${missing} missing, ${pending} pending review. Upload at rentmaikar.lovable.app/driver/dashboard`,
+    ),
 
   docsComplete: () =>
     `Rentmaikar: All documents verified! No action needed.`,
 
   optOutConfirm: () =>
-    `Rentmaikar: You've been opted out of SMS notifications. Reply START to re-subscribe. This is your last message.`,
+    ov(
+      "kw_stop",
+      {},
+      `Rentmaikar: You've been opted out of SMS notifications. Reply START to re-subscribe. This is your last message.`,
+    ),
 
   optIn: () =>
-    `Rentmaikar: Welcome back! You've been re-subscribed to SMS notifications. Reply HELP for commands.`,
+    ov(
+      "kw_start",
+      {},
+      `Rentmaikar: Welcome back! You've been re-subscribed to SMS notifications. Reply HELP for commands.`,
+    ),
 
   locationReceived: () =>
     `Rentmaikar: Location received and recorded. Thank you!`,
 
   supportConnecting: (supportPhone: string) =>
-    `Rentmaikar: Connecting you to support. An agent will respond shortly. Hours: 8AM-10PM daily. Call ${supportPhone}`,
+    ov(
+      "kw_human",
+      { support_phone: supportPhone },
+      `Rentmaikar: Connecting you to support. An agent will respond shortly. Hours: 8AM-10PM daily. Call ${supportPhone}`,
+    ),
 
   done: () =>
     `Rentmaikar: Noted! Thank you for confirming. Have a great day!`,
@@ -188,6 +239,7 @@ const SMS_TEMPLATES = {
 
   rateLimited: () =>
     `Rentmaikar: Too many requests. Please wait a moment and try again.`,
+
 
   // ─── Emergency templates ───
   emergencyAck: (supportPhone: string) =>
