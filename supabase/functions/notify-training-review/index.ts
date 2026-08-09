@@ -80,7 +80,11 @@ Deno.serve(async (req) => {
           event: "training_review",
           title,
           body,
-          data: { route: "/driver/training", approved: String(approved) },
+          data: {
+            route: "/driver/training",
+            approved: String(approved),
+            ...(nextDueAt ? { next_due_at: nextDueAt } : {}),
+          },
         }),
       },
     ).then((r) => r.json()).catch(() => ({ ok: false }));
@@ -91,7 +95,12 @@ Deno.serve(async (req) => {
       to_identifier: user_id,
       subject: title,
       body,
-      metadata: { event: "training_review", approved, training_complete },
+      metadata: {
+        event: "training_review",
+        approved,
+        training_complete,
+        next_due_at: nextDueAt,
+      },
     }).then(() => {}, () => {});
 
     return new Response(JSON.stringify({ ok: true, push: pushRes }), {
