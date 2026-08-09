@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import {
 import { requireServiceRole } from "../_shared/auth-guards.ts";
+import { preloadTemplates, templateFromCache } from "../_shared/message-templates.ts";
+import {
   smsConfig,
   getRegionConfig,
   getFromNumber,
