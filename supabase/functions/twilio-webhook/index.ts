@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
+import { verifyTwilioRequestRaw } from "../_shared/twilio-signature.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -178,45 +179,6 @@ const processLocationMessage = async (
   }
 };
 
-// ─── Twilio Signature Verification ───
-const verifyTwilioSignature = async (req: Request, authToken: string): Promise<boolean> => {
-  try {
-    const signature = req.headers.get('X-Twilio-Signature');
-    if (!signature) return false;
-
-    const url = req.url;
-    const body = await req.clone().text();
-    
-    // Parse form params for signature computation
-    const params: Record<string, string> = {};
-    const formData = new URLSearchParams(body);
-    for (const [key, value] of formData.entries()) {
-      params[key] = value;
-    }
-
-    // Build the string to sign: URL + sorted params
-    const sortedKeys = Object.keys(params).sort();
-    let stringToSign = url;
-    for (const key of sortedKeys) {
-      stringToSign += key + params[key];
-    }
-
-    // HMAC-SHA1 using Web Crypto API
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(authToken);
-    const msgData = encoder.encode(stringToSign);
-
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw', keyData, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
-    );
-    const sigBuffer = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
-    const computed = btoa(String.fromCharCode(...new Uint8Array(sigBuffer)));
-
-    return computed === signature;
-  } catch {
-    return false;
-  }
-};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -224,15 +186,9 @@ serve(async (req) => {
   }
 
   // ─── Twilio Signature Verification (skip for GET verification challenges) ───
-  if (req.method === "POST") {
-    const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-    if (authToken) {
-      const isValid = await verifyTwilioSignature(req, authToken);
-      if (!isValid) {
-        console.warn("Invalid Twilio signature - rejecting request");
-        return new Response("Forbidden", { status: 403, headers: corsHeaders });
-      }
-    }
+  if (req.method === 'POST') {
+    const denied = await verifyTwilioRequestRaw(req);
+    if (denied) return denied;
   }
 
   // ─── WhatsApp Webhook Verification (GET challenge) ───
