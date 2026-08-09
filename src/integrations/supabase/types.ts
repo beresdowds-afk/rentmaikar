@@ -6591,6 +6591,9 @@ export type Database = {
           driver_id: string | null
           estimated_duration_hours: number | null
           id: string
+          insurance_status:
+            | Database["public"]["Enums"]["insurance_task_status"]
+            | null
           iot_status: Database["public"]["Enums"]["iot_task_status"] | null
           legal_status: Database["public"]["Enums"]["legal_task_status"] | null
           location_address: string | null
@@ -6605,6 +6608,9 @@ export type Database = {
           resolved_by: string | null
           scheduled_date: string | null
           scheduled_time: string | null
+          staff_feedback: string | null
+          staff_resolved_at: string | null
+          staff_resolved_by: string | null
           task_type: Database["public"]["Enums"]["support_task_type"]
           title: string
           updated_at: string
@@ -6612,6 +6618,10 @@ export type Database = {
           vehicle_status:
             | Database["public"]["Enums"]["vehicle_task_status"]
             | null
+          verification_notes: string | null
+          verification_state: string
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           agreement_id?: string | null
@@ -6625,6 +6635,9 @@ export type Database = {
           driver_id?: string | null
           estimated_duration_hours?: number | null
           id?: string
+          insurance_status?:
+            | Database["public"]["Enums"]["insurance_task_status"]
+            | null
           iot_status?: Database["public"]["Enums"]["iot_task_status"] | null
           legal_status?: Database["public"]["Enums"]["legal_task_status"] | null
           location_address?: string | null
@@ -6639,6 +6652,9 @@ export type Database = {
           resolved_by?: string | null
           scheduled_date?: string | null
           scheduled_time?: string | null
+          staff_feedback?: string | null
+          staff_resolved_at?: string | null
+          staff_resolved_by?: string | null
           task_type: Database["public"]["Enums"]["support_task_type"]
           title: string
           updated_at?: string
@@ -6646,6 +6662,10 @@ export type Database = {
           vehicle_status?:
             | Database["public"]["Enums"]["vehicle_task_status"]
             | null
+          verification_notes?: string | null
+          verification_state?: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           agreement_id?: string | null
@@ -6659,6 +6679,9 @@ export type Database = {
           driver_id?: string | null
           estimated_duration_hours?: number | null
           id?: string
+          insurance_status?:
+            | Database["public"]["Enums"]["insurance_task_status"]
+            | null
           iot_status?: Database["public"]["Enums"]["iot_task_status"] | null
           legal_status?: Database["public"]["Enums"]["legal_task_status"] | null
           location_address?: string | null
@@ -6673,6 +6696,9 @@ export type Database = {
           resolved_by?: string | null
           scheduled_date?: string | null
           scheduled_time?: string | null
+          staff_feedback?: string | null
+          staff_resolved_at?: string | null
+          staff_resolved_by?: string | null
           task_type?: Database["public"]["Enums"]["support_task_type"]
           title?: string
           updated_at?: string
@@ -6680,6 +6706,10 @@ export type Database = {
           vehicle_status?:
             | Database["public"]["Enums"]["vehicle_task_status"]
             | null
+          verification_notes?: string | null
+          verification_state?: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {
@@ -9766,6 +9796,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_verify_support_task: {
+        Args: { _approve: boolean; _notes?: string; _task_id: string }
+        Returns: undefined
+      }
       advance_registration_stage: {
         Args: {
           _target: Database["public"]["Enums"]["registration_stage_enum"]
@@ -10540,6 +10574,14 @@ export type Database = {
         | "breakdown"
         | "theft"
         | "other"
+      insurance_task_status:
+        | "open"
+        | "reviewing"
+        | "awaiting_documents"
+        | "quote_sent"
+        | "escalated"
+        | "resolved"
+        | "closed"
       iot_task_status:
         | "assigned"
         | "scheduled"
@@ -10758,6 +10800,15 @@ export const Constants = {
         "closed",
       ],
       incident_type: ["accident", "maintenance", "breakdown", "theft", "other"],
+      insurance_task_status: [
+        "open",
+        "reviewing",
+        "awaiting_documents",
+        "quote_sent",
+        "escalated",
+        "resolved",
+        "closed",
+      ],
       iot_task_status: [
         "assigned",
         "scheduled",
