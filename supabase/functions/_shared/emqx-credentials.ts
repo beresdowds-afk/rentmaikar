@@ -39,7 +39,9 @@ export async function readCredentialVersion(
 }
 
 export async function getEmqxCredentials(): Promise<EmqxCredentials | null> {
-  const url = Deno.env.get("EMQX_API_URL") || DEFAULT_URL;
+  const { getEmqxManagementConfig } = await import("./emqx-config.ts");
+  const cfg = await getEmqxManagementConfig();
+  const url = cfg.apiUrl || Deno.env.get("EMQX_API_URL") || DEFAULT_URL;
   const active = await readCredentialVersion(null);
   if (active) {
     return { url, key: active.api_key, secret: active.api_secret, source: "vault", versionId: active.id };

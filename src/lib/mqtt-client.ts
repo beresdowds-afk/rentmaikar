@@ -424,7 +424,10 @@ class MQTTVehicleTracker {
   }
 
   /**
-   * Query EMQX HTTP API via edge function proxy
+   * Query EMQX HTTP API via edge function proxy.
+   * Returns `{ __unavailable: true, reason, hint }` when the management API is
+   * disabled/unreachable (e.g. serverless plans) instead of throwing, so callers
+   * can degrade gracefully.
    */
   async queryEMQXApi(action: string, params?: Record<string, any>): Promise<any> {
     try {
@@ -432,10 +435,14 @@ class MQTTVehicleTracker {
         body: { action, params },
       });
       if (error) throw error;
+      if (data?.unavailable) {
+        console.warn(`[MQTT/EMQX] management API unavailable (${action}):`, data.reason);
+        return { __unavailable: true, reason: data.reason, hint: data.hint, config: data.config };
+      }
       return data?.data;
     } catch (err) {
       console.error(`[MQTT/EMQX] API query failed (${action}):`, err);
-      throw err;
+      return { __unavailable: true, reason: 'request_failed', hint: (err as Error)?.message };
     }
   }
 
