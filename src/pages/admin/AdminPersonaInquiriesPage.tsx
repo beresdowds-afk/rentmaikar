@@ -11,6 +11,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { RefreshCw, Search } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PersonaAttemptsAudit from "@/components/admin/PersonaAttemptsAudit";
+
 
 type InquiryRow = {
   id: string;
