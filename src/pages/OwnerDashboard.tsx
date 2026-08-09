@@ -96,6 +96,8 @@ const FALLBACK_CATEGORY_YEARS: Record<string, string> = {
 export default function OwnerDashboard() {
   const { country, currency } = useRegion();
   const { user, userRole } = useAuth();
+  const queryClient = useQueryClient();
+
   const isAdminView = userRole === 'admin';
   const [activeTab, setActiveTab] = usePersistedTab('overview');
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
