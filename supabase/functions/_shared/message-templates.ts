@@ -87,6 +87,59 @@ export interface ResolveOptions {
   supabase?: SupabaseClient;
 }
 
+function pickRow(
+  rows: TemplateRow[],
+  key: string,
+  channel: TemplateChannel,
+  countryCode: string | null,
+  language: string,
+): TemplateRow | undefined {
+  const candidates = rows.filter(
+    (r) => r.template_key === key && (r.channel === channel || r.channel === "both"),
+  );
+  if (!candidates.length) return undefined;
+  return (
+    candidates.find(
+      (r) => r.channel === channel && r.country_code === countryCode && r.language === language,
+    ) ??
+    candidates.find(
+      (r) => r.channel === channel && r.country_code === null && r.language === language,
+    ) ??
+    candidates.find(
+      (r) => r.channel === "both" && r.country_code === countryCode && r.language === language,
+    ) ??
+    candidates.find((r) => r.channel === "both" && r.country_code === null) ??
+    candidates[0]
+  );
+}
+
+/** Warm the in-memory template cache; call once at the start of a request. */
+export async function preloadTemplates(supabase?: SupabaseClient): Promise<void> {
+  try {
+    await loadTemplates(supabase ?? serviceClient());
+  } catch (e) {
+    console.error("preloadTemplates failed:", (e as Error)?.message ?? e);
+  }
+}
+
+/**
+ * Synchronous lookup against the warmed cache. Returns null when no active
+ * template matches so callers can keep their hardcoded copy.
+ */
+export function templateFromCache(
+  key: string,
+  channel: TemplateChannel,
+  countryCode: string | null,
+  values: Record<string, string | number | undefined | null> = {},
+  language = "en",
+): string | null {
+  if (!cache) return null;
+  const row = pickRow(cache.rows, key, channel, countryCode, language);
+  if (!row?.body) return null;
+  const rendered = renderTemplate(row.body, values);
+  return rendered || null;
+}
+
 /**
  * Resolve and render a message body, falling back to the caller's hardcoded
  * copy when no active template exists.
