@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { IoTAuditTrailPanel } from "./IoTAuditTrailPanel";
 import { VehiclePicker } from "./VehiclePicker";
 import { HologramDevicesPanel } from "./HologramDevicesPanel";
+import { DeviceIdentityPanel } from "./DeviceIdentityPanel";
 import { HologramAccountPanel } from "./HologramAccountPanel";
 
 
@@ -250,11 +251,18 @@ export function HologramDashboard() {
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="sims">SIM Inventory</TabsTrigger>
           <TabsTrigger value="devices">Devices</TabsTrigger>
+          <TabsTrigger value="identity">Device Identity</TabsTrigger>
           <TabsTrigger value="account">Account &amp; Plans</TabsTrigger>
           <TabsTrigger value="ops">Operations</TabsTrigger>
           <TabsTrigger value="setup">API Setup</TabsTrigger>
           <TabsTrigger value="audit">Audit Trail</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="identity">
+          <DeviceIdentityPanel />
+        </TabsContent>
+
+
 
 
         <TabsContent value="sims" className="space-y-4">
