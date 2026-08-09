@@ -10172,6 +10172,15 @@ export type Database = {
       get_my_activation_blockers: { Args: never; Returns: Json }
       get_my_cookie_consent: { Args: never; Returns: Json }
       get_my_identity_verification: { Args: never; Returns: Json }
+      get_my_messaging_preferences: {
+        Args: never
+        Returns: {
+          channel: string
+          opted_out: boolean
+          phone: string
+          updated_at: string
+        }[]
+      }
       get_my_registration_progress: { Args: never; Returns: Json }
       get_my_role_change_status: { Args: never; Returns: Json }
       get_my_wallet_summary: { Args: { _currency?: string }; Returns: Json }
@@ -10498,6 +10507,10 @@ export type Database = {
           _source?: string
           _user_id?: string
         }
+        Returns: undefined
+      }
+      set_my_messaging_preference: {
+        Args: { _channel: string; _opted_out: boolean }
         Returns: undefined
       }
       set_my_region: {
