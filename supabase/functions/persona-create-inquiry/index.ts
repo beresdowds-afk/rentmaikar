@@ -181,9 +181,11 @@ Deno.serve(async (req) => {
           attributes: {
             "inquiry-template-id": template_id,
             "reference-id": referenceId,
-            tags: roleAttrs.tags,
+            tags: [...roleAttrs.tags, ...govIdAttrs.tags],
             fields: {
               ...roleAttrs.fields,
+              ...govIdAttrs.fields,
+
               "name-first": parsed.data.fields?.name_first,
               "name-last": parsed.data.fields?.name_last,
               "email-address": parsed.data.fields?.email,
