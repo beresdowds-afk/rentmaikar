@@ -168,7 +168,7 @@ serve(async (req) => {
         ? { ok: true, friendlyName: key.friendly_name }
         : { ok: false, status: keyRes.status, error: key.message ?? "lookup failed" };
     } else {
-      checks.apiKey = { ok: false, error: "TWILIO_API_KEY not set" };
+      checks.apiKey = { ok: false, error: "TWILIO_API_KEY_SID not set" };
     }
 
     // 6. Webhook signature validation readiness
