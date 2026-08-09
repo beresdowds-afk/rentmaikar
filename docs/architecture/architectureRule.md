@@ -1,18 +1,30 @@
 Architecture Rule
 
-Persona and Hologram must never directly call each other's services.
+Layer boundaries are strict. A layer may not absorb another layer's responsibility.
 
-Communication between the two systems should occur only through platform-level business workflows when required.
+1. Persona and Hologram must never directly call each other's services.
+2. Identity verification must remain independent of IoT connectivity, and IoT
+   connectivity independent of user verification.
+3. Traccar (or its alternative) owns GPS/trip/geofence history only. It never
+   manages SIMs, billing, or identity.
+4. EMQX owns message transport only. It holds no business state.
+5. Hologram owns cellular/eSIM connectivity only. It never tracks, verifies, or bills.
+6. RentMaikar Core is the only orchestrator and system of record. All cross-layer
+   communication happens through Core business workflows and server-side services.
+7. Client apps (Driver App, Owner Portal, Admin Portal) call Core APIs only —
+   never a provider API directly, and never with provider credentials.
 
-Identity verification must remain independent of IoT connectivity.
-
-IoT connectivity must remain independent of user verification.
+Reference documents:
 
 RentMaikar/
 ├── docs/
 │   └── architecture/
-│       ├── Hologram-Persona-Separation.md
+│       ├── CommunicationArchitecture.md
+│       ├── RentMaikarCoreResponsibilities.md
 │       ├── HologramResponsibilities.md
+│       ├── TraccarResponsibilities.md
+│       ├── EmqxResponsibilities.md
+│       ├── Hologram-Persona-Separation.md
 │       ├── PersonaResponsibilities.md
 │       ├── IdentityVerificationArchitecture.md
 │       └── architectureRule.md
@@ -31,4 +43,7 @@ RentMaikar/
 │       ├── evBattery/evBatteryPlugin.ts
 │       └── obd/obdPlugin.ts
 └── supabase/
-
+    └── functions/_shared/
+        ├── hologram-client.ts
+        ├── traccar-client.ts
+        └── emqx-config.ts
