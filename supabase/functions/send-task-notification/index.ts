@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
+import { isOptedOut } from "../_shared/opt-out.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -223,7 +224,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send SMS if phone is provided
     let smsResult = null;
-    if (staffPhone) {
+    if (staffPhone && !(await isOptedOut(staffPhone, "sms"))) {
       const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
       const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
       const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER");

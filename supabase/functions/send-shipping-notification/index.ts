@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
+import { isOptedOut } from "../_shared/opt-out.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -119,7 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Shipping notification sent:", emailResult);
 
     // Optionally send SMS via Twilio if phone is provided
-    if (phone) {
+    if (phone && !(await isOptedOut(phone, "sms"))) {
       try {
         const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
         const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");

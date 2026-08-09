@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { whatchimp } from "../_shared/whatchimp-client.ts";
 import { manychat } from "../_shared/manychat-client.ts";
+import { isOptedOut } from "../_shared/opt-out.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -90,6 +91,14 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true, provider: "whatchimp", messageSid }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if (await isOptedOut(recipientPhone, channel === "whatsapp" ? "whatsapp" : "sms")) {
+      console.log(`[opt-out] Suppressed inbox reply to ${recipientPhone}`);
+      return new Response(
+        JSON.stringify({ success: false, suppressed: true, reason: "recipient_opted_out" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     if (isNigeria) {
