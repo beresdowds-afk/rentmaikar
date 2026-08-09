@@ -15,7 +15,7 @@ import { withRetry } from "@/lib/verification-retry";
 import { runPreflight } from "@/lib/verification-preflight";
 import { saveVerificationSession, clearVerificationSession } from "@/hooks/useVerificationResume";
 import { usePersonaEnabled } from "@/hooks/usePersonaEnabled";
-import { acceptedGovernmentIds, driversLicenceRequired } from "@/lib/government-id";
+import { usePersonaIdPolicy } from "@/hooks/usePersonaIdClasses";
 
 
 
