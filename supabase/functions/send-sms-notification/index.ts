@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getRegionConfig, getFromNumber, checkRateLimit, checkGlobalRateLimit } from "../_shared/sms-config.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import { resolveMessage, countryCodeForPhone } from "../_shared/message-templates.ts";
+import { isOptedOut } from "../_shared/opt-out.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
