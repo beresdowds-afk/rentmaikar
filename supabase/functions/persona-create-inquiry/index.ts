@@ -10,6 +10,11 @@ import {
   userRoleTagForRole,
   type PersonaSubjectRole,
 } from "../_shared/persona-templates.ts";
+import {
+  governmentIdPersonaAttributes,
+  driversLicenceRequired,
+} from "../_shared/government-id.ts";
+
 
 
 const Body = z.object({
