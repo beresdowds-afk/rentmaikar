@@ -205,6 +205,11 @@ export default function DriverDashboard() {
           <TrainingComplianceBanner />
 
           <div className="my-4">
+            <RealtimeStatusCard userId={user?.id ?? null} />
+          </div>
+
+
+          <div className="my-4">
             <OnboardingChecklist />
           </div>
 
