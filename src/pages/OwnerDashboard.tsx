@@ -483,7 +483,7 @@ export default function OwnerDashboard() {
               </TabsTrigger>
               <TabsTrigger value="insurance" className="flex items-center gap-1">
                 <FileText className="h-4 w-4" />
-                Insurance
+                Insurance Support Service
               </TabsTrigger>
               <TabsTrigger value="agreements" className="flex items-center gap-1" data-tour="owner-agreements">
                 <FileText className="h-4 w-4" />
