@@ -129,14 +129,40 @@ const traccarAdapter: TelemetryAdapter = {
   },
 };
 
+/** Traccar is the platform default; EMQX is the automatic fallback. */
+export const DEFAULT_PROVIDER: TelemetryProviderName = "traccar";
+export const FALLBACK_PROVIDER: TelemetryProviderName = "emqx";
+
 export async function getTelemetryAdapter(): Promise<TelemetryAdapter> {
-  const { name } = await fetchActiveProvider();
-  return name === "traccar" ? traccarAdapter : emqxAdapter;
+  const name = await getActiveProviderName();
+  return adapters[name];
 }
 
+/**
+ * Resolves the provider to use right now: the admin-selected/default provider
+ * when its secrets are present, otherwise the fallback provider.
+ */
 export async function getActiveProviderName(): Promise<TelemetryProviderName> {
   const { name } = await fetchActiveProvider();
-  return name === "traccar" ? "traccar" : "emqx";
+  const primary: TelemetryProviderName = name === "emqx" ? "emqx" : DEFAULT_PROVIDER;
+  if (isProviderConfigured(primary)) return primary;
+  const fallback = primary === "traccar" ? FALLBACK_PROVIDER : "traccar";
+  return isProviderConfigured(fallback) ? fallback : primary;
+}
+
+/** Send a command through the active provider, retrying on the other provider on failure. */
+export async function sendCommandWithFallback(
+  deviceId: string,
+  command: string,
+  payload: Record<string, unknown> = {},
+): Promise<{ ok: boolean; provider: TelemetryProviderName; error?: string; fell_back?: boolean }> {
+  const primary = await getActiveProviderName();
+  const first = await adapters[primary].sendCommand(deviceId, command, payload);
+  if (first.ok) return { ...first, provider: primary };
+  const other: TelemetryProviderName = primary === "traccar" ? "emqx" : "traccar";
+  if (!isProviderConfigured(other)) return { ...first, provider: primary };
+  const second = await adapters[other].sendCommand(deviceId, command, payload);
+  return { ...second, provider: other, fell_back: true };
 }
 
 export function isProviderConfigured(name: TelemetryProviderName): boolean {
