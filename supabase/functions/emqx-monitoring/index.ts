@@ -264,9 +264,17 @@ Deno.serve(async (req) => {
         });
     }
 
-    return new Response(JSON.stringify({ success: true, data: result }), {
+    return new Response(JSON.stringify({ success: true, data: result, config: configSummary }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+    } catch (e) {
+      if (e instanceof EmqxUnavailable) {
+        const { reason, hint } = classifyManagementFailure(e.httpStatus, e.detail);
+        console.warn('[emqx-monitoring] management API unavailable:', reason, e.httpStatus);
+        return degraded(reason, hint, e.httpStatus);
+      }
+      throw e;
+    }
   } catch (err) {
     console.error('[emqx-monitoring]', err);
     return new Response(JSON.stringify({ error: err.message || 'Internal server error' }), {
