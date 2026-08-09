@@ -38,7 +38,7 @@ async function fetchActiveProvider(): Promise<{ name: TelemetryProviderName; bas
     .order("priority", { ascending: true })
     .limit(1)
     .maybeSingle();
-  if (!data) return { name: "emqx", base_url: null, api_key_secret_name: "EMQX_API_KEY" };
+  if (!data) return { name: "traccar", base_url: null, api_key_secret_name: "TRACCAR_API_TOKEN" };
   return data as { name: TelemetryProviderName; base_url: string | null; api_key_secret_name: string | null };
 }
 
