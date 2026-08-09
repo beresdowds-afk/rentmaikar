@@ -21,6 +21,7 @@ interface DeviceIdentity {
   vin: string | null;
   mqtt_client_id: string | null;
   topic_prefix: string | null;
+  telemetry_provider: string | null;
   driver_id: string | null;
   owner_id: string | null;
   last_synced_at: string;
