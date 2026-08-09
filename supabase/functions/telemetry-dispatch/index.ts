@@ -78,8 +78,19 @@ Deno.serve(async (req) => {
     const adapter = adapters[active];
 
     if (action === "device_state") {
-      const state = await adapter.getDeviceState(target);
-      return json({ ok: true, provider: active, state });
+      let state = await adapter.getDeviceState(target);
+      let usedProvider = active;
+      if (!state.online && !state.lastSeen) {
+        const other = active === "traccar" ? "emqx" : "traccar";
+        if (isProviderConfigured(other as TelemetryProviderName)) {
+          const alt = await adapters[other as TelemetryProviderName].getDeviceState(target);
+          if (alt.online || alt.lastSeen) {
+            state = alt;
+            usedProvider = other as TelemetryProviderName;
+          }
+        }
+      }
+      return json({ ok: true, provider: usedProvider, state });
     }
 
     if (!command) return json({ error: "command required" }, 400);
@@ -88,15 +99,15 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "rate_limited", retry_after_seconds: rl.retry_after_seconds }, 429);
     }
 
-    const res = await adapter.sendCommand(target, command, payload ?? {});
+    const res = await sendCommandWithFallback(target, command, payload ?? {});
     await supa.from("iot_audit_log").insert({
       performed_by: actor,
       action: `telemetry_command_${command}`,
       vehicle_id: vehicle_id ?? null,
-      details: { provider: active, device: target, command, payload: payload ?? {}, response: res },
+      details: { provider: res.provider, fell_back: res.fell_back ?? false, device: target, command, payload: payload ?? {}, response: res },
     } as never);
 
-    return json({ ok: res.ok, provider: active, ...res });
+    return json({ ok: res.ok, ...res });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
