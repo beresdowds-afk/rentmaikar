@@ -10,7 +10,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { ShieldCheck, Loader2, Pencil, Trash2, UserPlus, KeyRound } from 'lucide-react';
+import { ShieldCheck, Loader2, Pencil, Trash2, UserPlus, KeyRound, Users } from 'lucide-react';
+import { AssistantUserAssignmentsDialog } from './AssistantUserAssignmentsDialog';
 
 export const PERMISSION_GROUPS: Array<{
   label: string;
@@ -104,6 +105,19 @@ export function AdminAssistantManagement() {
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newUser, setNewUser] = useState({ email: '', full_name: '', phone: '' });
+  const [assignFor, setAssignFor] = useState<AssistantRow | null>(null);
+  const [assignCounts, setAssignCounts] = useState<Record<string, number>>({});
+
+  const loadAssignmentCounts = async () => {
+    const { data } = await supabase
+      .from('admin_assistant_user_assignments')
+      .select('assistant_id');
+    const counts: Record<string, number> = {};
+    (data || []).forEach(r => { counts[r.assistant_id] = (counts[r.assistant_id] || 0) + 1; });
+    setAssignCounts(counts);
+  };
+
+  useEffect(() => { loadAssignmentCounts(); }, []);
 
   const load = async () => {
     setLoading(true);
@@ -290,6 +304,9 @@ export function AdminAssistantManagement() {
                     <Badge variant="outline" className="gap-1">
                       <KeyRound className="h-3 w-3" /> {grantedCount(row)} permissions
                     </Badge>
+                    <Button variant="outline" size="sm" onClick={() => setAssignFor(row)} className="gap-1">
+                      <Users className="h-3.5 w-3.5" /> Users ({assignCounts[row.user_id] ?? 0})
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => openEdit(row)} className="gap-1">
                       <Pencil className="h-3.5 w-3.5" /> Edit
                     </Button>
@@ -308,6 +325,14 @@ export function AdminAssistantManagement() {
           </div>
         </ScrollArea>
       )}
+
+      <AssistantUserAssignmentsDialog
+        open={!!assignFor}
+        onOpenChange={(v) => { if (!v) setAssignFor(null); }}
+        assistantId={assignFor?.user_id ?? null}
+        assistantName={assignFor?.full_name || assignFor?.email}
+        onChanged={loadAssignmentCounts}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
