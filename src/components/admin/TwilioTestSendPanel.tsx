@@ -41,6 +41,9 @@ export const TwilioTestSendPanel = () => {
   const [polling, setPolling] = useState(false);
   const [status, setStatus] = useState<StatusInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [diag, setDiag] = useState<Record<string, unknown> | null>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+
 
   const invoke = async (method: "POST" | "GET", body?: unknown, sid?: string) => {
     const { data: sess } = await supabase.auth.getSession();
@@ -62,6 +65,29 @@ export const TwilioTestSendPanel = () => {
     }
     return json;
   };
+
+  const runDiagnostics = async () => {
+    setDiagLoading(true);
+    setDiag(null);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Not signed in");
+      const res = await fetch(
+        `https://bwvocmhcledbwqlpcswp.functions.supabase.co/twilio-test-send?diagnostics=1`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+      setDiag(json);
+      toast.success("Twilio diagnostics complete");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setDiagLoading(false);
+    }
+  };
+
 
   const handleSend = async () => {
     setError(null);
@@ -134,6 +160,33 @@ export const TwilioTestSendPanel = () => {
           delivery. Every send is logged to <code>messaging_events</code>.
         </p>
       </div>
+
+      <div className="space-y-3 rounded-md border p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-medium text-sm">Configuration diagnostics</p>
+            <p className="text-xs text-muted-foreground">
+              Read-only check of credentials, sender numbers, messaging service, Trust Hub
+              profile and API key — nothing is sent.
+            </p>
+          </div>
+          <Button variant="outline" onClick={runDiagnostics} disabled={diagLoading}>
+            {diagLoading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Run diagnostics
+          </Button>
+        </div>
+        {diag && (
+          <pre className="text-xs bg-muted/50 rounded p-3 overflow-auto max-h-80">
+            {JSON.stringify(diag, null, 2)}
+          </pre>
+        )}
+      </div>
+
+
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
