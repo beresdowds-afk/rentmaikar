@@ -33,7 +33,7 @@ export const EMQX_PROFILES: Record<string, EMQXBrokerProfile> = {
     tcpUrl: 'mqtt://broker.rentmaikar.com:1883',
     wssUrl: 'wss://broker.rentmaikar.com:8084/mqtt',
     sslUrl: 'mqtts://broker.rentmaikar.com:8883',
-    apiUrl: 'https://broker.rentmaikar.com:18083/api/v5',
+    apiUrl: 'https://broker.rentmaikar.com:8443/api/v5',
     apiVersion: 'v5',
   },
   staging: {
@@ -43,7 +43,7 @@ export const EMQX_PROFILES: Record<string, EMQXBrokerProfile> = {
     tcpUrl: 'mqtt://staging-broker.rentmaikar.com:1883',
     wssUrl: 'wss://staging-broker.rentmaikar.com:8084/mqtt',
     sslUrl: 'mqtts://staging-broker.rentmaikar.com:8883',
-    apiUrl: 'https://staging-broker.rentmaikar.com:18083/api/v5',
+    apiUrl: 'https://staging-broker.rentmaikar.com:8443/api/v5',
     apiVersion: 'v5',
   },
   local: {
