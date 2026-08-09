@@ -53,7 +53,7 @@ const CookieConsent = () => {
 
   useEffect(() => {
     if (!hasConsented) {
-      const t = setTimeout(() => setBannerVisible(true), 800);
+      const t = setTimeout(() => setBannerVisible(true), 1500);
       return () => clearTimeout(t);
     }
     setBannerVisible(false);
@@ -94,9 +94,9 @@ const CookieConsent = () => {
           <div className="container mx-auto max-w-4xl">
             <div className="relative bg-card border border-border rounded-xl shadow-lg p-4 md:p-6">
               <button
-                onClick={() => setBannerVisible(false)}
+                onClick={handleRejectAll}
                 className="absolute top-3 right-3 p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Dismiss"
+                aria-label="Dismiss and reject non-essential cookies"
               >
                 <X className="w-4 h-4" />
               </button>
