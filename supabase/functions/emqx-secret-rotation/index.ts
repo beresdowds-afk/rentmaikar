@@ -86,7 +86,8 @@ Deno.serve(async (req) => {
         if (!versionId) return json({ error: "versionId is required" }, 400);
         const row = await readCredentialVersion(versionId);
         if (!row) return json({ error: "Credential version not found" }, 404);
-        const url = Deno.env.get("EMQX_API_URL") || "https://broker.rentmaikar.com:18083/api/v5";
+        const { getEmqxManagementConfig } = await import("../_shared/emqx-config.ts");
+        const url = (await getEmqxManagementConfig()).apiUrl;
         const result = await probeEmqx(url, row.api_key, row.api_secret);
         await admin.rpc("emqx_record_verification", {
           _version_id: versionId,
