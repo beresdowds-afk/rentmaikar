@@ -10737,6 +10737,7 @@ export type Database = {
         Args: { _device_id: string; _prefs: Json }
         Returns: boolean
       }
+      verify_cron_secret: { Args: { _secret: string }; Returns: boolean }
     }
     Enums: {
       access_level_enum: "view_only" | "full"
