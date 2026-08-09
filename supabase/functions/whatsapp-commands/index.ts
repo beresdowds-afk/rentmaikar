@@ -362,11 +362,20 @@ const sendWhatsAppMessage = async (
     priority?: MessagePriority;
     supabase?: ReturnType<typeof createClient>;
     messageId?: string;
+    /** Only for STOP/START confirmations. */
+    allowOptedOut?: boolean;
   }
 ): Promise<{ provider: string; externalId?: string; response: unknown }> => {
+  // ─── Opt-out guard: never contact a number after STOP ───
+  if (!options?.allowOptedOut && await isOptedOut(to, "whatsapp", options?.supabase as never)) {
+    console.log(`[WhatsApp] Suppressed — ${to} has opted out`);
+    return { provider: "suppressed", response: { suppressed: true } };
+  }
+
   const priority = options?.priority || "normal";
   const msgId = options?.messageId || crypto.randomUUID();
   let lastError: Error | null = null;
+
 
   for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
     try {
