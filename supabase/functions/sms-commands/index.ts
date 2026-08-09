@@ -420,27 +420,38 @@ const sendSMS = async (
 
 const handleOptOut = async (
   supabase: ReturnType<typeof createClient>,
-  userId: string,
+  userId: string | null,
   phone: string,
+  keyword: string,
 ): Promise<string> => {
-  await supabase.from("profiles").update({
-    notification_sms: false,
-  }).eq("user_id", userId);
-
-  console.log(`[SMS Opt-Out] user=${userId} phone=${phone}`);
+  // Stops SMS *and* WhatsApp for this number, registered or not.
+  await setOptOut(phone, true, {
+    channel: "all",
+    userId,
+    source: "sms_keyword",
+    keyword,
+    supabase: supabase as never,
+  });
+  console.log(`[SMS Opt-Out] user=${userId ?? "unregistered"} phone=${phone}`);
   return SMS_TEMPLATES.optOutConfirm();
 };
 
 const handleOptIn = async (
   supabase: ReturnType<typeof createClient>,
-  userId: string,
+  userId: string | null,
+  phone: string,
+  keyword: string,
 ): Promise<string> => {
-  await supabase.from("profiles").update({
-    notification_sms: true,
-  }).eq("user_id", userId);
-
+  await setOptOut(phone, false, {
+    channel: "all",
+    userId,
+    source: "sms_keyword",
+    keyword,
+    supabase: supabase as never,
+  });
   return SMS_TEMPLATES.optIn();
 };
+
 
 // ═══════════════════════════════════════════════════════════
 // Emergency Handler
