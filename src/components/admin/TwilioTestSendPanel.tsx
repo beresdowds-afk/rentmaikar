@@ -161,6 +161,33 @@ export const TwilioTestSendPanel = () => {
         </p>
       </div>
 
+      <div className="space-y-3 rounded-md border p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-medium text-sm">Configuration diagnostics</p>
+            <p className="text-xs text-muted-foreground">
+              Read-only check of credentials, sender numbers, messaging service, Trust Hub
+              profile and API key — nothing is sent.
+            </p>
+          </div>
+          <Button variant="outline" onClick={runDiagnostics} disabled={diagLoading}>
+            {diagLoading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Run diagnostics
+          </Button>
+        </div>
+        {diag && (
+          <pre className="text-xs bg-muted/50 rounded p-3 overflow-auto max-h-80">
+            {JSON.stringify(diag, null, 2)}
+          </pre>
+        )}
+      </div>
+
+
+
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Channel</Label>
