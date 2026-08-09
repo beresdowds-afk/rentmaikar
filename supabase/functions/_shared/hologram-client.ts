@@ -72,6 +72,15 @@ function withOrg(path: string, extra: Record<string, string | number | undefined
 }
 
 export const hologram = {
+  /** Warm admin-managed credentials before any sync getter is used. */
+  async ensureReady() {
+    await ensureProviderConfig("hologram");
+  },
+
+  configSource() {
+    return providerConfigSource("hologram");
+  },
+
   isConfigured() {
     return !!creds();
   },

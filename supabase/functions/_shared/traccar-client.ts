@@ -5,6 +5,8 @@
 //
 // Docs: https://www.traccar.org/api-reference/
 
+import { ensureProviderConfig, providerConfigSource, providerOverride } from "./provider-config.ts";
+
 type OkResult<T = unknown> = { ok: true; body: T };
 type ErrResult =
   | { ok: false; reason: "not_configured" }
@@ -12,10 +14,10 @@ type ErrResult =
 export type TraccarResult<T = unknown> = OkResult<T> | ErrResult;
 
 function creds() {
-  const base = (Deno.env.get("TRACCAR_BASE_URL") || "").replace(/\/$/, "");
-  const token = Deno.env.get("TRACCAR_TOKEN") || "";
-  const email = Deno.env.get("TRACCAR_EMAIL") || "";
-  const password = Deno.env.get("TRACCAR_PASSWORD") || "";
+  const base = (providerOverride("traccar", "base_url") || Deno.env.get("TRACCAR_BASE_URL") || "").replace(/\/$/, "");
+  const token = providerOverride("traccar", "token") || Deno.env.get("TRACCAR_TOKEN") || "";
+  const email = providerOverride("traccar", "email") || Deno.env.get("TRACCAR_EMAIL") || "";
+  const password = providerOverride("traccar", "password") || Deno.env.get("TRACCAR_PASSWORD") || "";
   if (!base) return null;
   if (!token && !(email && password)) return null;
   return { base, token, email, password };
@@ -78,6 +80,9 @@ export interface TraccarPosition {
 }
 
 export const traccar = {
+  /** Warm admin-managed credentials before any sync getter is used. */
+  ensureReady: async () => { await ensureProviderConfig("traccar"); },
+  configSource: () => providerConfigSource("traccar"),
   isConfigured: () => !!creds(),
   baseUrl: () => creds()?.base ?? null,
   ping: () => call<{ id: number; name: string }>("/server"),
