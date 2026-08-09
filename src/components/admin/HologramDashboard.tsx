@@ -64,6 +64,8 @@ export function HologramDashboard() {
   const [busy, setBusy] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [planId, setPlanId] = useState<string>("");
+  const [limitMb, setLimitMb] = useState<string>("");
+
   const [selected, setSelected] = useState<SimCard | null>(null);
   const [linkVehicle, setLinkVehicle] = useState<string | null>(null);
   const [lastSyncResult, setLastSyncResult] = useState<Record<string, { state: string | null; usage_mb: number | null; at: string }>>({});
