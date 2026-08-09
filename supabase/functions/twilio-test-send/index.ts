@@ -54,25 +54,13 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Read-only diagnostics may also be authorized with the operator diag token
-  const diagToken = Deno.env.get("TWILIO_DIAG_TOKEN");
-  const isDiagRequest =
-    req.method === "GET" && new URL(req.url).searchParams.get("diagnostics") !== null;
-  const diagAuthorized =
-    isDiagRequest && !!diagToken && req.headers.get("x-diag-token") === diagToken;
+  // Admin session is the only way in — diagnostics included.
+  const gate = await requireAdmin(req);
+  if ("error" in gate) return gate.error;
+  const user = gate.user;
+  const admin = gate.admin;
+  const supabaseUrl = gate.supabaseUrl;
 
-  // deno-lint-ignore no-explicit-any
-  let user: any = { email: "diagnostics" };
-  // deno-lint-ignore no-explicit-any
-  let admin: any = null;
-  let supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  if (!diagAuthorized) {
-    const gate = await requireAdmin(req);
-    if ("error" in gate) return gate.error;
-    user = gate.user;
-    admin = gate.admin;
-    supabaseUrl = gate.supabaseUrl;
-  }
 
 
   const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
@@ -87,8 +75,9 @@ serve(async (req) => {
     const envNames = [
       "TWILIO_ACCOUNT_SID",
       "TWILIO_AUTH_TOKEN",
-      "TWILIO_API_KEY",
-      "TWILIO_API_SECRET",
+      "TWILIO_API_KEY_SID",
+      "TWILIO_API_KEY_SECRET",
+
       "TWILIO_PHONE_NUMBER",
       "TWILIO_WHATSAPP_NUMBER",
       "TWILIO_MESSAGING_SERVICE_SID",
@@ -168,7 +157,7 @@ serve(async (req) => {
     }
 
     // 5. API key (used for VoIP access tokens)
-    const apiKey = Deno.env.get("TWILIO_API_KEY");
+    const apiKey = Deno.env.get("TWILIO_API_KEY_SID") ?? Deno.env.get("TWILIO_API_KEY");
     if (apiKey) {
       const keyRes = await fetch(
         `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Keys/${apiKey}.json`,
@@ -179,7 +168,7 @@ serve(async (req) => {
         ? { ok: true, friendlyName: key.friendly_name }
         : { ok: false, status: keyRes.status, error: key.message ?? "lookup failed" };
     } else {
-      checks.apiKey = { ok: false, error: "TWILIO_API_KEY not set" };
+      checks.apiKey = { ok: false, error: "TWILIO_API_KEY_SID not set" };
     }
 
     // 6. Webhook signature validation readiness
