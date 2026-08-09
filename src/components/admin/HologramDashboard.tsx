@@ -351,6 +351,16 @@ export function HologramDashboard() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="devices">
+          <HologramDevicesPanel />
+        </TabsContent>
+
+        <TabsContent value="account">
+          <HologramAccountPanel />
+        </TabsContent>
+
+
+
         <TabsContent value="ops" className="space-y-4">
           <Card>
             <CardHeader>
