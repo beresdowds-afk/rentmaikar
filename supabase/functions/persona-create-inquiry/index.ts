@@ -119,7 +119,30 @@ Deno.serve(async (req) => {
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Government-ID-only policy: drivers must have a driver's licence on file
+    // before an inquiry is opened. Every other role verifies with any valid
+    // government ID accepted in their region.
+    if (driversLicenceRequired(canonicalRole)) {
+      let dlQuery = supa
+        .from("user_documents")
+        .select("id")
+        .eq("user_id", userData.user.id)
+        .eq("document_type", "drivers_license")
+        .limit(1);
+      if (parsed.data.drivers_license_document_id) {
+        dlQuery = dlQuery.eq("id", parsed.data.drivers_license_document_id);
+      }
+      const { data: dlDoc } = await dlQuery.maybeSingle();
+      if (!dlDoc) {
+        return new Response(JSON.stringify({
+          error: "drivers_license_required",
+          detail: "Drivers must upload a valid driver's licence before identity verification.",
+        }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     const { template_id, env_id } = await resolveTemplate(supa, country, canonicalRole ?? undefined);
+
 
     if (!apiKey || !template_id) {
       const { data, error } = await supa.from("persona_inquiries").insert({
