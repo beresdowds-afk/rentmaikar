@@ -84,7 +84,8 @@ Deno.serve(async (req) => {
       let probeReason: string | null = null;
       let probeError: string | null = null;
       try {
-        await emqxFetch("/stats");
+        // Serverless forbids /stats; /clients is permitted on every plan.
+        await emqxFetch("/clients?limit=1");
         probeOk = true;
       } catch (e) {
         const err = e as { reason?: string; detail?: string; status?: number | null };
