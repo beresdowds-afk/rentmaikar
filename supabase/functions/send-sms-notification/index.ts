@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getRegionConfig, getFromNumber, checkRateLimit, checkGlobalRateLimit } from "../_shared/sms-config.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import { resolveMessage, countryCodeForPhone } from "../_shared/message-templates.ts";
+import { isOptedOut } from "../_shared/opt-out.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -226,7 +227,25 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // ─── Opt-out guard: never contact a number after STOP ───
+    // User-initiated security codes and emergencies are exempt (they are not
+    // marketing/notification traffic and are requested in the moment).
+    const OPT_OUT_EXEMPT = new Set([
+      'verification_code', 'two_factor_code', 'otp', 'login_code', 'emergency',
+    ]);
+    if (!OPT_OUT_EXEMPT.has(body.notificationType)) {
+      const channel = body.channel === 'whatsapp' ? 'whatsapp' : 'sms';
+      if (await isOptedOut(body.phone, channel)) {
+        console.log(`[send-sms-notification] Suppressed ${body.notificationType} — ${body.phone} opted out`);
+        return new Response(
+          JSON.stringify({ success: false, suppressed: true, reason: 'recipient_opted_out' }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
+
     // ─── Rate limiting ───
+
     const region = body.phone.startsWith('+234') ? 'NIGERIA' : 'USA';
     if (!checkGlobalRateLimit() || !checkRateLimit(region)) {
       return new Response(

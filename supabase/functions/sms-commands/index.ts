@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { preloadTemplates, templateFromCache } from "../_shared/message-templates.ts";
+import { isOptedOut, setOptOut, isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
 import {
   smsConfig,
   getRegionConfig,
@@ -285,6 +286,8 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 interface SendSMSOptions {
   numberType?: SMSNumberType;
   supabase?: ReturnType<typeof createClient>;
+  /** Only for STOP/START/HELP confirmations, which carriers require. */
+  allowOptedOut?: boolean;
 }
 
 const sendSMS = async (
@@ -292,8 +295,15 @@ const sendSMS = async (
   message: string,
   options: SendSMSOptions = {},
 ): Promise<{ provider: string; externalId?: string; segments: number }> => {
+  // ─── Opt-out guard: never contact a number after STOP ───
+  if (!options.allowOptedOut && await isOptedOut(to, "sms", options.supabase as never)) {
+    console.log(`[SMS] Suppressed — ${to} has opted out`);
+    return { provider: "suppressed", segments: 0 };
+  }
+
   const regionConfig = getRegionConfig(to);
   const region = to.startsWith("+234") ? "NIGERIA" : "USA";
+
 
   // ─── Rate limiting ───
   if (!checkGlobalRateLimit() || !checkRateLimit(region)) {
@@ -411,27 +421,38 @@ const sendSMS = async (
 
 const handleOptOut = async (
   supabase: ReturnType<typeof createClient>,
-  userId: string,
+  userId: string | null,
   phone: string,
+  keyword: string,
 ): Promise<string> => {
-  await supabase.from("profiles").update({
-    notification_sms: false,
-  }).eq("user_id", userId);
-
-  console.log(`[SMS Opt-Out] user=${userId} phone=${phone}`);
+  // Stops SMS *and* WhatsApp for this number, registered or not.
+  await setOptOut(phone, true, {
+    channel: "all",
+    userId,
+    source: "sms_keyword",
+    keyword,
+    supabase: supabase as never,
+  });
+  console.log(`[SMS Opt-Out] user=${userId ?? "unregistered"} phone=${phone}`);
   return SMS_TEMPLATES.optOutConfirm();
 };
 
 const handleOptIn = async (
   supabase: ReturnType<typeof createClient>,
-  userId: string,
+  userId: string | null,
+  phone: string,
+  keyword: string,
 ): Promise<string> => {
-  await supabase.from("profiles").update({
-    notification_sms: true,
-  }).eq("user_id", userId);
-
+  await setOptOut(phone, false, {
+    channel: "all",
+    userId,
+    source: "sms_keyword",
+    keyword,
+    supabase: supabase as never,
+  });
   return SMS_TEMPLATES.optIn();
 };
+
 
 // ═══════════════════════════════════════════════════════════
 // Emergency Handler
@@ -574,7 +595,7 @@ const handler = async (req: Request): Promise<Response> => {
         supabase, from, rawBody, region,
         profile?.user_id, profile?.full_name
       );
-      await sendSMS(from, emergencyMsg, { numberType: "emergency", supabase });
+      await sendSMS(from, emergencyMsg, { numberType: "emergency", supabase, allowOptedOut: true });
 
       // Log emergency
       try {
@@ -590,32 +611,37 @@ const handler = async (req: Request): Promise<Response> => {
     // ════════════════════════════════════════════════
     // Priority 2: Opt-out (before profile check to ensure compliance)
     // ════════════════════════════════════════════════
-    if (isOptOut(rawBody)) {
+    if (isOptOut(rawBody) || isStopKeyword(rawBody)) {
       const { data: profile } = await supabase
-        .from("profiles").select("user_id").eq("phone", from).single();
+        .from("profiles").select("user_id").eq("phone", from).maybeSingle();
 
-      if (profile) {
-        const msg = await handleOptOut(supabase, profile.user_id, from);
-        await sendSMS(from, msg, { supabase });
-      } else {
-        // Even unregistered users get opt-out confirmation (TCPA compliance)
-        await sendSMS(from, SMS_TEMPLATES.optOutConfirm(), { supabase });
-      }
+      // Registered or not, the number is suppressed and gets one final confirmation.
+      const msg = await handleOptOut(
+        supabase,
+        (profile as { user_id?: string } | null)?.user_id ?? null,
+        from,
+        command,
+      );
+      await sendSMS(from, msg, { supabase, allowOptedOut: true });
       return new Response("OK", { status: 200, headers: corsHeaders });
     }
 
     // ════════════════════════════════════════════════
     // Priority 3: Opt-in (START)
     // ════════════════════════════════════════════════
-    if (command === "START") {
+    if (isStartKeyword(rawBody)) {
       const { data: profile } = await supabase
-        .from("profiles").select("user_id").eq("phone", from).single();
-      if (profile) {
-        const msg = await handleOptIn(supabase, profile.user_id);
-        await sendSMS(from, msg, { supabase });
-      }
+        .from("profiles").select("user_id").eq("phone", from).maybeSingle();
+      const msg = await handleOptIn(
+        supabase,
+        (profile as { user_id?: string } | null)?.user_id ?? null,
+        from,
+        command,
+      );
+      await sendSMS(from, msg, { supabase, allowOptedOut: true });
       return new Response("OK", { status: 200, headers: corsHeaders });
     }
+
 
     // ─── Find user ───
     const { data: profile } = await supabase
@@ -844,7 +870,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // ─── Send response ───
-    await sendSMS(from, responseMessage, { supabase });
+    await sendSMS(from, responseMessage, { supabase, allowOptedOut: command === "HELP" });
 
     // ─── Log to unified_message_log ───
     try {

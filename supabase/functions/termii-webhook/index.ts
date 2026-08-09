@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -239,6 +240,24 @@ serve(async (req) => {
         });
         return new Response(
           JSON.stringify({ success: true, routed: "whatsapp-commands" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // ─── STOP / START always route to the command handler ───
+      if (isStopKeyword(parsed.content) || isStartKeyword(parsed.content)) {
+        const target = inboundChannel === "whatsapp" ? "whatsapp-commands" : "sms-commands";
+        console.log(`[Opt-out Router] Forwarding "${upperBody}" to ${target}`);
+        await fetch(`${supabaseUrl}/functions/v1/${target}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({ from: cleanFrom, text: parsed.content, channel: inboundChannel }),
+        });
+        return new Response(
+          JSON.stringify({ success: true, routed: target }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }

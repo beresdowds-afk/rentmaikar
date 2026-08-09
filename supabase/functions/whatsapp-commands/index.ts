@@ -10,6 +10,7 @@ import {
 } from "../_shared/whatsapp-templates.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { verifyTwilioRequestRaw } from "../_shared/twilio-signature.ts";
+import { isOptedOut, setOptOut, isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
 import {
   preloadTemplates,
   templateFromCache,
@@ -362,11 +363,20 @@ const sendWhatsAppMessage = async (
     priority?: MessagePriority;
     supabase?: ReturnType<typeof createClient>;
     messageId?: string;
+    /** Only for STOP/START confirmations. */
+    allowOptedOut?: boolean;
   }
 ): Promise<{ provider: string; externalId?: string; response: unknown }> => {
+  // ─── Opt-out guard: never contact a number after STOP ───
+  if (!options?.allowOptedOut && await isOptedOut(to, "whatsapp", options?.supabase as never)) {
+    console.log(`[WhatsApp] Suppressed — ${to} has opted out`);
+    return { provider: "suppressed", response: { suppressed: true } };
+  }
+
   const priority = options?.priority || "normal";
   const msgId = options?.messageId || crypto.randomUUID();
   let lastError: Error | null = null;
+
 
   for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
     try {
@@ -945,6 +955,27 @@ const handler = async (req: Request): Promise<Response> => {
     const region = from.startsWith("+234") ? "NIGERIA" : "USA";
 
     console.log(`[WhatsApp Command] From: ${from}, Body: ${body}, Region: ${region}`);
+
+    // ─── STOP / START handled first, for registered and unregistered numbers ───
+    if (isStopKeyword(rawBody) || isStartKeyword(rawBody)) {
+      const stopping = isStopKeyword(rawBody);
+      const { data: optProfile } = await supabase
+        .from("profiles").select("user_id").eq("phone", from).maybeSingle();
+      await setOptOut(from, stopping, {
+        channel: "all",
+        userId: (optProfile as { user_id?: string } | null)?.user_id ?? null,
+        source: "whatsapp_keyword",
+        keyword: body,
+        supabase: supabase as never,
+      });
+      const confirm = stopping
+        ? "You've been unsubscribed from Rentmaikar messages. You will not receive further SMS or WhatsApp messages. Reply START to resume."
+        : "You're subscribed again. Rentmaikar will resume sending you SMS and WhatsApp updates. Reply STOP to unsubscribe.";
+      await sendWhatsAppMessage(from, confirm, { supabase, allowOptedOut: true });
+      return new Response("OK", { status: 200, headers: corsHeaders });
+    }
+
+
 
     // Find user by phone number
     const { data: profile } = await supabase

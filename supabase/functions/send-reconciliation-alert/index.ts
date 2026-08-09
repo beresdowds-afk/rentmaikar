@@ -7,6 +7,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireInternal } from "../_shared/guard.ts";
+import { isOptedOut } from "../_shared/opt-out.ts";
 
 interface AlertPayload {
   alert_type: string;
@@ -82,6 +83,7 @@ Deno.serve(async (req) => {
 
   for (const p of profiles ?? []) {
     if (!p.phone) continue;
+    if (await isOptedOut(p.phone, "sms")) { smsResults.push({ to: p.phone, provider: "suppressed", status: 0 }); continue; }
     const isNg = (p.country_code ?? p.region ?? "").toString().toUpperCase().startsWith("NG");
     try {
       if (isNg && termiiKey) {
