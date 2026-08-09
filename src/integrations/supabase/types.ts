@@ -10509,6 +10509,7 @@ export type Database = {
         | "iot_support"
         | "vehicle_support"
         | "admin_assistant"
+        | "insurance_support"
       application_status:
         | "pending"
         | "under_review"
@@ -10727,6 +10728,7 @@ export const Constants = {
         "iot_support",
         "vehicle_support",
         "admin_assistant",
+        "insurance_support",
       ],
       application_status: [
         "pending",
