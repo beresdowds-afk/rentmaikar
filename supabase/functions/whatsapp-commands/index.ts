@@ -1427,7 +1427,20 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // ─── Admin-managed template override (falls back to built-in copy) ───
+    const templateKey = KEYWORD_TEMPLATE_KEYS[command];
+    if (templateKey) {
+      await preloadTemplates(supabase);
+      const managed = templateFromCache(templateKey, "whatsapp", countryCodeForPhone(from), {
+        first_name: profile?.first_name || "there",
+        portal_link: "https://rentmaikar.lovable.app",
+        support_phone: supportPhoneFor(region),
+      });
+      if (managed) responseMessage = managed;
+    }
+
     await sendWhatsAppMessage(from, responseMessage);
+
 
     // ─── Track inbound + outbound messages ───
     await trackWhatsAppMessage(supabase, {
