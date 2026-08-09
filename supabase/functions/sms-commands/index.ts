@@ -285,6 +285,8 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 interface SendSMSOptions {
   numberType?: SMSNumberType;
   supabase?: ReturnType<typeof createClient>;
+  /** Only for STOP/START/HELP confirmations, which carriers require. */
+  allowOptedOut?: boolean;
 }
 
 const sendSMS = async (
@@ -292,8 +294,15 @@ const sendSMS = async (
   message: string,
   options: SendSMSOptions = {},
 ): Promise<{ provider: string; externalId?: string; segments: number }> => {
+  // ─── Opt-out guard: never contact a number after STOP ───
+  if (!options.allowOptedOut && await isOptedOut(to, "sms", options.supabase as never)) {
+    console.log(`[SMS] Suppressed — ${to} has opted out`);
+    return { provider: "suppressed", segments: 0 };
+  }
+
   const regionConfig = getRegionConfig(to);
   const region = to.startsWith("+234") ? "NIGERIA" : "USA";
+
 
   // ─── Rate limiting ───
   if (!checkGlobalRateLimit() || !checkRateLimit(region)) {
