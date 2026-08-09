@@ -100,3 +100,55 @@ export function governmentIdPersonaAttributes(
     },
   };
 }
+
+/* ------------------------------------------------------------------ *
+ * Admin-configurable overrides (public.persona_id_class_rules)
+ * ------------------------------------------------------------------ */
+
+export interface IdClassRule {
+  country_code: string;
+  subject_role: string;
+  accepted_classes: GovIdOption[];
+  requires_drivers_license: boolean;
+  is_active?: boolean;
+  notes?: string | null;
+}
+
+export interface GovIdPolicy {
+  options: GovIdOption[];
+  requiresDriversLicence: boolean;
+  source: "config" | "default";
+  notes?: string | null;
+}
+
+/**
+ * Resolve the effective ID policy for a role/region. Admin-managed rules win;
+ * the compiled-in defaults are the fallback so verification never breaks when
+ * no rule row exists.
+ */
+export function resolveGovIdPolicy(
+  role: GovIdRole | string | null | undefined,
+  region?: string | null,
+  rules?: IdClassRule[] | null,
+): GovIdPolicy {
+  const country = normalizeGovIdCountry(region);
+  const match = (rules ?? []).find(
+    (r) =>
+      r.is_active !== false &&
+      r.subject_role === role &&
+      normalizeGovIdCountry(r.country_code) === country,
+  );
+  if (match && Array.isArray(match.accepted_classes) && match.accepted_classes.length > 0) {
+    return {
+      options: match.accepted_classes,
+      requiresDriversLicence: !!match.requires_drivers_license,
+      source: "config",
+      notes: match.notes ?? null,
+    };
+  }
+  return {
+    options: acceptedGovernmentIds(role, country),
+    requiresDriversLicence: driversLicenceRequired(role),
+    source: "default",
+  };
+}
