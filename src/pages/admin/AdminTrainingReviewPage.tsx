@@ -236,7 +236,6 @@ export default function AdminTrainingReviewPage() {
               {target?.approve ? "Verify" : "Reject"}
             </Button>
           </DialogFooter>
-        </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
