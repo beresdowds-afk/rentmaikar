@@ -1038,6 +1038,138 @@ export type Database = {
           },
         ]
       }
+      device_identities: {
+        Row: {
+          bundle_level: number
+          created_at: string
+          device_id: string
+          driver_id: string | null
+          iccid: string | null
+          id: string
+          identity_key: string
+          imei: string | null
+          last_synced_at: string
+          license_plate: string | null
+          metadata: Json
+          mqtt_client_id: string | null
+          mqtt_credential_id: string | null
+          mqtt_username: string | null
+          notes: string | null
+          owner_id: string | null
+          provider_sim_id: string | null
+          rental_id: string | null
+          serial_number: string | null
+          sim_id: string | null
+          sim_provider: string | null
+          status: string
+          telemetry_provider: string | null
+          topic_prefix: string | null
+          updated_at: string
+          vehicle_id: string | null
+          verified_at: string | null
+          verified_by: string | null
+          vin: string | null
+        }
+        Insert: {
+          bundle_level?: number
+          created_at?: string
+          device_id: string
+          driver_id?: string | null
+          iccid?: string | null
+          id?: string
+          identity_key: string
+          imei?: string | null
+          last_synced_at?: string
+          license_plate?: string | null
+          metadata?: Json
+          mqtt_client_id?: string | null
+          mqtt_credential_id?: string | null
+          mqtt_username?: string | null
+          notes?: string | null
+          owner_id?: string | null
+          provider_sim_id?: string | null
+          rental_id?: string | null
+          serial_number?: string | null
+          sim_id?: string | null
+          sim_provider?: string | null
+          status?: string
+          telemetry_provider?: string | null
+          topic_prefix?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          vin?: string | null
+        }
+        Update: {
+          bundle_level?: number
+          created_at?: string
+          device_id?: string
+          driver_id?: string | null
+          iccid?: string | null
+          id?: string
+          identity_key?: string
+          imei?: string | null
+          last_synced_at?: string
+          license_plate?: string | null
+          metadata?: Json
+          mqtt_client_id?: string | null
+          mqtt_credential_id?: string | null
+          mqtt_username?: string | null
+          notes?: string | null
+          owner_id?: string | null
+          provider_sim_id?: string | null
+          rental_id?: string | null
+          serial_number?: string | null
+          sim_id?: string | null
+          sim_provider?: string | null
+          status?: string
+          telemetry_provider?: string | null
+          topic_prefix?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          vin?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_identities_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: true
+            referencedRelation: "iot_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_identities_mqtt_credential_id_fkey"
+            columns: ["mqtt_credential_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_mqtt_credentials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_identities_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_identities_sim_id_fkey"
+            columns: ["sim_id"]
+            isOneToOne: false
+            referencedRelation: "iot_sim_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_identities_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_export_audit: {
         Row: {
           created_at: string
@@ -10729,6 +10861,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      rebuild_all_device_identities: { Args: never; Returns: number }
       record_onboarding_rpc_event: {
         Args: {
           _details?: Json
@@ -10982,6 +11115,7 @@ export type Database = {
         Args: { _new_role: Database["public"]["Enums"]["app_role"] }
         Returns: Json
       }
+      sync_device_identity: { Args: { _device_id: string }; Returns: string }
       transition_payment_state: {
         Args: {
           _entity: string
