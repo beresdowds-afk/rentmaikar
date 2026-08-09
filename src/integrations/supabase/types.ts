@@ -5549,6 +5549,132 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_billing_accounts: {
+        Row: {
+          billing_currency: string
+          config: Json
+          created_at: string
+          display_name: string
+          id: string
+          is_active: boolean
+          last_sync_detail: string | null
+          last_sync_status: string | null
+          last_synced_at: string | null
+          provider: string
+          sync_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          billing_currency?: string
+          config?: Json
+          created_at?: string
+          display_name: string
+          id?: string
+          is_active?: boolean
+          last_sync_detail?: string | null
+          last_sync_status?: string | null
+          last_synced_at?: string | null
+          provider: string
+          sync_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          billing_currency?: string
+          config?: Json
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          last_sync_detail?: string | null
+          last_sync_status?: string | null
+          last_synced_at?: string | null
+          provider?: string
+          sync_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      provider_billing_events: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          device_id: string | null
+          event_type: string
+          external_id: string | null
+          id: string
+          occurred_at: string
+          period_end: string | null
+          period_start: string | null
+          provider: string
+          quantity: number | null
+          raw: Json
+          reconciled_at: string | null
+          reconciled_by: string | null
+          reconciliation_note: string | null
+          sim_id: string | null
+          source: string
+          status: string
+          unit: string | null
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          device_id?: string | null
+          event_type?: string
+          external_id?: string | null
+          id?: string
+          occurred_at?: string
+          period_end?: string | null
+          period_start?: string | null
+          provider: string
+          quantity?: number | null
+          raw?: Json
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_note?: string | null
+          sim_id?: string | null
+          source?: string
+          status?: string
+          unit?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          device_id?: string | null
+          event_type?: string
+          external_id?: string | null
+          id?: string
+          occurred_at?: string
+          period_end?: string | null
+          period_start?: string | null
+          provider?: string
+          quantity?: number | null
+          raw?: Json
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_note?: string | null
+          sim_id?: string | null
+          source?: string
+          status?: string
+          unit?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: []
+      }
       proxy_action_idempotency: {
         Row: {
           action: string
@@ -10183,6 +10309,10 @@ export type Database = {
       }
       admin_list_withdrawal_authorizations: {
         Args: { _limit?: number; _status?: string }
+        Returns: Json
+      }
+      admin_provider_billing_summary: {
+        Args: { _end?: string; _start?: string }
         Returns: Json
       }
       admin_provision_rental_from_negotiation: {
