@@ -11,6 +11,9 @@ import { Loader2, Save, PlayCircle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PersonaIdClassSettings from "@/components/admin/PersonaIdClassSettings";
+
 
 type Role = "driver" | "owner" | "referee" | "proxy" | "admin_assistant" | "support_staff";
 
