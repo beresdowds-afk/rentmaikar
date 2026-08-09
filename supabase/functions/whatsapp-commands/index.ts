@@ -955,6 +955,27 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`[WhatsApp Command] From: ${from}, Body: ${body}, Region: ${region}`);
 
+    // ─── STOP / START handled first, for registered and unregistered numbers ───
+    if (isStopKeyword(rawBody) || isStartKeyword(rawBody)) {
+      const stopping = isStopKeyword(rawBody);
+      const { data: optProfile } = await supabase
+        .from("profiles").select("user_id").eq("phone", from).maybeSingle();
+      await setOptOut(from, stopping, {
+        channel: "all",
+        userId: (optProfile as { user_id?: string } | null)?.user_id ?? null,
+        source: "whatsapp_keyword",
+        keyword: body,
+        supabase: supabase as never,
+      });
+      const confirm = stopping
+        ? "You've been unsubscribed from Rentmaikar messages. You will not receive further SMS or WhatsApp messages. Reply START to resume."
+        : "You're subscribed again. Rentmaikar will resume sending you SMS and WhatsApp updates. Reply STOP to unsubscribe.";
+      await sendWhatsAppMessage(from, confirm, { supabase, allowOptedOut: true });
+      return new Response("OK", { status: 200, headers: corsHeaders });
+    }
+
+
+
     // Find user by phone number
     const { data: profile } = await supabase
       .from("profiles")
