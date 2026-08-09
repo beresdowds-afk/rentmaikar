@@ -11,6 +11,9 @@ import { Loader2, Save, PlayCircle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PersonaIdClassSettings from "@/components/admin/PersonaIdClassSettings";
+
 
 type Role = "driver" | "owner" | "referee" | "proxy" | "admin_assistant" | "support_staff";
 
@@ -143,6 +146,17 @@ export default function AdminPersonaTemplatesPage() {
           </AlertDescription>
         </Alert>
 
+        <Tabs defaultValue="templates" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="templates">Templates</TabsTrigger>
+            <TabsTrigger value="id-classes">Accepted ID types</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="id-classes">
+            <PersonaIdClassSettings />
+          </TabsContent>
+
+          <TabsContent value="templates" className="space-y-6">
         {loading ? (
           <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div>
         ) : (
@@ -204,6 +218,9 @@ export default function AdminPersonaTemplatesPage() {
             </Card>
           ))
         )}
+          </TabsContent>
+        </Tabs>
+
       </main>
       <Footer />
     </>

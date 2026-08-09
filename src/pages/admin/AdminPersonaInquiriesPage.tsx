@@ -11,6 +11,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { RefreshCw, Search } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PersonaAttemptsAudit from "@/components/admin/PersonaAttemptsAudit";
+
 
 type InquiryRow = {
   id: string;
@@ -131,6 +134,19 @@ export default function AdminPersonaInquiriesPage() {
         </Button>
       </div>
 
+      <Tabs defaultValue="inquiries" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="inquiries">Inquiries</TabsTrigger>
+          <TabsTrigger value="attempts">Attempt audit trail</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="attempts">
+          <PersonaAttemptsAudit />
+        </TabsContent>
+
+        <TabsContent value="inquiries" className="space-y-4">
+
+
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Filters</CardTitle>
@@ -221,6 +237,9 @@ export default function AdminPersonaInquiriesPage() {
           </Table>
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </div>
+
   );
 }

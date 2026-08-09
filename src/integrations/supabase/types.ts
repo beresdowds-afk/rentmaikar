@@ -4257,6 +4257,45 @@ export type Database = {
         }
         Relationships: []
       }
+      persona_id_class_rules: {
+        Row: {
+          accepted_classes: Json
+          country_code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          requires_drivers_license: boolean
+          subject_role: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          accepted_classes?: Json
+          country_code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          requires_drivers_license?: boolean
+          subject_role: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          accepted_classes?: Json
+          country_code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          requires_drivers_license?: boolean
+          subject_role?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       persona_inquiries: {
         Row: {
           created_at: string
@@ -4423,6 +4462,80 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      persona_verification_attempts: {
+        Row: {
+          chosen_id_class: string | null
+          completed_at: string | null
+          correlation_id: string | null
+          created_at: string
+          error_code: string | null
+          error_detail: string | null
+          id: string
+          inquiry_id: string | null
+          offered_id_classes: Json
+          region: string | null
+          result: string | null
+          retried_from: string | null
+          started_at: string
+          status: string
+          subject_role: string | null
+          subject_type: string | null
+          template_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chosen_id_class?: string | null
+          completed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_detail?: string | null
+          id?: string
+          inquiry_id?: string | null
+          offered_id_classes?: Json
+          region?: string | null
+          result?: string | null
+          retried_from?: string | null
+          started_at?: string
+          status?: string
+          subject_role?: string | null
+          subject_type?: string | null
+          template_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chosen_id_class?: string | null
+          completed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_detail?: string | null
+          id?: string
+          inquiry_id?: string | null
+          offered_id_classes?: Json
+          region?: string | null
+          result?: string | null
+          retried_from?: string | null
+          started_at?: string
+          status?: string
+          subject_role?: string | null
+          subject_type?: string | null
+          template_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "persona_verification_attempts_retried_from_fkey"
+            columns: ["retried_from"]
+            isOneToOne: false
+            referencedRelation: "persona_verification_attempts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       phone_otp_codes: {
         Row: {

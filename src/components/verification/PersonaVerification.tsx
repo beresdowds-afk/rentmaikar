@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+
 import { Shield, Loader2, CheckCircle2, IdCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRegion } from "@/contexts/RegionContext";
@@ -15,7 +17,7 @@ import { withRetry } from "@/lib/verification-retry";
 import { runPreflight } from "@/lib/verification-preflight";
 import { saveVerificationSession, clearVerificationSession } from "@/hooks/useVerificationResume";
 import { usePersonaEnabled } from "@/hooks/usePersonaEnabled";
-import { acceptedGovernmentIds, driversLicenceRequired } from "@/lib/government-id";
+import { usePersonaIdPolicy } from "@/hooks/usePersonaIdClasses";
 
 
 
@@ -82,12 +84,48 @@ export default function PersonaVerification({
   const [dlChecking, setDlChecking] = useState(false);
   const [failure, setFailure] = useState<ClassifiedFailure | null>(null);
   const [lastFields, setLastFields] = useState<Record<string, string> | null>(null);
+  const [chosenIdClass, setChosenIdClass] = useState<string | null>(null);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
 
-  // Persona verifies a government-issued photo ID only. Drivers must present a
-  // driver's licence; every other role (owners, driver-nominated referees,
-  // payment proxies, staff) may present any government ID valid in their region.
-  const requiresDriversLicense = driversLicenceRequired(subjectRole);
-  const acceptedIds = acceptedGovernmentIds(subjectRole, country);
+  // Persona verifies a government-issued photo ID only. The accepted set is
+  // admin-configurable per region and role (persona_id_class_rules), with the
+  // built-in policy as the fallback.
+  const { policy, isLoading: policyLoading } = usePersonaIdPolicy(subjectRole, country);
+  const requiresDriversLicense = policy.requiresDriversLicence;
+  const acceptedIds = policy.options;
+
+  useEffect(() => {
+    setChosenIdClass((prev) =>
+      prev && acceptedIds.some((o) => o.code === prev) ? prev : acceptedIds[0]?.code ?? null,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(acceptedIds)]);
+
+  /** Append-only audit row for each verification attempt. */
+  async function recordAttempt(patch: Record<string, unknown>): Promise<string | null> {
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from("persona_verification_attempts")
+      .insert({
+        user_id: user.id,
+        subject_role: subjectRole ?? null,
+        subject_type: subject,
+        region: country ?? null,
+        offered_id_classes: acceptedIds as any,
+        chosen_id_class: chosenIdClass,
+        ...patch,
+      } as any)
+      .select("id")
+      .single();
+    if (error) { console.warn("[persona] attempt log failed", error.message); return null; }
+    return (data as any)?.id ?? null;
+  }
+
+  async function updateAttempt(id: string | null, patch: Record<string, unknown>) {
+    if (!id) return;
+    await supabase.from("persona_verification_attempts").update(patch as any).eq("id", id);
+  }
+
 
 
   useEffect(() => { loadPersonaSdk().catch(() => {/* fallback to hosted */}); }, []);
@@ -140,6 +178,8 @@ export default function PersonaVerification({
     setFailure(null);
     const correlationId = newCorrelationId();
     setLastFields(finalFields);
+    const attempt = await recordAttempt({ status: "started", correlation_id: correlationId });
+    setAttemptId(attempt);
     try {
       // Device/browser pre-flight: catch denied cameras, blocked storage and
       // offline devices before burning a Persona inquiry.
@@ -151,6 +191,11 @@ export default function PersonaVerification({
         await logVerificationEvent({
           stage: "identity", step: "preflight", outcome: "failed",
           provider: "persona", failure: classified, correlationId,
+        });
+        await updateAttempt(attempt, {
+          status: "failed", error_code: blocker.code,
+          error_detail: String(blocker.detail ?? "preflight blocked").slice(0, 400),
+          completed_at: new Date().toISOString(),
         });
         setLoading(false);
         return;
@@ -171,6 +216,7 @@ export default function PersonaVerification({
             region: country,
             fields: finalFields,
             correlation_id: correlationId,
+            chosen_id_class: chosenIdClass ?? undefined,
             drivers_license_document_id: requiresDriversLicense ? dlDocId : undefined,
           },
           headers: { "x-correlation-id": correlationId },
@@ -179,8 +225,10 @@ export default function PersonaVerification({
         return data;
       }, { stage: "identity", step: "create_inquiry", provider: "persona", correlationId });
 
+
       if (data?.provider_configured === false) {
         toast.info("Verification queued — provider will be enabled soon");
+        await updateAttempt(attempt, { status: "failed", error_code: "provider_not_configured" });
         onComplete?.(null);
         return;
       }
@@ -189,6 +237,12 @@ export default function PersonaVerification({
       const sessionToken: string | null = data?.session_token ?? null;
       const envId: string | null = data?.environment_id ?? null;
       const hostedUrl: string | undefined = data?.hosted_url;
+
+      await updateAttempt(attempt, {
+        status: "launched",
+        inquiry_id: inquiryId,
+        template_id: data?.template_id ?? null,
+      });
 
       // Persist a resume marker so a refresh / closed tab / backgrounded app
       // continues the same inquiry instead of restarting from scratch.
@@ -212,6 +266,10 @@ export default function PersonaVerification({
               stage: "identity", step: "inquiry_complete", outcome: "succeeded",
               provider: "persona", correlationId, context: { inquiry_id: id ?? inquiryId, status },
             });
+            void updateAttempt(attempt, {
+              status: "completed", result: status ?? "completed",
+              inquiry_id: id ?? inquiryId, completed_at: new Date().toISOString(),
+            });
             toast.success(`Verification submitted (${status})`);
             onComplete?.(id ?? inquiryId);
           },
@@ -222,6 +280,10 @@ export default function PersonaVerification({
               stage: "identity", step: "inquiry_cancelled", outcome: "failed",
               provider: "persona", failure: classified, correlationId,
             });
+            void updateAttempt(attempt, {
+              status: "cancelled", result: "user_cancelled",
+              completed_at: new Date().toISOString(),
+            });
           },
           onError: (e: any) => {
             const classified = classifyVerificationFailure(e, { correlationId });
@@ -229,6 +291,11 @@ export default function PersonaVerification({
             void logVerificationEvent({
               stage: "identity", step: "sdk_error", outcome: "failed",
               provider: "persona", failure: classified, correlationId,
+            });
+            void updateAttempt(attempt, {
+              status: "failed", error_code: classified?.code ?? "sdk_error",
+              error_detail: String(e?.message ?? e).slice(0, 400),
+              completed_at: new Date().toISOString(),
             });
             if (hostedUrl) window.open(hostedUrl, "_blank", "noopener,noreferrer");
           },
@@ -243,7 +310,13 @@ export default function PersonaVerification({
         stage: "identity", step: "create_inquiry", provider: "persona", correlationId,
       }));
       setFailure(classified);
+      await updateAttempt(attempt, {
+        status: "failed", error_code: classified?.code ?? "create_inquiry_failed",
+        error_detail: String(e?.message ?? e).slice(0, 400),
+        completed_at: new Date().toISOString(),
+      });
     } finally {
+
       setLoading(false);
     }
   }
@@ -322,17 +395,39 @@ export default function PersonaVerification({
   return (
     <div className="space-y-3">
       {!requiresDriversLicense && (
-        <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-1">
+        <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium">
             <IdCard className="h-4 w-4" />
-            Government-issued photo ID required
+            Accepted government IDs for your role and region
+            {country && <Badge variant="outline" className="ml-1">{country}</Badge>}
           </div>
           <p className="text-xs text-muted-foreground">
-            We only verify a valid government ID issued in your region. Accepted documents:{" "}
-            {acceptedIds.map((o) => o.label).join(", ")}.
+            {policyLoading
+              ? "Loading the accepted document list…"
+              : "We only verify a valid government-issued photo ID. Choose the document you will present:"}
           </p>
+          <ul className="text-xs text-muted-foreground list-disc pl-5">
+            {acceptedIds.map((o) => <li key={o.code}>{o.label}</li>)}
+          </ul>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {acceptedIds.map((o) => (
+              <button
+                key={o.code}
+                type="button"
+                onClick={() => setChosenIdClass(o.code)}
+                className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                  chosenIdClass === o.code
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
+
 
       {requiresDriversLicense && (
         <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-2">
