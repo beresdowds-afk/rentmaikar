@@ -41,6 +41,9 @@ export const TwilioTestSendPanel = () => {
   const [polling, setPolling] = useState(false);
   const [status, setStatus] = useState<StatusInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [diag, setDiag] = useState<Record<string, unknown> | null>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+
 
   const invoke = async (method: "POST" | "GET", body?: unknown, sid?: string) => {
     const { data: sess } = await supabase.auth.getSession();
