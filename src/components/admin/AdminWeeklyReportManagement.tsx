@@ -106,25 +106,44 @@ export function AdminWeeklyReportManagement() {
     setDownloadingReportId(report.id);
     
     try {
+      // Pull the real vehicle / driver / owner records so the PDF reflects
+      // actual data rather than placeholder values.
+      const [vehicleRes, driverRes, ownerRes] = await Promise.all([
+        supabase
+          .from('vehicles')
+          .select('make, model, year, license_plate')
+          .eq('id', report.vehicle_id)
+          .maybeSingle(),
+        report.driver_id
+          ? supabase.from('profiles').select('full_name, email').eq('user_id', report.driver_id).maybeSingle()
+          : Promise.resolve({ data: null } as any),
+        report.owner_id
+          ? supabase.from('profiles').select('full_name, email').eq('user_id', report.owner_id).maybeSingle()
+          : Promise.resolve({ data: null } as any),
+      ]);
+
+      const vehicle = vehicleRes.data;
+      const driver = driverRes?.data;
+      const owner = ownerRes?.data;
+
       const { data, error } = await supabase.functions.invoke('generate-inspection-pdf', {
         body: {
           reportId: report.id,
           vehicleInfo: {
-            make: 'Vehicle',
-            model: report.vehicle_id.slice(0, 8),
-            year: new Date().getFullYear(),
-            licensePlate: 'N/A',
+            make: vehicle?.make ?? 'Unknown',
+            model: vehicle?.model ?? 'Unknown',
+            year: vehicle?.year ?? null,
+            licensePlate: vehicle?.license_plate ?? 'N/A',
           },
-          driverInfo: {
-            name: 'Driver',
-            email: 'driver@example.com',
-          },
-          ownerInfo: report.owner_id ? {
-            name: 'Owner',
-            email: 'owner@example.com',
-          } : null,
+          driverInfo: driver
+            ? { name: driver.full_name ?? 'Unknown', email: driver.email ?? '' }
+            : null,
+          ownerInfo: owner
+            ? { name: owner.full_name ?? 'Unknown', email: owner.email ?? '' }
+            : null,
         },
       });
+
 
       if (error) throw error;
 
