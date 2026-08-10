@@ -298,16 +298,25 @@ Deno.serve(async (req) => {
 
 
     if (action === "sync") {
+      const startedMs = Date.now();
       await setSyncState({ state: "running", last_sync_at: new Date().toISOString() });
+      await activity("sync_started", "info", "Traccar device sync started", {
+        triggered_by: isCron ? "schedule" : "admin",
+        vehicle_scoped: !!(vehicle_ids && vehicle_ids.length),
+      });
+      const deviceErrors: Array<{ device: string; error: string }> = [];
       const dr = await traccar.listDevices();
       if (!dr.ok) {
+        const dg = diagnose(dr);
         await setSyncState({
           state: "error",
           last_error_at: new Date().toISOString(),
-          last_error: JSON.stringify(dr),
+          last_error: `${dg.title}: ${dg.detail}`,
         });
-        return json({ ok: false, step: "devices", ...dr }, 502);
+        await activity("device_fetch_failed", "error", `${dg.title} — ${dg.detail}`, { diagnosis: dg });
+        return json({ ok: false, step: "devices", diagnosis: dg, ...dr }, 502);
       }
+
 
       // Optional vehicle-scope filter — sync only devices linked to these vehicles
       let vehicleFilter: Set<string> | null = null;
