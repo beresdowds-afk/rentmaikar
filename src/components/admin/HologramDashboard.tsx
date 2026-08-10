@@ -250,15 +250,26 @@ export function HologramDashboard() {
       <Tabs defaultValue="sims" className="w-full">
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="sims">SIM Inventory</TabsTrigger>
+          <TabsTrigger value="onboard">Onboard</TabsTrigger>
           <TabsTrigger value="devices">Devices</TabsTrigger>
           <TabsTrigger value="identity">Device Identity</TabsTrigger>
           <TabsTrigger value="account">Account &amp; Plans</TabsTrigger>
           <TabsTrigger value="ops">Operations</TabsTrigger>
+          <TabsTrigger value="sync">Sync Activity</TabsTrigger>
           <TabsTrigger value="setup">API Setup</TabsTrigger>
           <TabsTrigger value="audit">Audit Trail</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="onboard">
+          <HologramOnboardWizard onOnboarded={load} />
+        </TabsContent>
+
+        <TabsContent value="sync">
+          <HologramSyncActivityPanel />
+        </TabsContent>
+
         <TabsContent value="identity">
+
           <DeviceIdentityPanel />
         </TabsContent>
 
