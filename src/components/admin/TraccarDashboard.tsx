@@ -18,6 +18,9 @@ import { toast } from "sonner";
 import { IngestionMonitor } from "./IngestionMonitor";
 import { IoTAuditTrailPanel } from "./IoTAuditTrailPanel";
 import { VehiclePicker } from "./VehiclePicker";
+import { TraccarSyncActivityPanel } from "./TraccarSyncActivityPanel";
+import { TraccarCredentialsPanel } from "./TraccarCredentialsPanel";
+
 
 interface Device {
   id: string;
