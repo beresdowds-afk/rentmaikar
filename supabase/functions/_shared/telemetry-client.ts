@@ -95,7 +95,7 @@ const traccarAdapter: TelemetryAdapter = {
     if (!base || !auth) return { online: false, lastSeen: null };
 
     try {
-      const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
+      const headers = { Authorization: auth, Accept: "application/json" };
       const devRes = await fetch(`${base}/api/devices?uniqueId=${encodeURIComponent(deviceId)}`, { headers });
       if (!devRes.ok) return { online: false, lastSeen: null };
       const devs = await devRes.json();
