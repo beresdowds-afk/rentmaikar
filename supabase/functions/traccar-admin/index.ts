@@ -325,9 +325,15 @@ Deno.serve(async (req) => {
       }
 
       const pr = await traccar.latestPositions();
+      if (!pr.ok) {
+        const pdg = diagnose(pr);
+        await activity("position_fetch_failed", "warn", `${pdg.title} — ${pdg.detail}`, { diagnosis: pdg });
+        deviceErrors.push({ device: "*", error: `${pdg.code}: ${pdg.detail}` });
+      }
       const positions: TraccarPosition[] = pr.ok ? pr.body : [];
       const posByDevice = new Map<number, TraccarPosition>();
       for (const p of positions) posByDevice.set(p.deviceId, p);
+
 
       let upserts = 0;
       let inserts = 0;
