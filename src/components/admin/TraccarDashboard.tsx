@@ -20,6 +20,7 @@ import { IoTAuditTrailPanel } from "./IoTAuditTrailPanel";
 import { VehiclePicker } from "./VehiclePicker";
 import { TraccarSyncActivityPanel } from "./TraccarSyncActivityPanel";
 import { TraccarCredentialsPanel } from "./TraccarCredentialsPanel";
+import { TraccarDevicePortsPanel } from "./TraccarDevicePortsPanel";
 
 
 interface Device {
@@ -218,6 +219,7 @@ export function TraccarDashboard() {
           <TabsTrigger value="commands">Remote Commands</TabsTrigger>
           <TabsTrigger value="sync">Sync Activity</TabsTrigger>
           <TabsTrigger value="credentials">Credentials</TabsTrigger>
+          <TabsTrigger value="ports">Device Ports</TabsTrigger>
           <TabsTrigger value="setup">API Setup</TabsTrigger>
           <TabsTrigger value="audit">Audit Trail</TabsTrigger>
         </TabsList>
@@ -228,6 +230,10 @@ export function TraccarDashboard() {
 
         <TabsContent value="credentials" className="space-y-4">
           <TraccarCredentialsPanel />
+        </TabsContent>
+
+        <TabsContent value="ports" className="space-y-4">
+          <TraccarDevicePortsPanel />
         </TabsContent>
 
 
