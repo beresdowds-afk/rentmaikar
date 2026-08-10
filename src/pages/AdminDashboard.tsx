@@ -229,7 +229,7 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Vehicles</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">156</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{counts.activeVehicles}</p>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-accent">
                   <Car className="w-6 h-6" />
@@ -242,7 +242,7 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Drivers</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">234</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{counts.activeDrivers}</p>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-success">
                   <Users className="w-6 h-6" />
@@ -399,7 +399,7 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Payment Defaults</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">7</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{counts.paymentDefaults}</p>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-destructive">
                   <AlertTriangle className="w-6 h-6" />
@@ -599,25 +599,6 @@ const AdminDashboard = () => {
                     </div>
                   )}
 
-                  {approvedItems.length > 0 && (
-                    <div className="mt-6">
-                      <h4 className="text-sm font-medium text-muted-foreground mb-3">Recently Approved</h4>
-                      <div className="space-y-2">
-                        {approvedItems.map((item) => (
-                          <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-success/10 border border-success/20">
-                            <div className="flex items-center gap-3">
-                              <CheckCircle className="w-5 h-5 text-success" />
-                              <div>
-                                <p className="font-medium text-sm">{item.name}</p>
-                                <p className="text-xs text-muted-foreground">{item.type} • {item.email}</p>
-                              </div>
-                            </div>
-                            <span className="text-xs text-success font-medium">Email Sent ✓</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </Card>
               )}
               {activeTab === 'defaults' && (
