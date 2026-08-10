@@ -2864,6 +2864,36 @@ export type Database = {
           },
         ]
       }
+      iot_sync_activity_log: {
+        Row: {
+          created_at: string
+          details: Json
+          event: string
+          id: string
+          level: string
+          message: string | null
+          provider: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          event: string
+          id?: string
+          level?: string
+          message?: string | null
+          provider: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          event?: string
+          id?: string
+          level?: string
+          message?: string | null
+          provider?: string
+        }
+        Relationships: []
+      }
       iot_sync_schedule: {
         Row: {
           created_at: string
