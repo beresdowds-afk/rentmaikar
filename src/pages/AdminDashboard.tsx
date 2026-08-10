@@ -122,59 +122,48 @@ const AdminDashboard = () => {
   }, []);
 
   const { rates, isLoading: ratesLoading, convertToUSD, refetch: refetchRates } = useCurrencyConversion();
-  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
-  const [approvingId, setApprovingId] = useState<number | null>(null);
+  const { financials } = useAdminFinancials();
+  const { counts } = useAdminFleetCounts();
+  const { paymentDefaults } = usePaymentDefaults();
+  const { approvals: pendingItems, refresh: refreshApprovals } = usePendingApprovals();
+  const [approvingId, setApprovingId] = useState<string | null>(null);
   const [portalViewRaw, setPortalViewRaw] = usePersistedTab('support', 'portal');
   const portalView = portalViewRaw as PortalType;
   const setPortalView = setPortalViewRaw as (v: PortalType) => void;
   const [activeTab, setActiveTab] = usePersistedTab('task-portal');
   const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
 
-  // Calculate converted values
-  const incomeNgnInUsd = convertToUSD(mockFinancialData.income.ngn, 'NGN');
-  const totalIncomeUsd = mockFinancialData.income.usd + incomeNgnInUsd;
+  // Calculate converted values from live financial records
+  const incomeNgnInUsd = convertToUSD(financials.income.ngn, 'NGN');
+  const totalIncomeUsd = financials.income.usd + incomeNgnInUsd;
 
-  const payoutsNgnInUsd = convertToUSD(mockFinancialData.ownerPayouts.ngn, 'NGN');
-  const totalPayoutsUsd = mockFinancialData.ownerPayouts.usd + payoutsNgnInUsd;
+  const payoutsNgnInUsd = convertToUSD(financials.ownerPayouts.ngn, 'NGN');
+  const totalPayoutsUsd = financials.ownerPayouts.usd + payoutsNgnInUsd;
 
-  const weeklyWithdrawalsNgnInUsd = convertToUSD(mockFinancialData.adminWithdrawals.weekly.ngn, 'NGN');
-  const totalWeeklyWithdrawalsUsd = mockFinancialData.adminWithdrawals.weekly.usd + weeklyWithdrawalsNgnInUsd;
+  const weeklyWithdrawalsNgnInUsd = convertToUSD(financials.adminWithdrawals.weekly.ngn, 'NGN');
+  const totalWeeklyWithdrawalsUsd = financials.adminWithdrawals.weekly.usd + weeklyWithdrawalsNgnInUsd;
 
-  const monthlyWithdrawalsNgnInUsd = convertToUSD(mockFinancialData.adminWithdrawals.monthly.ngn, 'NGN');
-  const totalMonthlyWithdrawalsUsd = mockFinancialData.adminWithdrawals.monthly.usd + monthlyWithdrawalsNgnInUsd;
+  const monthlyWithdrawalsNgnInUsd = convertToUSD(financials.adminWithdrawals.monthly.ngn, 'NGN');
+  const totalMonthlyWithdrawalsUsd = financials.adminWithdrawals.monthly.usd + monthlyWithdrawalsNgnInUsd;
 
-  const handleApproval = async (item: PendingApproval) => {
+  const handleApproval = async (item: PendingApprovalItem) => {
     setApprovingId(item.id);
-    
-    try {
-      // Determine the user type based on the approval type
-      const userType = item.type === "Owner" ? "owner" : "driver";
-      const region = item.location.includes("Lagos") || item.location.includes("Abuja") || item.location.includes("Port Harcourt") 
-        ? "NIGERIA" 
-        : "USA";
 
-      // Send approval notification email
-      const { data, error } = await supabase.functions.invoke("send-approval-notification", {
-        body: {
-          email: item.email,
-          name: item.name,
-          userType,
-          region,
-        },
+    try {
+      const { error: approveError } = await supabase.rpc('approve_application', {
+        _app_id: item.id,
+        _notes: 'Approved from admin dashboard',
+      });
+      if (approveError) throw approveError;
+
+      const userType = item.type === "Owner" ? "owner" : "driver";
+      const region = /lagos|abuja|port harcourt|nigeria/i.test(item.location) ? "NIGERIA" : "USA";
+
+      await supabase.functions.invoke("send-approval-notification", {
+        body: { email: item.email, name: item.name, userType, region },
       });
 
-      if (error) {
-        throw error;
-      }
-
-      // Update the approval status locally
-      setPendingApprovals(prev => 
-        prev.map(approval => 
-          approval.id === item.id 
-            ? { ...approval, status: "approved" as const }
-            : approval
-        )
-      );
+      refreshApprovals();
 
       toast.success(`${item.type} approved successfully!`, {
         description: `Notification email sent to ${item.email}`,
@@ -182,16 +171,14 @@ const AdminDashboard = () => {
       });
     } catch (error: any) {
       console.error("Error approving:", error);
-      toast.error("Failed to send notification", {
+      toast.error("Failed to approve application", {
         description: error.message || "Please try again",
       });
     } finally {
       setApprovingId(null);
     }
   };
-  
-  const pendingItems = pendingApprovals.filter(item => item.status === "pending");
-  const approvedItems = pendingApprovals.filter(item => item.status === "approved");
+
 
   return (
     <div className="min-h-screen bg-background">
