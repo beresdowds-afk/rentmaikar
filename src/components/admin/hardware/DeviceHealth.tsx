@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -26,85 +27,74 @@ interface DeviceHealth {
   battery_level: number;
   signal_strength: number;
   temperature: number;
-  last_ping: string;
+  last_ping: string | null;
   uptime_hours: number;
   status: 'healthy' | 'warning' | 'critical' | 'offline';
   issues: string[];
 }
 
-// Mock data
-const mockDeviceHealth: DeviceHealth[] = [
-  {
-    id: '1',
-    serial_number: 'GPS-2024-001',
-    device_model: 'GPS-01 Pro',
-    vehicle_plate: 'ABC-1234',
-    battery_level: 85,
-    signal_strength: 92,
-    temperature: 38,
-    last_ping: '2024-01-20T14:30:00Z',
-    uptime_hours: 720,
-    status: 'healthy',
-    issues: [],
-  },
-  {
-    id: '2',
-    serial_number: 'GPS-2024-002',
-    device_model: 'GPS-01',
-    vehicle_plate: 'XYZ-5678',
-    battery_level: 25,
-    signal_strength: 78,
-    temperature: 42,
-    last_ping: '2024-01-20T14:28:00Z',
-    uptime_hours: 480,
-    status: 'warning',
-    issues: ['Low battery'],
-  },
-  {
-    id: '3',
-    serial_number: 'GPS-2024-003',
-    device_model: 'GPS-01 Pro',
-    vehicle_plate: 'DEF-9012',
-    battery_level: 10,
-    signal_strength: 45,
-    temperature: 55,
-    last_ping: '2024-01-20T12:15:00Z',
-    uptime_hours: 168,
-    status: 'critical',
-    issues: ['Critical battery', 'Weak signal', 'High temperature'],
-  },
-  {
-    id: '4',
-    serial_number: 'GPS-2024-004',
-    device_model: 'GPS-02',
-    vehicle_plate: 'LAG-1234AB',
-    battery_level: 0,
-    signal_strength: 0,
-    temperature: 0,
-    last_ping: '2024-01-18T09:00:00Z',
-    uptime_hours: 0,
-    status: 'offline',
-    issues: ['Device offline for 48+ hours'],
-  },
-  {
-    id: '5',
-    serial_number: 'GPS-2024-005',
-    device_model: 'GPS-01 Pro',
-    vehicle_plate: 'ABJ-5678CD',
-    battery_level: 95,
-    signal_strength: 88,
-    temperature: 35,
-    last_ping: '2024-01-20T14:29:00Z',
-    uptime_hours: 960,
-    status: 'healthy',
-    issues: [],
-  },
-];
+const OFFLINE_AFTER_MS = 24 * 60 * 60 * 1000;
+
+const deriveHealth = (row: any): DeviceHealth => {
+  const battery = row.battery_level ?? 0;
+  const signal = row.signal_strength ?? 0;
+  const details = (row.health_details ?? {}) as Record<string, unknown>;
+  const temperature = Number(details.temperature ?? 0);
+  const lastPing = row.last_ping as string | null;
+  const stale = !lastPing || Date.now() - new Date(lastPing).getTime() > OFFLINE_AFTER_MS;
+
+  const issues: string[] = [];
+  if (stale) issues.push('No telemetry in 24+ hours');
+  if (!stale && battery > 0 && battery < 15) issues.push('Critical battery');
+  else if (!stale && battery > 0 && battery < 30) issues.push('Low battery');
+  if (!stale && signal > 0 && signal < 40) issues.push('Weak signal');
+  if (temperature > 55) issues.push('High temperature');
+
+  let status: DeviceHealth['status'] = 'healthy';
+  if (stale || row.status === 'offline') status = 'offline';
+  else if (row.health_status === 'critical' || issues.some((i) => i.startsWith('Critical') || i === 'High temperature')) status = 'critical';
+  else if (row.health_status === 'warning' || issues.length > 0) status = 'warning';
+
+  const uptimeHours = row.activated_at && !stale
+    ? Math.max(0, Math.floor((Date.now() - new Date(row.activated_at).getTime()) / 3_600_000))
+    : 0;
+
+  return {
+    id: row.id,
+    serial_number: row.serial_number ?? row.imei ?? '—',
+    device_model: row.device_model ?? 'Unknown model',
+    vehicle_plate: row.vehicles?.license_plate ?? null,
+    battery_level: battery,
+    signal_strength: signal,
+    temperature,
+    last_ping: lastPing,
+    uptime_hours: uptimeHours,
+    status,
+    issues,
+  };
+};
 
 export const DeviceHealth = () => {
-  const [devices] = useState<DeviceHealth[]>(mockDeviceHealth);
+  const [devices, setDevices] = useState<DeviceHealth[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadDevices = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('iot_devices')
+      .select('id, serial_number, imei, device_model, battery_level, signal_strength, last_ping, activated_at, status, health_status, health_details, vehicles(license_plate)')
+      .order('last_ping', { ascending: false, nullsFirst: false });
+
+    if (!error) {
+      setDevices((data ?? []).map(deriveHealth));
+    }
+    setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadDevices();
+  }, [loadDevices]);
 
   const healthyCount = devices.filter((d) => d.status === 'healthy').length;
   const warningCount = devices.filter((d) => d.status === 'warning').length;
@@ -117,9 +107,10 @@ export const DeviceHealth = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await loadDevices();
     setIsRefreshing(false);
   };
+
 
   const getBatteryColor = (level: number) => {
     if (level >= 60) return 'text-green-500';
