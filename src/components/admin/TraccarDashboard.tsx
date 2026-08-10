@@ -85,11 +85,30 @@ export function TraccarDashboard() {
         body: { action, ...body },
       });
       if (error) throw new Error(error.message);
-      const res = data as { ok?: boolean; devices_synced?: number; positions_received?: number };
-      if (res?.ok === false) throw new Error(JSON.stringify(res));
+      const res = data as {
+        ok?: boolean;
+        devices_synced?: number;
+        positions_received?: number;
+        configured?: boolean;
+        ping?: { ok?: boolean };
+        diagnosis?: { title?: string; detail?: string; code?: string };
+      };
+      if (res?.ok === false) {
+        throw new Error(
+          res.diagnosis ? `${res.diagnosis.title} — ${res.diagnosis.detail}` : JSON.stringify(res),
+        );
+      }
+      if (action === "test_connection" && (res?.configured === false || res?.ping?.ok !== true)) {
+        toast.error(res?.diagnosis?.title ?? "Traccar connection failed", {
+          description: res?.diagnosis?.detail,
+        });
+        await refreshStatus();
+        return;
+      }
       if (action === "sync") toast.success(`Synced ${res?.devices_synced ?? 0} devices (${res?.positions_received ?? 0} positions)`);
       else if (action === "send_command") toast.success("Command dispatched to Traccar");
       else if (action === "test_connection") toast.success("Traccar reachable");
+
       else if (action === "link_device") toast.success("Device linked");
       else if (action === "unlink_device") toast.success("Device unlinked");
       else toast.success("Action complete");
