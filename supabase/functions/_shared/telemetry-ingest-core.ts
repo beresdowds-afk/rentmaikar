@@ -97,10 +97,30 @@ export async function ingestRecords(
   }
 
   if (analytics.length) {
-    const { error } = await admin.from("vehicle_analytics_events").insert(analytics as never);
-    if (error) console.error("[orchestrator] analytics insert failed", error.message);
-    else result.analytics = analytics.length;
+    // vehicle_analytics_events.vehicle_id is a uuid FK to vehicles(id): drop
+    // rows whose identifier is not a registered vehicle so one spoofed or
+    // unknown device id cannot reject the whole batch.
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const candidateIds = [...new Set(analytics.map((a) => String(a.vehicle_id)))]
+      .filter((id) => uuidRe.test(id));
+    let known = new Set<string>();
+    if (candidateIds.length) {
+      const { data: vehicleRows } = await admin
+        .from("vehicles")
+        .select("id")
+        .in("id", candidateIds);
+      known = new Set((vehicleRows ?? []).map((v: Record<string, unknown>) => String(v.id)));
+    }
+    const valid = analytics.filter((a) => known.has(String(a.vehicle_id)));
+    const dropped = analytics.length - valid.length;
+    if (dropped) console.warn(`[orchestrator] dropped ${dropped} analytics rows with unknown vehicle_id`);
+    if (valid.length) {
+      const { error } = await admin.from("vehicle_analytics_events").insert(valid as never);
+      if (error) console.error("[orchestrator] analytics insert failed", error.message);
+      else result.analytics = valid.length;
+    }
   }
+
 
   result.vehicles = ids;
   return result;
