@@ -57,8 +57,19 @@ Deno.serve(async (req) => {
       const { data: u, error: uErr } = await supa.auth.getUser(auth.replace("Bearer ", ""));
       if (uErr || !u?.user) return json({ error: "Unauthenticated" }, 401);
       actor = u.user.id;
-      const { data: isAdmin } = await supa.rpc("has_role", { _user_id: actor, _role: "admin" });
-      if (!isAdmin) return json({ error: "Admin only" }, 403);
+      // Authoritative role check straight off user_roles with the service
+      // client (RLS-exempt). The has_role RPC can fail silently when EXECUTE
+      // grants change, which previously produced a false "Admin only" 403.
+      const { data: roleRows, error: roleErr } = await supa
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", actor)
+        .in("role", ["admin", "iot_support"]);
+      if (roleErr) {
+        console.error("role lookup failed", roleErr);
+        return json({ error: "Role check failed" }, 500);
+      }
+      if (!roleRows || roleRows.length === 0) return json({ error: "Admin only" }, 403);
     }
 
     const parsed = Body.safeParse(await req.json().catch(() => ({})));
