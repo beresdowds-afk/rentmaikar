@@ -18,6 +18,9 @@ import { toast } from "sonner";
 import { IngestionMonitor } from "./IngestionMonitor";
 import { IoTAuditTrailPanel } from "./IoTAuditTrailPanel";
 import { VehiclePicker } from "./VehiclePicker";
+import { TraccarSyncActivityPanel } from "./TraccarSyncActivityPanel";
+import { TraccarCredentialsPanel } from "./TraccarCredentialsPanel";
+
 
 interface Device {
   id: string;
@@ -82,11 +85,30 @@ export function TraccarDashboard() {
         body: { action, ...body },
       });
       if (error) throw new Error(error.message);
-      const res = data as { ok?: boolean; devices_synced?: number; positions_received?: number };
-      if (res?.ok === false) throw new Error(JSON.stringify(res));
+      const res = data as {
+        ok?: boolean;
+        devices_synced?: number;
+        positions_received?: number;
+        configured?: boolean;
+        ping?: { ok?: boolean };
+        diagnosis?: { title?: string; detail?: string; code?: string };
+      };
+      if (res?.ok === false) {
+        throw new Error(
+          res.diagnosis ? `${res.diagnosis.title} — ${res.diagnosis.detail}` : JSON.stringify(res),
+        );
+      }
+      if (action === "test_connection" && (res?.configured === false || res?.ping?.ok !== true)) {
+        toast.error(res?.diagnosis?.title ?? "Traccar connection failed", {
+          description: res?.diagnosis?.detail,
+        });
+        await refreshStatus();
+        return;
+      }
       if (action === "sync") toast.success(`Synced ${res?.devices_synced ?? 0} devices (${res?.positions_received ?? 0} positions)`);
       else if (action === "send_command") toast.success("Command dispatched to Traccar");
       else if (action === "test_connection") toast.success("Traccar reachable");
+
       else if (action === "link_device") toast.success("Device linked");
       else if (action === "unlink_device") toast.success("Device unlinked");
       else toast.success("Action complete");
@@ -191,12 +213,23 @@ export function TraccarDashboard() {
       />
 
       <Tabs defaultValue="devices" className="w-full">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="devices">Devices</TabsTrigger>
           <TabsTrigger value="commands">Remote Commands</TabsTrigger>
+          <TabsTrigger value="sync">Sync Activity</TabsTrigger>
+          <TabsTrigger value="credentials">Credentials</TabsTrigger>
           <TabsTrigger value="setup">API Setup</TabsTrigger>
           <TabsTrigger value="audit">Audit Trail</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="sync" className="space-y-4">
+          <TraccarSyncActivityPanel />
+        </TabsContent>
+
+        <TabsContent value="credentials" className="space-y-4">
+          <TraccarCredentialsPanel />
+        </TabsContent>
+
 
         <TabsContent value="devices" className="space-y-4">
           <div className="flex items-center gap-2">
