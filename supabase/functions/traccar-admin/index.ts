@@ -98,6 +98,18 @@ Deno.serve(async (req) => {
       );
     };
 
+    // Admin-visible activity feed (mirrors the Hologram sync feed).
+    const activity = async (
+      event: string,
+      level: "info" | "warn" | "error",
+      message: string,
+      details: Record<string, unknown> = {},
+    ) => {
+      await supa.from("iot_sync_activity_log").insert({
+        provider: PROVIDER, event, level, message, details,
+      } as never);
+    };
+
     if (action === "get_sync_state") {
       const { data } = await supa
         .from("iot_sync_state").select("*").eq("provider", PROVIDER).maybeSingle();
@@ -107,27 +119,62 @@ Deno.serve(async (req) => {
     await traccar.ensureReady();
 
     if (!traccar.isConfigured()) {
-      return json({
+      const missing = missingCredentials();
+      const payload = {
         ok: true,
         configured: false,
         base_url: null,
         message:
-          "Traccar is not configured. Add TRACCAR_BASE_URL and either TRACCAR_TOKEN or TRACCAR_EMAIL + TRACCAR_PASSWORD.",
-      });
+          "Traccar is not configured. Set the base URL and either an API token or the tracker email + password.",
+        diagnosis: {
+          code: "not_configured",
+          title: "Traccar credentials are missing",
+          detail: `Missing: ${missing.join(", ") || "credentials"}.`,
+          hints: [
+            "Open the Credentials tab and set the Traccar base URL (e.g. https://traccar.example.com — no trailing /api).",
+            "Provide an API token, or the tracker account email + password.",
+          ],
+          missing,
+        },
+      };
+      if (action === "test_connection") {
+        await activity("test_connection_failed", "warn", "Test connection: credentials missing", { missing });
+      }
+      return json(payload);
     }
 
     if (action === "status" || action === "test_connection") {
+      const started = Date.now();
       const ping = await traccar.ping();
+      const latency_ms = Date.now() - started;
+      const diagnosis = diagnose(ping, latency_ms);
       if (action === "test_connection") {
-        await audit({ action: "traccar_connection_tested", details: { ok: ping.ok } });
+        await audit({ action: "traccar_connection_tested", details: { ok: ping.ok, diagnosis } });
+        await activity(
+          ping.ok ? "test_connection_ok" : "test_connection_failed",
+          ping.ok ? "info" : "error",
+          ping.ok
+            ? `Connected to ${(ping.body as { name?: string } | undefined)?.name ?? "Traccar"} in ${latency_ms}ms`
+            : `${diagnosis.title} — ${diagnosis.detail}`,
+          { diagnosis, auth_mode: authMode(), base_url: traccar.baseUrl() },
+        );
       }
-      return json({ ok: true, configured: true, base_url: traccar.baseUrl(), ping });
+      return json({
+        ok: true,
+        configured: true,
+        base_url: traccar.baseUrl(),
+        auth_mode: authMode(),
+        latency_ms,
+        ping,
+        diagnosis,
+      });
     }
 
     if (action === "list_devices") {
       const r = await traccar.listDevices();
-      return json({ ok: r.ok, base_url: traccar.baseUrl(), ...r });
+      return json({ ok: r.ok, base_url: traccar.baseUrl(), diagnosis: diagnose(r), ...r });
     }
+
 
     if (action === "sync") {
       await setSyncState({ state: "running", last_sync_at: new Date().toISOString() });
