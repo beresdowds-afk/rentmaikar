@@ -270,7 +270,15 @@ export const DeviceHealth = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {filteredDevices.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">
+                      {isLoading ? 'Loading device health…' : 'No IoT devices registered yet.'}
+                    </TableCell>
+                  </TableRow>
+                )}
                 {filteredDevices.map((device) => (
+
                   <TableRow key={device.id}>
                     <TableCell>
                       <div>
