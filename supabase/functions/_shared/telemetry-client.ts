@@ -119,10 +119,11 @@ const traccarAdapter: TelemetryAdapter = {
   },
   async sendCommand(deviceId, command, payload = {}) {
     const base = Deno.env.get("TRACCAR_BASE_URL");
-    const token = Deno.env.get("TRACCAR_API_TOKEN");
-    if (!base || !token) return { ok: false, error: "Traccar not configured" };
+    const auth = traccarAuth();
+    if (!base || !auth) return { ok: false, error: "Traccar not configured" };
     try {
-      const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+      const headers = { Authorization: auth, "Content-Type": "application/json" };
+
       const devRes = await fetch(`${base}/api/devices?uniqueId=${encodeURIComponent(deviceId)}`, { headers });
       const devs = devRes.ok ? await devRes.json() : [];
       const dev = Array.isArray(devs) ? devs[0] : null;
