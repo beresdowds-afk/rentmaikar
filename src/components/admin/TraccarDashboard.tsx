@@ -232,6 +232,10 @@ export function TraccarDashboard() {
           <TraccarCredentialsPanel />
         </TabsContent>
 
+        <TabsContent value="ports" className="space-y-4">
+          <TraccarDevicePortsPanel />
+        </TabsContent>
+
 
         <TabsContent value="devices" className="space-y-4">
           <div className="flex items-center gap-2">
