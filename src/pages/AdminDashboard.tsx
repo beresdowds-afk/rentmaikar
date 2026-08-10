@@ -108,93 +108,10 @@ import { ScrollableStrip } from '@/components/ui/scrollable-strip';
 import { usePersistedTab } from '@/hooks/usePersistedTab';
 
 
-// Mock financial data - in production, this would come from the database
-const mockFinancialData = {
-  // Monthly income (from drivers - base rate + admin fee)
-  income: {
-    usd: 28320,
-    ngn: 31200000,
-  },
-  // Monthly payouts to owners (base rate - management fee)
-  ownerPayouts: {
-    usd: 16992, // 60% of driver payments go to owners
-    ngn: 18720000,
-  },
-  // Admin withdrawals (platform earnings = 40% of total)
-  adminWithdrawals: {
-    weekly: {
-      usd: 2832,
-      ngn: 3120000,
-    },
-    monthly: {
-      usd: 11328, // 40% platform fee
-      ngn: 12480000,
-    },
-  },
-};
+import { useAdminFinancials, useAdminFleetCounts } from "@/hooks/useAdminFinancials";
+import { usePaymentDefaults } from "@/hooks/usePaymentDefaultsList";
+import { usePendingApprovals, type PendingApprovalItem } from "@/hooks/usePendingApprovals";
 
-interface PendingApproval {
-  id: number;
-  type: "Driver" | "Vehicle" | "Owner";
-  name: string;
-  email: string;
-  location: string;
-  status: "pending" | "approved" | "rejected";
-}
-
-const initialPendingApprovals: PendingApproval[] = [
-  { id: 1, type: "Driver", name: "John D.", email: "john.d@example.com", location: "Maryland", status: "pending" },
-  { id: 2, type: "Owner", name: "Toyota Camry Owner", email: "owner@example.com", location: "Lagos", status: "pending" },
-  { id: 3, type: "Driver", name: "Sarah M.", email: "sarah.m@example.com", location: "Abuja", status: "pending" },
-];
-
-// Mock payment defaults with proper structure
-const paymentDefaults: PaymentDefault[] = [
-  { 
-    id: "DEF-001",
-    driverId: "DRV-001",
-    vehicleId: "VEH-001",
-    rentalId: "RNT-001",
-    amountDue: 96,
-    currency: "USD",
-    paymentFrequency: "weekly",
-    hoursOverdue: 48,
-    notificationsSent: 2,
-    lastNotificationAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    deactivationEligible: false,
-    status: "active",
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-  },
-  { 
-    id: "DEF-002",
-    driverId: "DRV-002",
-    vehicleId: "VEH-002",
-    rentalId: "RNT-002",
-    amountDue: 48000,
-    currency: "NGN",
-    paymentFrequency: "daily",
-    hoursOverdue: 36,
-    notificationsSent: 3,
-    lastNotificationAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
-    deactivationEligible: true,
-    status: "active",
-    createdAt: new Date(Date.now() - 36 * 60 * 60 * 1000),
-  },
-  { 
-    id: "DEF-003",
-    driverId: "DRV-003",
-    vehicleId: "VEH-003",
-    rentalId: "RNT-003",
-    amountDue: 72,
-    currency: "USD",
-    paymentFrequency: "weekly",
-    hoursOverdue: 24,
-    notificationsSent: 1,
-    deactivationEligible: false,
-    status: "active",
-    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-  },
-];
 
 const AdminDashboard = () => {
   const _region = useRegion();
@@ -205,59 +122,48 @@ const AdminDashboard = () => {
   }, []);
 
   const { rates, isLoading: ratesLoading, convertToUSD, refetch: refetchRates } = useCurrencyConversion();
-  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(initialPendingApprovals);
-  const [approvingId, setApprovingId] = useState<number | null>(null);
+  const { financials } = useAdminFinancials();
+  const { counts } = useAdminFleetCounts();
+  const { paymentDefaults } = usePaymentDefaults();
+  const { approvals: pendingItems, refresh: refreshApprovals } = usePendingApprovals();
+  const [approvingId, setApprovingId] = useState<string | null>(null);
   const [portalViewRaw, setPortalViewRaw] = usePersistedTab('support', 'portal');
   const portalView = portalViewRaw as PortalType;
   const setPortalView = setPortalViewRaw as (v: PortalType) => void;
   const [activeTab, setActiveTab] = usePersistedTab('task-portal');
   const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
 
-  // Calculate converted values
-  const incomeNgnInUsd = convertToUSD(mockFinancialData.income.ngn, 'NGN');
-  const totalIncomeUsd = mockFinancialData.income.usd + incomeNgnInUsd;
+  // Calculate converted values from live financial records
+  const incomeNgnInUsd = convertToUSD(financials.income.ngn, 'NGN');
+  const totalIncomeUsd = financials.income.usd + incomeNgnInUsd;
 
-  const payoutsNgnInUsd = convertToUSD(mockFinancialData.ownerPayouts.ngn, 'NGN');
-  const totalPayoutsUsd = mockFinancialData.ownerPayouts.usd + payoutsNgnInUsd;
+  const payoutsNgnInUsd = convertToUSD(financials.ownerPayouts.ngn, 'NGN');
+  const totalPayoutsUsd = financials.ownerPayouts.usd + payoutsNgnInUsd;
 
-  const weeklyWithdrawalsNgnInUsd = convertToUSD(mockFinancialData.adminWithdrawals.weekly.ngn, 'NGN');
-  const totalWeeklyWithdrawalsUsd = mockFinancialData.adminWithdrawals.weekly.usd + weeklyWithdrawalsNgnInUsd;
+  const weeklyWithdrawalsNgnInUsd = convertToUSD(financials.adminWithdrawals.weekly.ngn, 'NGN');
+  const totalWeeklyWithdrawalsUsd = financials.adminWithdrawals.weekly.usd + weeklyWithdrawalsNgnInUsd;
 
-  const monthlyWithdrawalsNgnInUsd = convertToUSD(mockFinancialData.adminWithdrawals.monthly.ngn, 'NGN');
-  const totalMonthlyWithdrawalsUsd = mockFinancialData.adminWithdrawals.monthly.usd + monthlyWithdrawalsNgnInUsd;
+  const monthlyWithdrawalsNgnInUsd = convertToUSD(financials.adminWithdrawals.monthly.ngn, 'NGN');
+  const totalMonthlyWithdrawalsUsd = financials.adminWithdrawals.monthly.usd + monthlyWithdrawalsNgnInUsd;
 
-  const handleApproval = async (item: PendingApproval) => {
+  const handleApproval = async (item: PendingApprovalItem) => {
     setApprovingId(item.id);
-    
-    try {
-      // Determine the user type based on the approval type
-      const userType = item.type === "Owner" ? "owner" : "driver";
-      const region = item.location.includes("Lagos") || item.location.includes("Abuja") || item.location.includes("Port Harcourt") 
-        ? "NIGERIA" 
-        : "USA";
 
-      // Send approval notification email
-      const { data, error } = await supabase.functions.invoke("send-approval-notification", {
-        body: {
-          email: item.email,
-          name: item.name,
-          userType,
-          region,
-        },
+    try {
+      const { error: approveError } = await supabase.rpc('approve_application', {
+        _app_id: item.id,
+        _notes: 'Approved from admin dashboard',
+      });
+      if (approveError) throw approveError;
+
+      const userType = item.type === "Owner" ? "owner" : "driver";
+      const region = /lagos|abuja|port harcourt|nigeria/i.test(item.location) ? "NIGERIA" : "USA";
+
+      await supabase.functions.invoke("send-approval-notification", {
+        body: { email: item.email, name: item.name, userType, region },
       });
 
-      if (error) {
-        throw error;
-      }
-
-      // Update the approval status locally
-      setPendingApprovals(prev => 
-        prev.map(approval => 
-          approval.id === item.id 
-            ? { ...approval, status: "approved" as const }
-            : approval
-        )
-      );
+      refreshApprovals();
 
       toast.success(`${item.type} approved successfully!`, {
         description: `Notification email sent to ${item.email}`,
@@ -265,16 +171,14 @@ const AdminDashboard = () => {
       });
     } catch (error: any) {
       console.error("Error approving:", error);
-      toast.error("Failed to send notification", {
+      toast.error("Failed to approve application", {
         description: error.message || "Please try again",
       });
     } finally {
       setApprovingId(null);
     }
   };
-  
-  const pendingItems = pendingApprovals.filter(item => item.status === "pending");
-  const approvedItems = pendingApprovals.filter(item => item.status === "approved");
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -325,7 +229,7 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Vehicles</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">156</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{counts.activeVehicles}</p>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-accent">
                   <Car className="w-6 h-6" />
@@ -338,7 +242,7 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Drivers</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">234</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{counts.activeDrivers}</p>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-success">
                   <Users className="w-6 h-6" />
@@ -382,13 +286,13 @@ const AdminDashboard = () => {
                   <span className="text-muted-foreground flex items-center gap-1">
                     <span>🇺🇸</span> USD
                   </span>
-                  <span className="font-medium">${mockFinancialData.income.usd.toLocaleString()}</span>
+                  <span className="font-medium">${financials.income.usd.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-1">
                     <span>🇳🇬</span> NGN
                   </span>
-                  <span className="font-medium">₦{mockFinancialData.income.ngn.toLocaleString()}</span>
+                  <span className="font-medium">₦{financials.income.ngn.toLocaleString()}</span>
                 </div>
                 {rates && (
                   <p className="text-[10px] text-muted-foreground pt-1">
@@ -416,13 +320,13 @@ const AdminDashboard = () => {
                   <span className="text-muted-foreground flex items-center gap-1">
                     <span>🇺🇸</span> USD
                   </span>
-                  <span className="font-medium">${mockFinancialData.ownerPayouts.usd.toLocaleString()}</span>
+                  <span className="font-medium">${financials.ownerPayouts.usd.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-1">
                     <span>🇳🇬</span> NGN
                   </span>
-                  <span className="font-medium">₦{mockFinancialData.ownerPayouts.ngn.toLocaleString()}</span>
+                  <span className="font-medium">₦{financials.ownerPayouts.ngn.toLocaleString()}</span>
                 </div>
                 <p className="text-[10px] text-muted-foreground pt-1">
                   Paid to owners (60% of income)
@@ -476,13 +380,13 @@ const AdminDashboard = () => {
                   <span className="text-muted-foreground flex items-center gap-1">
                     <span>🇺🇸</span> USD
                   </span>
-                  <span className="font-medium">${(mockFinancialData.income.usd - mockFinancialData.ownerPayouts.usd).toLocaleString()}</span>
+                  <span className="font-medium">${(financials.income.usd - financials.ownerPayouts.usd).toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-1">
                     <span>🇳🇬</span> NGN
                   </span>
-                  <span className="font-medium">₦{(mockFinancialData.income.ngn - mockFinancialData.ownerPayouts.ngn).toLocaleString()}</span>
+                  <span className="font-medium">₦{(financials.income.ngn - financials.ownerPayouts.ngn).toLocaleString()}</span>
                 </div>
                 <p className="text-[10px] text-muted-foreground pt-1">
                   Available platform balance
@@ -495,7 +399,7 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Payment Defaults</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">7</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{counts.paymentDefaults}</p>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-destructive">
                   <AlertTriangle className="w-6 h-6" />
@@ -695,25 +599,6 @@ const AdminDashboard = () => {
                     </div>
                   )}
 
-                  {approvedItems.length > 0 && (
-                    <div className="mt-6">
-                      <h4 className="text-sm font-medium text-muted-foreground mb-3">Recently Approved</h4>
-                      <div className="space-y-2">
-                        {approvedItems.map((item) => (
-                          <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-success/10 border border-success/20">
-                            <div className="flex items-center gap-3">
-                              <CheckCircle className="w-5 h-5 text-success" />
-                              <div>
-                                <p className="font-medium text-sm">{item.name}</p>
-                                <p className="text-xs text-muted-foreground">{item.type} • {item.email}</p>
-                              </div>
-                            </div>
-                            <span className="text-xs text-success font-medium">Email Sent ✓</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </Card>
               )}
               {activeTab === 'defaults' && (
@@ -834,8 +719,11 @@ const AdminDashboard = () => {
                 <Card className="p-6">
                   <div className="flex items-center gap-3 mb-6">
                     <Wallet className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-semibold">Fee Structure & Payment Gateways</h3>
+                    <h3 className="text-lg font-semibold">Fee Structure &amp; Payment Gateways</h3>
                   </div>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Illustrative fee calculations at sample rental amounts — not live revenue figures.
+                  </p>
                   
                   <div className="grid md:grid-cols-2 gap-6 mb-6">
                     {/* USA - PayPal */}
