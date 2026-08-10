@@ -719,8 +719,11 @@ const AdminDashboard = () => {
                 <Card className="p-6">
                   <div className="flex items-center gap-3 mb-6">
                     <Wallet className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-semibold">Fee Structure & Payment Gateways</h3>
+                    <h3 className="text-lg font-semibold">Fee Structure &amp; Payment Gateways</h3>
                   </div>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Illustrative fee calculations at sample rental amounts — not live revenue figures.
+                  </p>
                   
                   <div className="grid md:grid-cols-2 gap-6 mb-6">
                     {/* USA - PayPal */}
