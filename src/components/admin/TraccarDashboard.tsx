@@ -219,7 +219,7 @@ export function TraccarDashboard() {
           <TabsTrigger value="commands">Remote Commands</TabsTrigger>
           <TabsTrigger value="sync">Sync Activity</TabsTrigger>
           <TabsTrigger value="credentials">Credentials</TabsTrigger>
-          <TraccarTabsPortsTrigger />
+          <TabsTrigger value="ports">Device Ports</TabsTrigger>
           <TabsTrigger value="setup">API Setup</TabsTrigger>
           <TabsTrigger value="audit">Audit Trail</TabsTrigger>
         </TabsList>
