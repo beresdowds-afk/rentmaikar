@@ -8511,7 +8511,15 @@ export type Database = {
           source?: string
           vehicle_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_analytics_events_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vehicle_category_prices: {
         Row: {
@@ -11311,6 +11319,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      support_staff_can_view_application: {
+        Args: { _city: string; _country: string; _region: string }
+        Returns: boolean
       }
       switch_primary_role: {
         Args: { _new_role: Database["public"]["Enums"]["app_role"] }
