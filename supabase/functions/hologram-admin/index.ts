@@ -32,6 +32,9 @@ const Body = z.object({
     "device_data",
     "rename_device",
     "send_sms",
+    // One-click onboarding + scheduled sync controls
+    "onboard_sim",
+    "run_sync",
   ]),
   sim_id: z.string().min(1).max(64).optional(),
   sim_row_id: z.string().uuid().optional(),
@@ -115,6 +118,117 @@ Deno.serve(async (req) => {
       }
       return json({ ok: probe.ok, configured: true, probe });
     }
+
+    /* ---------------- One-click SIM/device onboarding ---------------- */
+
+    if (action === "onboard_sim") {
+      if (!sim_id) return json({ error: "sim_id (ICCID or Hologram SIM id) required" }, 400);
+
+      const steps: Array<{ step: string; ok: boolean; detail?: unknown }> = [];
+
+      // Resolve the identifier against the org inventory (accepts ICCID or SIM id).
+      const inv = await hologram.listSims(500);
+      if (!inv.ok) {
+        return json({ ok: false, error: "Could not read the Hologram SIM inventory", detail: inv }, 502);
+      }
+      const rows = ((inv.body as { data?: unknown[] })?.data ?? []) as Array<Record<string, unknown>>;
+      const needle = sim_id.trim().toLowerCase();
+      const match = rows.find((s) =>
+        [s.id, s.sim, s.iccid, s.phonenumber].filter(Boolean)
+          .some((v) => String(v).toLowerCase() === needle));
+      if (!match) {
+        return json({
+          ok: false,
+          error: `No SIM matching "${sim_id}" exists in Hologram org ${hologram.orgId()}. Confirm the SIM was added to the RENTMAIKAR organization.`,
+        }, 404);
+      }
+      steps.push({ step: "resolved_in_hologram", ok: true, detail: { id: match.id, iccid: match.iccid } });
+
+      const providerSimId = String(match.id ?? match.sim ?? "");
+      const iccid = String(match.iccid ?? match.sim ?? providerSimId);
+
+      // Activate on the chosen plan when requested.
+      if (plan_id) {
+        const act = await hologram.activateSim(providerSimId, plan_id, zone);
+        steps.push({ step: "activated", ok: act.ok, detail: act.ok ? { plan_id, zone } : act });
+      }
+
+      // Optional monthly data ceiling.
+      if (limit_bytes !== undefined) {
+        const lim = await hologram.setDataLimit(providerSimId, limit_bytes);
+        steps.push({ step: "data_limit_set", ok: lim.ok, detail: lim.ok ? { limit_bytes } : lim });
+      }
+
+      // Re-read authoritative state after the writes.
+      const fresh = await hologram.getSim(providerSimId);
+      const freshData = (fresh.ok ? (fresh.body as { data?: Record<string, unknown> })?.data : null) ?? match;
+
+      const { data: row, error: upErr } = await supa
+        .from("iot_sim_cards")
+        .upsert({
+          iccid,
+          provider: "hologram",
+          provider_sim_id: providerSimId,
+          msisdn: (freshData.phonenumber as string | null) ?? null,
+          imsi: (freshData.imsi as string | null) ?? null,
+          status: (freshData.state as string) ?? "unknown",
+          plan_name: (freshData.plan as string | null) ?? null,
+          data_limit_mb: limit_bytes !== undefined ? Math.round(limit_bytes / 1_000_000) : undefined,
+          activated_at: plan_id ? new Date().toISOString() : undefined,
+          vehicle_id: vehicle_id ?? undefined,
+          device_id: device_id ?? undefined,
+          metadata: freshData as never,
+        } as never, { onConflict: "iccid" })
+        .select("*")
+        .maybeSingle();
+
+      if (upErr) return json({ ok: false, error: upErr.message, steps }, 400);
+      steps.push({ step: "registered_in_dashboard", ok: true, detail: { sim_row_id: row?.id } });
+
+      if (vehicle_id) steps.push({ step: "linked_to_vehicle", ok: true, detail: { vehicle_id } });
+
+      // Name the Hologram device record for easy identification.
+      if (device_id_ext !== undefined && name) {
+        const rn = await hologram.setDeviceName(device_id_ext, name);
+        steps.push({ step: "device_renamed", ok: rn.ok, detail: rn.ok ? { name } : rn });
+      }
+
+      await audit({
+        action: "hologram_sim_onboarded",
+        sim_id: row?.id,
+        vehicle_id: vehicle_id ?? null,
+        device_id: device_id ?? null,
+        details: { iccid, provider_sim_id: providerSimId, plan_id, zone, steps },
+      });
+
+      await supa.from("iot_sync_activity_log").insert({
+        provider: "hologram",
+        event: "sim_onboarded",
+        level: steps.every((s) => s.ok) ? "info" : "warn",
+        message: `SIM ${iccid} onboarded into org ${hologram.orgId()}`,
+        details: { steps, sim_row_id: row?.id },
+      } as never);
+
+      return json({ ok: steps.every((s) => s.ok), steps, row });
+    }
+
+    /* ---------------- Run the scheduled sync on demand ---------------- */
+
+    if (action === "run_sync") {
+      const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/hologram-sync`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        },
+        body: "{}",
+      });
+      const body = await r.json().catch(() => null);
+      await audit({ action: "hologram_sync_run_manually", details: { status: r.status } });
+      return json({ ok: r.ok, status: r.status, result: body });
+    }
+
+
 
     if (action === "list_sims") {
       const r = await hologram.listSims(100);
