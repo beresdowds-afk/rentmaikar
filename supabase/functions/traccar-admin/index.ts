@@ -382,7 +382,8 @@ Deno.serve(async (req) => {
           .upsert(row, { onConflict: "serial_number" })
           .select("id, vehicle_id")
           .maybeSingle();
-        if (!error) upserts++;
+        if (error) deviceErrors.push({ device: serial, error: error.message });
+        else upserts++;
 
         const linkedVehicleId = upserted?.vehicle_id ?? existing?.vehicle_id ?? null;
 
@@ -402,16 +403,36 @@ Deno.serve(async (req) => {
             mqtt_topic: `traccar/${serial}/position`,
             received_at: p.serverTime || nowIso,
           } as never);
-          if (!telErr) inserts++;
+          if (telErr) deviceErrors.push({ device: serial, error: `position: ${telErr.message}` });
+          else inserts++;
         }
       }
+      const hasErrors = deviceErrors.length > 0;
       await setSyncState({
-        state: "ok",
+        state: hasErrors ? "degraded" : "ok",
         last_success_at: nowIso,
         devices_synced: upserts,
         positions_imported: inserts,
-        last_error: null,
+        last_error: hasErrors ? deviceErrors[0].error : null,
+        last_error_at: hasErrors ? nowIso : null,
       });
+      for (const de of deviceErrors.slice(0, 25)) {
+        await activity("device_sync_error", "error", `${de.device}: ${de.error}`, de);
+      }
+      await activity(
+        "sync_completed",
+        hasErrors ? "warn" : "info",
+        `Synced ${upserts} device(s), imported ${inserts} position(s) in ${Date.now() - startedMs}ms` +
+          (hasErrors ? ` — ${deviceErrors.length} error(s)` : ""),
+        {
+          devices_synced: upserts,
+          positions_received: positions.length,
+          positions_imported: inserts,
+          skipped_by_vehicle_filter: skippedByFilter,
+          duration_ms: Date.now() - startedMs,
+          errors: deviceErrors.slice(0, 25),
+        },
+      );
       return json({
         ok: true,
         devices_synced: upserts,
@@ -419,7 +440,9 @@ Deno.serve(async (req) => {
         positions_imported: inserts,
         skipped_by_vehicle_filter: skippedByFilter,
         vehicle_scoped: !!vehicleFilter,
+        device_errors: deviceErrors.slice(0, 25),
       });
+
     }
 
     // Pre-link validation — is the target vehicle free of another traccar device?
