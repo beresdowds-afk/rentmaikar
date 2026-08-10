@@ -20,6 +20,7 @@ import { IoTAuditTrailPanel } from "./IoTAuditTrailPanel";
 import { VehiclePicker } from "./VehiclePicker";
 import { TraccarSyncActivityPanel } from "./TraccarSyncActivityPanel";
 import { TraccarCredentialsPanel } from "./TraccarCredentialsPanel";
+import { TraccarDevicePortsPanel } from "./TraccarDevicePortsPanel";
 
 
 interface Device {
