@@ -76,15 +76,26 @@ const emqxAdapter: TelemetryAdapter = {
   },
 };
 
-// -------- Traccar adapter (REST). Ready for activation once TRACCAR_* secrets exist.
+// -------- Traccar adapter (REST). Uses TRACCAR_API_TOKEN/TRACCAR_TOKEN when set,
+// otherwise falls back to basic auth with TRACCAR_EMAIL + TRACCAR_PASSWORD.
+function traccarAuth(): string | null {
+  const token = Deno.env.get("TRACCAR_API_TOKEN") || Deno.env.get("TRACCAR_TOKEN");
+  if (token) return `Bearer ${token}`;
+  const email = Deno.env.get("TRACCAR_EMAIL");
+  const password = Deno.env.get("TRACCAR_PASSWORD");
+  if (email && password) return "Basic " + btoa(`${email}:${password}`);
+  return null;
+}
+
 const traccarAdapter: TelemetryAdapter = {
   name: "traccar",
   async getDeviceState(deviceId) {
     const base = Deno.env.get("TRACCAR_BASE_URL");
-    const token = Deno.env.get("TRACCAR_API_TOKEN");
-    if (!base || !token) return { online: false, lastSeen: null };
+    const auth = traccarAuth();
+    if (!base || !auth) return { online: false, lastSeen: null };
+
     try {
-      const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
+      const headers = { Authorization: auth, Accept: "application/json" };
       const devRes = await fetch(`${base}/api/devices?uniqueId=${encodeURIComponent(deviceId)}`, { headers });
       if (!devRes.ok) return { online: false, lastSeen: null };
       const devs = await devRes.json();
@@ -108,10 +119,11 @@ const traccarAdapter: TelemetryAdapter = {
   },
   async sendCommand(deviceId, command, payload = {}) {
     const base = Deno.env.get("TRACCAR_BASE_URL");
-    const token = Deno.env.get("TRACCAR_API_TOKEN");
-    if (!base || !token) return { ok: false, error: "Traccar not configured" };
+    const auth = traccarAuth();
+    if (!base || !auth) return { ok: false, error: "Traccar not configured" };
     try {
-      const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+      const headers = { Authorization: auth, "Content-Type": "application/json" };
+
       const devRes = await fetch(`${base}/api/devices?uniqueId=${encodeURIComponent(deviceId)}`, { headers });
       const devs = devRes.ok ? await devRes.json() : [];
       const dev = Array.isArray(devs) ? devs[0] : null;
@@ -185,10 +197,10 @@ export async function testProvider(
   try {
     if (name === "traccar") {
       const base = Deno.env.get("TRACCAR_BASE_URL")!;
-      const token = Deno.env.get("TRACCAR_API_TOKEN") ?? Deno.env.get("TRACCAR_TOKEN") ?? "";
       const res = await fetch(`${base}/api/server`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        headers: { Authorization: traccarAuth() ?? "", Accept: "application/json" },
       });
+
       return { ok: res.ok, configured: true, status: res.status };
     }
     const url = Deno.env.get("EMQX_API_URL")!;
