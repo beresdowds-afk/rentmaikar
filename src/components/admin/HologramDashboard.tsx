@@ -20,6 +20,8 @@ import { VehiclePicker } from "./VehiclePicker";
 import { HologramDevicesPanel } from "./HologramDevicesPanel";
 import { DeviceIdentityPanel } from "./DeviceIdentityPanel";
 import { HologramAccountPanel } from "./HologramAccountPanel";
+import { HologramOnboardWizard } from "./HologramOnboardWizard";
+import { HologramSyncActivityPanel } from "./HologramSyncActivityPanel";
 
 
 interface SimCard {
