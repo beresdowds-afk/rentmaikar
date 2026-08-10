@@ -32,6 +32,10 @@ const Body = z.object({
     "device_data",
     "rename_device",
     "send_sms",
+    // One-click onboarding + scheduled sync controls
+    "onboard_sim",
+    "run_sync",
+    "sync_activity",
   ]),
   sim_id: z.string().min(1).max(64).optional(),
   sim_row_id: z.string().uuid().optional(),
