@@ -286,13 +286,13 @@ const AdminDashboard = () => {
                   <span className="text-muted-foreground flex items-center gap-1">
                     <span>🇺🇸</span> USD
                   </span>
-                  <span className="font-medium">${mockFinancialData.income.usd.toLocaleString()}</span>
+                  <span className="font-medium">${financials.income.usd.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-1">
                     <span>🇳🇬</span> NGN
                   </span>
-                  <span className="font-medium">₦{mockFinancialData.income.ngn.toLocaleString()}</span>
+                  <span className="font-medium">₦{financials.income.ngn.toLocaleString()}</span>
                 </div>
                 {rates && (
                   <p className="text-[10px] text-muted-foreground pt-1">
@@ -320,13 +320,13 @@ const AdminDashboard = () => {
                   <span className="text-muted-foreground flex items-center gap-1">
                     <span>🇺🇸</span> USD
                   </span>
-                  <span className="font-medium">${mockFinancialData.ownerPayouts.usd.toLocaleString()}</span>
+                  <span className="font-medium">${financials.ownerPayouts.usd.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-1">
                     <span>🇳🇬</span> NGN
                   </span>
-                  <span className="font-medium">₦{mockFinancialData.ownerPayouts.ngn.toLocaleString()}</span>
+                  <span className="font-medium">₦{financials.ownerPayouts.ngn.toLocaleString()}</span>
                 </div>
                 <p className="text-[10px] text-muted-foreground pt-1">
                   Paid to owners (60% of income)
@@ -380,13 +380,13 @@ const AdminDashboard = () => {
                   <span className="text-muted-foreground flex items-center gap-1">
                     <span>🇺🇸</span> USD
                   </span>
-                  <span className="font-medium">${(mockFinancialData.income.usd - mockFinancialData.ownerPayouts.usd).toLocaleString()}</span>
+                  <span className="font-medium">${(financials.income.usd - financials.ownerPayouts.usd).toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-1">
                     <span>🇳🇬</span> NGN
                   </span>
-                  <span className="font-medium">₦{(mockFinancialData.income.ngn - mockFinancialData.ownerPayouts.ngn).toLocaleString()}</span>
+                  <span className="font-medium">₦{(financials.income.ngn - financials.ownerPayouts.ngn).toLocaleString()}</span>
                 </div>
                 <p className="text-[10px] text-muted-foreground pt-1">
                   Available platform balance
