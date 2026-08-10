@@ -197,10 +197,10 @@ export async function testProvider(
   try {
     if (name === "traccar") {
       const base = Deno.env.get("TRACCAR_BASE_URL")!;
-      const token = Deno.env.get("TRACCAR_API_TOKEN") ?? Deno.env.get("TRACCAR_TOKEN") ?? "";
       const res = await fetch(`${base}/api/server`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        headers: { Authorization: traccarAuth() ?? "", Accept: "application/json" },
       });
+
       return { ok: res.ok, configured: true, status: res.status };
     }
     const url = Deno.env.get("EMQX_API_URL")!;
