@@ -76,13 +76,24 @@ const emqxAdapter: TelemetryAdapter = {
   },
 };
 
-// -------- Traccar adapter (REST). Ready for activation once TRACCAR_* secrets exist.
+// -------- Traccar adapter (REST). Uses TRACCAR_API_TOKEN/TRACCAR_TOKEN when set,
+// otherwise falls back to basic auth with TRACCAR_EMAIL + TRACCAR_PASSWORD.
+function traccarAuth(): string | null {
+  const token = Deno.env.get("TRACCAR_API_TOKEN") || Deno.env.get("TRACCAR_TOKEN");
+  if (token) return `Bearer ${token}`;
+  const email = Deno.env.get("TRACCAR_EMAIL");
+  const password = Deno.env.get("TRACCAR_PASSWORD");
+  if (email && password) return "Basic " + btoa(`${email}:${password}`);
+  return null;
+}
+
 const traccarAdapter: TelemetryAdapter = {
   name: "traccar",
   async getDeviceState(deviceId) {
     const base = Deno.env.get("TRACCAR_BASE_URL");
-    const token = Deno.env.get("TRACCAR_API_TOKEN");
-    if (!base || !token) return { online: false, lastSeen: null };
+    const auth = traccarAuth();
+    if (!base || !auth) return { online: false, lastSeen: null };
+
     try {
       const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
       const devRes = await fetch(`${base}/api/devices?uniqueId=${encodeURIComponent(deviceId)}`, { headers });
