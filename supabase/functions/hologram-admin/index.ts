@@ -35,7 +35,6 @@ const Body = z.object({
     // One-click onboarding + scheduled sync controls
     "onboard_sim",
     "run_sync",
-    "sync_activity",
   ]),
   sim_id: z.string().min(1).max(64).optional(),
   sim_row_id: z.string().uuid().optional(),
