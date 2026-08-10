@@ -64,15 +64,32 @@ export default function TraccarSettingsPanel({ onStateChange, autoRun = true }: 
         return;
       }
       if (data?.configured === false) {
-        push({ status: "not_configured", message: data?.message ?? "Traccar secrets missing" });
+        push({
+          status: "not_configured",
+          message: data?.diagnosis?.detail
+            ? `${data.diagnosis.title} — ${data.diagnosis.detail}`
+            : data?.message ?? "Traccar credentials missing",
+        });
         return;
       }
       const ping = data?.ping;
+      const diagnosis = data?.diagnosis as
+        | { code: string; title: string; detail: string; hints: string[]; status?: number }
+        | undefined;
       if (ping?.ok) {
         push({
           status: "ok",
           baseUrl: data?.base_url ?? "(unknown)",
           serverName: ping.body?.name,
+        });
+        return;
+      }
+      if (diagnosis) {
+        push({
+          status: "error",
+          step: diagnosis.code,
+          message: `${diagnosis.title} — ${diagnosis.detail}`,
+          hints: diagnosis.hints?.length ? diagnosis.hints : HINTS_NETWORK,
         });
         return;
       }
@@ -89,6 +106,7 @@ export default function TraccarSettingsPanel({ onStateChange, autoRun = true }: 
             : JSON.stringify(ping?.body ?? { reason: ping?.reason ?? "unknown" }),
         hints,
       });
+
     } catch (e: any) {
       setCheckedAt(new Date().toISOString());
       push({
