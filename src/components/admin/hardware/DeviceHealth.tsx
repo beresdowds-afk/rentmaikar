@@ -146,8 +146,10 @@ export const DeviceHealth = () => {
     );
   };
 
-  const formatLastPing = (dateStr: string) => {
+  const formatLastPing = (dateStr: string | null) => {
+    if (!dateStr) return 'Never';
     const date = new Date(dateStr);
+
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
