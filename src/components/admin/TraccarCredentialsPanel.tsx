@@ -23,7 +23,7 @@ interface TestResult {
   base_url?: string | null;
   auth_mode?: string;
   latency_ms?: number;
-  ping?: { ok?: boolean; body?: { name?: string } };
+  ping?: { ok?: boolean; body?: { name?: string; version?: string } };
   diagnosis?: TraccarDiagnosis;
 }
 
@@ -180,6 +180,7 @@ export function TraccarCredentialsPanel() {
                 <div className="text-xs text-muted-foreground">
                   {result?.base_url ? <>Base URL: <code>{result.base_url}</code> · </> : null}
                   {result?.auth_mode ? <>Auth: {result.auth_mode} · </> : null}
+                  {result?.ping?.body?.version ? <>Server v{result.ping.body.version} · </> : null}
                   {typeof dg.latency_ms === "number" ? <>{dg.latency_ms}ms · </> : null}
                   {dg.status ? <>HTTP {dg.status} · </> : null}
                   code: <code>{dg.code}</code>

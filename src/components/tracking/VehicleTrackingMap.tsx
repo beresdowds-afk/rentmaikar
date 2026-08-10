@@ -1,9 +1,11 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { VehicleLocation, mqttTracker, SafetyCheckResult } from '@/lib/mqtt-client';
 import { regions, Region } from '@/lib/regions';
 import VehicleMarker from './VehicleMarker';
+import { useFleetDeviceLocations, minutesSince } from '@/hooks/useFleetDeviceLocations';
+import OfflineAlertControls from './OfflineAlertControls';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,70 +40,107 @@ type ExtendedVehicle = VehicleLocation & {
   licensePlate: string; 
   driverName: string;
   daysOverdue?: number;
+  serialNumber?: string;
+  isStale?: boolean;
 };
 
-// Mock vehicle data for demonstration
-const generateMockVehicles = (region: Region): ExtendedVehicle[] => {
-  const vehicles = [
-    { make: 'Toyota', model: 'Camry', licensePlate: 'ABC-123' },
-    { make: 'Honda', model: 'Accord', licensePlate: 'XYZ-789' },
-    { make: 'Hyundai', model: 'Elantra', licensePlate: 'DEF-456' },
-    { make: 'Nissan', model: 'Altima', licensePlate: 'GHI-321' },
-    { make: 'Toyota', model: 'Corolla', licensePlate: 'JKL-654' },
-  ];
+const KMH_TO_MPH = 0.621371;
 
-  const drivers = ['John D.', 'Sarah M.', 'Mike T.', 'Grace O.', 'David K.'];
-  const overdueOptions = [0, 0, 1, 2, 3]; // Some drivers have payment defaults
-
-  return vehicles.map((v, i) => {
-    const speed = Math.random() * 60;
-    const vehicle: ExtendedVehicle = {
-      vehicleId: `veh_${region.id}_${i + 1}`,
-      latitude: region.center.lat + (Math.random() - 0.5) * 0.1,
-      longitude: region.center.lng + (Math.random() - 0.5) * 0.1,
-      speed,
-      heading: Math.random() * 360,
-      ignitionStatus: Math.random() > 0.2,
-      batteryLevel: Math.floor(70 + Math.random() * 30),
-      timestamp: new Date(),
-      isParked: speed < 2,
-      make: v.make,
-      model: v.model,
-      licensePlate: v.licensePlate,
-      driverName: drivers[i],
-      daysOverdue: overdueOptions[i],
-    };
-    
-    // Update MQTT tracker with vehicle location for safety checks
-    mqttTracker.updateVehicleLocation(vehicle.vehicleId, vehicle);
-    
-    return vehicle;
-  });
+// Auto-fit the viewport to the plotted devices on first load / after a sync.
+const FitToDevices = ({ points }: { points: Array<[number, number]> }) => {
+  const map = useMap();
+  const signature = points.map((p) => p.join(',')).join('|');
+  useEffect(() => {
+    if (points.length === 0) return;
+    map.fitBounds(points as [number, number][], { padding: [40, 40], maxZoom: 14 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature, map]);
+  return null;
 };
 
 const VehicleTrackingMap = () => {
   const [selectedRegion, setSelectedRegion] = useState<Region>(regions[0]);
-  const [vehicles, setVehicles] = useState<ExtendedVehicle[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  
+  const [thresholdMinutes, setThresholdMinutes] = useState(60);
+  const [liveOverrides, setLiveOverrides] = useState<Record<string, Partial<VehicleLocation>>>({});
+
+  const { devices, loading, syncing, error, lastLoadedAt, syncNow } = useFleetDeviceLocations();
+
+  // Real device positions -> map markers. Each tracker plots at its latest
+  // known fix; a device is "stale" when it has been silent past the threshold.
+  const vehicles: ExtendedVehicle[] = useMemo(
+    () =>
+      devices.map((d) => {
+        const silentFor = minutesSince(d.lastPing);
+        const isStale = silentFor === null || silentFor > thresholdMinutes;
+        const speedMph = d.speedKmh * KMH_TO_MPH;
+        const base: ExtendedVehicle = {
+          vehicleId: d.vehicleId ?? d.deviceRowId,
+          latitude: d.latitude,
+          longitude: d.longitude,
+          speed: speedMph,
+          heading: d.course,
+          ignitionStatus: d.status === 'active' && !isStale,
+          batteryLevel: d.batteryLevel ?? 0,
+          timestamp: d.lastPing ? new Date(d.lastPing) : new Date(),
+          isParked: speedMph < 2,
+          make: d.make,
+          model: d.model,
+          licensePlate: d.licensePlate,
+          driverName: d.provider === 'traccar' ? `Traccar · ${d.serialNumber}` : d.serialNumber,
+          serialNumber: d.serialNumber,
+          isStale,
+        };
+        return { ...base, ...(liveOverrides[base.vehicleId] ?? {}) };
+      }),
+    [devices, thresholdMinutes, liveOverrides],
+  );
+
+  const setVehicles = useCallback(
+    (updater: (prev: ExtendedVehicle[]) => ExtendedVehicle[]) => {
+      // Live MQTT frames and command results are applied as overrides on top
+      // of the synced positions, so a later sync still wins on refresh.
+      setLiveOverrides((prev) => {
+        const current = vehiclesRef.current;
+        const next = updater(current);
+        const merged = { ...prev };
+        next.forEach((v, i) => {
+          const before = current[i];
+          if (!before || before.vehicleId !== v.vehicleId) return;
+          if (before !== v) {
+            merged[v.vehicleId] = {
+              ...(merged[v.vehicleId] ?? {}),
+              latitude: v.latitude,
+              longitude: v.longitude,
+              speed: v.speed,
+              heading: v.heading,
+              ignitionStatus: v.ignitionStatus,
+              isParked: v.isParked,
+              timestamp: v.timestamp,
+            };
+          }
+        });
+        return merged;
+      });
+    },
+    [],
+  );
+
+  const vehiclesRef = useRef<ExtendedVehicle[]>([]);
+  vehiclesRef.current = vehicles;
+
   // Safety confirmation dialog state
   const [confirmationDialog, setConfirmationDialog] = useState<{
     isOpen: boolean;
     vehicleId: string;
     vehicleName: string;
     safetyCheck: SafetyCheckResult | null;
-  }>({
-    isOpen: false,
-    vehicleId: '',
-    vehicleName: '',
-    safetyCheck: null,
-  });
+  }>({ isOpen: false, vehicleId: '', vehicleName: '', safetyCheck: null });
 
-  // Initialize with mock data
-  useEffect(() => {
-    setVehicles(generateMockVehicles(selectedRegion));
-  }, [selectedRegion]);
+
+  // Positions are authoritative from the sync; drop stale overrides on reload.
+  useEffect(() => { setLiveOverrides({}); }, [lastLoadedAt]);
 
   const connectMQTT = useCallback(async () => {
     setIsConnecting(true);
@@ -217,15 +256,22 @@ const VehicleTrackingMap = () => {
     }
   };
 
-  const refreshVehicles = () => {
-    const newVehicles = generateMockVehicles(selectedRegion);
-    setVehicles(newVehicles);
-    toast.success('Vehicle positions refreshed');
+  // Runs a live provider sync (Traccar → EMQX fallback), then replots every
+  // device at its newest fix.
+  const refreshVehicles = async () => {
+    const res = await syncNow();
+    if (res.ok) toast.success(res.message);
+    else toast.error('Sync failed', { description: res.message });
   };
 
   const activeVehicles = vehicles.filter(v => v.ignitionStatus && !v.isParked).length;
   const parkedVehicles = vehicles.filter(v => v.isParked && v.ignitionStatus).length;
   const disabledVehicles = vehicles.filter(v => !v.ignitionStatus).length;
+  const silentVehicles = vehicles.filter(v => v.isStale).length;
+  const points = useMemo(
+    () => vehicles.map(v => [v.latitude, v.longitude] as [number, number]),
+    [vehicles],
+  );
 
   return (
     <div className="space-y-4">
@@ -284,10 +330,11 @@ const VehicleTrackingMap = () => {
             size="sm" 
             variant="outline" 
             onClick={refreshVehicles}
+            disabled={syncing || loading}
             className="gap-1"
           >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
+            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Syncing…' : 'Sync now'}
           </Button>
           
           {isConnected ? (
@@ -308,7 +355,7 @@ const VehicleTrackingMap = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
           <Car className="w-5 h-5 text-green-500" />
           <div>
@@ -330,7 +377,31 @@ const VehicleTrackingMap = () => {
             <p className="font-semibold text-red-600">{disabledVehicles}</p>
           </div>
         </div>
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-500/10 border border-slate-500/20">
+          <WifiOff className="w-5 h-5 text-slate-500" />
+          <div>
+            <p className="text-xs text-muted-foreground">Silent</p>
+            <p className="font-semibold text-slate-600">{silentVehicles}</p>
+          </div>
+        </div>
       </div>
+
+      {/* Offline / last-seen alerting */}
+      <OfflineAlertControls
+        devices={devices}
+        thresholdMinutes={thresholdMinutes}
+        onThresholdChange={setThresholdMinutes}
+      />
+
+      {error && (
+        <p className="text-sm text-destructive">Could not load device positions: {error}</p>
+      )}
+      {!loading && !error && vehicles.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          No device positions stored yet — run <strong>Sync now</strong> to pull the latest fixes from the
+          telemetry provider.
+        </p>
+      )}
 
       {/* Map */}
       <div className="h-[500px] xl:h-[min(760px,72dvh)] rounded-xl overflow-hidden border border-border">
@@ -345,7 +416,8 @@ const VehicleTrackingMap = () => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <MapController center={selectedRegion.center} zoom={selectedRegion.zoom} />
-          
+          <FitToDevices points={points} />
+
           {vehicles.map(vehicle => (
             <VehicleMarker
               key={vehicle.vehicleId}
@@ -356,6 +428,7 @@ const VehicleTrackingMap = () => {
           ))}
         </MapContainer>
       </div>
+
 
       {/* Legend */}
       <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
