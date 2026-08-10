@@ -191,12 +191,23 @@ export function TraccarDashboard() {
       />
 
       <Tabs defaultValue="devices" className="w-full">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="devices">Devices</TabsTrigger>
           <TabsTrigger value="commands">Remote Commands</TabsTrigger>
+          <TabsTrigger value="sync">Sync Activity</TabsTrigger>
+          <TabsTrigger value="credentials">Credentials</TabsTrigger>
           <TabsTrigger value="setup">API Setup</TabsTrigger>
           <TabsTrigger value="audit">Audit Trail</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="sync" className="space-y-4">
+          <TraccarSyncActivityPanel />
+        </TabsContent>
+
+        <TabsContent value="credentials" className="space-y-4">
+          <TraccarCredentialsPanel />
+        </TabsContent>
+
 
         <TabsContent value="devices" className="space-y-4">
           <div className="flex items-center gap-2">
