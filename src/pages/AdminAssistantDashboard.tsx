@@ -244,7 +244,7 @@ const AdminAssistantDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Vehicles</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">156</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{counts.activeVehicles}</p>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-accent">
                   <Car className="w-6 h-6" />
@@ -257,7 +257,7 @@ const AdminAssistantDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Drivers</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">234</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{counts.activeDrivers}</p>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-success">
                   <Users className="w-6 h-6" />
@@ -414,7 +414,7 @@ const AdminAssistantDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Payment Defaults</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">7</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{counts.paymentDefaults}</p>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-destructive">
                   <AlertTriangle className="w-6 h-6" />
