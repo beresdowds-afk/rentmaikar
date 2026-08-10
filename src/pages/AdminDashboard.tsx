@@ -108,93 +108,10 @@ import { ScrollableStrip } from '@/components/ui/scrollable-strip';
 import { usePersistedTab } from '@/hooks/usePersistedTab';
 
 
-// Mock financial data - in production, this would come from the database
-const mockFinancialData = {
-  // Monthly income (from drivers - base rate + admin fee)
-  income: {
-    usd: 28320,
-    ngn: 31200000,
-  },
-  // Monthly payouts to owners (base rate - management fee)
-  ownerPayouts: {
-    usd: 16992, // 60% of driver payments go to owners
-    ngn: 18720000,
-  },
-  // Admin withdrawals (platform earnings = 40% of total)
-  adminWithdrawals: {
-    weekly: {
-      usd: 2832,
-      ngn: 3120000,
-    },
-    monthly: {
-      usd: 11328, // 40% platform fee
-      ngn: 12480000,
-    },
-  },
-};
+import { useAdminFinancials, useAdminFleetCounts } from "@/hooks/useAdminFinancials";
+import { usePaymentDefaults } from "@/hooks/usePaymentDefaultsList";
+import { usePendingApprovals, type PendingApprovalItem } from "@/hooks/usePendingApprovals";
 
-interface PendingApproval {
-  id: number;
-  type: "Driver" | "Vehicle" | "Owner";
-  name: string;
-  email: string;
-  location: string;
-  status: "pending" | "approved" | "rejected";
-}
-
-const initialPendingApprovals: PendingApproval[] = [
-  { id: 1, type: "Driver", name: "John D.", email: "john.d@example.com", location: "Maryland", status: "pending" },
-  { id: 2, type: "Owner", name: "Toyota Camry Owner", email: "owner@example.com", location: "Lagos", status: "pending" },
-  { id: 3, type: "Driver", name: "Sarah M.", email: "sarah.m@example.com", location: "Abuja", status: "pending" },
-];
-
-// Mock payment defaults with proper structure
-const paymentDefaults: PaymentDefault[] = [
-  { 
-    id: "DEF-001",
-    driverId: "DRV-001",
-    vehicleId: "VEH-001",
-    rentalId: "RNT-001",
-    amountDue: 96,
-    currency: "USD",
-    paymentFrequency: "weekly",
-    hoursOverdue: 48,
-    notificationsSent: 2,
-    lastNotificationAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    deactivationEligible: false,
-    status: "active",
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-  },
-  { 
-    id: "DEF-002",
-    driverId: "DRV-002",
-    vehicleId: "VEH-002",
-    rentalId: "RNT-002",
-    amountDue: 48000,
-    currency: "NGN",
-    paymentFrequency: "daily",
-    hoursOverdue: 36,
-    notificationsSent: 3,
-    lastNotificationAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
-    deactivationEligible: true,
-    status: "active",
-    createdAt: new Date(Date.now() - 36 * 60 * 60 * 1000),
-  },
-  { 
-    id: "DEF-003",
-    driverId: "DRV-003",
-    vehicleId: "VEH-003",
-    rentalId: "RNT-003",
-    amountDue: 72,
-    currency: "USD",
-    paymentFrequency: "weekly",
-    hoursOverdue: 24,
-    notificationsSent: 1,
-    deactivationEligible: false,
-    status: "active",
-    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-  },
-];
 
 const AdminDashboard = () => {
   const _region = useRegion();
