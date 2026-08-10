@@ -36,6 +36,123 @@ const Body = z.object({
 const KNOTS_TO_KMH = 1.852;
 const PROVIDER = "traccar";
 
+interface Diagnosis {
+  code: string;
+  title: string;
+  detail: string;
+  hints: string[];
+  status?: number;
+  latency_ms?: number;
+}
+
+/** Turn a raw Traccar result into an actionable, human-readable failure reason. */
+function diagnose(r: TraccarResult, latency_ms?: number): Diagnosis {
+  if (r.ok) {
+    return {
+      code: "ok",
+      title: "Connection successful",
+      detail: "Traccar responded with valid credentials.",
+      hints: [],
+      latency_ms,
+    };
+  }
+  if (r.reason === "not_configured") {
+    return {
+      code: "not_configured",
+      title: "Traccar credentials are missing",
+      detail: `Missing: ${(r.missing ?? []).join(", ") || "credentials"}.`,
+      hints: [
+        "Set the base URL plus an API token, or the tracker email + password, in the Credentials tab.",
+      ],
+      latency_ms,
+    };
+  }
+  if (r.reason === "network_error") {
+    const msg = r.message || "";
+    const dns = /dns|getaddrinfo|name not resolved/i.test(msg);
+    const tls = /certificate|tls|ssl/i.test(msg);
+    const timeout = /timed? ?out|abort/i.test(msg);
+    return {
+      code: dns ? "dns_error" : tls ? "tls_error" : timeout ? "timeout" : "network_error",
+      title: dns
+        ? "Server hostname could not be resolved"
+        : tls
+        ? "TLS/SSL handshake failed"
+        : timeout
+        ? "Traccar server timed out"
+        : "Could not reach the Traccar server",
+      detail: msg,
+      hints: [
+        "Confirm the base URL is correct and publicly reachable over HTTPS.",
+        tls ? "Self-signed certificates are rejected — install a trusted certificate." : "Check firewall rules and that the server is running.",
+      ],
+      latency_ms,
+    };
+  }
+  const status = r.status;
+  const bodyTxt = typeof r.body === "string" ? r.body : JSON.stringify(r.body ?? {});
+  if (status === 401) {
+    return {
+      code: "invalid_credentials",
+      title: "Invalid Traccar credentials",
+      detail: r.auth_mode === "basic"
+        ? "The tracker email/password was rejected (HTTP 401)."
+        : "The API token was rejected (HTTP 401).",
+      hints: [
+        "Re-enter the tracker email and password in the Credentials tab and save.",
+        "If using a token, regenerate it in Traccar → Settings → Account → Tokens.",
+      ],
+      status,
+      latency_ms,
+    };
+  }
+  if (status === 403) {
+    return {
+      code: "missing_permissions",
+      title: "Account lacks the required permissions",
+      detail: "Traccar accepted the credentials but refused the request (HTTP 403).",
+      hints: [
+        "Use a Traccar account with administrator or manager rights for the fleet.",
+        "Confirm the account is not disabled or expired in Traccar.",
+      ],
+      status,
+      latency_ms,
+    };
+  }
+  if (status === 404) {
+    return {
+      code: "bad_base_url",
+      title: "Traccar API not found at this URL",
+      detail: "HTTP 404 — the base URL does not point at a Traccar API root.",
+      hints: [
+        "Use the server root (e.g. https://traccar.example.com) — do not append /api.",
+      ],
+      status,
+      latency_ms,
+    };
+  }
+  if (status >= 500) {
+    return {
+      code: "provider_unavailable",
+      title: "Traccar server error",
+      detail: `HTTP ${status} — ${bodyTxt.slice(0, 200)}`,
+      hints: ["The Traccar server is failing; check its logs and retry."],
+      status,
+      latency_ms,
+    };
+  }
+  return {
+    code: "provider_error",
+    title: `Traccar returned HTTP ${status}`,
+    detail: bodyTxt.slice(0, 300),
+    hints: ["Verify the base URL and credentials, then test again."],
+    status,
+    latency_ms,
+  };
+}
+
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const json = (b: unknown, s = 200) =>
