@@ -42,7 +42,7 @@ import { VoiceCallHistory } from '@/components/voice/VoiceCallHistory';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 
 import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
-import { n as NotificationsBell } from "@/components/admin/AdminNotificationsBell";
+import { AdminNotificationsBell as NotificationsBell } from "@/components/admin/AdminNotificationsBell";
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useOwnerDashboard } from '@/hooks/useOwnerDashboard';
