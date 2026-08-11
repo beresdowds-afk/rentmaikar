@@ -611,6 +611,75 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
     </div>
   );
 
+  const previewDialog = (
+    <Dialog open={Boolean(previewVehicle)} onOpenChange={(o) => !o && setPreviewVehicle(null)}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Eye className="h-5 w-5 text-primary" /> Public listing preview
+          </DialogTitle>
+          <DialogDescription>
+            Exactly how anonymous visitors see this vehicle on the catalogue and details page.
+          </DialogDescription>
+        </DialogHeader>
+        {previewVehicle && (
+          <div className="space-y-4">
+            {!previewVehicle.is_public && (
+              <div className="rounded-md border border-warning/30 bg-warning/10 text-warning text-xs p-3">
+                This vehicle is currently hidden — the preview shows what would be published once you toggle it public.
+              </div>
+            )}
+            <PublicListingPreview
+              vehicle={
+                {
+                  id: previewVehicle.id,
+                  make: previewVehicle.make,
+                  model: previewVehicle.model,
+                  year: previewVehicle.year,
+                  color: previewVehicle.color,
+                  status: previewVehicle.status,
+                  pickup_city: previewVehicle.pickup_city,
+                  pickup_location: previewVehicle.pickup_location,
+                  photo_urls: previewVehicle.photo_urls,
+                } as any
+              }
+              price={previewPrice}
+              currencySymbol={currencySymbol}
+              fallbackImage={
+                categoryForYear(previewVehicle.year) === "budget"
+                  ? categoryBudget
+                  : categoryForYear(previewVehicle.year) === "premium"
+                  ? categoryPremium
+                  : categoryStandard
+              }
+            />
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div>
+                <p className="text-sm font-medium">Public visibility</p>
+                <p className="text-xs text-muted-foreground">Saved immediately.</p>
+              </div>
+              <Switch
+                checked={Boolean(previewVehicle.is_public)}
+                disabled={savingVisibility === previewVehicle.id}
+                onCheckedChange={async (checked) => {
+                  await setVisibility(previewVehicle, checked);
+                  setPreviewVehicle({ ...previewVehicle, is_public: checked });
+                }}
+              />
+            </div>
+            <Link
+              to={`/vehicle/${previewVehicle.id}`}
+              target="_blank"
+              className="text-sm text-primary underline underline-offset-4"
+            >
+              Open the live details page
+            </Link>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+
   const dialog = (
     <RecommendDialog
       vehicle={recommendVehicle}
@@ -630,6 +699,7 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
       <>
         {body}
         {dialog}
+        {previewDialog}
       </>
     );
   }
@@ -640,6 +710,7 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
       <main className="pt-24 pb-16">{body}</main>
       <Footer />
       {dialog}
+      {previewDialog}
     </div>
   );
 }
