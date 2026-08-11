@@ -220,6 +220,7 @@ serve(async (req) => {
           sent_at: new Date().toISOString(),
           sent_from: forwardingFrom || (isNigeria ? "default_termii" : "default_twilio"),
           is_forwarding_number: !!forwardingFrom,
+          ...(mediaList.length ? { attachments_detail: mediaList } : {}),
         },
       })
       .eq("conversation_id", conversationId)
