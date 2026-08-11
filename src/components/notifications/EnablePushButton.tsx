@@ -8,6 +8,7 @@ import {
   getPushPermission,
   isPushSupported,
 } from "@/lib/push";
+import { requestNativePushPermission } from "@/hooks/useNativePush";
 
 export function EnablePushButton({ className }: { className?: string }) {
   const [loading, setLoading] = useState(false);
@@ -29,6 +30,7 @@ export function EnablePushButton({ className }: { className?: string }) {
         setEnabled(false);
         toast.message("Payment alerts disabled");
       } else {
+        await requestNativePushPermission();
         const res = await enablePushNotifications();
         if (res.ok) {
           setEnabled(true);

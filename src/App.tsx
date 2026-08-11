@@ -15,7 +15,6 @@ import ErrorBoundary from "@/components/errors/ErrorBoundary";
 import SkipToContent from "@/components/SkipToContent";
 import LiveAnnouncer from "@/components/LiveAnnouncer";
 import MetaPixelRouteTracker from "@/components/MetaPixelRouteTracker";
-import AudioPermissionPrimer from "@/components/AudioPermissionPrimer";
 import NativeDeepLinkBridge from "@/service/native/deep-links";
 import DocumentExpiryInAppNotifier from "@/components/notifications/DocumentExpiryInAppNotifier";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
@@ -136,7 +135,6 @@ const App = () => (
 
               <CookieConsent />
               <MessageConsent />
-              <AudioPermissionPrimer />
 
               <Toaster />
               <Sonner />

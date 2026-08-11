@@ -11,7 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
  * Preferences (channels + per-event opt-outs) are stored on the same row and
  * the server-side push sender consults them before dispatching.
  */
-export function useNativePush() {
+export function useNativePush(options?: { requestPermission?: boolean }) {
+  const requestPermission = options?.requestPermission ?? false;
   const registered = useRef(false);
 
   useEffect(() => {
@@ -25,6 +26,9 @@ export function useNativePush() {
       try {
         let perm = await PushNotifications.checkPermissions();
         if (perm.receive !== "granted") {
+          // Permission prompts belong at the point of use (the "Enable alerts"
+          // control), not at app start — stay passive unless asked.
+          if (!requestPermission) return;
           perm = await PushNotifications.requestPermissions();
         }
         if (perm.receive !== "granted") return;
@@ -52,5 +56,26 @@ export function useNativePush() {
     })();
 
     return () => { cleanup.forEach((fn) => fn()); };
-  }, []);
+  }, [requestPermission]);
+}
+
+/**
+ * Explicitly asks for native push permission and registers the device.
+ * Call this from a user gesture (e.g. the "Enable alerts" button) so the OS
+ * prompt appears at the point of use. No-ops on the web.
+ */
+export async function requestNativePushPermission(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return false;
+  try {
+    let perm = await PushNotifications.checkPermissions();
+    if (perm.receive !== "granted") {
+      perm = await PushNotifications.requestPermissions();
+    }
+    if (perm.receive !== "granted") return false;
+    await PushNotifications.register();
+    return true;
+  } catch (e) {
+    console.warn("[push] permission request failed", e);
+    return false;
+  }
 }
