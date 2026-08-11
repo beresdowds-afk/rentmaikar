@@ -54,8 +54,12 @@ import {
   uploadInboxAttachments,
   validateAttachmentFile,
   formatFileSize,
+  ATTACHMENT_KIND_LABELS,
+  type AttachmentKind,
   type OutboundAttachment,
 } from '@/lib/inbox-attachments';
+import { useInboxAttachmentSearch } from '@/hooks/useInboxAttachmentSearch';
+
 
 import {
   AlertDialog,
