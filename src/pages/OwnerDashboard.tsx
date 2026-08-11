@@ -42,6 +42,7 @@ import { VoiceCallHistory } from '@/components/voice/VoiceCallHistory';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 
 import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
+import { n as NotificationsBell } from "@/components/admin/AdminNotificationsBell";
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useOwnerDashboard } from '@/hooks/useOwnerDashboard';
@@ -259,6 +260,7 @@ export default function OwnerDashboard() {
               </p>
             </div>
             <div className="flex gap-3">
+              <NotificationsBell />
               <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" className="gap-2">

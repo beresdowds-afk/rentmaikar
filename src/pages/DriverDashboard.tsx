@@ -31,6 +31,7 @@ import { useVoiceCall } from '@/hooks/useVoiceCall';
 
 import { ProfileEditor } from '@/components/profile/ProfileEditor';
 import { AdminViewBanner } from '@/components/admin/AdminViewBanner';
+import { n as NotificationsBell } from "@/components/admin/AdminNotificationsBell";
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { DriverBehaviorLogs } from '@/components/admin/DriverBehaviorLogs';
@@ -227,6 +228,7 @@ export default function DriverDashboard() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
+              <NotificationsBell />
               <Button
                 variant="default"
                 className="gap-2"
