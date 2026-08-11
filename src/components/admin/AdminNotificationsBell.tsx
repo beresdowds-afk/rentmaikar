@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 interface AdminNotification {
   id: string;
-  kind: "onboarding_stage" | "access_grant" | "access_revoke" | "other";
+  kind: string;
   title: string;
   body: string | null;
   related_user_id: string | null;
@@ -25,19 +25,36 @@ interface AdminNotification {
   created_at: string;
 }
 
-const KIND_COLORS: Record<AdminNotification["kind"], string> = {
+const KIND_COLORS: Record<string, string> = {
   onboarding_stage: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
   access_grant: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
   access_revoke: "bg-red-500/15 text-red-700 dark:text-red-300",
+  applications_created: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  applications_status: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  invoices_created: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  invoices_status: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  payments_status: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  legal_agreements_created: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  legal_agreements_status: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  price_negotiations_created: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
+  price_negotiations_status: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
   other: "bg-muted text-muted-foreground",
 };
 
-const KIND_LABEL: Record<AdminNotification["kind"], string> = {
+const KIND_LABEL: Record<string, string> = {
   onboarding_stage: "Onboarding",
   access_grant: "Grant",
   access_revoke: "Revoke",
-  other: "Notice",
 };
+
+const kindClass = (kind: string) => KIND_COLORS[kind] ?? KIND_COLORS.other;
+const kindLabel = (kind: string) =>
+  KIND_LABEL[kind] ??
+  kind
+    .replace(/_(created|status)$/, "")
+    .replace(/_/g, " ")
+    .replace(/^\w/, (c) => c.toUpperCase());
+
 
 export function AdminNotificationsBell() {
   const { user } = useAuth();
@@ -154,8 +171,8 @@ export function AdminNotificationsBell() {
                   !n.read_at && "bg-muted/40",
                 )}
               >
-                <Badge className={cn("h-fit shrink-0", KIND_COLORS[n.kind])} variant="secondary">
-                  {KIND_LABEL[n.kind]}
+                <Badge className={cn("h-fit shrink-0", kindClass(n.kind))} variant="secondary">
+                  {kindLabel(n.kind)}
                 </Badge>
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{n.title}</div>
