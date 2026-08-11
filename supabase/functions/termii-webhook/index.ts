@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
+import { maybeAutoReply } from "../_shared/auto-reply.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -396,6 +398,16 @@ serve(async (req) => {
     if (messageError) throw messageError;
 
     console.log(`Termii ${parsed.type} message saved successfully`);
+
+    // Optional keyword auto-reply
+    await maybeAutoReply(supabase, {
+      conversationId,
+      content: parsed.content || "",
+      channel: inboundChannel,
+      region: "NIGERIA",
+      recipientPhone: cleanFrom,
+    });
+
 
     return new Response(
       JSON.stringify({ success: true }),

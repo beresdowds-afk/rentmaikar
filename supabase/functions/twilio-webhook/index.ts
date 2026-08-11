@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import { verifyTwilioRequestRaw } from "../_shared/twilio-signature.ts";
 import { isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
+import { maybeAutoReply } from "../_shared/auto-reply.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -426,6 +428,16 @@ serve(async (req) => {
     if (messageError) throw messageError;
 
     console.log(`${parsed.type} message saved successfully`);
+
+    // Optional keyword auto-reply
+    await maybeAutoReply(supabase, {
+      conversationId,
+      content: parsed.content || "",
+      channel,
+      region,
+      recipientPhone: cleanFrom,
+    });
+
 
     // Log inbound messaging event
     await logMessagingEvent(supabase, {
