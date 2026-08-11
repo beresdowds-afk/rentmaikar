@@ -123,48 +123,16 @@ export const CannedRepliesManager = () => {
             >
               <Plus className="h-4 w-4 mr-1" /> New auto-reply rule
             </Button>
-            {rulesLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            ) : rules.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No rules yet. Rules are optional — inbound messages are only auto-answered when an active rule matches.
-              </p>
-            ) : (
-              rules.map((rule) => (
-                <div key={rule.id} className="flex items-start justify-between gap-3 rounded-lg border p-3">
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Zap className="h-4 w-4 text-primary" />
-                      <span className="font-medium">{rule.name}</span>
-                      <Badge variant="outline">match: {rule.match_type}</Badge>
-                      {rule.channel && <Badge variant="secondary">{rule.channel}</Badge>}
-                      <Badge variant="outline">cooldown {rule.cooldown_minutes}m</Badge>
-                      <Badge variant="outline">fired {rule.trigger_count}x</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Keywords: {rule.keywords.join(', ')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Switch
-                      checked={rule.is_active}
-                      onCheckedChange={(v) => toggleRule(rule.id, v)}
-                      aria-label="Toggle rule"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setRuleDraft({ ...rule, keywordsText: rule.keywords.join(', ') })}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => deleteRule(rule.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
+            <AutoReplyPriorityEditor
+              rules={rules}
+              isLoading={rulesLoading}
+              onEdit={(rule) => setRuleDraft({ ...rule, keywordsText: rule.keywords.join(', ') })}
+              onDelete={deleteRule}
+              onToggle={toggleRule}
+              onReorder={reorderRules}
+              onSetPriority={setRulePriority}
+            />
+
           </TabsContent>
         </Tabs>
       </CardContent>
