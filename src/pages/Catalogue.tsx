@@ -299,7 +299,11 @@ const Catalogue = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="nearby">
-                    {country === "Nigeria" ? "My City Only" : `Within ${radiusMiles} Miles`}
+                    {country === "Nigeria"
+                      ? "My City Only"
+                      : radiusMiles >= ANY_DISTANCE
+                        ? "Any distance"
+                        : `Within ${radiusMiles} Miles`}
                   </SelectItem>
                   <SelectItem value="all">All {country === "Nigeria" ? "Nigeria" : "DMV Area"}</SelectItem>
                 </SelectContent>
