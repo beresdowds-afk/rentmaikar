@@ -2260,6 +2260,110 @@ export type Database = {
           },
         ]
       }
+      inbox_auto_reply_rules: {
+        Row: {
+          canned_reply_id: string | null
+          channel: string | null
+          cooldown_minutes: number
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          keywords: string[]
+          last_triggered_at: string | null
+          match_type: string
+          name: string
+          priority: number
+          region: string | null
+          reply_body: string | null
+          trigger_count: number
+          updated_at: string
+        }
+        Insert: {
+          canned_reply_id?: string | null
+          channel?: string | null
+          cooldown_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          keywords?: string[]
+          last_triggered_at?: string | null
+          match_type?: string
+          name: string
+          priority?: number
+          region?: string | null
+          reply_body?: string | null
+          trigger_count?: number
+          updated_at?: string
+        }
+        Update: {
+          canned_reply_id?: string | null
+          channel?: string | null
+          cooldown_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          keywords?: string[]
+          last_triggered_at?: string | null
+          match_type?: string
+          name?: string
+          priority?: number
+          region?: string | null
+          reply_body?: string | null
+          trigger_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_auto_reply_rules_canned_reply_id_fkey"
+            columns: ["canned_reply_id"]
+            isOneToOne: false
+            referencedRelation: "inbox_canned_replies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbox_canned_replies: {
+        Row: {
+          body: string
+          channel: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          region: string | null
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          channel?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          region?: string | null
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          channel?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          region?: string | null
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inbox_conversations: {
         Row: {
           archived_at: string | null
