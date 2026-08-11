@@ -61,41 +61,55 @@ const priorityColors = {
   urgent: 'bg-destructive/10 text-destructive',
 };
 
-const ConversationItem = ({ 
-  conversation, 
-  isSelected, 
-  onClick 
-}: { 
-  conversation: InboxConversation; 
+const ConversationItem = ({
+  conversation,
+  isSelected,
+  onClick,
+  onToggleFlag,
+  onArchive,
+  onMarkRead,
+}: {
+  conversation: InboxConversation;
   isSelected: boolean;
   onClick: () => void;
+  onToggleFlag: () => void;
+  onArchive: () => void;
+  onMarkRead: (read: boolean) => void;
 }) => {
   const ChannelIcon = channelIcons[conversation.channel as keyof typeof channelIcons] || Mail;
   const StatusIcon = statusIcons[conversation.status as keyof typeof statusIcons] || AlertCircle;
+  const unread = conversation.unread_count || 0;
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className={`w-full text-left p-4 border-b transition-colors hover:bg-muted/50 ${
+      onKeyDown={(e) => { if (e.key === 'Enter') onClick(); }}
+      className={`w-full text-left p-4 border-b transition-colors hover:bg-muted/50 cursor-pointer ${
         isSelected ? 'bg-primary/5 border-l-2 border-l-primary' : ''
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <ChannelIcon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-          <span className="font-medium truncate">
+          <span className={`truncate ${unread > 0 ? 'font-semibold' : 'font-medium'}`}>
             {conversation.user_name || conversation.user_email || 'Unknown User'}
           </span>
+          {unread > 0 && (
+            <Badge className="h-5 px-1.5 text-[10px]">{unread}</Badge>
+          )}
+          {conversation.is_flagged && <Flag className="h-3.5 w-3.5 text-orange-500" />}
         </div>
         <Badge variant="outline" className={priorityColors[conversation.priority as keyof typeof priorityColors]}>
           {conversation.priority}
         </Badge>
       </div>
-      
+
       <p className="text-sm text-muted-foreground mt-1 truncate">
         {conversation.subject || 'No subject'}
       </p>
-      
+
       <div className="flex items-center justify-between mt-2">
         <div className="flex items-center gap-2">
           <Badge variant="outline" className={`text-xs ${statusColors[conversation.status as keyof typeof statusColors]}`}>
@@ -110,9 +124,25 @@ const ConversationItem = ({
           {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
         </span>
       </div>
-    </button>
+
+      <div className="flex items-center gap-1 mt-2" onClick={(e) => e.stopPropagation()}>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onToggleFlag}>
+          <Flag className="h-3.5 w-3.5 mr-1" />
+          {conversation.is_flagged ? 'Unflag' : 'Flag'}
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => onMarkRead(unread > 0)}>
+          {unread > 0 ? <MailOpen className="h-3.5 w-3.5 mr-1" /> : <MailQuestion className="h-3.5 w-3.5 mr-1" />}
+          {unread > 0 ? 'Mark read' : 'Mark unread'}
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onArchive}>
+          <Archive className="h-3.5 w-3.5 mr-1" />
+          {conversation.archived_at ? 'Restore' : 'Archive'}
+        </Button>
+      </div>
+    </div>
   );
 };
+
 
 const MessageThread = ({ 
   conversation,
