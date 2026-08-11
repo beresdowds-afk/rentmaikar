@@ -24,6 +24,7 @@ import {
   usaLocationCoordinates,
   USA_DEFAULT_RADIUS_MILES,
 } from "@/lib/geo-utils";
+import BookingRequestDialog from "@/components/catalogue/BookingRequestDialog";
 import categoryBudget from "@/assets/category-budget.jpg";
 import categoryStandard from "@/assets/category-standard.jpg";
 import categoryPremium from "@/assets/category-premium.jpg";
