@@ -153,6 +153,38 @@ export const useAutoReplyRules = () => {
     return true;
   };
 
+  /** Persists a new explicit ordering: first rule gets the lowest priority number. */
+  const reorderRules = async (orderedIds: string[]) => {
+    const updates = orderedIds.map((id, index) =>
+      supabase
+        .from('inbox_auto_reply_rules')
+        .update({ priority: (index + 1) * 10 })
+        .eq('id', id),
+    );
+    const results = await Promise.all(updates);
+    const failed = results.find((r) => r.error);
+    if (failed?.error) {
+      toast.error(failed.error.message || 'Failed to reorder rules');
+      await fetchRules();
+      return false;
+    }
+    await fetchRules();
+    return true;
+  };
+
+  const setRulePriority = async (id: string, priority: number) => {
+    const { error } = await supabase
+      .from('inbox_auto_reply_rules')
+      .update({ priority })
+      .eq('id', id);
+    if (error) {
+      toast.error(error.message || 'Failed to update priority');
+      return false;
+    }
+    await fetchRules();
+    return true;
+  };
+
   const deleteRule = async (id: string) => {
     const { error } = await supabase.from('inbox_auto_reply_rules').delete().eq('id', id);
     if (error) {
@@ -164,5 +196,5 @@ export const useAutoReplyRules = () => {
     return true;
   };
 
-  return { rules, isLoading, fetchRules, saveRule, toggleRule, deleteRule };
+  return { rules, isLoading, fetchRules, saveRule, toggleRule, deleteRule, reorderRules, setRulePriority };
 };
