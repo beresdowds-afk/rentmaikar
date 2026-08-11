@@ -573,6 +573,23 @@ const Catalogue = () => {
         </div>
       </main>
       <Footer />
+
+      <BookingRequestDialog
+        open={Boolean(bookingVehicle)}
+        onOpenChange={(open) => !open && setBookingVehicle(null)}
+        price={bookingVehicle?.price}
+        vehicle={
+          bookingVehicle
+            ? {
+                id: bookingVehicle.id,
+                make: bookingVehicle.make,
+                model: bookingVehicle.model,
+                year: bookingVehicle.year,
+                location: bookingVehicle.location,
+              }
+            : null
+        }
+      />
     </div>
   );
 };
