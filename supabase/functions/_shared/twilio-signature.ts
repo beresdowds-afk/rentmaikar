@@ -75,23 +75,45 @@ export async function verifyTwilioRequest(
   }
 
   // Twilio signs the exact URL it called, including the query string.
-  const url = req.url;
+  // Behind Supabase's proxy `req.url` can carry the internal host/protocol,
+  // so rebuild every plausible public URL and accept a match on any of them.
+  const candidates = new Set<string>();
+  const raw = new URL(req.url);
+  candidates.add(raw.toString());
+  const httpsRaw = new URL(raw.toString());
+  httpsRaw.protocol = "https:";
+  candidates.add(httpsRaw.toString());
+
+  const fwdHost = req.headers.get("x-forwarded-host") || req.headers.get("host");
+  const fwdProto = req.headers.get("x-forwarded-proto") || "https";
+  if (fwdHost) {
+    for (const proto of new Set([fwdProto, "https"])) {
+      const u = new URL(raw.toString());
+      u.host = fwdHost;
+      u.protocol = `${proto}:`;
+      candidates.add(u.toString());
+    }
+  }
+
   const keys: string[] = [];
   for (const k of form.keys()) keys.push(k);
   keys.sort();
-  let payload = url;
-  for (const k of keys) payload += k + String(form.get(k) ?? "");
+  let suffix = "";
+  for (const k of keys) suffix += k + String(form.get(k) ?? "");
 
-  const expected = await hmacSha1Base64(token, payload);
-  if (!timingSafeEqualHex(toHex(expected), toHex(provided))) {
-    console.error("[twilio-signature] rejected: signature mismatch");
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
-      status: 403,
-      headers: corsHeaders,
-    });
+  const providedHex = toHex(provided);
+  for (const url of candidates) {
+    const expected = await hmacSha1Base64(token, url + suffix);
+    if (timingSafeEqualHex(toHex(expected), providedHex)) return null;
   }
-  return null;
+
+  console.error("[twilio-signature] rejected: signature mismatch");
+  return new Response(JSON.stringify({ error: "Forbidden" }), {
+    status: 403,
+    headers: corsHeaders,
+  });
 }
+
 
 /**
  * Convenience wrapper for handlers that parse the request body themselves
