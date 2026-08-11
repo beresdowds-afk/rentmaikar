@@ -165,6 +165,12 @@ const ConversationItem = ({
             <Badge className="h-5 px-1.5 text-[10px]">{unread}</Badge>
           )}
           {conversation.is_flagged && <Flag className="h-3.5 w-3.5 text-orange-500" />}
+          {attachmentCount > 0 && (
+            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] gap-0.5">
+              <Paperclip className="h-3 w-3" />
+              {attachmentCount}
+            </Badge>
+          )}
         </div>
         <Badge variant="outline" className={priorityColors[conversation.priority as keyof typeof priorityColors]}>
           {conversation.priority}
