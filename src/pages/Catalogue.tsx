@@ -501,7 +501,7 @@ const Catalogue = () => {
                             {vehicle.location}
                           </div>
 
-                          <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                          <div className="mt-4 pt-4 border-t border-border space-y-3">
                             <div className="flex items-center gap-1">
                               <span className="text-lg font-bold text-accent">{currencySymbol}</span>
                               <span className="text-xl font-bold text-foreground">
@@ -510,7 +510,14 @@ const Catalogue = () => {
                               <span className="text-sm text-muted-foreground">/week</span>
                             </div>
 
-                            <Button size="sm" variant="hero">View</Button>
+                            <div className="flex gap-2">
+                              <Link to={`/vehicle/${vehicle.id}`} className="flex-1">
+                                <Button size="sm" variant="outline" className="w-full">View details</Button>
+                              </Link>
+                              <Button size="sm" variant="hero" className="flex-1" onClick={() => setBookingVehicle(vehicle)}>
+                                Request to book
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
