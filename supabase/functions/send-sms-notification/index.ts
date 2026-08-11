@@ -5,6 +5,7 @@ import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import { resolveMessage, countryCodeForPhone } from "../_shared/message-templates.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
 import { outboundPausedResponse, outboundRegionFromPhone } from "../_shared/channel-guard.ts";
+import { logOutboundDecision } from "../_shared/outbound-audit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -238,6 +239,18 @@ const handler = async (req: Request): Promise<Response> => {
       const channel = body.channel === 'whatsapp' ? 'whatsapp' : 'sms';
       if (await isOptedOut(body.phone, channel)) {
         console.log(`[send-sms-notification] Suppressed ${body.notificationType} — ${body.phone} opted out`);
+        await logOutboundDecision(
+          createClient(Deno.env.get("SUPABASE_URL")!, supabaseServiceKey),
+          {
+            channel,
+            decision: 'blocked',
+            reason: 'recipient_opted_out',
+            region: outboundRegionFromPhone(body.phone),
+            recipient: body.phone,
+            notificationType: body.notificationType,
+            functionName: 'send-sms-notification',
+          },
+        );
         return new Response(
           JSON.stringify({ success: false, suppressed: true, reason: 'recipient_opted_out' }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -253,6 +266,7 @@ const handler = async (req: Request): Promise<Response> => {
         body.channel === 'whatsapp' ? 'whatsapp' : 'sms',
         outboundRegionFromPhone(body.phone),
         corsHeaders,
+        { recipient: body.phone, notificationType: body.notificationType, functionName: 'send-sms-notification' },
       );
       if (paused) return paused;
     }
@@ -343,6 +357,17 @@ const handler = async (req: Request): Promise<Response> => {
         template_name: body.notificationType,
         metadata: { notification_type: body.notificationType },
       });
+      await logOutboundDecision(supabase, {
+        channel: body.channel === 'whatsapp' ? 'whatsapp' : 'sms',
+        decision: 'sent',
+        reason: 'accepted_by_provider',
+        region: 'Nigeria',
+        provider: 'termii',
+        recipient: body.phone,
+        notificationType: body.notificationType,
+        messageId: termiiData.message_id,
+        functionName: 'send-sms-notification',
+      });
 
       return new Response(
         JSON.stringify({ 
@@ -419,6 +444,17 @@ const handler = async (req: Request): Promise<Response> => {
       template_name: body.notificationType,
       metadata: { notification_type: body.notificationType, segments: responseData.num_segments || 1 },
     });
+    await logOutboundDecision(supabase, {
+      channel: body.channel === 'whatsapp' ? 'whatsapp' : 'sms',
+      decision: 'sent',
+      reason: 'accepted_by_provider',
+      region: 'USA',
+      provider: 'twilio',
+      recipient: body.phone,
+      notificationType: body.notificationType,
+      messageId: responseData.sid,
+      functionName: 'send-sms-notification',
+    });
 
     return new Response(
       JSON.stringify({ 
@@ -444,6 +480,15 @@ const handler = async (req: Request): Promise<Response> => {
         direction: 'outbound',
         error_message: errorMessage,
         metadata: { notification_type: body?.notificationType },
+      });
+      await logOutboundDecision(supabase, {
+        channel: body?.channel === 'whatsapp' ? 'whatsapp' : 'sms',
+        decision: 'failed',
+        reason: errorMessage.slice(0, 300),
+        region: outboundRegionFromPhone(body?.phone),
+        recipient: body?.phone,
+        notificationType: body?.notificationType,
+        functionName: 'send-sms-notification',
       });
     } catch (_) { /* ignore logging errors */ }
 

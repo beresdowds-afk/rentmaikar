@@ -13,6 +13,8 @@ import CompanyInfoRealtimeDebug from '@/components/admin/CompanyInfoRealtimeDebu
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { ForwardingSettingsPanel } from '@/components/admin/ForwardingSettingsPanel';
+import { ProviderHealthPanel } from '@/components/admin/ProviderHealthPanel';
+import { OutboundAuditLogPanel } from '@/components/admin/OutboundAuditLogPanel';
 
 const channelIcons = {
   email: Mail,
@@ -548,6 +550,10 @@ export const AdminContactSettings = () => {
       <CompanyInfoRealtimeDebug />
 
       <ForwardingSettingsPanel />
+
+      <ProviderHealthPanel />
+
+      <OutboundAuditLogPanel />
 
 
 

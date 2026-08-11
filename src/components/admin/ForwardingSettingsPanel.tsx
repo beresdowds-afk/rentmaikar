@@ -17,6 +17,11 @@ export interface ForwardingConfig {
   email: boolean;
 }
 
+interface InboundConfig extends ForwardingConfig {
+  /** When on, a channel disabled inbound is also paused outbound. */
+  link_outbound?: boolean;
+}
+
 type ChannelKey = keyof ForwardingConfig;
 type RegionKey = 'USA' | 'Nigeria';
 type OutboundConfig = Record<RegionKey, ForwardingConfig>;
@@ -58,7 +63,7 @@ const CHANNELS: { key: ChannelKey; label: string; description: string; outboundD
 ];
 
 export const ForwardingSettingsPanel = () => {
-  const [config, setConfig] = useState<ForwardingConfig>(DEFAULTS);
+  const [config, setConfig] = useState<InboundConfig>(DEFAULTS);
   const [outbound, setOutbound] = useState<OutboundConfig>(OUTBOUND_DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -73,7 +78,7 @@ export const ForwardingSettingsPanel = () => {
         toast.error('Could not load channel settings');
       } else {
         const rows = (data ?? []) as { key: string; value: unknown }[];
-        const inb = rows.find((r) => r.key === FORWARDING_CONFIG_KEY)?.value as Partial<ForwardingConfig> | undefined;
+        const inb = rows.find((r) => r.key === FORWARDING_CONFIG_KEY)?.value as Partial<InboundConfig> | undefined;
         const out = rows.find((r) => r.key === OUTBOUND_CONFIG_KEY)?.value as Partial<Record<RegionKey, Partial<ForwardingConfig>>> | undefined;
         setConfig({ ...DEFAULTS, ...(inb ?? {}) });
         setOutbound({
@@ -91,6 +96,19 @@ export const ForwardingSettingsPanel = () => {
       .from('platform_kv_settings')
       .upsert({ key, value: value as never }, { onConflict: 'key' });
     return error;
+  };
+
+  const toggleLink = async (value: boolean) => {
+    const next = { ...config, link_outbound: value };
+    setSavingKey('link');
+    const error = await persist(FORWARDING_CONFIG_KEY, next);
+    setSavingKey(null);
+    if (error) {
+      toast.error('Failed to update channel sync');
+      return;
+    }
+    setConfig(next);
+    toast.success(value ? 'Outbound now follows the inbound toggles' : 'Outbound switches are independent again');
   };
 
   const toggleInbound = async (key: ChannelKey, value: boolean) => {
@@ -164,6 +182,21 @@ export const ForwardingSettingsPanel = () => {
             </TabsList>
 
             <TabsContent value="inbound" className="space-y-3">
+              <div className="flex items-start justify-between gap-4 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
+                <div>
+                  <span className="font-medium text-sm">Keep outbound in sync with inbound</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    When on, any channel switched off here is also paused for outgoing sends in both regions, so a channel
+                    is never one-way. Outbound switches still apply on top.
+                  </p>
+                </div>
+                <Switch
+                  checked={!!config.link_outbound}
+                  disabled={savingKey === 'link'}
+                  onCheckedChange={toggleLink}
+                />
+              </div>
+
               {CHANNELS.map(({ key, label, description, Icon }) => (
                 <div key={key} className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
                   <div className="flex items-start gap-3">

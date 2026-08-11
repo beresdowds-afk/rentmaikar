@@ -4,6 +4,7 @@ import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { outboundPausedResponse } from "../_shared/channel-guard.ts";
+import { logOutboundDecision } from "../_shared/outbound-audit.ts";
 import {
   welcomeDriverEmail,
   welcomeOwnerEmail,
@@ -280,7 +281,11 @@ serve(async (req) => {
 
       // ─── Admin outbound kill-switch (email, per region) ───
       {
-        const paused = await outboundPausedResponse(supabase, "email", country, corsHeaders);
+        const paused = await outboundPausedResponse(supabase, "email", country, corsHeaders, {
+          recipient: to,
+          notificationType: templateName,
+          functionName: "send-outbound-email",
+        });
         if (paused) return paused;
       }
 
@@ -322,6 +327,17 @@ serve(async (req) => {
 
       // Analytics
       await updateAnalytics(supabase, category, result.success ? "sent" : "failed");
+      await logOutboundDecision(supabase, {
+        channel: "email",
+        decision: result.success ? "sent" : "failed",
+        reason: result.success ? "accepted_by_provider" : String(result.error ?? "provider_error").slice(0, 300),
+        region: country ?? null,
+        provider: "resend",
+        recipient: to,
+        notificationType: templateName,
+        messageId: result.messageId,
+        functionName: "send-outbound-email",
+      });
 
       // Log messaging event
       await logMessagingEvent(supabase, {

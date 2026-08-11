@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { outboundPausedResponse } from "../_shared/channel-guard.ts";
+import { logOutboundDecision } from "../_shared/outbound-audit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -72,7 +73,10 @@ serve(async (req) => {
 
     // ─── Admin outbound kill-switch (email, per region) ───
     {
-      const paused = await outboundPausedResponse(supabase, "email", conversation?.region, corsHeaders);
+      const paused = await outboundPausedResponse(supabase, "email", conversation?.region, corsHeaders, {
+        recipient: recipientEmail,
+        functionName: "send-email-reply",
+      });
       if (paused) return paused;
     }
 
@@ -128,10 +132,29 @@ serve(async (req) => {
 
     if (!emailResponse.ok) {
       const errorData = await emailResponse.text();
+      await logOutboundDecision(supabase, {
+        channel: "email",
+        decision: "failed",
+        reason: `provider_error_${emailResponse.status}: ${errorData}`.slice(0, 300),
+        region: conversation?.region ?? null,
+        provider: "resend",
+        recipient: recipientEmail,
+        functionName: "send-email-reply",
+      });
       throw new Error(`Failed to send email: ${errorData}`);
     }
 
     const emailResult = await emailResponse.json();
+    await logOutboundDecision(supabase, {
+      channel: "email",
+      decision: "sent",
+      reason: "accepted_by_provider",
+      region: conversation?.region ?? null,
+      provider: "resend",
+      recipient: recipientEmail,
+      messageId: emailResult?.id ?? null,
+      functionName: "send-email-reply",
+    });
     console.log("Email sent successfully:", emailResult);
 
     // Update the message with external_id
