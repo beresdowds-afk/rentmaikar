@@ -15,6 +15,7 @@ import {
 } from '@/lib/inbox-attachments';
 import { useAttachmentOcr } from '@/hooks/useAttachmentOcr';
 import { HighlightedText } from '@/components/admin/HighlightedText';
+import { logAttachmentAccess } from '@/lib/inbox-attachment-audit';
 
 const ImageThumb = ({ attachment, onOpen }: { attachment: InboxAttachment; onOpen: () => void }) => {
   const [src, setSrc] = useState<string | null>(null);
@@ -72,6 +73,14 @@ export const MessageAttachments = ({
 
   const scan = async (a: InboxAttachment, force = false) => {
     const { error } = await run([a], force);
+    void logAttachmentAccess({
+      attachment: a,
+      action: 'ocr',
+      messageId,
+      conversationId,
+      succeeded: !error,
+      error: error ?? null,
+    });
     if (error) toast.error(error);
     else {
       setExpanded((prev) => ({ ...prev, [attachmentOcrKey(a)]: true }));
@@ -142,14 +151,24 @@ export const MessageAttachments = ({
     const { url, error } = await resolveAttachmentUrl(attachment);
     setBusyId(null);
     if (!url) {
+      void logAttachmentAccess({
+        attachment,
+        action: mode === 'download' ? 'download' : 'view',
+        messageId,
+        conversationId,
+        succeeded: false,
+        error: error || 'Could not resolve attachment URL',
+      });
       toast.error(error || 'Could not open attachment');
       return;
     }
     if (mode === 'view' && isImageAttachment(attachment)) {
+      void logAttachmentAccess({ attachment, action: 'preview', messageId, conversationId });
       setPreview({ attachment, url });
       return;
     }
     if (mode === 'download') {
+      void logAttachmentAccess({ attachment, action: 'download', messageId, conversationId });
       const link = document.createElement('a');
       link.href = url;
       link.download = attachment.name;
@@ -159,6 +178,7 @@ export const MessageAttachments = ({
       link.remove();
       return;
     }
+    void logAttachmentAccess({ attachment, action: 'open_external', messageId, conversationId });
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -225,7 +245,18 @@ export const MessageAttachments = ({
                 className="max-h-[70vh] w-full rounded-md object-contain"
               />
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => window.open(preview.url, '_blank', 'noopener,noreferrer')}>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    void logAttachmentAccess({
+                      attachment: preview.attachment,
+                      action: 'open_external',
+                      messageId,
+                      conversationId,
+                    });
+                    window.open(preview.url, '_blank', 'noopener,noreferrer');
+                  }}
+                >
                   <ExternalLink className="mr-1 h-4 w-4" /> Open in new tab
                 </Button>
                 <Button onClick={() => open(preview.attachment, 'download')}>
