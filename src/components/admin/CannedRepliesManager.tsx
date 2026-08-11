@@ -340,6 +340,13 @@ export const CannedRepliesManager = () => {
               />
               <Label>Rule active</Label>
             </div>
+            <AutoReplyPreview
+              body={rulePreviewBody}
+              channel={ruleDraft?.channel}
+              region={ruleDraft?.region}
+              keywords={ruleKeywords}
+              matchType={(ruleDraft?.match_type as 'any' | 'all' | 'exact') || 'any'}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRuleDraft(null)}>Cancel</Button>
