@@ -31,7 +31,8 @@ import {
   Linkedin,
   MessageCircle,
   Music,
-  AlarmClock
+  AlarmClock,
+  Download
 
 } from 'lucide-react';
 import { useInboxConversations, useInboxMessages, useInboxStaff, InboxConversation, InboxStaff } from '@/hooks/useUnifiedInbox';
@@ -39,7 +40,9 @@ import { useCannedReplies } from '@/hooks/useCannedReplies';
 import { CannedRepliesManager } from '@/components/admin/CannedRepliesManager';
 import { InboxSlaBadge, useNowTick } from '@/components/admin/InboxSlaBadge';
 import { getSlaInfo } from '@/lib/inbox-sla';
+import { exportInboxConversations } from '@/lib/inbox-export';
 import { MessageAttachments } from '@/components/admin/MessageAttachments';
+
 import {
   AlertDialog,
   AlertDialogAction,
