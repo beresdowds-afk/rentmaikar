@@ -244,6 +244,9 @@ const MessageThread = ({
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+
 
         {conversation.subject && (
           <p className="mt-2 text-sm font-medium">{conversation.subject}</p>
