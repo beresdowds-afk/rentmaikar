@@ -8,7 +8,7 @@ import {
   vehicleUnlockedEmail,
   paymentReceiptEmail,
 } from "../_shared/email-templates.ts";
-import { requireCronSecret } from "../_shared/cron-auth.ts";
+import { requireCronSecretAsync } from "../_shared/cron-auth.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
 
 const corsHeaders = {
@@ -103,7 +103,7 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-  const cronDenied = requireCronSecret(req);
+  const cronDenied = await requireCronSecretAsync(req);
   if (cronDenied) return cronDenied;
 
   const startTime = Date.now();
