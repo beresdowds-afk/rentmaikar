@@ -2260,6 +2260,51 @@ export type Database = {
           },
         ]
       }
+      inbox_attachment_access_log: {
+        Row: {
+          action: string
+          attachment_key: string
+          content_type: string | null
+          conversation_id: string | null
+          created_at: string
+          error: string | null
+          filename: string
+          id: string
+          message_id: string | null
+          succeeded: boolean
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          action?: string
+          attachment_key: string
+          content_type?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          error?: string | null
+          filename?: string
+          id?: string
+          message_id?: string | null
+          succeeded?: boolean
+          user_email?: string | null
+          user_id?: string
+        }
+        Update: {
+          action?: string
+          attachment_key?: string
+          content_type?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          error?: string | null
+          filename?: string
+          id?: string
+          message_id?: string | null
+          succeeded?: boolean
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       inbox_attachment_ocr: {
         Row: {
           attachment_key: string
