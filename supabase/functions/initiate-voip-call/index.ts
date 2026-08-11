@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { outboundPausedResponse } from '../_shared/channel-guard.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,6 +58,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     const body: CallRequest = await req.json();
     const { callType, region, recipients, callerRole, receiverRole, receiverId } = body;
+
+    // ─── Admin outbound kill-switch (voice, per region) ───
+    {
+      const paused = await outboundPausedResponse(supabase, 'call', region, corsHeaders);
+      if (paused) return paused;
+    }
 
     if (!recipients || recipients.length === 0) {
       return new Response(
