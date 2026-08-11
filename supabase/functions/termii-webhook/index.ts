@@ -399,6 +399,16 @@ serve(async (req) => {
 
     console.log(`Termii ${parsed.type} message saved successfully`);
 
+    // Optional keyword auto-reply
+    await maybeAutoReply(supabase, {
+      conversationId,
+      content: parsed.content || "",
+      channel: inboundChannel,
+      region: "NIGERIA",
+      recipientPhone: cleanFrom,
+    });
+
+
     return new Response(
       JSON.stringify({ success: true }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
