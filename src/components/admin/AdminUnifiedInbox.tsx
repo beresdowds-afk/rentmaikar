@@ -48,6 +48,7 @@ import { InboxSlaBadge, useNowTick } from '@/components/admin/InboxSlaBadge';
 import { getSlaInfo } from '@/lib/inbox-sla';
 import { exportInboxConversations } from '@/lib/inbox-export';
 import { MessageAttachments } from '@/components/admin/MessageAttachments';
+import { AttachmentAccessLogPanel } from '@/components/admin/AttachmentAccessLogPanel';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   MAX_ATTACHMENTS,
@@ -1029,6 +1030,8 @@ export const AdminUnifiedInbox = () => {
           </div>
         </div>
       </Card>
+
+      <AttachmentAccessLogPanel />
 
       <InboxNotificationSettings />
 
