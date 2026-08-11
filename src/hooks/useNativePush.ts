@@ -58,3 +58,24 @@ export function useNativePush(options?: { requestPermission?: boolean }) {
     return () => { cleanup.forEach((fn) => fn()); };
   }, [requestPermission]);
 }
+
+/**
+ * Explicitly asks for native push permission and registers the device.
+ * Call this from a user gesture (e.g. the "Enable alerts" button) so the OS
+ * prompt appears at the point of use. No-ops on the web.
+ */
+export async function requestNativePushPermission(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return false;
+  try {
+    let perm = await PushNotifications.checkPermissions();
+    if (perm.receive !== "granted") {
+      perm = await PushNotifications.requestPermissions();
+    }
+    if (perm.receive !== "granted") return false;
+    await PushNotifications.register();
+    return true;
+  } catch (e) {
+    console.warn("[push] permission request failed", e);
+    return false;
+  }
+}
