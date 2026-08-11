@@ -131,3 +131,74 @@ export const resolveAttachmentUrl = async (
     ? { url: attachment.url }
     : { url: null, error: 'Attachment location unavailable' };
 };
+
+/* ────────────────────────────────────────────────────────────────
+ * Outbound (composer) attachments
+ * ──────────────────────────────────────────────────────────────── */
+
+export const OUTBOUND_BUCKET = 'chat-attachments';
+export const MAX_ATTACHMENTS = 5;
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10MB
+
+const ALLOWED_EXTENSIONS = /\.(png|jpe?g|gif|webp|pdf|docx?|xlsx?|csv|txt)$/i;
+
+export interface OutboundAttachment {
+  filename: string;
+  contentType: string;
+  size: number;
+  /** "bucket/path" reference for storage. */
+  storagePath: string;
+  /** Signed URL (7 days) so providers can fetch the file. */
+  url: string;
+  status: 'accepted';
+}
+
+export const validateAttachmentFile = (file: File): string | null => {
+  if (file.size > MAX_ATTACHMENT_BYTES) return `${file.name} is larger than 10MB`;
+  if (!ALLOWED_EXTENSIONS.test(file.name)) return `${file.name} has an unsupported file type`;
+  return null;
+};
+
+/** Uploads composer files to private storage and returns signed references. */
+export const uploadInboxAttachments = async (
+  files: File[],
+  userId: string,
+  conversationId: string,
+): Promise<{ attachments: OutboundAttachment[]; errors: string[] }> => {
+  const attachments: OutboundAttachment[] = [];
+  const errors: string[] = [];
+
+  for (const file of files) {
+    const invalid = validateAttachmentFile(file);
+    if (invalid) {
+      errors.push(invalid);
+      continue;
+    }
+    const safeName = file.name.replace(/[^\w.\-]+/g, '_');
+    const path = `${userId}/outbound/${conversationId}/${Date.now()}-${safeName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(OUTBOUND_BUCKET)
+      .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false });
+
+    if (uploadError) {
+      errors.push(`${file.name}: ${uploadError.message}`);
+      continue;
+    }
+
+    const { data: signed } = await supabase.storage
+      .from(OUTBOUND_BUCKET)
+      .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+
+    attachments.push({
+      filename: file.name,
+      contentType: file.type || 'application/octet-stream',
+      size: file.size,
+      storagePath: `${OUTBOUND_BUCKET}/${path}`,
+      url: signed?.signedUrl || '',
+      status: 'accepted',
+    });
+  }
+
+  return { attachments, errors };
+};

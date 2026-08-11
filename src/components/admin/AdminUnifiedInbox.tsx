@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,8 +33,9 @@ import {
   MessageCircle,
   Music,
   AlarmClock,
-  Download
-
+  Download,
+  Paperclip,
+  X
 } from 'lucide-react';
 import { useInboxConversations, useInboxMessages, useInboxStaff, InboxConversation, InboxStaff } from '@/hooks/useUnifiedInbox';
 import { renderPlaceholders } from '@/lib/reply-placeholders';
@@ -47,6 +48,14 @@ import { InboxSlaBadge, useNowTick } from '@/components/admin/InboxSlaBadge';
 import { getSlaInfo } from '@/lib/inbox-sla';
 import { exportInboxConversations } from '@/lib/inbox-export';
 import { MessageAttachments } from '@/components/admin/MessageAttachments';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  MAX_ATTACHMENTS,
+  uploadInboxAttachments,
+  validateAttachmentFile,
+  formatFileSize,
+  type OutboundAttachment,
+} from '@/lib/inbox-attachments';
 
 import {
   AlertDialog,
@@ -218,17 +227,63 @@ const MessageThread = ({
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [usedCanned, setUsedCanned] = useState<{ id: string; title: string } | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
 
+  const addFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const incoming = Array.from(files);
+    const accepted: File[] = [];
+    incoming.forEach((f) => {
+      const invalid = validateAttachmentFile(f);
+      if (invalid) toast.error(invalid);
+      else accepted.push(f);
+    });
+    setPendingFiles((prev) => {
+      const merged = [...prev, ...accepted];
+      if (merged.length > MAX_ATTACHMENTS) {
+        toast.error(`You can attach up to ${MAX_ATTACHMENTS} files per reply`);
+        return merged.slice(0, MAX_ATTACHMENTS);
+      }
+      return merged;
+    });
+  };
 
   const handleSend = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() && pendingFiles.length === 0) return;
     setIsSending(true);
     const body = newMessage;
+
+    let uploaded: OutboundAttachment[] = [];
+    if (pendingFiles.length > 0) {
+      if (!user) {
+        toast.error('You must be signed in to attach files');
+        setIsSending(false);
+        return;
+      }
+      setIsUploading(true);
+      const { attachments, errors } = await uploadInboxAttachments(
+        pendingFiles,
+        user.id,
+        conversation.id,
+      );
+      setIsUploading(false);
+      errors.forEach((e) => toast.error(e));
+      if (attachments.length === 0) {
+        setIsSending(false);
+        return;
+      }
+      uploaded = attachments;
+    }
+
     const success = await sendMessage(
       body,
       conversation.channel,
       conversation.user_phone,
-      conversation.user_email
+      conversation.user_email,
+      uploaded,
     );
     if (usedCanned) {
       await logCannedReplyUsage({
@@ -244,6 +299,8 @@ const MessageThread = ({
     }
     if (success) {
       setNewMessage('');
+      setPendingFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
     setIsSending(false);
   };
@@ -373,8 +430,49 @@ const MessageThread = ({
             }}
           />
         </div>
+
+        {pendingFiles.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {pendingFiles.map((file, i) => (
+              <div key={`${file.name}-${i}`} className="flex items-center gap-2 rounded-md border px-2 py-1 text-xs">
+                <Paperclip className="h-3 w-3 text-muted-foreground" />
+                <span className="max-w-[160px] truncate">{file.name}</span>
+                <span className="text-muted-foreground">{formatFileSize(file.size)}</span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${file.name}`}
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={() => setPendingFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center justify-between mt-2 gap-2">
           <div className="flex items-center gap-2 min-w-0">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
+              onChange={(e) => addFiles(e.target.files)}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={pendingFiles.length >= MAX_ATTACHMENTS}
+              aria-label="Attach files"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+
             <Select
               value=""
               onValueChange={(id) => {
@@ -404,11 +502,18 @@ const MessageThread = ({
               </SelectContent>
             </Select>
             <span className="text-xs text-muted-foreground truncate">
-              {isSendingReply ? 'Delivering message...' : 'Ctrl+Enter to send'}
+              {isUploading
+                ? 'Uploading attachments...'
+                : isSendingReply
+                  ? 'Delivering message...'
+                  : 'Ctrl+Enter to send'}
             </span>
           </div>
 
-          <Button onClick={handleSend} disabled={!newMessage.trim() || isSending || isSendingReply}>
+          <Button
+            onClick={handleSend}
+            disabled={(!newMessage.trim() && pendingFiles.length === 0) || isSending || isSendingReply}
+          >
             {(isSending || isSendingReply) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Send via {conversation.channel}
           </Button>
