@@ -354,16 +354,33 @@ export const AdminUnifiedInbox = () => {
   const staff = useInboxStaff();
 
   const [selectedConversation, setSelectedConversation] = useState<InboxConversation | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const current = selectedConversation
     ? conversations.find((c) => c.id === selectedConversation.id) ?? selectedConversation
     : null;
+
+  const visibleIds = conversations.map((c) => c.id);
+  const checkedVisibleIds = selectedIds.filter((id) => visibleIds.includes(id));
+  const allVisibleChecked = visibleIds.length > 0 && checkedVisibleIds.length === visibleIds.length;
+
+  const toggleSelected = (id: string, checked: boolean) =>
+    setSelectedIds((prev) => (checked ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
+
+  const toggleSelectAll = (checked: boolean) =>
+    setSelectedIds(checked ? [...new Set([...selectedIds, ...visibleIds])] : selectedIds.filter((id) => !visibleIds.includes(id)));
+
+  const runBulk = async (action: () => Promise<unknown>) => {
+    await action();
+    setSelectedIds([]);
+  };
 
   const handleUpdateStatus = async (status: string) => {
     if (!current) return;
     await updateConversation(current.id, { status });
     setSelectedConversation({ ...current, status });
   };
+
 
 
   return (
