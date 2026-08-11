@@ -171,8 +171,8 @@ export function AdminNotificationsBell() {
                   !n.read_at && "bg-muted/40",
                 )}
               >
-                <Badge className={cn("h-fit shrink-0", KIND_COLORS[n.kind])} variant="secondary">
-                  {KIND_LABEL[n.kind]}
+                <Badge className={cn("h-fit shrink-0", kindClass(n.kind))} variant="secondary">
+                  {kindLabel(n.kind)}
                 </Badge>
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{n.title}</div>
