@@ -20,11 +20,17 @@ import {
   AlertCircle,
   XCircle,
   Filter,
+  Flag,
+  Archive,
+  MailOpen,
+  MailQuestion,
+  UserCheck,
   Facebook,
   Instagram,
   Linkedin,
   MessageCircle,
   Music
+
 } from 'lucide-react';
 import { useInboxConversations, useInboxMessages, InboxConversation } from '@/hooks/useUnifiedInbox';
 import { format, formatDistanceToNow } from 'date-fns';
