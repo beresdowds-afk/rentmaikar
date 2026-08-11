@@ -66,13 +66,27 @@ const getDriverHomeLocation = (country: string) => {
 const isNigeriaLocation = (location: string) =>
   Boolean(getNigeriaParentCity(location)) || /lagos|abuja|port harcourt|ibadan|kano|benin|enugu|nigeria/i.test(location);
 
+const RADIUS_OPTIONS = [5, 10, 25, 50, 100];
+const ANY_DISTANCE = 100000;
+
 const Catalogue = () => {
   const { category = "budget" } = useParams<{ category: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { country, currencySymbol } = useRegion();
   const radiusParam = Number(searchParams.get("radius"));
-  const radiusMiles = Number.isFinite(radiusParam) && radiusParam > 0 ? radiusParam : USA_DEFAULT_RADIUS_MILES;
+  const [radiusMiles, setRadiusMiles] = useState<number>(
+    Number.isFinite(radiusParam) && radiusParam > 0 ? radiusParam : USA_DEFAULT_RADIUS_MILES,
+  );
 
+  // Keep the shareable ?radius= parameter in sync with the control.
+  const changeRadius = (value: number) => {
+    setRadiusMiles(value);
+    const next = new URLSearchParams(searchParams);
+    next.set("radius", String(value));
+    setSearchParams(next, { replace: true });
+  };
+
+  const [bookingVehicle, setBookingVehicle] = useState<CatalogueVehicle | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("nearby");
