@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   parseMessageAttachments,
   attachmentKind,
+  attachmentOcrKey,
   type AttachmentKind,
   type InboxAttachment,
 } from '@/lib/inbox-attachments';
@@ -12,6 +13,10 @@ export interface AttachmentHit {
   messageId: string;
   createdAt: string;
   attachment: InboxAttachment;
+  /** Matched because the OCR-extracted text contains the query. */
+  matchedOcr?: boolean;
+  /** Short snippet of extracted text around the match. */
+  ocrSnippet?: string;
 }
 
 interface Options {
@@ -62,6 +67,28 @@ export const useInboxAttachmentSearch = ({ kind, query }: Options) => {
       }
 
       const q = query.trim().toLowerCase();
+
+      // Pull OCR-extracted text matching the query so scanned files are searchable
+      const ocrByKey: Record<string, string> = {};
+      if (q) {
+        const { data: ocrRows } = await supabase
+          .from('inbox_attachment_ocr')
+          .select('message_id, attachment_key, extracted_text')
+          .eq('status', 'completed')
+          .ilike('extracted_text', `%${query.trim()}%`)
+          .limit(2000);
+        (ocrRows || []).forEach((row) => {
+          ocrByKey[`${row.message_id}::${row.attachment_key}`] = (row.extracted_text as string) || '';
+        });
+      }
+
+      const snippetFor = (text: string) => {
+        const idx = text.toLowerCase().indexOf(q);
+        if (idx < 0) return text.slice(0, 160);
+        const start = Math.max(0, idx - 60);
+        return `${start > 0 ? '…' : ''}${text.slice(start, idx + q.length + 80)}…`;
+      };
+
       const found: AttachmentHit[] = [];
 
       (data || []).forEach((m) => {
@@ -69,14 +96,19 @@ export const useInboxAttachmentSearch = ({ kind, query }: Options) => {
           const matchesKind =
             kind === 'all' || kind === 'any' || attachmentKind(attachment) === kind;
           if (!matchesKind) return;
+          const ocrText = ocrByKey[`${m.id}::${attachmentOcrKey(attachment)}`];
+          const matchedOcr = Boolean(q && ocrText);
           if (
             q &&
+            !matchedOcr &&
             !attachment.name.toLowerCase().includes(q) &&
             !attachment.contentType.toLowerCase().includes(q)
           ) {
             return;
           }
           found.push({
+            matchedOcr,
+            ocrSnippet: matchedOcr ? snippetFor(ocrText) : undefined,
             conversationId: m.conversation_id as string,
             messageId: m.id as string,
             createdAt: m.created_at as string,
