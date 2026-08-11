@@ -220,6 +220,11 @@ export const CannedRepliesManager = () => {
               />
               <Label>Active</Label>
             </div>
+            <AutoReplyPreview
+              body={replyDraft?.body || ''}
+              channel={replyDraft?.channel}
+              region={replyDraft?.region}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setReplyDraft(null)}>Cancel</Button>
