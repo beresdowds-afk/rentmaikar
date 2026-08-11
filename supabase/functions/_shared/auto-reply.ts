@@ -71,38 +71,96 @@ export async function maybeAutoReply(
     if (error || !rules || rules.length === 0) return false;
 
     const now = Date.now();
-    const rule = (rules as AutoReplyRule[]).find((r) => {
-      if (r.channel && r.channel !== ctx.channel) return false;
-      if (r.region && ctx.region && r.region !== ctx.region) return false;
+
+    const logAudit = async (row: Record<string, unknown>) => {
+      try {
+        await supabase.from("inbox_reply_audit").insert({
+          conversation_id: ctx.conversationId,
+          channel: ctx.channel,
+          reply_type: "auto",
+          ...row,
+        });
+      } catch (auditErr) {
+        console.error("[auto-reply] audit log failed", auditErr);
+      }
+    };
+
+    let rule: AutoReplyRule | undefined;
+    let hits: string[] = [];
+
+    for (const r of rules as AutoReplyRule[]) {
+      if (r.channel && r.channel !== ctx.channel) continue;
+      if (r.region && ctx.region && r.region !== ctx.region) continue;
+      const keywordHits = matchedKeywords(r, ctx.content);
+      if (keywordHits.length === 0) continue;
+
       if (r.last_triggered_at && r.cooldown_minutes > 0) {
         const elapsedMin = (now - new Date(r.last_triggered_at).getTime()) / 60000;
-        if (elapsedMin < r.cooldown_minutes) return false;
+        if (elapsedMin < r.cooldown_minutes) {
+          // Matched, but suppressed by cooldown — record it and keep scanning.
+          await logAudit({
+            rule_id: r.id,
+            rule_name: r.name,
+            matched_keywords: keywordHits,
+            match_type: r.match_type,
+            cooldown_minutes: r.cooldown_minutes,
+            cooldown_status: "suppressed",
+            cooldown_remaining_minutes: Number((r.cooldown_minutes - elapsedMin).toFixed(2)),
+            canned_reply_id: r.canned_reply_id,
+            delivered: false,
+            error_message: "Suppressed by cooldown",
+          });
+          continue;
+        }
       }
-      return matches(r, ctx.content);
-    });
+
+      rule = r;
+      hits = keywordHits;
+      break;
+    }
 
     if (!rule) return false;
 
     let body = rule.reply_body || "";
+    let cannedTitle: string | null = null;
     if (!body && rule.canned_reply_id) {
       const { data: canned } = await supabase
         .from("inbox_canned_replies")
-        .select("body")
+        .select("body,title")
         .eq("id", rule.canned_reply_id)
         .maybeSingle();
       body = canned?.body || "";
+      cannedTitle = canned?.title || null;
     }
-    if (!body.trim()) return false;
+    if (!body.trim()) {
+      await logAudit({
+        rule_id: rule.id,
+        rule_name: rule.name,
+        matched_keywords: hits,
+        match_type: rule.match_type,
+        cooldown_minutes: rule.cooldown_minutes,
+        cooldown_status: "elapsed",
+        canned_reply_id: rule.canned_reply_id,
+        canned_reply_title: cannedTitle,
+        delivered: false,
+        error_message: "Rule matched but reply body was empty",
+      });
+      return false;
+    }
 
-    await supabase.from("inbox_messages").insert({
-      conversation_id: ctx.conversationId,
-      channel: ctx.channel,
-      content: body,
-      sender_type: "admin",
-      sender_name: "Rentmaikar Auto-Reply",
-      is_read: true,
-      metadata: { auto_reply_rule_id: rule.id, auto_reply_rule_name: rule.name },
-    });
+    const { data: inserted } = await supabase
+      .from("inbox_messages")
+      .insert({
+        conversation_id: ctx.conversationId,
+        channel: ctx.channel,
+        content: body,
+        sender_type: "admin",
+        sender_name: "Rentmaikar Auto-Reply",
+        is_read: true,
+        metadata: { auto_reply_rule_id: rule.id, auto_reply_rule_name: rule.name },
+      })
+      .select("id")
+      .maybeSingle();
 
     await supabase
       .from("inbox_conversations")
@@ -110,6 +168,8 @@ export async function maybeAutoReply(
       .eq("id", ctx.conversationId);
 
     // Deliver on the originating channel.
+    let delivered = false;
+    let deliveryError: string | null = null;
     try {
       if ((ctx.channel === "sms" || ctx.channel === "whatsapp") && ctx.recipientPhone) {
         await supabase.functions.invoke("send-inbox-reply", {
@@ -121,6 +181,7 @@ export async function maybeAutoReply(
             skipPersist: true,
           },
         });
+        delivered = true;
       } else if (ctx.channel === "email" && ctx.recipientEmail) {
         await supabase.functions.invoke("send-email-reply", {
           body: {
@@ -130,8 +191,12 @@ export async function maybeAutoReply(
             skipPersist: true,
           },
         });
+        delivered = true;
+      } else {
+        deliveryError = "No recipient address for channel";
       }
     } catch (deliveryErr) {
+      deliveryError = deliveryErr instanceof Error ? deliveryErr.message : String(deliveryErr);
       console.error("[auto-reply] delivery failed", deliveryErr);
     }
 
@@ -142,6 +207,21 @@ export async function maybeAutoReply(
         trigger_count: (rule.trigger_count || 0) + 1,
       })
       .eq("id", rule.id);
+
+    await logAudit({
+      message_id: inserted?.id ?? null,
+      rule_id: rule.id,
+      rule_name: rule.name,
+      matched_keywords: hits,
+      match_type: rule.match_type,
+      cooldown_minutes: rule.cooldown_minutes,
+      cooldown_status: rule.cooldown_minutes > 0 ? "elapsed" : "not_applicable",
+      canned_reply_id: rule.canned_reply_id,
+      canned_reply_title: cannedTitle,
+      body_preview: body.slice(0, 280),
+      delivered,
+      error_message: deliveryError,
+    });
 
     return true;
   } catch (err) {
