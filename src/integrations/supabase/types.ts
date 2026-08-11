@@ -2510,6 +2510,90 @@ export type Database = {
         }
         Relationships: []
       }
+      inbox_reply_audit: {
+        Row: {
+          actor_id: string | null
+          body_preview: string | null
+          canned_reply_id: string | null
+          canned_reply_title: string | null
+          channel: string
+          conversation_id: string
+          cooldown_minutes: number | null
+          cooldown_remaining_minutes: number | null
+          cooldown_status: string
+          created_at: string
+          delivered: boolean
+          error_message: string | null
+          id: string
+          match_type: string | null
+          matched_keywords: string[]
+          message_id: string | null
+          metadata: Json
+          reply_type: string
+          rule_id: string | null
+          rule_name: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          body_preview?: string | null
+          canned_reply_id?: string | null
+          canned_reply_title?: string | null
+          channel: string
+          conversation_id: string
+          cooldown_minutes?: number | null
+          cooldown_remaining_minutes?: number | null
+          cooldown_status?: string
+          created_at?: string
+          delivered?: boolean
+          error_message?: string | null
+          id?: string
+          match_type?: string | null
+          matched_keywords?: string[]
+          message_id?: string | null
+          metadata?: Json
+          reply_type?: string
+          rule_id?: string | null
+          rule_name?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          body_preview?: string | null
+          canned_reply_id?: string | null
+          canned_reply_title?: string | null
+          channel?: string
+          conversation_id?: string
+          cooldown_minutes?: number | null
+          cooldown_remaining_minutes?: number | null
+          cooldown_status?: string
+          created_at?: string
+          delivered?: boolean
+          error_message?: string | null
+          id?: string
+          match_type?: string | null
+          matched_keywords?: string[]
+          message_id?: string | null
+          metadata?: Json
+          reply_type?: string
+          rule_id?: string | null
+          rule_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_reply_audit_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "inbox_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_reply_audit_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "inbox_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_activity_log: {
         Row: {
           action: string

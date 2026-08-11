@@ -38,6 +38,8 @@ import {
 } from 'lucide-react';
 import { useInboxConversations, useInboxMessages, useInboxStaff, InboxConversation, InboxStaff } from '@/hooks/useUnifiedInbox';
 import { useCannedReplies } from '@/hooks/useCannedReplies';
+import { logCannedReplyUsage } from '@/hooks/useInboxReplyAudit';
+import { InboxReplyAuditPanel } from '@/components/admin/InboxReplyAuditPanel';
 import { CannedRepliesManager } from '@/components/admin/CannedRepliesManager';
 import { InboxSlaBadge, useNowTick } from '@/components/admin/InboxSlaBadge';
 import { getSlaInfo } from '@/lib/inbox-sla';
@@ -212,17 +214,31 @@ const MessageThread = ({
   const { replies: cannedReplies } = useCannedReplies();
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [usedCanned, setUsedCanned] = useState<{ id: string; title: string } | null>(null);
 
 
   const handleSend = async () => {
     if (!newMessage.trim()) return;
     setIsSending(true);
+    const body = newMessage;
     const success = await sendMessage(
-      newMessage, 
+      body,
       conversation.channel,
       conversation.user_phone,
       conversation.user_email
     );
+    if (usedCanned) {
+      await logCannedReplyUsage({
+        conversationId: conversation.id,
+        channel: conversation.channel,
+        cannedReplyId: usedCanned.id,
+        cannedReplyTitle: usedCanned.title,
+        bodyPreview: body,
+        delivered: !!success,
+        errorMessage: success ? null : 'Send failed',
+      });
+      setUsedCanned(null);
+    }
     if (success) {
       setNewMessage('');
     }
@@ -291,8 +307,9 @@ const MessageThread = ({
 
 
 
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <InboxSlaBadge conversation={conversation} showElapsed />
+          <InboxReplyAuditPanel conversationId={conversation.id} />
         </div>
 
         {conversation.subject && (
@@ -359,7 +376,10 @@ const MessageThread = ({
               value=""
               onValueChange={(id) => {
                 const canned = cannedReplies.find((r) => r.id === id);
-                if (canned) setNewMessage((prev) => (prev ? `${prev}\n${canned.body}` : canned.body));
+                if (canned) {
+                  setNewMessage((prev) => (prev ? `${prev}\n${canned.body}` : canned.body));
+                  setUsedCanned({ id: canned.id, title: canned.title });
+                }
               }}
             >
               <SelectTrigger className="h-8 w-[190px]">
