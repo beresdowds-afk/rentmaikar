@@ -559,16 +559,32 @@ export const AdminUnifiedInbox = () => {
   const [selectedConversation, setSelectedConversation] = useState<InboxConversation | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [attachmentKindFilter, setAttachmentKindFilter] = useState<AttachmentKind | 'all' | 'any'>('all');
+  const [attachmentQuery, setAttachmentQuery] = useState('');
   const [allMatchingIds, setAllMatchingIds] = useState<string[] | null>(null);
   const [isResolvingAll, setIsResolvingAll] = useState(false);
   const nowTick = useNowTick();
 
+  const {
+    hits: attachmentHits,
+    conversationIds: attachmentConversationIds,
+    isLoading: isSearchingAttachments,
+    isActive: attachmentFilterActive,
+  } = useInboxAttachmentSearch({ kind: attachmentKindFilter, query: attachmentQuery });
+
+  const attachmentCountByConversation = attachmentHits.reduce<Record<string, number>>((acc, hit) => {
+    acc[hit.conversationId] = (acc[hit.conversationId] || 0) + 1;
+    return acc;
+  }, {});
+
   const overdueCount = conversations.filter(
     (c) => getSlaInfo(c, nowTick).state === 'overdue',
   ).length;
-  const visibleConversations = overdueOnly
-    ? conversations.filter((c) => getSlaInfo(c, nowTick).state === 'overdue')
-    : conversations;
+  const visibleConversations = conversations.filter((c) => {
+    if (overdueOnly && getSlaInfo(c, nowTick).state !== 'overdue') return false;
+    if (attachmentFilterActive && !(attachmentConversationIds || []).includes(c.id)) return false;
+    return true;
+  });
 
   const current = selectedConversation
     ? conversations.find((c) => c.id === selectedConversation.id) ?? selectedConversation
@@ -585,16 +601,29 @@ export const AdminUnifiedInbox = () => {
   // Any change to filters/search invalidates a whole-result selection
   useEffect(() => {
     setAllMatchingIds(null);
-  }, [statusFilter, channelFilter, searchQuery, showArchived, flaggedOnly, overdueOnly]);
+  }, [
+    statusFilter,
+    channelFilter,
+    searchQuery,
+    showArchived,
+    flaggedOnly,
+    overdueOnly,
+    attachmentKindFilter,
+    attachmentQuery,
+  ]);
 
   const selectAllResults = async () => {
     setIsResolvingAll(true);
     const ids = await fetchAllMatchingIds();
     setIsResolvingAll(false);
     if (!ids) return;
-    setAllMatchingIds(ids);
-    setSelectedIds((prev) => [...new Set([...prev, ...ids])]);
+    const scoped = attachmentFilterActive
+      ? ids.filter((id) => (attachmentConversationIds || []).includes(id))
+      : ids;
+    setAllMatchingIds(scoped);
+    setSelectedIds((prev) => [...new Set([...prev, ...scoped])]);
   };
+
 
   const clearSelection = () => {
     setSelectedIds([]);
