@@ -383,8 +383,13 @@ const Catalogue = () => {
           <div className="mb-4 flex items-center justify-between">
             <span className="text-muted-foreground">
               {isLoading ? "Loading vehicles…" : `${filteredVehicles.length} of ${total} vehicles`}
-              {!isLoading && locationFilter === "all" && nearbyCount > 0 && (
-                <span className="ml-2 text-xs">({nearbyCount} nearby)</span>
+              {!isLoading && country !== "Nigeria" && (
+                <span className="ml-2 text-xs">
+                  ({nearbyCount} within {radiusMiles >= ANY_DISTANCE ? "any distance" : `${radiusMiles} mi`})
+                </span>
+              )}
+              {!isLoading && country === "Nigeria" && nearbyCount > 0 && (
+                <span className="ml-2 text-xs">({nearbyCount} in your city)</span>
               )}
             </span>
           </div>
