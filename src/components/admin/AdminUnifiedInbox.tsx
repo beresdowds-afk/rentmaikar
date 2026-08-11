@@ -678,6 +678,16 @@ export const AdminUnifiedInbox = () => {
                       size="sm"
                       variant="outline"
                       className="h-7 text-xs"
+                      disabled={isExporting}
+                      onClick={() => handleExport(targetIds)}
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1" /> {isExporting ? 'Exporting…' : 'Export CSV'}
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
                       onClick={() =>
                         confirmBulk(
                           showArchived ? 'Restore conversations?' : 'Archive conversations?',
