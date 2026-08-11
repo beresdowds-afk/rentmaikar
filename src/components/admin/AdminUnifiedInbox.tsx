@@ -63,9 +63,11 @@ const channelIcons = {
   email: Mail,
   sms: Phone,
   whatsapp: MessageSquare,
+  facebook: Facebook,
   facebook_messenger: Facebook,
   instagram: Instagram,
   linkedin: Linkedin,
+  google: MessageCircle,
   google_chat: MessageCircle,
   tiktok: Music,
 };
@@ -563,10 +565,10 @@ export const AdminUnifiedInbox = () => {
               <SelectItem value="email">Email</SelectItem>
               <SelectItem value="sms">SMS</SelectItem>
               <SelectItem value="whatsapp">WhatsApp</SelectItem>
-              <SelectItem value="facebook_messenger">Facebook</SelectItem>
+              <SelectItem value="facebook">Facebook</SelectItem>
               <SelectItem value="instagram">Instagram</SelectItem>
               <SelectItem value="linkedin">LinkedIn</SelectItem>
-              <SelectItem value="google_chat">Google Chat</SelectItem>
+              <SelectItem value="google">Google</SelectItem>
               <SelectItem value="tiktok">TikTok</SelectItem>
             </SelectContent>
           </Select>
