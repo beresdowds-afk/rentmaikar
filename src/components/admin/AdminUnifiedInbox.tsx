@@ -785,6 +785,59 @@ export const AdminUnifiedInbox = () => {
                 </Button>
               </div>
 
+              <div className="flex items-center gap-2">
+                <Select
+                  value={attachmentKindFilter}
+                  onValueChange={(v) => setAttachmentKindFilter(v as AttachmentKind | 'all' | 'any')}
+                >
+                  <SelectTrigger className="h-8 w-[150px] text-xs">
+                    <Paperclip className="h-3.5 w-3.5 mr-1 shrink-0" />
+                    <SelectValue placeholder="Attachments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any thread</SelectItem>
+                    <SelectItem value="any">Has attachment</SelectItem>
+                    {(Object.keys(ATTACHMENT_KIND_LABELS) as AttachmentKind[]).map((k) => (
+                      <SelectItem key={k} value={k}>{ATTACHMENT_KIND_LABELS[k]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="Search file names..."
+                  className="h-8 text-xs"
+                  value={attachmentQuery}
+                  onChange={(e) => setAttachmentQuery(e.target.value)}
+                />
+                {(attachmentFilterActive) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => {
+                      setAttachmentKindFilter('all');
+                      setAttachmentQuery('');
+                    }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+
+              {attachmentFilterActive && (
+                <div className="rounded bg-muted/50 px-2 py-1 text-[11px] text-muted-foreground">
+                  {isSearchingAttachments ? (
+                    <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Searching attachments…</span>
+                  ) : (
+                    <>
+                      {attachmentHits.length} matching file{attachmentHits.length === 1 ? '' : 's'} in{' '}
+                      {visibleConversations.length} thread{visibleConversations.length === 1 ? '' : 's'}
+                    </>
+                  )}
+                </div>
+              )}
+
+
+
               {checkedVisibleIds.length > 0 && (
                 <div className="rounded-md border bg-background p-2 space-y-2">
                   <div className="flex items-center justify-between">
