@@ -181,8 +181,10 @@ const MessageThread = ({
   onMarkRead: (read: boolean) => void;
 }) => {
   const { messages, isLoading, isSendingReply, sendMessage } = useInboxMessages(conversation.id);
+  const { replies: cannedReplies } = useCannedReplies();
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+
 
   const handleSend = async () => {
     if (!newMessage.trim()) return;
