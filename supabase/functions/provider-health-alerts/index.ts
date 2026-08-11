@@ -104,14 +104,23 @@ async function readConfig(supa: Supa): Promise<AlertConfig> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  // Internal-only endpoint: cron secret or service-role bearer required.
-  const denied = requireInternal(req);
-  if (denied) return denied;
-
   const supa = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
+
+  // Internal-only endpoint. Accept the standard internal guard (service-role
+  // bearer / env cron secret) or a scheduler token verified against the value
+  // stored in the database vault, so scheduled runs keep working even if the
+  // environment copy of the token drifts.
+  if (requireInternal(req)) {
+    const token = req.headers.get("x-cron-secret") ?? req.headers.get("x-internal-secret");
+    const { data: tokenOk } = await supa.rpc("verify_cron_token", { _token: token ?? "" });
+    if (tokenOk !== true) {
+      return json(401, { error: "Unauthorized" });
+    }
+  }
+
 
   let body: z.infer<typeof Body> = {};
   try {
