@@ -291,6 +291,70 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
     }
   };
 
+  const bulkSetVisibility = async (isPublic: boolean) => {
+    const ids = filtered.map((v) => v.id);
+    if (!ids.length) return;
+    setBulkBusy(true);
+    try {
+      const { error } = await supabase
+        .from("vehicles")
+        .update({ is_public: isPublic, status: isPublic ? "available" : "inactive" })
+        .in("id", ids);
+      if (error) throw error;
+      toast.success(
+        isPublic ? `Published ${ids.length} vehicle${ids.length === 1 ? "" : "s"}` : `Hid ${ids.length} vehicle${ids.length === 1 ? "" : "s"}`,
+        { description: "The public catalogue has been updated." },
+      );
+      await refetchVehicles();
+    } catch (e: any) {
+      toast.error("Bulk update failed", { description: e.message });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const createVehicle = async () => {
+    if (!user) return;
+    if (!form.make.trim() || !form.model.trim() || !form.license_plate.trim()) {
+      toast.error("Make, model and licence plate are required");
+      return;
+    }
+    const year = Number(form.year);
+    if (!Number.isFinite(year) || year < 1980 || year > new Date().getFullYear() + 1) {
+      toast.error("Enter a valid manufacture year");
+      return;
+    }
+    setCreating(true);
+    try {
+      const { error } = await supabase.from("vehicles").insert({
+        owner_id: form.owner_id || user.id,
+        make: form.make.trim(),
+        model: form.model.trim(),
+        year,
+        color: form.color.trim() || null,
+        license_plate: form.license_plate.trim().toUpperCase(),
+        vin: form.vin.trim() ? form.vin.trim().toUpperCase() : null,
+        pickup_city: form.pickup_city.trim() || null,
+        pickup_location: form.pickup_location.trim() || null,
+        is_public: form.is_public,
+        status: form.is_public ? "available" : "pending",
+      });
+      if (error) throw error;
+      toast.success("Vehicle added", {
+        description: form.is_public
+          ? "It is now live on the public catalogue."
+          : "Saved as hidden — publish it when ready.",
+      });
+      setAddOpen(false);
+      setForm({ ...emptyForm });
+      await refetchVehicles();
+    } catch (e: any) {
+      toast.error("Could not add vehicle", { description: e.message });
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const previewPrice = useMemo(() => {
     if (!previewVehicle) return undefined;
     const cat = categoryForYear(previewVehicle.year);
