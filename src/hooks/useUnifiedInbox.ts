@@ -247,28 +247,119 @@ export const useInboxConversations = () => {
     return true;
   };
 
+  // Snapshot a single conversation column for the given ids so a bulk change can be reverted
+  const snapshotField = async (ids: string[], field: string) => {
+    const { data, error } = await supabase
+      .from('inbox_conversations')
+      .select(`id, ${field}`)
+      .in('id', ids);
+    if (error) {
+      console.error('Error snapshotting conversations:', error);
+      return null;
+    }
+    return (data ?? []) as unknown as Array<Record<string, unknown>>;
+  };
+
+  const revertField = async (
+    snapshot: Array<Record<string, unknown>>,
+    field: string,
+    successMessage: string,
+  ) => {
+    // Group ids by their previous value so each distinct value is one update
+    const groups = new Map<string, { value: unknown; ids: string[] }>();
+    for (const row of snapshot) {
+      const value = row[field] ?? null;
+      const key = JSON.stringify(value);
+      const existing = groups.get(key);
+      if (existing) existing.ids.push(row.id as string);
+      else groups.set(key, { value, ids: [row.id as string] });
+    }
+
+    for (const { value, ids } of groups.values()) {
+      const { error } = await supabase
+        .from('inbox_conversations')
+        .update({ [field]: value })
+        .in('id', ids);
+      if (error) {
+        console.error('Error reverting bulk action:', error);
+        toast.error('Undo failed');
+        return false;
+      }
+    }
+    await fetchConversations();
+    toast.success(successMessage);
+    return true;
+  };
+
+  const toastWithUndo = (message: string, onUndo: () => void) => {
+    toast.success(message, {
+      duration: 10000,
+      action: { label: 'Undo', onClick: onUndo },
+    });
+  };
+
   const bulkSetFlag = async (ids: string[], flagged: boolean) => {
+    const snapshot = await snapshotField(ids, 'is_flagged');
     const ok = await bulkUpdateConversations(ids, { is_flagged: flagged });
-    if (ok) toast.success(`${ids.length} conversation(s) ${flagged ? 'flagged' : 'unflagged'}`);
+    if (ok) {
+      const message = `${ids.length} conversation(s) ${flagged ? 'flagged' : 'unflagged'}`;
+      if (snapshot) {
+        toastWithUndo(message, () => {
+          void revertField(snapshot, 'is_flagged', 'Flag change undone');
+        });
+      } else {
+        toast.success(message);
+      }
+    }
     return ok;
   };
 
   const bulkSetArchived = async (ids: string[], archived: boolean) => {
+    const snapshot = await snapshotField(ids, 'archived_at');
     const ok = await bulkUpdateConversations(ids, {
       archived_at: archived ? new Date().toISOString() : null,
     });
-    if (ok) toast.success(`${ids.length} conversation(s) ${archived ? 'archived' : 'restored'}`);
+    if (ok) {
+      const message = `${ids.length} conversation(s) ${archived ? 'archived' : 'restored'}`;
+      if (snapshot) {
+        toastWithUndo(message, () => {
+          void revertField(snapshot, 'archived_at', archived ? 'Archive undone' : 'Restore undone');
+        });
+      } else {
+        toast.success(message);
+      }
+    }
     return ok;
   };
 
   const bulkAssign = async (ids: string[], userId: string | null) => {
+    const snapshot = await snapshotField(ids, 'assigned_to');
     const ok = await bulkUpdateConversations(ids, { assigned_to: userId });
-    if (ok) toast.success(userId ? `${ids.length} conversation(s) delegated` : 'Assignments cleared');
+    if (ok) {
+      const message = userId ? `${ids.length} conversation(s) delegated` : 'Assignments cleared';
+      if (snapshot) {
+        toastWithUndo(message, () => {
+          void revertField(snapshot, 'assigned_to', 'Delegation undone');
+        });
+      } else {
+        toast.success(message);
+      }
+    }
     return ok;
   };
 
   const bulkMarkRead = async (ids: string[], read: boolean) => {
     if (!ids.length) return false;
+
+    // Capture only the messages that will actually change so undo is precise
+    const { data: affected } = await supabase
+      .from('inbox_messages')
+      .select('id')
+      .in('conversation_id', ids)
+      .eq('sender_type', 'user')
+      .eq('is_read', !read);
+    const affectedIds = (affected ?? []).map((m) => m.id as string);
+
     const { error } = await supabase
       .from('inbox_messages')
       .update(read
@@ -283,15 +374,47 @@ export const useInboxConversations = () => {
       return false;
     }
     await fetchUnreadCounts();
-    toast.success(`${ids.length} conversation(s) marked as ${read ? 'read' : 'unread'}`);
+
+    const message = `${ids.length} conversation(s) marked as ${read ? 'read' : 'unread'}`;
+    if (affectedIds.length) {
+      toastWithUndo(message, () => {
+        void (async () => {
+          const { error: undoError } = await supabase
+            .from('inbox_messages')
+            .update(read ? { is_read: false, read_at: null } : { is_read: true, read_at: new Date().toISOString() })
+            .in('id', affectedIds);
+          if (undoError) {
+            console.error('Error reverting read state:', undoError);
+            toast.error('Undo failed');
+            return;
+          }
+          await fetchUnreadCounts();
+          await fetchConversations();
+          toast.success('Read state change undone');
+        })();
+      });
+    } else {
+      toast.success(message);
+    }
     return true;
   };
 
   const bulkSetStatus = async (ids: string[], status: string) => {
+    const snapshot = await snapshotField(ids, 'status');
     const ok = await bulkUpdateConversations(ids, { status });
-    if (ok) toast.success(`${ids.length} conversation(s) set to ${status}`);
+    if (ok) {
+      const message = `${ids.length} conversation(s) set to ${status}`;
+      if (snapshot) {
+        toastWithUndo(message, () => {
+          void revertField(snapshot, 'status', 'Status change undone');
+        });
+      } else {
+        toast.success(message);
+      }
+    }
     return ok;
   };
+
 
 
 
