@@ -34,6 +34,8 @@ import {
 
 } from 'lucide-react';
 import { useInboxConversations, useInboxMessages, useInboxStaff, InboxConversation, InboxStaff } from '@/hooks/useUnifiedInbox';
+import { useCannedReplies } from '@/hooks/useCannedReplies';
+
 import { format, formatDistanceToNow } from 'date-fns';
 
 const channelIcons = {
