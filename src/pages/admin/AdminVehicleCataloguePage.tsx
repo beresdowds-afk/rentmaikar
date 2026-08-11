@@ -141,6 +141,22 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
   const [selectedDriverId, setSelectedDriverId] = useState<string>("");
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const emptyForm = {
+    make: "",
+    model: "",
+    year: String(new Date().getFullYear()),
+    color: "",
+    license_plate: "",
+    vin: "",
+    pickup_city: "",
+    pickup_location: "",
+    owner_id: "",
+    is_public: true,
+  };
+  const [form, setForm] = useState({ ...emptyForm });
 
   const { data: vehicles, isLoading, refetch: refetchVehicles } = useQuery({
     queryKey: ["admin-catalogue-vehicles"],
