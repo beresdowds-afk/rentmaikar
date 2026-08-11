@@ -441,6 +441,11 @@ export const AdminUnifiedInbox = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={allVisibleChecked}
+                  onCheckedChange={(v) => toggleSelectAll(v === true)}
+                  aria-label="Select all conversations"
+                />
                 <Button
                   size="sm"
                   variant={flaggedOnly ? 'default' : 'outline'}
@@ -458,8 +463,59 @@ export const AdminUnifiedInbox = () => {
                   <Archive className="h-3.5 w-3.5 mr-1" /> Archived
                 </Button>
               </div>
+
+              {checkedVisibleIds.length > 0 && (
+                <div className="rounded-md border bg-background p-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium">{checkedVisibleIds.length} selected</span>
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setSelectedIds([])}>
+                      Clear
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkMarkRead(checkedVisibleIds, true))}>
+                      <MailOpen className="h-3.5 w-3.5 mr-1" /> Read
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkMarkRead(checkedVisibleIds, false))}>
+                      <MailQuestion className="h-3.5 w-3.5 mr-1" /> Unread
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetFlag(checkedVisibleIds, true))}>
+                      <Flag className="h-3.5 w-3.5 mr-1" /> Flag
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetFlag(checkedVisibleIds, false))}>
+                      <Flag className="h-3.5 w-3.5 mr-1" /> Unflag
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetArchived(checkedVisibleIds, !showArchived))}>
+                      <Archive className="h-3.5 w-3.5 mr-1" /> {showArchived ? 'Restore' : 'Archive'}
+                    </Button>
+                    <Select onValueChange={(v) => runBulk(() => bulkAssign(checkedVisibleIds, v === 'unassigned' ? null : v))}>
+                      <SelectTrigger className="h-7 w-36 text-xs">
+                        <UserCheck className="h-3.5 w-3.5 mr-1" />
+                        <SelectValue placeholder="Delegate" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {staff.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select onValueChange={(v) => runBulk(() => bulkSetStatus(checkedVisibleIds, v))}>
+                      <SelectTrigger className="h-7 w-28 text-xs">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="open">Open</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="resolved">Resolved</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
             </div>
-            <ScrollArea className="h-[calc(600px-96px)] xl:h-[calc(min(760px,72dvh)-96px)]">
+            <ScrollArea className="h-[calc(600px-160px)] xl:h-[calc(min(760px,72dvh)-160px)]">
               {isLoading ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -480,10 +536,13 @@ export const AdminUnifiedInbox = () => {
                     onToggleFlag={() => toggleFlag(conv)}
                     onArchive={() => setArchived(conv, !conv.archived_at)}
                     onMarkRead={(read) => markConversationRead(conv.id, read)}
+                    isChecked={selectedIds.includes(conv.id)}
+                    onCheckedChange={(checked) => toggleSelected(conv.id, checked)}
                   />
                 ))
               )}
             </ScrollArea>
+
           </div>
 
           {/* Message Thread */}
