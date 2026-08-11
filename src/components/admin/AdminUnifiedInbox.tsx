@@ -30,12 +30,15 @@ import {
   Instagram,
   Linkedin,
   MessageCircle,
-  Music
+  Music,
+  AlarmClock
 
 } from 'lucide-react';
 import { useInboxConversations, useInboxMessages, useInboxStaff, InboxConversation, InboxStaff } from '@/hooks/useUnifiedInbox';
 import { useCannedReplies } from '@/hooks/useCannedReplies';
 import { CannedRepliesManager } from '@/components/admin/CannedRepliesManager';
+import { InboxSlaBadge, useNowTick } from '@/components/admin/InboxSlaBadge';
+import { getSlaInfo } from '@/lib/inbox-sla';
 
 import { format, formatDistanceToNow } from 'date-fns';
 
@@ -93,6 +96,8 @@ const ConversationItem = ({
   const ChannelIcon = channelIcons[conversation.channel as keyof typeof channelIcons] || Mail;
   const StatusIcon = statusIcons[conversation.status as keyof typeof statusIcons] || AlertCircle;
   const unread = conversation.unread_count || 0;
+  const now = useNowTick();
+  const overdue = getSlaInfo(conversation, now).state === 'overdue';
 
   return (
     <div
@@ -101,8 +106,8 @@ const ConversationItem = ({
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === 'Enter') onClick(); }}
       className={`w-full text-left p-4 border-b transition-colors hover:bg-muted/50 cursor-pointer ${
-        isSelected ? 'bg-primary/5 border-l-2 border-l-primary' : ''
-      }`}
+        overdue ? 'border-l-2 border-l-destructive bg-destructive/5' : ''
+      } ${isSelected ? 'bg-primary/5 border-l-2 border-l-primary' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
@@ -141,6 +146,7 @@ const ConversationItem = ({
           <Badge variant="outline" className="text-xs">
             {conversation.region}
           </Badge>
+          <InboxSlaBadge conversation={conversation} now={now} />
         </div>
         <span className="text-xs text-muted-foreground">
           {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
@@ -265,6 +271,10 @@ const MessageThread = ({
         </div>
 
 
+
+        <div className="mt-2 flex items-center gap-2">
+          <InboxSlaBadge conversation={conversation} showElapsed />
+        </div>
 
         {conversation.subject && (
           <p className="mt-2 text-sm font-medium">{conversation.subject}</p>
@@ -391,12 +401,21 @@ export const AdminUnifiedInbox = () => {
 
   const [selectedConversation, setSelectedConversation] = useState<InboxConversation | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [overdueOnly, setOverdueOnly] = useState(false);
+  const nowTick = useNowTick();
+
+  const overdueCount = conversations.filter(
+    (c) => getSlaInfo(c, nowTick).state === 'overdue',
+  ).length;
+  const visibleConversations = overdueOnly
+    ? conversations.filter((c) => getSlaInfo(c, nowTick).state === 'overdue')
+    : conversations;
 
   const current = selectedConversation
     ? conversations.find((c) => c.id === selectedConversation.id) ?? selectedConversation
     : null;
 
-  const visibleIds = conversations.map((c) => c.id);
+  const visibleIds = visibleConversations.map((c) => c.id);
   const checkedVisibleIds = selectedIds.filter((id) => visibleIds.includes(id));
   const allVisibleChecked = visibleIds.length > 0 && checkedVisibleIds.length === visibleIds.length;
 
@@ -498,6 +517,17 @@ export const AdminUnifiedInbox = () => {
                 >
                   <Archive className="h-3.5 w-3.5 mr-1" /> Archived
                 </Button>
+                <Button
+                  size="sm"
+                  variant={overdueOnly ? 'destructive' : 'outline'}
+                  className="h-7 text-xs"
+                  onClick={() => setOverdueOnly(!overdueOnly)}
+                >
+                  <AlarmClock className="h-3.5 w-3.5 mr-1" /> Overdue
+                  {overdueCount > 0 && (
+                    <Badge className="ml-1 h-4 px-1 text-[10px]" variant="secondary">{overdueCount}</Badge>
+                  )}
+                </Button>
               </div>
 
               {checkedVisibleIds.length > 0 && (
@@ -556,14 +586,14 @@ export const AdminUnifiedInbox = () => {
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : conversations.length === 0 ? (
+              ) : visibleConversations.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <Inbox className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>{showArchived ? 'No archived conversations' : 'No conversations yet'}</p>
+                  <p>{overdueOnly ? 'No overdue conversations' : showArchived ? 'No archived conversations' : 'No conversations yet'}</p>
                   <p className="text-xs mt-1">Messages from customers will appear here</p>
                 </div>
               ) : (
-                conversations.map((conv) => (
+                visibleConversations.map((conv) => (
                   <ConversationItem
                     key={conv.id}
                     conversation={conv}
