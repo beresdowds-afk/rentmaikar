@@ -189,6 +189,27 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
     },
   });
 
+  const { data: owners } = useQuery({
+    queryKey: ["admin-catalogue-owners"],
+    queryFn: async () => {
+      const { data: roles, error: rolesErr } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "owner");
+      if (rolesErr) throw rolesErr;
+      const ids = (roles ?? []).map((r) => r.user_id);
+      if (!ids.length) return [] as DriverRow[];
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .in("user_id", ids);
+      if (error) throw error;
+      return (data ?? []) as DriverRow[];
+    },
+  });
+
+
+
   const {
     data: recommendations,
     isLoading: recsLoading,
