@@ -1,5 +1,12 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Switch } from "@/components/ui/switch";
+import PublicListingPreview from "@/components/catalogue/PublicListingPreview";
+import { useRegion } from "@/contexts/RegionContext";
+import { useCategoryPrices } from "@/hooks/usePublicVehicles";
+import categoryBudget from "@/assets/category-budget.jpg";
+import categoryStandard from "@/assets/category-standard.jpg";
+import categoryPremium from "@/assets/category-premium.jpg";
 import { Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -44,6 +51,7 @@ import {
   ChevronRight,
   X,
   Sparkles,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -60,7 +68,16 @@ interface VehicleRow {
   pickup_city: string | null;
   pickup_location: string | null;
   owner_id: string;
+  is_public: boolean | null;
+  photo_urls: string[] | null;
 }
+
+const categoryForYear = (year?: number | null): "budget" | "standard" | "premium" => {
+  if (!year) return "standard";
+  if (year <= 2016) return "budget";
+  if (year <= 2020) return "standard";
+  return "premium";
+};
 
 interface DriverRow {
   user_id: string;
@@ -109,6 +126,10 @@ interface Props {
 
 export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
   const { user } = useAuth();
+  const { country, currencySymbol } = useRegion();
+  const { data: categoryPrices } = useCategoryPrices(country === "Nigeria" ? "NIGERIA" : "USA");
+  const [previewVehicle, setPreviewVehicle] = useState<VehicleRow | null>(null);
+  const [savingVisibility, setSavingVisibility] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [activeChips, setActiveChips] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -121,12 +142,12 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: vehicles, isLoading } = useQuery({
+  const { data: vehicles, isLoading, refetch: refetchVehicles } = useQuery({
     queryKey: ["admin-catalogue-vehicles"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vehicles")
-        .select("id, make, model, year, color, license_plate, vin, status, pickup_city, pickup_location, owner_id")
+        .select("id, make, model, year, color, license_plate, vin, status, pickup_city, pickup_location, owner_id, is_public, photo_urls")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as VehicleRow[];
@@ -210,6 +231,35 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
     setMakeFilter("");
     setPage(1);
   };
+
+  const setVisibility = async (v: VehicleRow, isPublic: boolean) => {
+    setSavingVisibility(v.id);
+    try {
+      const { error } = await supabase
+        .from("vehicles")
+        .update({
+          is_public: isPublic,
+          status: isPublic ? (v.status === "available" ? "available" : "active") : "inactive",
+        })
+        .eq("id", v.id);
+      if (error) throw error;
+      toast.success(isPublic ? "Vehicle published" : "Vehicle hidden", {
+        description: `${v.year} ${v.make} ${v.model} is now ${isPublic ? "visible" : "hidden"} on the public catalogue.`,
+      });
+      await refetchVehicles();
+    } catch (e: any) {
+      toast.error("Could not update visibility", { description: e.message });
+    } finally {
+      setSavingVisibility(null);
+    }
+  };
+
+  const previewPrice = useMemo(() => {
+    if (!previewVehicle) return undefined;
+    const cat = categoryForYear(previewVehicle.year);
+    const row = (categoryPrices ?? []).find((p: any) => p.category === cat);
+    return row ? Number(row.price) : undefined;
+  }, [previewVehicle, categoryPrices]);
 
   const handleRecommend = async () => {
     if (!recommendVehicle || !selectedDriverId || !user) return;
@@ -391,6 +441,7 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
                           <TableHead>Location</TableHead>
                           <TableHead>Country</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Public</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -414,7 +465,23 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
                                   {v.status || "pending"}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="text-right">
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Switch
+                                    checked={Boolean(v.is_public)}
+                                    disabled={savingVisibility === v.id}
+                                    onCheckedChange={(checked) => setVisibility(v, checked)}
+                                    aria-label="Toggle public visibility"
+                                  />
+                                  <span className="text-xs text-muted-foreground">
+                                    {v.is_public ? "Listed" : "Hidden"}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right space-x-2">
+                                <Button size="sm" variant="ghost" className="gap-1" onClick={() => setPreviewVehicle(v)}>
+                                  <Eye className="h-3 w-3" /> Preview
+                                </Button>
                                 <Button size="sm" variant="outline" className="gap-1" onClick={() => setRecommendVehicle(v)}>
                                   <Send className="h-3 w-3" /> Recommend
                                 </Button>
@@ -424,7 +491,7 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
                         })}
                         {!paged.length && (
                           <TableRow>
-                            <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                            <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                               No vehicles match these filters.
                             </TableCell>
                           </TableRow>
