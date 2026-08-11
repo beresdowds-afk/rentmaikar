@@ -577,7 +577,19 @@ export const AdminUnifiedInbox = () => {
                     <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetFlag(checkedVisibleIds, false))}>
                       <Flag className="h-3.5 w-3.5 mr-1" /> Unflag
                     </Button>
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetArchived(checkedVisibleIds, !showArchived))}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() =>
+                        confirmBulk(
+                          showArchived ? 'Restore conversations?' : 'Archive conversations?',
+                          `This will ${showArchived ? 'restore' : 'archive'} ${checkedVisibleIds.length} selected conversation${checkedVisibleIds.length === 1 ? '' : 's'}.`,
+                          showArchived ? 'Restore' : 'Archive',
+                          () => bulkSetArchived(checkedVisibleIds, !showArchived),
+                        )
+                      }
+                    >
                       <Archive className="h-3.5 w-3.5 mr-1" /> {showArchived ? 'Restore' : 'Archive'}
                     </Button>
                     <Select onValueChange={(v) => runBulk(() => bulkAssign(checkedVisibleIds, v === 'unassigned' ? null : v))}>
@@ -592,7 +604,17 @@ export const AdminUnifiedInbox = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Select onValueChange={(v) => runBulk(() => bulkSetStatus(checkedVisibleIds, v))}>
+                    <Select
+                      key={selectResetKey}
+                      onValueChange={(v) =>
+                        confirmBulk(
+                          'Change status?',
+                          `This will set ${checkedVisibleIds.length} selected conversation${checkedVisibleIds.length === 1 ? '' : 's'} to "${v}".`,
+                          'Change status',
+                          () => bulkSetStatus(checkedVisibleIds, v),
+                        )
+                      }
+                    >
                       <SelectTrigger className="h-7 w-28 text-xs">
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
@@ -603,6 +625,7 @@ export const AdminUnifiedInbox = () => {
                         <SelectItem value="closed">Closed</SelectItem>
                       </SelectContent>
                     </Select>
+
                   </div>
                 </div>
               )}
