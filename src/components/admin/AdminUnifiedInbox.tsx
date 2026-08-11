@@ -218,17 +218,63 @@ const MessageThread = ({
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [usedCanned, setUsedCanned] = useState<{ id: string; title: string } | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
 
+  const addFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const incoming = Array.from(files);
+    const accepted: File[] = [];
+    incoming.forEach((f) => {
+      const invalid = validateAttachmentFile(f);
+      if (invalid) toast.error(invalid);
+      else accepted.push(f);
+    });
+    setPendingFiles((prev) => {
+      const merged = [...prev, ...accepted];
+      if (merged.length > MAX_ATTACHMENTS) {
+        toast.error(`You can attach up to ${MAX_ATTACHMENTS} files per reply`);
+        return merged.slice(0, MAX_ATTACHMENTS);
+      }
+      return merged;
+    });
+  };
 
   const handleSend = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() && pendingFiles.length === 0) return;
     setIsSending(true);
     const body = newMessage;
+
+    let uploaded: OutboundAttachment[] = [];
+    if (pendingFiles.length > 0) {
+      if (!user) {
+        toast.error('You must be signed in to attach files');
+        setIsSending(false);
+        return;
+      }
+      setIsUploading(true);
+      const { attachments, errors } = await uploadInboxAttachments(
+        pendingFiles,
+        user.id,
+        conversation.id,
+      );
+      setIsUploading(false);
+      errors.forEach((e) => toast.error(e));
+      if (attachments.length === 0) {
+        setIsSending(false);
+        return;
+      }
+      uploaded = attachments;
+    }
+
     const success = await sendMessage(
       body,
       conversation.channel,
       conversation.user_phone,
-      conversation.user_email
+      conversation.user_email,
+      uploaded,
     );
     if (usedCanned) {
       await logCannedReplyUsage({
@@ -244,6 +290,8 @@ const MessageThread = ({
     }
     if (success) {
       setNewMessage('');
+      setPendingFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
     setIsSending(false);
   };
