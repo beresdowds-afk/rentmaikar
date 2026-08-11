@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
+import { maybeAutoReply } from "../_shared/auto-reply.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
