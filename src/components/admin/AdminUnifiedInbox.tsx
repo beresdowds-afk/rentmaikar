@@ -318,10 +318,35 @@ const MessageThread = ({
             }}
           />
         </div>
-        <div className="flex items-center justify-between mt-2">
-          <span className="text-xs text-muted-foreground">
-            {isSendingReply ? 'Delivering message...' : 'Press Ctrl+Enter to send'}
-          </span>
+        <div className="flex items-center justify-between mt-2 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Select
+              value=""
+              onValueChange={(id) => {
+                const canned = cannedReplies.find((r) => r.id === id);
+                if (canned) setNewMessage((prev) => (prev ? `${prev}\n${canned.body}` : canned.body));
+              }}
+            >
+              <SelectTrigger className="h-8 w-[190px]">
+                <SelectValue placeholder="Insert canned reply" />
+              </SelectTrigger>
+              <SelectContent>
+                {cannedReplies.filter((r) => r.is_active && (!r.channel || r.channel === conversation.channel)).length === 0 ? (
+                  <SelectItem value="__none__" disabled>No canned replies</SelectItem>
+                ) : (
+                  cannedReplies
+                    .filter((r) => r.is_active && (!r.channel || r.channel === conversation.channel))
+                    .map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.title}</SelectItem>
+                    ))
+                )}
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground truncate">
+              {isSendingReply ? 'Delivering message...' : 'Ctrl+Enter to send'}
+            </span>
+          </div>
+
           <Button onClick={handleSend} disabled={!newMessage.trim() || isSending || isSendingReply}>
             {(isSending || isSendingReply) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Send via {conversation.channel}
