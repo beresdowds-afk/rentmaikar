@@ -2,7 +2,7 @@
 // compliance training completion; pushes the outcome to the driver's devices
 // and records an in-app notification trail.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { z } from "npm:zod@3.23.8";
 import { requireAdminCaller } from "../_shared/guard.ts";
 

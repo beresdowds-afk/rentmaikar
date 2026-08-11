@@ -52,6 +52,7 @@ import {
   X,
   Sparkles,
   Eye,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -141,6 +142,22 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
   const [selectedDriverId, setSelectedDriverId] = useState<string>("");
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const emptyForm = {
+    make: "",
+    model: "",
+    year: String(new Date().getFullYear()),
+    color: "",
+    license_plate: "",
+    vin: "",
+    pickup_city: "",
+    pickup_location: "",
+    owner_id: "",
+    is_public: true,
+  };
+  const [form, setForm] = useState({ ...emptyForm });
 
   const { data: vehicles, isLoading, refetch: refetchVehicles } = useQuery({
     queryKey: ["admin-catalogue-vehicles"],
@@ -172,6 +189,27 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
       return (data ?? []) as DriverRow[];
     },
   });
+
+  const { data: owners } = useQuery({
+    queryKey: ["admin-catalogue-owners"],
+    queryFn: async () => {
+      const { data: roles, error: rolesErr } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "owner");
+      if (rolesErr) throw rolesErr;
+      const ids = (roles ?? []).map((r) => r.user_id);
+      if (!ids.length) return [] as DriverRow[];
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .in("user_id", ids);
+      if (error) throw error;
+      return (data ?? []) as DriverRow[];
+    },
+  });
+
+
 
   const {
     data: recommendations,
@@ -251,6 +289,70 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
       toast.error("Could not update visibility", { description: e.message });
     } finally {
       setSavingVisibility(null);
+    }
+  };
+
+  const bulkSetVisibility = async (isPublic: boolean) => {
+    const ids = filtered.map((v) => v.id);
+    if (!ids.length) return;
+    setBulkBusy(true);
+    try {
+      const { error } = await supabase
+        .from("vehicles")
+        .update({ is_public: isPublic, status: isPublic ? "available" : "inactive" })
+        .in("id", ids);
+      if (error) throw error;
+      toast.success(
+        isPublic ? `Published ${ids.length} vehicle${ids.length === 1 ? "" : "s"}` : `Hid ${ids.length} vehicle${ids.length === 1 ? "" : "s"}`,
+        { description: "The public catalogue has been updated." },
+      );
+      await refetchVehicles();
+    } catch (e: any) {
+      toast.error("Bulk update failed", { description: e.message });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const createVehicle = async () => {
+    if (!user) return;
+    if (!form.make.trim() || !form.model.trim() || !form.license_plate.trim()) {
+      toast.error("Make, model and licence plate are required");
+      return;
+    }
+    const year = Number(form.year);
+    if (!Number.isFinite(year) || year < 1980 || year > new Date().getFullYear() + 1) {
+      toast.error("Enter a valid manufacture year");
+      return;
+    }
+    setCreating(true);
+    try {
+      const { error } = await supabase.from("vehicles").insert({
+        owner_id: form.owner_id || user.id,
+        make: form.make.trim(),
+        model: form.model.trim(),
+        year,
+        color: form.color.trim() || null,
+        license_plate: form.license_plate.trim().toUpperCase(),
+        vin: form.vin.trim() ? form.vin.trim().toUpperCase() : null,
+        pickup_city: form.pickup_city.trim() || null,
+        pickup_location: form.pickup_location.trim() || null,
+        is_public: form.is_public,
+        status: form.is_public ? "available" : "pending",
+      });
+      if (error) throw error;
+      toast.success("Vehicle added", {
+        description: form.is_public
+          ? "It is now live on the public catalogue."
+          : "Saved as hidden — publish it when ready.",
+      });
+      setAddOpen(false);
+      setForm({ ...emptyForm });
+      await refetchVehicles();
+    } catch (e: any) {
+      toast.error("Could not add vehicle", { description: e.message });
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -413,17 +515,40 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between space-y-0">
               <CardTitle className="text-base">
                 {isLoading
                   ? "Loading..."
                   : `${filtered.length} vehicle${filtered.length === 1 ? "" : "s"}`}
               </CardTitle>
-              {!isLoading && filtered.length > 0 && (
-                <div className="text-xs text-muted-foreground">
-                  Page {currentPage} of {totalPages}
-                </div>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1">
+                  <Plus className="h-4 w-4" /> Add vehicle
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkBusy || isLoading || filtered.length === 0}
+                  onClick={() => bulkSetVisibility(true)}
+                  className="gap-1"
+                >
+                  {bulkBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                  Publish all ({filtered.length})
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={bulkBusy || isLoading || filtered.length === 0}
+                  onClick={() => bulkSetVisibility(false)}
+                >
+                  Hide all
+                </Button>
+                {!isLoading && filtered.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -680,6 +805,82 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
     </Dialog>
   );
 
+  const addDialog = (
+    <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) setForm({ ...emptyForm }); }}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5 text-primary" /> Add vehicle to catalogue
+          </DialogTitle>
+          <DialogDescription>
+            Create a listing and choose whether it is immediately visible to public visitors.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Make *</label>
+            <Input value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })} placeholder="Toyota" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Model *</label>
+            <Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="Corolla" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Year *</label>
+            <Input value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} inputMode="numeric" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Colour</label>
+            <Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} placeholder="Silver" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Licence plate *</label>
+            <Input value={form.license_plate} onChange={(e) => setForm({ ...form, license_plate: e.target.value })} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">VIN</label>
+            <Input value={form.vin} onChange={(e) => setForm({ ...form, vin: e.target.value })} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Pickup city</label>
+            <Input value={form.pickup_city} onChange={(e) => setForm({ ...form, pickup_city: e.target.value })} placeholder="Lagos / Atlanta" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Pickup location</label>
+            <Input value={form.pickup_location} onChange={(e) => setForm({ ...form, pickup_location: e.target.value })} />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <label className="text-xs text-muted-foreground">Owner</label>
+            <Select value={form.owner_id || "self"} onValueChange={(v) => setForm({ ...form, owner_id: v === "self" ? "" : v })}>
+              <SelectTrigger><SelectValue placeholder="Owner" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="self">Platform (me)</SelectItem>
+                {(owners ?? []).map((o) => (
+                  <SelectItem key={o.user_id} value={o.user_id}>{o.full_name || o.email}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="sm:col-span-2 flex items-center justify-between rounded-md border border-border p-3">
+            <div>
+              <div className="text-sm font-medium">Publish immediately</div>
+              <div className="text-xs text-muted-foreground">Show this vehicle on the public catalogue.</div>
+            </div>
+            <Switch checked={form.is_public} onCheckedChange={(c) => setForm({ ...form, is_public: c })} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setAddOpen(false)}>Cancel</Button>
+          <Button onClick={createVehicle} disabled={creating} className="gap-1">
+            {creating && <Loader2 className="h-4 w-4 animate-spin" />} Save vehicle
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+
+
   const dialog = (
     <RecommendDialog
       vehicle={recommendVehicle}
@@ -700,6 +901,7 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
         {body}
         {dialog}
         {previewDialog}
+        {addDialog}
       </>
     );
   }
@@ -711,6 +913,7 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
       <Footer />
       {dialog}
       {previewDialog}
+        {addDialog}
     </div>
   );
 }

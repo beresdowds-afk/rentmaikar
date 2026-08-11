@@ -2,7 +2,7 @@
 // reminder to every driver whose compliance training is not fully verified,
 // and to drivers whose 6-month refresh is due.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { requireInternal } from "../_shared/guard.ts";
 
 Deno.serve(async (req) => {
