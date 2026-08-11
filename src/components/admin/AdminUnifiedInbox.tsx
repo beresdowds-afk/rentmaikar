@@ -404,10 +404,33 @@ export const AdminUnifiedInbox = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 h-[600px] xl:h-[min(760px,72dvh)]">
           {/* Conversation List */}
           <div className="border-r xl:col-span-2">
-            <div className="p-3 border-b bg-muted/30">
-              <Input placeholder="Search conversations..." className="h-8" />
+            <div className="p-3 border-b bg-muted/30 space-y-2">
+              <Input
+                placeholder="Search conversations..."
+                className="h-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={flaggedOnly ? 'default' : 'outline'}
+                  className="h-7 text-xs"
+                  onClick={() => setFlaggedOnly(!flaggedOnly)}
+                >
+                  <Flag className="h-3.5 w-3.5 mr-1" /> Flagged
+                </Button>
+                <Button
+                  size="sm"
+                  variant={showArchived ? 'default' : 'outline'}
+                  className="h-7 text-xs"
+                  onClick={() => setShowArchived(!showArchived)}
+                >
+                  <Archive className="h-3.5 w-3.5 mr-1" /> Archived
+                </Button>
+              </div>
             </div>
-            <ScrollArea className="h-[calc(600px-48px)] xl:h-[calc(min(760px,72dvh)-48px)]">
+            <ScrollArea className="h-[calc(600px-96px)] xl:h-[calc(min(760px,72dvh)-96px)]">
               {isLoading ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -415,7 +438,7 @@ export const AdminUnifiedInbox = () => {
               ) : conversations.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <Inbox className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>No conversations yet</p>
+                  <p>{showArchived ? 'No archived conversations' : 'No conversations yet'}</p>
                   <p className="text-xs mt-1">Messages from customers will appear here</p>
                 </div>
               ) : (
@@ -423,8 +446,11 @@ export const AdminUnifiedInbox = () => {
                   <ConversationItem
                     key={conv.id}
                     conversation={conv}
-                    isSelected={selectedConversation?.id === conv.id}
+                    isSelected={current?.id === conv.id}
                     onClick={() => setSelectedConversation(conv)}
+                    onToggleFlag={() => toggleFlag(conv)}
+                    onArchive={() => setArchived(conv, !conv.archived_at)}
+                    onMarkRead={(read) => markConversationRead(conv.id, read)}
                   />
                 ))
               )}
@@ -434,12 +460,18 @@ export const AdminUnifiedInbox = () => {
           {/* Message Thread */}
           <div className="col-span-2 xl:col-span-3">
 
-            {selectedConversation ? (
+            {current ? (
               <MessageThread 
-                conversation={selectedConversation}
+                conversation={current}
                 onUpdateStatus={handleUpdateStatus}
+                staff={staff}
+                onAssign={(userId) => assignConversation(current.id, userId)}
+                onToggleFlag={() => toggleFlag(current)}
+                onArchive={() => setArchived(current, !current.archived_at)}
+                onMarkRead={(read) => markConversationRead(current.id, read)}
               />
             ) : (
+
               <div className="flex items-center justify-center h-full text-muted-foreground">
                 <div className="text-center">
                   <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
