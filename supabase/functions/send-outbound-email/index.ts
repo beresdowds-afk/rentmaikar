@@ -327,6 +327,17 @@ serve(async (req) => {
 
       // Analytics
       await updateAnalytics(supabase, category, result.success ? "sent" : "failed");
+      await logOutboundDecision(supabase, {
+        channel: "email",
+        decision: result.success ? "sent" : "failed",
+        reason: result.success ? "accepted_by_provider" : String(result.error ?? "provider_error").slice(0, 300),
+        region: country ?? null,
+        provider: "resend",
+        recipient: to,
+        notificationType: templateName,
+        messageId: result.messageId,
+        functionName: "send-outbound-email",
+      });
 
       // Log messaging event
       await logMessagingEvent(supabase, {

@@ -132,10 +132,29 @@ serve(async (req) => {
 
     if (!emailResponse.ok) {
       const errorData = await emailResponse.text();
+      await logOutboundDecision(supabase, {
+        channel: "email",
+        decision: "failed",
+        reason: `provider_error_${emailResponse.status}: ${errorData}`.slice(0, 300),
+        region: conversation?.region ?? null,
+        provider: "resend",
+        recipient: recipientEmail,
+        functionName: "send-email-reply",
+      });
       throw new Error(`Failed to send email: ${errorData}`);
     }
 
     const emailResult = await emailResponse.json();
+    await logOutboundDecision(supabase, {
+      channel: "email",
+      decision: "sent",
+      reason: "accepted_by_provider",
+      region: conversation?.region ?? null,
+      provider: "resend",
+      recipient: recipientEmail,
+      messageId: emailResult?.id ?? null,
+      functionName: "send-email-reply",
+    });
     console.log("Email sent successfully:", emailResult);
 
     // Update the message with external_id
