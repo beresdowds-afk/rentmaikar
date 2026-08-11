@@ -231,6 +231,70 @@ export const useInboxConversations = () => {
     return true;
   };
 
+  const bulkUpdateConversations = async (ids: string[], updates: Partial<InboxConversation>) => {
+    if (!ids.length) return false;
+    const { error } = await supabase
+      .from('inbox_conversations')
+      .update(updates)
+      .in('id', ids);
+
+    if (error) {
+      console.error('Error bulk updating conversations:', error);
+      toast.error('Bulk action failed');
+      return false;
+    }
+    await fetchConversations();
+    return true;
+  };
+
+  const bulkSetFlag = async (ids: string[], flagged: boolean) => {
+    const ok = await bulkUpdateConversations(ids, { is_flagged: flagged });
+    if (ok) toast.success(`${ids.length} conversation(s) ${flagged ? 'flagged' : 'unflagged'}`);
+    return ok;
+  };
+
+  const bulkSetArchived = async (ids: string[], archived: boolean) => {
+    const ok = await bulkUpdateConversations(ids, {
+      archived_at: archived ? new Date().toISOString() : null,
+    });
+    if (ok) toast.success(`${ids.length} conversation(s) ${archived ? 'archived' : 'restored'}`);
+    return ok;
+  };
+
+  const bulkAssign = async (ids: string[], userId: string | null) => {
+    const ok = await bulkUpdateConversations(ids, { assigned_to: userId });
+    if (ok) toast.success(userId ? `${ids.length} conversation(s) delegated` : 'Assignments cleared');
+    return ok;
+  };
+
+  const bulkMarkRead = async (ids: string[], read: boolean) => {
+    if (!ids.length) return false;
+    const { error } = await supabase
+      .from('inbox_messages')
+      .update(read
+        ? { is_read: true, read_at: new Date().toISOString() }
+        : { is_read: false, read_at: null })
+      .in('conversation_id', ids)
+      .eq('sender_type', 'user');
+
+    if (error) {
+      console.error('Error bulk updating read state:', error);
+      toast.error('Bulk action failed');
+      return false;
+    }
+    await fetchUnreadCounts();
+    toast.success(`${ids.length} conversation(s) marked as ${read ? 'read' : 'unread'}`);
+    return true;
+  };
+
+  const bulkSetStatus = async (ids: string[], status: string) => {
+    const ok = await bulkUpdateConversations(ids, { status });
+    if (ok) toast.success(`${ids.length} conversation(s) set to ${status}`);
+    return ok;
+  };
+
+
+
   // Real-time subscription for conversations
   useEffect(() => {
     fetchConversations();
