@@ -307,8 +307,9 @@ const MessageThread = ({
 
 
 
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <InboxSlaBadge conversation={conversation} showElapsed />
+          <InboxReplyAuditPanel conversationId={conversation.id} />
         </div>
 
         {conversation.subject && (
