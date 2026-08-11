@@ -18,6 +18,38 @@ const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
 export const isImageAttachment = (a: InboxAttachment) =>
   a.contentType.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.name);
 
+export type AttachmentKind = 'image' | 'pdf' | 'document' | 'spreadsheet' | 'audio' | 'video' | 'archive' | 'other';
+
+export const ATTACHMENT_KIND_LABELS: Record<AttachmentKind, string> = {
+  image: 'Images',
+  pdf: 'PDFs',
+  document: 'Documents',
+  spreadsheet: 'Spreadsheets',
+  audio: 'Audio',
+  video: 'Video',
+  archive: 'Archives',
+  other: 'Other files',
+};
+
+/** Classifies an attachment by content type, falling back to its extension. */
+export const attachmentKind = (a: InboxAttachment): AttachmentKind => {
+  const type = (a.contentType || '').toLowerCase();
+  const name = (a.name || '').toLowerCase();
+
+  if (isImageAttachment(a)) return 'image';
+  if (type === 'application/pdf' || /\.pdf$/.test(name)) return 'pdf';
+  if (type.startsWith('audio/') || /\.(mp3|wav|m4a|ogg|amr)$/.test(name)) return 'audio';
+  if (type.startsWith('video/') || /\.(mp4|mov|webm|avi|3gp)$/.test(name)) return 'video';
+  if (/\.(csv|xlsx?|ods)$/.test(name) || type.includes('spreadsheet') || type.includes('excel') || type === 'text/csv')
+    return 'spreadsheet';
+  if (/\.(docx?|rtf|odt|txt|pages)$/.test(name) || type.includes('word') || type.startsWith('text/'))
+    return 'document';
+  if (/\.(zip|rar|7z|tar|gz)$/.test(name) || type.includes('zip') || type.includes('compressed'))
+    return 'archive';
+  return 'other';
+};
+
+
 export const formatFileSize = (bytes: number | null): string => {
   if (!bytes || bytes <= 0) return '';
   if (bytes < 1024) return `${bytes} B`;

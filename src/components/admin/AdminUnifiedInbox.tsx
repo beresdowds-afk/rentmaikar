@@ -54,8 +54,12 @@ import {
   uploadInboxAttachments,
   validateAttachmentFile,
   formatFileSize,
+  ATTACHMENT_KIND_LABELS,
+  type AttachmentKind,
   type OutboundAttachment,
 } from '@/lib/inbox-attachments';
+import { useInboxAttachmentSearch } from '@/hooks/useInboxAttachmentSearch';
+
 
 import {
   AlertDialog,
@@ -115,6 +119,7 @@ const ConversationItem = ({
   onMarkRead,
   isChecked,
   onCheckedChange,
+  attachmentCount = 0,
 }: {
   conversation: InboxConversation;
   isSelected: boolean;
@@ -124,6 +129,7 @@ const ConversationItem = ({
   onMarkRead: (read: boolean) => void;
   isChecked: boolean;
   onCheckedChange: (checked: boolean) => void;
+  attachmentCount?: number;
 }) => {
   const ChannelIcon = channelIcons[conversation.channel as keyof typeof channelIcons] || Mail;
   const StatusIcon = statusIcons[conversation.status as keyof typeof statusIcons] || AlertCircle;
@@ -159,6 +165,12 @@ const ConversationItem = ({
             <Badge className="h-5 px-1.5 text-[10px]">{unread}</Badge>
           )}
           {conversation.is_flagged && <Flag className="h-3.5 w-3.5 text-orange-500" />}
+          {attachmentCount > 0 && (
+            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] gap-0.5">
+              <Paperclip className="h-3 w-3" />
+              {attachmentCount}
+            </Badge>
+          )}
         </div>
         <Badge variant="outline" className={priorityColors[conversation.priority as keyof typeof priorityColors]}>
           {conversation.priority}
@@ -555,16 +567,32 @@ export const AdminUnifiedInbox = () => {
   const [selectedConversation, setSelectedConversation] = useState<InboxConversation | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [attachmentKindFilter, setAttachmentKindFilter] = useState<AttachmentKind | 'all' | 'any'>('all');
+  const [attachmentQuery, setAttachmentQuery] = useState('');
   const [allMatchingIds, setAllMatchingIds] = useState<string[] | null>(null);
   const [isResolvingAll, setIsResolvingAll] = useState(false);
   const nowTick = useNowTick();
 
+  const {
+    hits: attachmentHits,
+    conversationIds: attachmentConversationIds,
+    isLoading: isSearchingAttachments,
+    isActive: attachmentFilterActive,
+  } = useInboxAttachmentSearch({ kind: attachmentKindFilter, query: attachmentQuery });
+
+  const attachmentCountByConversation = attachmentHits.reduce<Record<string, number>>((acc, hit) => {
+    acc[hit.conversationId] = (acc[hit.conversationId] || 0) + 1;
+    return acc;
+  }, {});
+
   const overdueCount = conversations.filter(
     (c) => getSlaInfo(c, nowTick).state === 'overdue',
   ).length;
-  const visibleConversations = overdueOnly
-    ? conversations.filter((c) => getSlaInfo(c, nowTick).state === 'overdue')
-    : conversations;
+  const visibleConversations = conversations.filter((c) => {
+    if (overdueOnly && getSlaInfo(c, nowTick).state !== 'overdue') return false;
+    if (attachmentFilterActive && !(attachmentConversationIds || []).includes(c.id)) return false;
+    return true;
+  });
 
   const current = selectedConversation
     ? conversations.find((c) => c.id === selectedConversation.id) ?? selectedConversation
@@ -581,16 +609,29 @@ export const AdminUnifiedInbox = () => {
   // Any change to filters/search invalidates a whole-result selection
   useEffect(() => {
     setAllMatchingIds(null);
-  }, [statusFilter, channelFilter, searchQuery, showArchived, flaggedOnly, overdueOnly]);
+  }, [
+    statusFilter,
+    channelFilter,
+    searchQuery,
+    showArchived,
+    flaggedOnly,
+    overdueOnly,
+    attachmentKindFilter,
+    attachmentQuery,
+  ]);
 
   const selectAllResults = async () => {
     setIsResolvingAll(true);
     const ids = await fetchAllMatchingIds();
     setIsResolvingAll(false);
     if (!ids) return;
-    setAllMatchingIds(ids);
-    setSelectedIds((prev) => [...new Set([...prev, ...ids])]);
+    const scoped = attachmentFilterActive
+      ? ids.filter((id) => (attachmentConversationIds || []).includes(id))
+      : ids;
+    setAllMatchingIds(scoped);
+    setSelectedIds((prev) => [...new Set([...prev, ...scoped])]);
   };
+
 
   const clearSelection = () => {
     setSelectedIds([]);
@@ -752,6 +793,59 @@ export const AdminUnifiedInbox = () => {
                 </Button>
               </div>
 
+              <div className="flex items-center gap-2">
+                <Select
+                  value={attachmentKindFilter}
+                  onValueChange={(v) => setAttachmentKindFilter(v as AttachmentKind | 'all' | 'any')}
+                >
+                  <SelectTrigger className="h-8 w-[150px] text-xs">
+                    <Paperclip className="h-3.5 w-3.5 mr-1 shrink-0" />
+                    <SelectValue placeholder="Attachments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any thread</SelectItem>
+                    <SelectItem value="any">Has attachment</SelectItem>
+                    {(Object.keys(ATTACHMENT_KIND_LABELS) as AttachmentKind[]).map((k) => (
+                      <SelectItem key={k} value={k}>{ATTACHMENT_KIND_LABELS[k]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="Search file names..."
+                  className="h-8 text-xs"
+                  value={attachmentQuery}
+                  onChange={(e) => setAttachmentQuery(e.target.value)}
+                />
+                {(attachmentFilterActive) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => {
+                      setAttachmentKindFilter('all');
+                      setAttachmentQuery('');
+                    }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+
+              {attachmentFilterActive && (
+                <div className="rounded bg-muted/50 px-2 py-1 text-[11px] text-muted-foreground">
+                  {isSearchingAttachments ? (
+                    <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Searching attachments…</span>
+                  ) : (
+                    <>
+                      {attachmentHits.length} matching file{attachmentHits.length === 1 ? '' : 's'} in{' '}
+                      {visibleConversations.length} thread{visibleConversations.length === 1 ? '' : 's'}
+                    </>
+                  )}
+                </div>
+              )}
+
+
+
               {checkedVisibleIds.length > 0 && (
                 <div className="rounded-md border bg-background p-2 space-y-2">
                   <div className="flex items-center justify-between">
@@ -894,6 +988,7 @@ export const AdminUnifiedInbox = () => {
                     onMarkRead={(read) => markConversationRead(conv.id, read)}
                     isChecked={selectedIds.includes(conv.id)}
                     onCheckedChange={(checked) => toggleSelected(conv.id, checked)}
+                    attachmentCount={attachmentCountByConversation[conv.id] || 0}
                   />
                 ))
               )}
