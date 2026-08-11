@@ -98,11 +98,53 @@ export const useContactSettings = () => {
   return { settings, isLoading, fetchSettings, updateSetting };
 };
 
+export const useInboxStaff = () => {
+  const [staff, setStaff] = useState<InboxStaff[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('role', ['admin', 'admin_assistant']);
+      const ids = Array.from(new Set((roles || []).map(r => r.user_id))).filter(Boolean) as string[];
+      if (!ids.length) return;
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', ids);
+      if (cancelled) return;
+      setStaff((profs || []).map(p => ({ id: p.id, name: p.full_name || p.email || 'Staff member' })));
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  return staff;
+};
+
 export const useInboxConversations = () => {
   const [conversations, setConversations] = useState<InboxConversation[]>([]);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showArchived, setShowArchived] = useState(false);
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
+
+  const fetchUnreadCounts = useCallback(async () => {
+    const { data } = await supabase
+      .from('inbox_messages')
+      .select('conversation_id')
+      .eq('is_read', false)
+      .eq('sender_type', 'user');
+    const counts: Record<string, number> = {};
+    (data || []).forEach((m) => {
+      counts[m.conversation_id] = (counts[m.conversation_id] || 0) + 1;
+    });
+    setUnreadCounts(counts);
+  }, []);
 
   const fetchConversations = useCallback(async () => {
     setIsLoading(true);
@@ -117,6 +159,10 @@ export const useInboxConversations = () => {
     if (channelFilter !== 'all') {
       query = query.eq('channel', channelFilter);
     }
+    if (flaggedOnly) {
+      query = query.eq('is_flagged', true);
+    }
+    query = showArchived ? query.not('archived_at', 'is', null) : query.is('archived_at', null);
 
     const { data, error } = await query;
 
@@ -124,10 +170,11 @@ export const useInboxConversations = () => {
       console.error('Error fetching conversations:', error);
       toast.error('Failed to load conversations');
     } else {
-      setConversations(data || []);
+      setConversations((data || []) as InboxConversation[]);
     }
+    await fetchUnreadCounts();
     setIsLoading(false);
-  }, [statusFilter, channelFilter]);
+  }, [statusFilter, channelFilter, showArchived, flaggedOnly, fetchUnreadCounts]);
 
   const updateConversation = async (id: string, updates: Partial<InboxConversation>) => {
     const { error } = await supabase
@@ -140,8 +187,47 @@ export const useInboxConversations = () => {
       toast.error('Failed to update conversation');
       return false;
     }
-    
+
     await fetchConversations();
+    return true;
+  };
+
+  const toggleFlag = async (conv: InboxConversation) => {
+    const ok = await updateConversation(conv.id, { is_flagged: !conv.is_flagged });
+    if (ok) toast.success(conv.is_flagged ? 'Flag removed' : 'Conversation flagged');
+    return ok;
+  };
+
+  const setArchived = async (conv: InboxConversation, archived: boolean) => {
+    const ok = await updateConversation(conv.id, {
+      archived_at: archived ? new Date().toISOString() : null,
+    });
+    if (ok) toast.success(archived ? 'Conversation archived' : 'Conversation restored');
+    return ok;
+  };
+
+  const assignConversation = async (id: string, userId: string | null) => {
+    const ok = await updateConversation(id, { assigned_to: userId });
+    if (ok) toast.success(userId ? 'Conversation delegated' : 'Assignment cleared');
+    return ok;
+  };
+
+  const markConversationRead = async (id: string, read = true) => {
+    const { error } = await supabase
+      .from('inbox_messages')
+      .update(read
+        ? { is_read: true, read_at: new Date().toISOString() }
+        : { is_read: false, read_at: null })
+      .eq('conversation_id', id)
+      .eq('sender_type', 'user');
+
+    if (error) {
+      console.error('Error updating read state:', error);
+      toast.error('Failed to update read state');
+      return false;
+    }
+    await fetchUnreadCounts();
+    toast.success(read ? 'Marked as read' : 'Marked as unread');
     return true;
   };
 
@@ -160,8 +246,6 @@ export const useInboxConversations = () => {
           table: 'inbox_conversations',
         },
         (payload) => {
-          console.log('Conversation change:', payload);
-          
           if (payload.eventType === 'INSERT') {
             const newConv = payload.new as InboxConversation;
             setConversations(prev => [newConv, ...prev]);
@@ -170,7 +254,7 @@ export const useInboxConversations = () => {
             });
           } else if (payload.eventType === 'UPDATE') {
             const updatedConv = payload.new as InboxConversation;
-            setConversations(prev => 
+            setConversations(prev =>
               prev.map(c => c.id === updatedConv.id ? updatedConv : c)
             );
           } else if (payload.eventType === 'DELETE') {
@@ -184,19 +268,39 @@ export const useInboxConversations = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [statusFilter, channelFilter, fetchConversations]);
+  }, [fetchConversations]);
 
-  return { 
-    conversations, 
-    isLoading, 
-    fetchConversations, 
+  const q = searchQuery.trim().toLowerCase();
+  const filtered = (q
+    ? conversations.filter(c =>
+        [c.user_name, c.user_email, c.user_phone, c.subject, c.channel]
+          .filter(Boolean)
+          .some(v => String(v).toLowerCase().includes(q)))
+    : conversations
+  ).map(c => ({ ...c, unread_count: unreadCounts[c.id] || 0 }));
+
+  return {
+    conversations: filtered,
+    isLoading,
+    fetchConversations,
     updateConversation,
+    toggleFlag,
+    setArchived,
+    assignConversation,
+    markConversationRead,
     statusFilter,
     setStatusFilter,
     channelFilter,
-    setChannelFilter
+    setChannelFilter,
+    searchQuery,
+    setSearchQuery,
+    showArchived,
+    setShowArchived,
+    flaggedOnly,
+    setFlaggedOnly,
   };
 };
+
 
 export const useInboxMessages = (conversationId: string | null) => {
   const { user } = useAuth();
