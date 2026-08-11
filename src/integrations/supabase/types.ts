@@ -2110,6 +2110,48 @@ export type Database = {
         }
         Relationships: []
       }
+      event_notification_preferences: {
+        Row: {
+          category: string
+          created_at: string
+          email: boolean
+          id: string
+          in_app: boolean
+          slack: boolean
+          slack_webhook_url: string | null
+          updated_at: string
+          user_id: string
+          webhook: boolean
+          webhook_url: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          email?: boolean
+          id?: string
+          in_app?: boolean
+          slack?: boolean
+          slack_webhook_url?: string | null
+          updated_at?: string
+          user_id: string
+          webhook?: boolean
+          webhook_url?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          email?: boolean
+          id?: string
+          in_app?: boolean
+          slack?: boolean
+          slack_webhook_url?: string | null
+          updated_at?: string
+          user_id?: string
+          webhook?: boolean
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       expiry_notifications: {
         Row: {
           created_at: string
@@ -11792,6 +11834,7 @@ export type Database = {
       }
       normalize_country_label: { Args: { _v: string }; Returns: string }
       normalize_msisdn: { Args: { _phone: string }; Returns: string }
+      notification_category_for: { Args: { _kind: string }; Returns: string }
       onboarding_diagnostics: { Args: never; Returns: Json }
       owns_vehicle_text: { Args: { _vehicle_id: string }; Returns: boolean }
       payment_preflight: {
