@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { useInboxConversations, useInboxMessages, useInboxStaff, InboxConversation, InboxStaff } from '@/hooks/useUnifiedInbox';
 import { useCannedReplies } from '@/hooks/useCannedReplies';
+import { CannedRepliesManager } from '@/components/admin/CannedRepliesManager';
 
 import { format, formatDistanceToNow } from 'date-fns';
 
@@ -605,6 +606,8 @@ export const AdminUnifiedInbox = () => {
           </div>
         </div>
       </Card>
+
+      <CannedRepliesManager />
     </div>
   );
 };
