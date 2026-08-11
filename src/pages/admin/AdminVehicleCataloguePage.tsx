@@ -805,6 +805,82 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
     </Dialog>
   );
 
+  const addDialog = (
+    <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) setForm({ ...emptyForm }); }}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5 text-primary" /> Add vehicle to catalogue
+          </DialogTitle>
+          <DialogDescription>
+            Create a listing and choose whether it is immediately visible to public visitors.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Make *</label>
+            <Input value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })} placeholder="Toyota" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Model *</label>
+            <Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="Corolla" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Year *</label>
+            <Input value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} inputMode="numeric" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Colour</label>
+            <Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} placeholder="Silver" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Licence plate *</label>
+            <Input value={form.license_plate} onChange={(e) => setForm({ ...form, license_plate: e.target.value })} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">VIN</label>
+            <Input value={form.vin} onChange={(e) => setForm({ ...form, vin: e.target.value })} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Pickup city</label>
+            <Input value={form.pickup_city} onChange={(e) => setForm({ ...form, pickup_city: e.target.value })} placeholder="Lagos / Atlanta" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Pickup location</label>
+            <Input value={form.pickup_location} onChange={(e) => setForm({ ...form, pickup_location: e.target.value })} />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <label className="text-xs text-muted-foreground">Owner</label>
+            <Select value={form.owner_id || "self"} onValueChange={(v) => setForm({ ...form, owner_id: v === "self" ? "" : v })}>
+              <SelectTrigger><SelectValue placeholder="Owner" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="self">Platform (me)</SelectItem>
+                {(owners ?? []).map((o) => (
+                  <SelectItem key={o.user_id} value={o.user_id}>{o.full_name || o.email}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="sm:col-span-2 flex items-center justify-between rounded-md border border-border p-3">
+            <div>
+              <div className="text-sm font-medium">Publish immediately</div>
+              <div className="text-xs text-muted-foreground">Show this vehicle on the public catalogue.</div>
+            </div>
+            <Switch checked={form.is_public} onCheckedChange={(c) => setForm({ ...form, is_public: c })} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setAddOpen(false)}>Cancel</Button>
+          <Button onClick={createVehicle} disabled={creating} className="gap-1">
+            {creating && <Loader2 className="h-4 w-4 animate-spin" />} Save vehicle
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+
+
   const dialog = (
     <RecommendDialog
       vehicle={recommendVehicle}
