@@ -142,6 +142,7 @@ export const CannedRepliesManager = () => {
               onSetPriority={setRulePriority}
             />
 
+            <AutoReplyTestMode />
           </TabsContent>
         </Tabs>
       </CardContent>
