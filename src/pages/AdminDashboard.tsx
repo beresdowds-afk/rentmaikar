@@ -32,6 +32,7 @@ import { ExpiryNotificationsWidget } from "@/components/admin/ExpiryNotification
 import { NigeriaDriverVerification } from "@/components/admin/NigeriaDriverVerification";
 import { PoliceReportVerification } from "@/components/admin/PoliceReportVerification";
 import { SocialMediaManagement } from "@/components/admin/SocialMediaManagement";
+import SocialChannelIntegrations from "@/components/admin/SocialChannelIntegrations";
 import { IoTDeviceOrders } from "@/components/admin/IoTDeviceOrders";
 import { DeviceOrderRevenue } from "@/components/admin/DeviceOrderRevenue";
 import { UserAccountsView } from "@/components/admin/UserAccountsView";
@@ -805,10 +806,12 @@ const AdminDashboard = () => {
           {portalView === 'marketing' && (
             <div className="space-y-6">
               {activeTab === 'campaigns' && <SocialMediaManagement />}
-              {activeTab === 'facebook' && <SocialMediaManagement />}
-              {activeTab === 'instagram' && <SocialMediaManagement />}
-              {activeTab === 'linkedin' && <SocialMediaManagement />}
-              {activeTab === 'google' && <SocialMediaManagement />}
+              {['facebook', 'instagram', 'linkedin', 'google'].includes(activeTab) && (
+                <>
+                  <SocialChannelIntegrations />
+                  <SocialMediaManagement />
+                </>
+              )}
             </div>
           )}
 

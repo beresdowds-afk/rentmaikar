@@ -11078,6 +11078,10 @@ export type Database = {
         Args: { p_email: string; p_phone: string; p_username: string }
         Returns: boolean
       }
+      check_vehicle_booking_availability: {
+        Args: { _end: string; _start: string; _vehicle_id: string }
+        Returns: Json
+      }
       claim_idempotency_key: {
         Args: {
           _key: string

@@ -19,6 +19,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRegion } from "@/contexts/RegionContext";
 import { useSubmitBookingRequest } from "@/hooks/useBookingRequests";
 import { rememberReturnTo } from "@/lib/return-to";
+import {
+  useVehicleAvailability,
+  describeBookingError,
+  formatConflicts,
+} from "@/hooks/useVehicleAvailability";
 
 interface Props {
   open: boolean;
@@ -39,6 +44,14 @@ const BookingRequestDialog = ({ open, onOpenChange, vehicle, price }: Props) => 
   const [startDate, setStartDate] = useState(todayIso());
   const [endDate, setEndDate] = useState("");
   const [message, setMessage] = useState("");
+
+  const availability = useVehicleAvailability(
+    vehicle?.id,
+    startDate,
+    endDate,
+    open && Boolean(user),
+  );
+  const unavailable = availability.data && !availability.data.available;
 
   const canBook = Boolean(user) && (userRole === "driver" || userRole === "admin");
 
@@ -64,6 +77,12 @@ const BookingRequestDialog = ({ open, onOpenChange, vehicle, price }: Props) => 
       toast.error("The end date must be on or after the start date");
       return;
     }
+    if (unavailable) {
+      toast.error("Those dates aren't available", {
+        description: "Another booking already covers part of this period. Please choose different dates.",
+      });
+      return;
+    }
     try {
       await submit.mutateAsync({
         vehicleId: vehicle.id,
@@ -79,7 +98,8 @@ const BookingRequestDialog = ({ open, onOpenChange, vehicle, price }: Props) => 
       setEndDate("");
       onOpenChange(false);
     } catch (e: any) {
-      toast.error("Could not send request", { description: e?.message ?? "Please try again." });
+      availability.refetch();
+      toast.error("Could not send request", { description: describeBookingError(e?.message) });
     }
   };
 
@@ -140,10 +160,24 @@ const BookingRequestDialog = ({ open, onOpenChange, vehicle, price }: Props) => 
               </div>
             </div>
 
-            {days > 0 && (
+            {days > 0 && !unavailable && (
               <p className="text-xs text-muted-foreground">
-                {days} day{days === 1 ? "" : "s"} requested.
+                {availability.isFetching
+                  ? "Checking availability…"
+                  : `${days} day${days === 1 ? "" : "s"} requested${
+                      availability.data?.available ? " • these dates are available" : ""
+                    }.`}
               </p>
+            )}
+
+            {unavailable && (
+              <Alert variant="destructive">
+                <AlertDescription className="text-xs">
+                  These dates aren&apos;t available for this vehicle. Already booked:{" "}
+                  {formatConflicts(availability.data?.conflicts ?? []) || "another request covers this period"}.
+                  Please choose different dates.
+                </AlertDescription>
+              </Alert>
             )}
 
             <div className="space-y-1.5">
@@ -170,7 +204,7 @@ const BookingRequestDialog = ({ open, onOpenChange, vehicle, price }: Props) => 
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submit.isPending}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={submit.isPending}>
+            <Button onClick={handleSubmit} disabled={submit.isPending || Boolean(unavailable) || availability.isFetching}>
               {submit.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Send request
             </Button>
