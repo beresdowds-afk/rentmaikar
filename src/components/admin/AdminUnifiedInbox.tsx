@@ -396,6 +396,7 @@ export const AdminUnifiedInbox = () => {
     setArchived,
     assignConversation,
     markConversationRead,
+    fetchAllMatchingIds,
     bulkSetFlag,
     bulkSetArchived,
     bulkAssign,
@@ -417,6 +418,8 @@ export const AdminUnifiedInbox = () => {
   const [selectedConversation, setSelectedConversation] = useState<InboxConversation | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [allMatchingIds, setAllMatchingIds] = useState<string[] | null>(null);
+  const [isResolvingAll, setIsResolvingAll] = useState(false);
   const nowTick = useNowTick();
 
   const overdueCount = conversations.filter(
@@ -434,16 +437,44 @@ export const AdminUnifiedInbox = () => {
   const checkedVisibleIds = selectedIds.filter((id) => visibleIds.includes(id));
   const allVisibleChecked = visibleIds.length > 0 && checkedVisibleIds.length === visibleIds.length;
 
-  const toggleSelected = (id: string, checked: boolean) =>
-    setSelectedIds((prev) => (checked ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
+  // When "select all results" is active, bulk actions target every matching thread
+  const targetIds = allMatchingIds ?? checkedVisibleIds;
+  const targetCount = targetIds.length;
 
-  const toggleSelectAll = (checked: boolean) =>
+  // Any change to filters/search invalidates a whole-result selection
+  useEffect(() => {
+    setAllMatchingIds(null);
+  }, [statusFilter, channelFilter, searchQuery, showArchived, flaggedOnly, overdueOnly]);
+
+  const selectAllResults = async () => {
+    setIsResolvingAll(true);
+    const ids = await fetchAllMatchingIds();
+    setIsResolvingAll(false);
+    if (!ids) return;
+    setAllMatchingIds(ids);
+    setSelectedIds((prev) => [...new Set([...prev, ...ids])]);
+  };
+
+  const clearSelection = () => {
+    setSelectedIds([]);
+    setAllMatchingIds(null);
+  };
+
+  const toggleSelected = (id: string, checked: boolean) => {
+    setAllMatchingIds(null);
+    setSelectedIds((prev) => (checked ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setAllMatchingIds(null);
     setSelectedIds(checked ? [...new Set([...selectedIds, ...visibleIds])] : selectedIds.filter((id) => !visibleIds.includes(id)));
+  };
 
   const runBulk = async (action: () => Promise<unknown>) => {
     await action();
-    setSelectedIds([]);
+    clearSelection();
   };
+
 
   const [pendingBulk, setPendingBulk] = useState<{
     title: string;
