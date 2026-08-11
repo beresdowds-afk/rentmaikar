@@ -27,8 +27,16 @@ export interface InboxConversation {
   assigned_to: string | null;
   last_message_at: string;
   created_at: string;
+  is_flagged?: boolean;
+  archived_at?: string | null;
   unread_count?: number;
 }
+
+export interface InboxStaff {
+  id: string;
+  name: string;
+}
+
 
 export interface InboxMessage {
   id: string;
