@@ -589,7 +589,7 @@ export const useInboxMessages = (conversationId: string | null) => {
         channel,
         is_read: true,
         ...(attachmentList
-          ? { metadata: { attachments_detail: attachmentList as unknown as Json } }
+          ? { metadata: { attachments_detail: attachmentList } as unknown as Record<string, never> }
           : {}),
       });
 
