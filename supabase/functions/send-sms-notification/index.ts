@@ -481,6 +481,15 @@ const handler = async (req: Request): Promise<Response> => {
         error_message: errorMessage,
         metadata: { notification_type: body?.notificationType },
       });
+      await logOutboundDecision(supabase, {
+        channel: body?.channel === 'whatsapp' ? 'whatsapp' : 'sms',
+        decision: 'failed',
+        reason: errorMessage.slice(0, 300),
+        region: outboundRegionFromPhone(body?.phone),
+        recipient: body?.phone,
+        notificationType: body?.notificationType,
+        functionName: 'send-sms-notification',
+      });
     } catch (_) { /* ignore logging errors */ }
 
     return new Response(

@@ -61,7 +61,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     // ─── Admin outbound kill-switch (voice, per region) ───
     {
-      const paused = await outboundPausedResponse(supabase, 'call', region, corsHeaders);
+      const paused = await outboundPausedResponse(supabase, 'call', region, corsHeaders, {
+        recipient: recipients?.[0]?.phoneNumber ?? null,
+        notificationType: callType,
+        functionName: 'initiate-voip-call',
+      });
       if (paused) return paused;
     }
 

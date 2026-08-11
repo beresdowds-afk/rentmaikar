@@ -76,6 +76,7 @@ serve(async (req) => {
         channel === "whatsapp" ? "whatsapp" : "sms",
         conversation?.region ?? outboundRegionFromPhone(recipientPhone),
         corsHeaders,
+        { recipient: recipientPhone, functionName: "send-inbox-reply" },
       );
       if (paused) return paused;
     }
