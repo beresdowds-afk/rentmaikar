@@ -94,12 +94,15 @@ Deno.serve(async (req) => {
         if (roleList.includes("admin")) {
           allowed = true;
         } else if (roleList.includes("admin_assistant")) {
-          const { data: canAccess } = await supa.rpc("assistant_can_access_user", {
-            _assistant_id: exporterId,
-            _user_id: target_user_id,
-          } as any);
-          allowed = canAccess === true;
+          const { data: assignment } = await supa
+            .from("admin_assistant_user_assignments")
+            .select("id")
+            .eq("assistant_id", exporterId)
+            .eq("target_user_id", target_user_id)
+            .limit(1);
+          allowed = !!(assignment && assignment.length > 0);
         }
+
       }
       if (!allowed) return json(403, { error: "forbidden" });
 
