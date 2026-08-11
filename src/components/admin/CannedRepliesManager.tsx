@@ -16,6 +16,7 @@ import {
   CannedReply,
   AutoReplyRule,
 } from '@/hooks/useCannedReplies';
+import { AutoReplyPreview } from '@/components/admin/AutoReplyPreview';
 
 const ANY = '__any__';
 
