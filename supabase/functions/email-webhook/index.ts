@@ -877,7 +877,31 @@ serve(async (req) => {
       }
     }
 
+    // ─── Forward a copy to the configured regional support mailbox ───
+    const emailForward = await forwardInboundEmail(supabase, {
+      region,
+      fromAddress: senderAddress,
+      fromName: senderName,
+      subject: subject || "",
+      body: messageContent,
+      htmlBody: htmlBody || null,
+    });
+    if (emailForward.forwarded) {
+      await logMessagingEvent(supabase, {
+        channel: "email",
+        provider: "resend",
+        event_type: "forwarded",
+        direction: "outbound",
+        sender: recipientAddress,
+        region,
+        conversation_id: conversationId,
+        user_id: userId,
+        metadata: { forwarded_from: senderAddress },
+      });
+    }
+
     // Log inbound email event
+
     await logMessagingEvent(supabase, {
       channel: 'email',
       provider: 'resend',
