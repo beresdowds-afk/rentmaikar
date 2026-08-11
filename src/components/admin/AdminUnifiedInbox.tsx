@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,14 @@ import { InboxSlaBadge, useNowTick } from '@/components/admin/InboxSlaBadge';
 import { getSlaInfo } from '@/lib/inbox-sla';
 import { exportInboxConversations } from '@/lib/inbox-export';
 import { MessageAttachments } from '@/components/admin/MessageAttachments';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  MAX_ATTACHMENTS,
+  uploadInboxAttachments,
+  validateAttachmentFile,
+  formatFileSize,
+  type OutboundAttachment,
+} from '@/lib/inbox-attachments';
 
 import {
   AlertDialog,
