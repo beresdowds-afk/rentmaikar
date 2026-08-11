@@ -39,6 +39,7 @@ import { useCannedReplies } from '@/hooks/useCannedReplies';
 import { CannedRepliesManager } from '@/components/admin/CannedRepliesManager';
 import { InboxSlaBadge, useNowTick } from '@/components/admin/InboxSlaBadge';
 import { getSlaInfo } from '@/lib/inbox-sla';
+import { MessageAttachments } from '@/components/admin/MessageAttachments';
 
 import { format, formatDistanceToNow } from 'date-fns';
 
@@ -306,6 +307,7 @@ const MessageThread = ({
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <MessageAttachments metadata={message.metadata} />
                   <div className={`text-xs mt-1 ${
                     message.sender_type === 'admin' ? 'text-primary-foreground/70' : 'text-muted-foreground'
                   }`}>
