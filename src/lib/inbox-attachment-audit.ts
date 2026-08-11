@@ -40,7 +40,7 @@ export async function logAttachmentAccess(params: {
       conversation_id: params.conversationId ?? null,
       attachment_key: attachmentOcrKey(params.attachment),
       filename: params.attachment.name || 'attachment',
-      content_type: params.attachment.type ?? null,
+      content_type: params.attachment.contentType ?? null,
       action: params.action,
       user_id: user.id,
       user_email: user.email ?? null,
