@@ -305,6 +305,22 @@ const Catalogue = () => {
                 </SelectContent>
               </Select>
 
+              {country !== "Nigeria" && (
+                <Select value={String(radiusMiles)} onValueChange={(v) => changeRadius(Number(v))}>
+                  <SelectTrigger className="w-full md:w-44" aria-label="Search radius">
+                    <SelectValue placeholder="Radius" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RADIUS_OPTIONS.map((r) => (
+                      <SelectItem key={r} value={String(r)}>
+                        Within {r} miles
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={String(ANY_DISTANCE)}>Any distance</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+
               <Select value={availability} onValueChange={(v) => setAvailability(v as CatalogueAvailability)}>
                 <SelectTrigger className="w-full md:w-44">
                   <SelectValue placeholder="Availability" />
