@@ -377,6 +377,7 @@ const MessageThread = ({
 };
 
 export const AdminUnifiedInbox = () => {
+  useInboxAlerts();
   const { 
     conversations, 
     isLoading, 
@@ -640,6 +641,8 @@ export const AdminUnifiedInbox = () => {
           </div>
         </div>
       </Card>
+
+      <InboxNotificationSettings />
 
       <CannedRepliesManager />
     </div>
