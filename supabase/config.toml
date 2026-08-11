@@ -69,6 +69,9 @@ project_id = "bwvocmhcledbwqlpcswp"
     verify_jwt = false
   [functions.process-predue-reminders]
     verify_jwt = false
+  [functions.provider-health-alerts]
+    verify_jwt = false
+
   [functions.recording-status-callback]
     verify_jwt = false
   [functions.referee-attestation]
