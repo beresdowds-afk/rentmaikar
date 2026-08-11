@@ -789,6 +789,16 @@ serve(async (req) => {
 
     console.log("Email message saved successfully");
 
+    // Optional keyword auto-reply
+    await maybeAutoReply(supabase, {
+      conversationId,
+      content: messageContent || "",
+      channel: "email",
+      region,
+      recipientEmail: senderAddress,
+    });
+
+
     // ─── Notify support team for urgent/high priority ───
     if (finalPriority === "urgent" || finalPriority === "high") {
       try {
