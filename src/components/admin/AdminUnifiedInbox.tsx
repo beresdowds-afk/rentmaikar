@@ -324,19 +324,35 @@ export const AdminUnifiedInbox = () => {
     conversations, 
     isLoading, 
     updateConversation,
+    toggleFlag,
+    setArchived,
+    assignConversation,
+    markConversationRead,
     statusFilter,
     setStatusFilter,
     channelFilter,
-    setChannelFilter
+    setChannelFilter,
+    searchQuery,
+    setSearchQuery,
+    showArchived,
+    setShowArchived,
+    flaggedOnly,
+    setFlaggedOnly,
   } = useInboxConversations();
-  
+  const staff = useInboxStaff();
+
   const [selectedConversation, setSelectedConversation] = useState<InboxConversation | null>(null);
 
+  const current = selectedConversation
+    ? conversations.find((c) => c.id === selectedConversation.id) ?? selectedConversation
+    : null;
+
   const handleUpdateStatus = async (status: string) => {
-    if (!selectedConversation) return;
-    await updateConversation(selectedConversation.id, { status });
-    setSelectedConversation({ ...selectedConversation, status });
+    if (!current) return;
+    await updateConversation(current.id, { status });
+    setSelectedConversation({ ...current, status });
   };
+
 
   return (
     <div className="space-y-4">
