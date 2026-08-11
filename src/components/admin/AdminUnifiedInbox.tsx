@@ -212,17 +212,31 @@ const MessageThread = ({
   const { replies: cannedReplies } = useCannedReplies();
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [usedCanned, setUsedCanned] = useState<{ id: string; title: string } | null>(null);
 
 
   const handleSend = async () => {
     if (!newMessage.trim()) return;
     setIsSending(true);
+    const body = newMessage;
     const success = await sendMessage(
-      newMessage, 
+      body,
       conversation.channel,
       conversation.user_phone,
       conversation.user_email
     );
+    if (usedCanned) {
+      await logCannedReplyUsage({
+        conversationId: conversation.id,
+        channel: conversation.channel,
+        cannedReplyId: usedCanned.id,
+        cannedReplyTitle: usedCanned.title,
+        bodyPreview: body,
+        delivered: !!success,
+        errorMessage: success ? null : 'Send failed',
+      });
+      setUsedCanned(null);
+    }
     if (success) {
       setNewMessage('');
     }
