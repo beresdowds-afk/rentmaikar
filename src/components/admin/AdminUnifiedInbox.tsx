@@ -207,18 +207,44 @@ const MessageThread = ({
               </div>
             </div>
           </div>
-          <Select value={conversation.status} onValueChange={onUpdateStatus}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="resolved">Resolved</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant={conversation.is_flagged ? 'default' : 'outline'} onClick={onToggleFlag}>
+              <Flag className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onMarkRead((conversation.unread_count || 0) > 0)}>
+              {(conversation.unread_count || 0) > 0 ? <MailOpen className="h-4 w-4" /> : <MailQuestion className="h-4 w-4" />}
+            </Button>
+            <Button size="sm" variant="outline" onClick={onArchive}>
+              <Archive className="h-4 w-4" />
+            </Button>
+            <Select
+              value={conversation.assigned_to ?? 'unassigned'}
+              onValueChange={(v) => onAssign(v === 'unassigned' ? null : v)}
+            >
+              <SelectTrigger className="w-40">
+                <UserCheck className="h-3.5 w-3.5 mr-1" />
+                <SelectValue placeholder="Delegate" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {staff.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={conversation.status} onValueChange={onUpdateStatus}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="resolved">Resolved</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
         {conversation.subject && (
           <p className="mt-2 text-sm font-medium">{conversation.subject}</p>
         )}
