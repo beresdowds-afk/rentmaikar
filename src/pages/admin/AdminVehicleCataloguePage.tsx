@@ -901,6 +901,7 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
         {body}
         {dialog}
         {previewDialog}
+        {addDialog}
       </>
     );
   }
@@ -912,6 +913,7 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
       <Footer />
       {dialog}
       {previewDialog}
+        {addDialog}
     </div>
   );
 }
