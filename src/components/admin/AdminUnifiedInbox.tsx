@@ -32,7 +32,7 @@ import {
   Music
 
 } from 'lucide-react';
-import { useInboxConversations, useInboxMessages, InboxConversation } from '@/hooks/useUnifiedInbox';
+import { useInboxConversations, useInboxMessages, useInboxStaff, InboxConversation, InboxStaff } from '@/hooks/useUnifiedInbox';
 import { format, formatDistanceToNow } from 'date-fns';
 
 const channelIcons = {
