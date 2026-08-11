@@ -18,12 +18,21 @@ import {
 } from '@/hooks/useCannedReplies';
 import { AutoReplyPreview } from '@/components/admin/AutoReplyPreview';
 import { PlaceholderPicker } from '@/components/admin/PlaceholderPicker';
+import { AutoReplyPriorityEditor } from '@/components/admin/AutoReplyPriorityEditor';
 
 const ANY = '__any__';
 
 export const CannedRepliesManager = () => {
   const { replies, isLoading, saveReply, deleteReply } = useCannedReplies();
-  const { rules, isLoading: rulesLoading, saveRule, toggleRule, deleteRule } = useAutoReplyRules();
+  const {
+    rules,
+    isLoading: rulesLoading,
+    saveRule,
+    toggleRule,
+    deleteRule,
+    reorderRules,
+    setRulePriority,
+  } = useAutoReplyRules();
 
   const [replyDraft, setReplyDraft] = useState<Partial<CannedReply> | null>(null);
   const [ruleDraft, setRuleDraft] = useState<(Partial<AutoReplyRule> & { keywordsText?: string }) | null>(null);
