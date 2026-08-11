@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Inbox, 
   Mail, 
@@ -74,6 +75,8 @@ const ConversationItem = ({
   onToggleFlag,
   onArchive,
   onMarkRead,
+  isChecked,
+  onCheckedChange,
 }: {
   conversation: InboxConversation;
   isSelected: boolean;
@@ -81,6 +84,8 @@ const ConversationItem = ({
   onToggleFlag: () => void;
   onArchive: () => void;
   onMarkRead: (read: boolean) => void;
+  isChecked: boolean;
+  onCheckedChange: (checked: boolean) => void;
 }) => {
   const ChannelIcon = channelIcons[conversation.channel as keyof typeof channelIcons] || Mail;
   const StatusIcon = statusIcons[conversation.status as keyof typeof statusIcons] || AlertCircle;
@@ -98,6 +103,14 @@ const ConversationItem = ({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
+          <span onClick={(e) => e.stopPropagation()} className="flex items-center">
+            <Checkbox
+              checked={isChecked}
+              onCheckedChange={(v) => onCheckedChange(v === true)}
+              aria-label="Select conversation"
+            />
+          </span>
+
           <ChannelIcon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
           <span className={`truncate ${unread > 0 ? 'font-semibold' : 'font-medium'}`}>
             {conversation.user_name || conversation.user_email || 'Unknown User'}
@@ -328,6 +341,11 @@ export const AdminUnifiedInbox = () => {
     setArchived,
     assignConversation,
     markConversationRead,
+    bulkSetFlag,
+    bulkSetArchived,
+    bulkAssign,
+    bulkMarkRead,
+    bulkSetStatus,
     statusFilter,
     setStatusFilter,
     channelFilter,
@@ -342,16 +360,33 @@ export const AdminUnifiedInbox = () => {
   const staff = useInboxStaff();
 
   const [selectedConversation, setSelectedConversation] = useState<InboxConversation | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const current = selectedConversation
     ? conversations.find((c) => c.id === selectedConversation.id) ?? selectedConversation
     : null;
+
+  const visibleIds = conversations.map((c) => c.id);
+  const checkedVisibleIds = selectedIds.filter((id) => visibleIds.includes(id));
+  const allVisibleChecked = visibleIds.length > 0 && checkedVisibleIds.length === visibleIds.length;
+
+  const toggleSelected = (id: string, checked: boolean) =>
+    setSelectedIds((prev) => (checked ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
+
+  const toggleSelectAll = (checked: boolean) =>
+    setSelectedIds(checked ? [...new Set([...selectedIds, ...visibleIds])] : selectedIds.filter((id) => !visibleIds.includes(id)));
+
+  const runBulk = async (action: () => Promise<unknown>) => {
+    await action();
+    setSelectedIds([]);
+  };
 
   const handleUpdateStatus = async (status: string) => {
     if (!current) return;
     await updateConversation(current.id, { status });
     setSelectedConversation({ ...current, status });
   };
+
 
 
   return (
@@ -412,6 +447,11 @@ export const AdminUnifiedInbox = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={allVisibleChecked}
+                  onCheckedChange={(v) => toggleSelectAll(v === true)}
+                  aria-label="Select all conversations"
+                />
                 <Button
                   size="sm"
                   variant={flaggedOnly ? 'default' : 'outline'}
@@ -429,8 +469,59 @@ export const AdminUnifiedInbox = () => {
                   <Archive className="h-3.5 w-3.5 mr-1" /> Archived
                 </Button>
               </div>
+
+              {checkedVisibleIds.length > 0 && (
+                <div className="rounded-md border bg-background p-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium">{checkedVisibleIds.length} selected</span>
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setSelectedIds([])}>
+                      Clear
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkMarkRead(checkedVisibleIds, true))}>
+                      <MailOpen className="h-3.5 w-3.5 mr-1" /> Read
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkMarkRead(checkedVisibleIds, false))}>
+                      <MailQuestion className="h-3.5 w-3.5 mr-1" /> Unread
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetFlag(checkedVisibleIds, true))}>
+                      <Flag className="h-3.5 w-3.5 mr-1" /> Flag
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetFlag(checkedVisibleIds, false))}>
+                      <Flag className="h-3.5 w-3.5 mr-1" /> Unflag
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetArchived(checkedVisibleIds, !showArchived))}>
+                      <Archive className="h-3.5 w-3.5 mr-1" /> {showArchived ? 'Restore' : 'Archive'}
+                    </Button>
+                    <Select onValueChange={(v) => runBulk(() => bulkAssign(checkedVisibleIds, v === 'unassigned' ? null : v))}>
+                      <SelectTrigger className="h-7 w-36 text-xs">
+                        <UserCheck className="h-3.5 w-3.5 mr-1" />
+                        <SelectValue placeholder="Delegate" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {staff.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select onValueChange={(v) => runBulk(() => bulkSetStatus(checkedVisibleIds, v))}>
+                      <SelectTrigger className="h-7 w-28 text-xs">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="open">Open</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="resolved">Resolved</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
             </div>
-            <ScrollArea className="h-[calc(600px-96px)] xl:h-[calc(min(760px,72dvh)-96px)]">
+            <ScrollArea className="h-[calc(600px-160px)] xl:h-[calc(min(760px,72dvh)-160px)]">
               {isLoading ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -451,10 +542,13 @@ export const AdminUnifiedInbox = () => {
                     onToggleFlag={() => toggleFlag(conv)}
                     onArchive={() => setArchived(conv, !conv.archived_at)}
                     onMarkRead={(read) => markConversationRead(conv.id, read)}
+                    isChecked={selectedIds.includes(conv.id)}
+                    onCheckedChange={(checked) => toggleSelected(conv.id, checked)}
                   />
                 ))
               )}
             </ScrollArea>
+
           </div>
 
           {/* Message Thread */}
