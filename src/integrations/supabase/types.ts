@@ -2474,6 +2474,42 @@ export type Database = {
           },
         ]
       }
+      inbox_notification_settings: {
+        Row: {
+          alert_email: string | null
+          channel: string
+          created_at: string
+          email_enabled: boolean
+          id: string
+          in_app_enabled: boolean
+          min_priority: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_email?: string | null
+          channel: string
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          in_app_enabled?: boolean
+          min_priority?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_email?: string | null
+          channel?: string
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          in_app_enabled?: boolean
+          min_priority?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       invoice_activity_log: {
         Row: {
           action: string
