@@ -40,6 +40,8 @@ import { CannedRepliesManager } from '@/components/admin/CannedRepliesManager';
 import { InboxSlaBadge, useNowTick } from '@/components/admin/InboxSlaBadge';
 import { getSlaInfo } from '@/lib/inbox-sla';
 import { MessageAttachments } from '@/components/admin/MessageAttachments';
+import { InboxNotificationSettings } from '@/components/admin/InboxNotificationSettings';
+import { useInboxAlerts } from '@/hooks/useInboxAlerts';
 
 import { format, formatDistanceToNow } from 'date-fns';
 
