@@ -4,6 +4,7 @@ import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { whatchimp } from "../_shared/whatchimp-client.ts";
 import { manychat } from "../_shared/manychat-client.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
+import { outboundPausedResponse, outboundRegionFromPhone } from "../_shared/channel-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,6 +68,17 @@ serve(async (req) => {
     }
 
     if (!recipientPhone) throw new Error("recipientPhone required for phone-based channels");
+
+    // ─── Admin outbound kill-switch (per channel + region) ───
+    {
+      const paused = await outboundPausedResponse(
+        supabase,
+        channel === "whatsapp" ? "whatsapp" : "sms",
+        conversation?.region ?? outboundRegionFromPhone(recipientPhone),
+        corsHeaders,
+      );
+      if (paused) return paused;
+    }
 
     let forwardingFrom: string | null = null;
     let regionWhatsappProvider: string | null = null;

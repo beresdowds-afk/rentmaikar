@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
+import { outboundPausedResponse } from "../_shared/channel-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,6 +69,12 @@ serve(async (req) => {
       .select("subject, region")
       .eq("id", conversationId)
       .single();
+
+    // ─── Admin outbound kill-switch (email, per region) ───
+    {
+      const paused = await outboundPausedResponse(supabase, "email", conversation?.region, corsHeaders);
+      if (paused) return paused;
+    }
 
     const emailSubject = subject || 
       (conversation?.subject ? `Re: ${conversation.subject}` : "Reply from Rentmaikar Support");

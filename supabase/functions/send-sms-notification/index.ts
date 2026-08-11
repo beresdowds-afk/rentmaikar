@@ -4,6 +4,7 @@ import { getRegionConfig, getFromNumber, checkRateLimit, checkGlobalRateLimit } 
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import { resolveMessage, countryCodeForPhone } from "../_shared/message-templates.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
+import { outboundPausedResponse, outboundRegionFromPhone } from "../_shared/channel-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -242,6 +243,18 @@ const handler = async (req: Request): Promise<Response> => {
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
+    }
+
+    // ─── Admin outbound kill-switch (per channel + region) ───
+    {
+      const guardClient = createClient(Deno.env.get("SUPABASE_URL")!, supabaseServiceKey);
+      const paused = await outboundPausedResponse(
+        guardClient,
+        body.channel === 'whatsapp' ? 'whatsapp' : 'sms',
+        outboundRegionFromPhone(body.phone),
+        corsHeaders,
+      );
+      if (paused) return paused;
     }
 
     // ─── Rate limiting ───
