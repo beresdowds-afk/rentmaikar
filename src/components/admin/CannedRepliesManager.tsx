@@ -28,6 +28,15 @@ export const CannedRepliesManager = () => {
   const [ruleDraft, setRuleDraft] = useState<(Partial<AutoReplyRule> & { keywordsText?: string }) | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const ruleKeywords = (ruleDraft?.keywordsText ?? (ruleDraft?.keywords || []).join(', '))
+    .split(',')
+    .map((k) => k.trim())
+    .filter(Boolean);
+
+  const rulePreviewBody = ruleDraft?.canned_reply_id
+    ? replies.find((r) => r.id === ruleDraft.canned_reply_id)?.body || ''
+    : ruleDraft?.reply_body || '';
+
   const handleSaveReply = async () => {
     if (!replyDraft?.title?.trim() || !replyDraft?.body?.trim()) return;
     setSaving(true);
