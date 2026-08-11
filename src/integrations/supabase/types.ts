@@ -6230,6 +6230,66 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_health_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          channel: string | null
+          created_at: string
+          dedupe_key: string | null
+          details: Json
+          error_rate: number | null
+          failures: number
+          id: string
+          message: string
+          notified_channels: string[]
+          provider: string
+          sample_size: number
+          severity: string
+          updated_at: string
+          window_hours: number
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          channel?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          details?: Json
+          error_rate?: number | null
+          failures?: number
+          id?: string
+          message: string
+          notified_channels?: string[]
+          provider: string
+          sample_size?: number
+          severity?: string
+          updated_at?: string
+          window_hours?: number
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          channel?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          details?: Json
+          error_rate?: number | null
+          failures?: number
+          id?: string
+          message?: string
+          notified_channels?: string[]
+          provider?: string
+          sample_size?: number
+          severity?: string
+          updated_at?: string
+          window_hours?: number
+        }
+        Relationships: []
+      }
       proxy_action_idempotency: {
         Row: {
           action: string
@@ -11733,6 +11793,7 @@ export type Database = {
       normalize_country_label: { Args: { _v: string }; Returns: string }
       normalize_msisdn: { Args: { _phone: string }; Returns: string }
       onboarding_diagnostics: { Args: never; Returns: Json }
+      owns_vehicle_text: { Args: { _vehicle_id: string }; Returns: boolean }
       payment_preflight: {
         Args: { _context?: Json; _operation: string }
         Returns: Json
@@ -12133,6 +12194,7 @@ export type Database = {
         Returns: boolean
       }
       verify_cron_secret: { Args: { _secret: string }; Returns: boolean }
+      verify_cron_token: { Args: { _token: string }; Returns: boolean }
     }
     Enums: {
       access_level_enum: "view_only" | "full"

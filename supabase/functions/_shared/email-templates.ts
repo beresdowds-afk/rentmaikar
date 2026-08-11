@@ -1634,4 +1634,34 @@ export type EmailTemplate =
   | 'email_verification'
   | 'password_reset'
   | 'login_alert'
-  | 'account_deactivated';
+  | 'account_deactivated'
+  | 'provider_health_alert';
+
+/**
+ * Communication provider health alert (Twilio / Termii / Resend).
+ * Sent to admins when delivery, bounce or webhook error rates spike.
+ */
+export const providerHealthAlertEmail = (data: {
+  provider: string;
+  severity: string;
+  windowHours: number;
+  headline: string;
+  lines: string[];
+  dashboardUrl: string;
+}) => {
+  const content = `
+    <h1>${data.severity === 'critical' ? '🚨' : '⚠️'} Provider alert: ${escapeHtml(data.provider)}</h1>
+    <p style="color:#64748b;">Detected over the last ${data.windowHours} hour(s).</p>
+    <div class="warning-box">
+      <h2>${escapeHtml(data.headline)}</h2>
+      <ul>${data.lines.map((l) => `<li>${escapeHtml(l)}</li>`).join('')}</ul>
+    </div>
+    <a href="${data.dashboardUrl}" class="cta-button">Open Provider Health →</a>
+  `;
+  return {
+    subject: `[${data.severity.toUpperCase()}] ${data.provider} delivery issues — ${data.headline}`,
+    html: emailWrapper(content, 'Provider Health Alert'),
+    from: formatSenderEmail('admin'),
+  };
+};
+

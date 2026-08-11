@@ -46,6 +46,8 @@ import {
   accountDeactivatedEmail,
   personaStatusUpdateEmail,
   personaStatusDigestEmail,
+  providerHealthAlertEmail,
+
 } from "../_shared/email-templates.ts";
 
 const corsHeaders = {
@@ -138,6 +140,8 @@ function renderTemplate(
     account_deactivated: accountDeactivatedEmail,
     persona_status_update: personaStatusUpdateEmail,
     persona_status_digest: personaStatusDigestEmail,
+    provider_health_alert: providerHealthAlertEmail,
+
   };
 
   const fn = templateMap[templateName];
