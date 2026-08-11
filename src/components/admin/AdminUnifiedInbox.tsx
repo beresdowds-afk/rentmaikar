@@ -119,6 +119,7 @@ const ConversationItem = ({
   onMarkRead,
   isChecked,
   onCheckedChange,
+  attachmentCount = 0,
 }: {
   conversation: InboxConversation;
   isSelected: boolean;
@@ -128,6 +129,7 @@ const ConversationItem = ({
   onMarkRead: (read: boolean) => void;
   isChecked: boolean;
   onCheckedChange: (checked: boolean) => void;
+  attachmentCount?: number;
 }) => {
   const ChannelIcon = channelIcons[conversation.channel as keyof typeof channelIcons] || Mail;
   const StatusIcon = statusIcons[conversation.status as keyof typeof statusIcons] || AlertCircle;
