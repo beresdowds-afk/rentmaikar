@@ -6,7 +6,7 @@
 // Invoked by admins from the Provider Billing panel and by pg_cron daily.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { hologram } from "../_shared/hologram-client.ts";
 
 const json = (status: number, body: unknown) =>

@@ -1,4 +1,4 @@
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
 import { requireCronSecretAsync } from "../_shared/cron-auth.ts";
 import { getEmqxManagementConfig, classifyManagementFailure } from "../_shared/emqx-config.ts";
 import { getEmqxCredentials } from "../_shared/emqx-credentials.ts";
