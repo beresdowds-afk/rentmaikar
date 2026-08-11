@@ -3833,6 +3833,57 @@ export type Database = {
           },
         ]
       }
+      outbound_decision_log: {
+        Row: {
+          channel: string
+          created_at: string
+          decision: string
+          direction: string
+          function_name: string | null
+          id: string
+          message_id: string | null
+          metadata: Json
+          notification_type: string | null
+          provider: string | null
+          reason: string | null
+          recipient_masked: string | null
+          region: string | null
+          user_id: string | null
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          decision: string
+          direction?: string
+          function_name?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json
+          notification_type?: string | null
+          provider?: string | null
+          reason?: string | null
+          recipient_masked?: string | null
+          region?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          decision?: string
+          direction?: string
+          function_name?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json
+          notification_type?: string | null
+          provider?: string | null
+          reason?: string | null
+          recipient_masked?: string | null
+          region?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       outreach_contacts: {
         Row: {
           contact_type: string
