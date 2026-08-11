@@ -43,8 +43,8 @@ export const formatDuration = (minutes: number): string => {
 export const getSlaInfo = (
   conversation: Pick<
     InboxConversation,
-    'status' | 'priority' | 'last_message_at' | 'created_at' | 'updated_at'
-  >,
+    'status' | 'priority' | 'last_message_at' | 'created_at'
+  > & { updated_at?: string | null },
   now: number = Date.now(),
 ): SlaInfo => {
   const targetMinutes =
@@ -55,7 +55,7 @@ export const getSlaInfo = (
     conversation.last_message_at || conversation.created_at,
   ).getTime();
   const endedAt = stopped
-    ? new Date(conversation.updated_at || conversation.last_message_at).getTime()
+    ? new Date(conversation.updated_at ?? conversation.last_message_at).getTime()
     : now;
 
   const elapsedMinutes = Math.max(0, (endedAt - startedAt) / 60000);
