@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +32,8 @@ import {
   Linkedin,
   MessageCircle,
   Music,
-  AlarmClock
+  AlarmClock,
+  Download
 
 } from 'lucide-react';
 import { useInboxConversations, useInboxMessages, useInboxStaff, InboxConversation, InboxStaff } from '@/hooks/useUnifiedInbox';
@@ -39,7 +41,9 @@ import { useCannedReplies } from '@/hooks/useCannedReplies';
 import { CannedRepliesManager } from '@/components/admin/CannedRepliesManager';
 import { InboxSlaBadge, useNowTick } from '@/components/admin/InboxSlaBadge';
 import { getSlaInfo } from '@/lib/inbox-sla';
+import { exportInboxConversations } from '@/lib/inbox-export';
 import { MessageAttachments } from '@/components/admin/MessageAttachments';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -460,6 +464,24 @@ export const AdminUnifiedInbox = () => {
     setAllMatchingIds(null);
   };
 
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async (ids: string[]) => {
+    if (!ids.length) return;
+    setIsExporting(true);
+    try {
+      const names = Object.fromEntries(staff.map((s) => [s.id, s.name]));
+      const count = await exportInboxConversations(ids, names);
+      toast.success(`Exported ${count} thread${count === 1 ? '' : 's'} to CSV`);
+    } catch (error) {
+      console.error('Error exporting conversations:', error);
+      toast.error('Export failed');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+
   const toggleSelected = (id: string, checked: boolean) => {
     setAllMatchingIds(null);
     setSelectedIds((prev) => (checked ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
@@ -652,6 +674,16 @@ export const AdminUnifiedInbox = () => {
                     <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetFlag(targetIds, false))}>
                       <Flag className="h-3.5 w-3.5 mr-1" /> Unflag
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      disabled={isExporting}
+                      onClick={() => handleExport(targetIds)}
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1" /> {isExporting ? 'Exporting…' : 'Export CSV'}
+                    </Button>
+
                     <Button
                       size="sm"
                       variant="outline"
