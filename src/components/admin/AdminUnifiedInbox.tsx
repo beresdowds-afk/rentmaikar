@@ -429,8 +429,49 @@ const MessageThread = ({
             }}
           />
         </div>
+
+        {pendingFiles.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {pendingFiles.map((file, i) => (
+              <div key={`${file.name}-${i}`} className="flex items-center gap-2 rounded-md border px-2 py-1 text-xs">
+                <Paperclip className="h-3 w-3 text-muted-foreground" />
+                <span className="max-w-[160px] truncate">{file.name}</span>
+                <span className="text-muted-foreground">{formatFileSize(file.size)}</span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${file.name}`}
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={() => setPendingFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center justify-between mt-2 gap-2">
           <div className="flex items-center gap-2 min-w-0">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
+              onChange={(e) => addFiles(e.target.files)}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={pendingFiles.length >= MAX_ATTACHMENTS}
+              aria-label="Attach files"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+
             <Select
               value=""
               onValueChange={(id) => {
