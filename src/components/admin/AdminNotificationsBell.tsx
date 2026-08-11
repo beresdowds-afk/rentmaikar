@@ -25,6 +25,7 @@ interface AdminNotification {
   related_access_level: string | null;
   read_at: string | null;
   created_at: string;
+  metadata?: unknown;
 }
 
 const KIND_COLORS: Record<string, string> = {
