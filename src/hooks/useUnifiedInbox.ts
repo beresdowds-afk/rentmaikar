@@ -565,8 +565,16 @@ export const useInboxMessages = (conversationId: string | null) => {
     setIsLoading(false);
   }, [conversationId]);
 
-  const sendMessage = async (content: string, channel: string, recipientPhone?: string | null, recipientEmail?: string | null) => {
+  const sendMessage = async (
+    content: string,
+    channel: string,
+    recipientPhone?: string | null,
+    recipientEmail?: string | null,
+    attachments?: OutboundAttachment[],
+  ) => {
     if (!conversationId || !user) return false;
+
+    const attachmentList = attachments && attachments.length > 0 ? attachments : null;
 
     // First, save the message to the database
     const { error } = await supabase
@@ -579,6 +587,9 @@ export const useInboxMessages = (conversationId: string | null) => {
         content,
         channel,
         is_read: true,
+        ...(attachmentList
+          ? { metadata: { attachments_detail: attachmentList as unknown as Json } }
+          : {}),
       });
 
     if (error) {
@@ -607,6 +618,7 @@ export const useInboxMessages = (conversationId: string | null) => {
               messageContent: content,
               channel,
               recipientPhone,
+              attachments: attachmentList,
             },
           });
 
@@ -631,6 +643,7 @@ export const useInboxMessages = (conversationId: string | null) => {
             conversationId,
             messageContent: content,
             recipientEmail,
+            attachments: attachmentList,
           },
         });
 
