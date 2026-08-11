@@ -189,6 +189,7 @@ const App = () => (
                   <Route path="/owner/onboarding" element={<OwnerOnboarding />} />
                   <Route path="/onboarding/legal-agreement" element={<OnboardingLegalAgreement />} />
                   <Route path="/catalogue/:category" element={<Catalogue />} />
+                  <Route path="/vehicle/:id" element={<VehicleDetails />} />
                   <Route 
                     path="/api-docs" 
                     element={
