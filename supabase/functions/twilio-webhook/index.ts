@@ -427,6 +427,16 @@ serve(async (req) => {
 
     console.log(`${parsed.type} message saved successfully`);
 
+    // Optional keyword auto-reply
+    await maybeAutoReply(supabase, {
+      conversationId,
+      content: parsed.content || "",
+      channel,
+      region,
+      recipientPhone: cleanFrom,
+    });
+
+
     // Log inbound messaging event
     await logMessagingEvent(supabase, {
       channel,
