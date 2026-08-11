@@ -546,6 +546,10 @@ export const AdminContactSettings = () => {
 
       <CompanyInfoRealtimeDebug />
 
+      <ForwardingSettingsPanel />
+
+
+
       {/* Message Forwarding Numbers */}
       <Card>
         <CardHeader>
