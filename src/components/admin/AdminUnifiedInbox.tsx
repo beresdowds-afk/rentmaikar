@@ -37,6 +37,8 @@ import {
 
 } from 'lucide-react';
 import { useInboxConversations, useInboxMessages, useInboxStaff, InboxConversation, InboxStaff } from '@/hooks/useUnifiedInbox';
+import { renderPlaceholders } from '@/lib/reply-placeholders';
+import { useReplyPlaceholderValues } from '@/hooks/useReplyPlaceholderValues';
 import { useCannedReplies } from '@/hooks/useCannedReplies';
 import { logCannedReplyUsage } from '@/hooks/useInboxReplyAudit';
 import { InboxReplyAuditPanel } from '@/components/admin/InboxReplyAuditPanel';
@@ -212,6 +214,7 @@ const MessageThread = ({
 }) => {
   const { messages, isLoading, isSendingReply, sendMessage } = useInboxMessages(conversation.id);
   const { replies: cannedReplies } = useCannedReplies();
+  const { values: placeholderValues } = useReplyPlaceholderValues(conversation.id);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [usedCanned, setUsedCanned] = useState<{ id: string; title: string } | null>(null);
@@ -377,7 +380,10 @@ const MessageThread = ({
               onValueChange={(id) => {
                 const canned = cannedReplies.find((r) => r.id === id);
                 if (canned) {
-                  setNewMessage((prev) => (prev ? `${prev}\n${canned.body}` : canned.body));
+                  const body = renderPlaceholders(canned.body, placeholderValues, {
+                    keepUnknown: false,
+                  });
+                  setNewMessage((prev) => (prev ? `${prev}\n${body}` : body));
                   setUsedCanned({ id: canned.id, title: canned.title });
                 }
               }}

@@ -2,6 +2,8 @@
 // Evaluates admin-configured keyword rules against an inbound message and,
 // when a rule matches, sends the configured reply on the same channel.
 
+import { renderPlaceholders, resolvePlaceholderValues } from "./reply-placeholders.ts";
+
 type AnySupabase = any;
 
 interface AutoReplyContext {
@@ -132,6 +134,7 @@ export async function maybeAutoReply(
       body = canned?.body || "";
       cannedTitle = canned?.title || null;
     }
+    const rawBody = body;
     if (!body.trim()) {
       await logAudit({
         rule_id: rule.id,
@@ -146,6 +149,12 @@ export async function maybeAutoReply(
         error_message: "Rule matched but reply body was empty",
       });
       return false;
+    }
+
+    // Resolve dynamic placeholders ({{first_name}}, {{vehicle}}, ...) before sending.
+    if (/\{\{\s*[a-z0-9_]+\s*\}\}/i.test(rawBody)) {
+      const values = await resolvePlaceholderValues(supabase, ctx.conversationId);
+      body = renderPlaceholders(rawBody, values);
     }
 
     const { data: inserted } = await supabase

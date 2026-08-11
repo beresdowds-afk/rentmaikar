@@ -17,6 +17,7 @@ import {
   AutoReplyRule,
 } from '@/hooks/useCannedReplies';
 import { AutoReplyPreview } from '@/components/admin/AutoReplyPreview';
+import { PlaceholderPicker } from '@/components/admin/PlaceholderPicker';
 
 const ANY = '__any__';
 
@@ -189,9 +190,14 @@ export const CannedRepliesManager = () => {
                 rows={5}
                 value={replyDraft?.body || ''}
                 onChange={(e) => setReplyDraft((d) => ({ ...d, body: e.target.value }))}
-                placeholder="Hi, thanks for reaching out..."
+                placeholder="Hi {{first_name}}, thanks for reaching out..."
               />
             </div>
+            <PlaceholderPicker
+              onInsert={(token) =>
+                setReplyDraft((d) => ({ ...d, body: `${d?.body || ''}${token}` }))
+              }
+            />
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Channel</Label>
@@ -315,15 +321,22 @@ export const CannedRepliesManager = () => {
               </Select>
             </div>
             {!ruleDraft?.canned_reply_id && (
-              <div>
+              <div className="space-y-2">
                 <Label>Custom reply text</Label>
                 <Textarea
                   rows={4}
                   value={ruleDraft?.reply_body || ''}
                   onChange={(e) => setRuleDraft((d) => ({ ...d, reply_body: e.target.value }))}
+                  placeholder="Hi {{first_name}}, your {{vehicle}} booking runs to {{booking_end}}."
+                />
+                <PlaceholderPicker
+                  onInsert={(token) =>
+                    setRuleDraft((d) => ({ ...d, reply_body: `${d?.reply_body || ''}${token}` }))
+                  }
                 />
               </div>
             )}
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Priority (lower runs first)</Label>
