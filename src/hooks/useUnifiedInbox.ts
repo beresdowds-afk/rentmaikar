@@ -499,6 +499,8 @@ export const useInboxConversations = () => {
     conversations: filtered,
     isLoading,
     fetchConversations,
+    fetchAllMatchingIds,
+
     updateConversation,
     toggleFlag,
     setArchived,
