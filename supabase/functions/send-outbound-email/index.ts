@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
+import { outboundPausedResponse } from "../_shared/channel-guard.ts";
 import {
   welcomeDriverEmail,
   welcomeOwnerEmail,
@@ -275,6 +276,12 @@ serve(async (req) => {
 
       if (!to || !templateName) {
         throw new Error("Missing required fields: to, templateName");
+      }
+
+      // ─── Admin outbound kill-switch (email, per region) ───
+      {
+        const paused = await outboundPausedResponse(supabase, "email", country, corsHeaders);
+        if (paused) return paused;
       }
 
       // Render template
