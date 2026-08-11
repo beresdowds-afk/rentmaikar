@@ -234,3 +234,10 @@ export const uploadInboxAttachments = async (
 
   return { attachments, errors };
 };
+
+/** Stable key used to store/lookup OCR text for an attachment. */
+export const attachmentOcrKey = (a: InboxAttachment): string => a.path || a.url || a.name;
+
+/** OCR is supported for images and PDFs only. */
+export const supportsOcr = (a: InboxAttachment): boolean =>
+  isImageAttachment(a) || attachmentKind(a) === 'pdf';

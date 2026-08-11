@@ -224,8 +224,10 @@ const MessageThread = ({
   onToggleFlag,
   onArchive,
   onMarkRead,
+  highlightQuery = '',
 }: { 
   conversation: InboxConversation;
+  highlightQuery?: string;
   onUpdateStatus: (status: string) => void;
   staff: InboxStaff[];
   onAssign: (userId: string | null) => void;
@@ -414,7 +416,12 @@ const MessageThread = ({
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                  <MessageAttachments metadata={message.metadata} />
+                  <MessageAttachments
+                    metadata={message.metadata}
+                    messageId={message.id}
+                    conversationId={conversation.id}
+                    highlightQuery={highlightQuery}
+                  />
                   <div className={`text-xs mt-1 ${
                     message.sender_type === 'admin' ? 'text-primary-foreground/70' : 'text-muted-foreground'
                   }`}>
@@ -1008,6 +1015,7 @@ export const AdminUnifiedInbox = () => {
                 onToggleFlag={() => toggleFlag(current)}
                 onArchive={() => setArchived(current, !current.archived_at)}
                 onMarkRead={(read) => markConversationRead(current.id, read)}
+                highlightQuery={attachmentQuery}
               />
             ) : (
 

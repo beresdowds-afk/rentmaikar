@@ -2260,6 +2260,57 @@ export type Database = {
           },
         ]
       }
+      inbox_attachment_ocr: {
+        Row: {
+          attachment_key: string
+          char_count: number
+          content_type: string | null
+          conversation_id: string | null
+          created_at: string
+          error: string | null
+          extracted_text: string | null
+          filename: string
+          id: string
+          message_id: string
+          processed_at: string | null
+          requested_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attachment_key: string
+          char_count?: number
+          content_type?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          error?: string | null
+          extracted_text?: string | null
+          filename?: string
+          id?: string
+          message_id: string
+          processed_at?: string | null
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attachment_key?: string
+          char_count?: number
+          content_type?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          error?: string | null
+          extracted_text?: string | null
+          filename?: string
+          id?: string
+          message_id?: string
+          processed_at?: string | null
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inbox_auto_reply_rules: {
         Row: {
           canned_reply_id: string | null
