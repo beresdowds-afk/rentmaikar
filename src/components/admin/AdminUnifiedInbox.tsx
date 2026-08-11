@@ -376,7 +376,10 @@ const MessageThread = ({
               value=""
               onValueChange={(id) => {
                 const canned = cannedReplies.find((r) => r.id === id);
-                if (canned) setNewMessage((prev) => (prev ? `${prev}\n${canned.body}` : canned.body));
+                if (canned) {
+                  setNewMessage((prev) => (prev ? `${prev}\n${canned.body}` : canned.body));
+                  setUsedCanned({ id: canned.id, title: canned.title });
+                }
               }}
             >
               <SelectTrigger className="h-8 w-[190px]">
