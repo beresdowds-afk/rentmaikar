@@ -466,14 +466,22 @@ const Catalogue = () => {
                           <div className="absolute top-3 right-3 bg-card/90 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-medium">
                             {vehicle.status === "available" ? "Available" : "Rented"}
                           </div>
-                          {!vehicle.isNearby && (
-                            <div className="absolute top-3 left-3 bg-muted/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-xs">
-                              <MapPin className="w-3 h-3 text-muted-foreground" />
-                              <span className="text-muted-foreground">
-                                {country === "Nigeria" ? vehicle.nearestCity : `${Math.round(vehicle.distance)} mi`}
-                              </span>
-                            </div>
-                          )}
+                          <div
+                            className={`absolute top-3 left-3 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-xs ${
+                              sortBy === "distance"
+                                ? "bg-accent/90 text-accent-foreground font-medium"
+                                : "bg-muted/90 text-muted-foreground"
+                            }`}
+                          >
+                            <MapPin className="w-3 h-3" />
+                            <span>
+                              {country === "Nigeria"
+                                ? vehicle.nearestCity
+                                : Number.isFinite(vehicle.distance)
+                                  ? `${vehicle.distance.toFixed(1)} mi away`
+                                  : "Distance unknown"}
+                            </span>
+                          </div>
                         </div>
 
                         <div className="p-4">
