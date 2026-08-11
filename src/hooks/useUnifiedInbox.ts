@@ -176,6 +176,35 @@ export const useInboxConversations = () => {
     setIsLoading(false);
   }, [statusFilter, channelFilter, showArchived, flaggedOnly, fetchUnreadCounts]);
 
+  // Resolve every conversation id matching the current filters + search,
+  // independent of what is currently loaded in the list.
+  const fetchAllMatchingIds = useCallback(async (): Promise<string[] | null> => {
+    let query = supabase.from('inbox_conversations').select('id');
+
+    if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+    if (channelFilter !== 'all') query = query.eq('channel', channelFilter);
+    if (flaggedOnly) query = query.eq('is_flagged', true);
+    query = showArchived ? query.not('archived_at', 'is', null) : query.is('archived_at', null);
+
+    const q = searchQuery.trim();
+    if (q) {
+      const like = `%${q.replace(/[%,]/g, '')}%`;
+      query = query.or(
+        `user_name.ilike.${like},user_email.ilike.${like},user_phone.ilike.${like},subject.ilike.${like},channel.ilike.${like}`,
+      );
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('Error resolving matching conversations:', error);
+      toast.error('Could not select all results');
+      return null;
+    }
+    return (data || []).map((r) => r.id as string);
+  }, [statusFilter, channelFilter, showArchived, flaggedOnly, searchQuery]);
+
+
+
   const updateConversation = async (id: string, updates: Partial<InboxConversation>) => {
     const { error } = await supabase
       .from('inbox_conversations')
