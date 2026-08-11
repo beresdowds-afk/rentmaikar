@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import { maybeAutoReply } from "../_shared/auto-reply.ts";
+import { forwardInboundEmail } from "../_shared/forwarding.ts";
+
 
 
 const corsHeaders = {
