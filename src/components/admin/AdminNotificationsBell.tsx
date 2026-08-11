@@ -60,7 +60,8 @@ const kindLabel = (kind: string) =>
 
 
 export function AdminNotificationsBell() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState<AdminNotification[]>([]);
   const [loading, setLoading] = useState(false);
   const [marking, setMarking] = useState(false);
