@@ -200,7 +200,7 @@ const DriverTraining = () => {
                           ? "hover:border-primary/50"
                           : "opacity-50"
                       }`}
-                      onClick={() => isAccessible && setActiveModule(mod)}
+                      onClick={() => { if (isAccessible) void openModule(mod); }}
                     >
                       <div className="flex items-center gap-4">
                         <div
