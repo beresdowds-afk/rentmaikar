@@ -19,6 +19,7 @@ import {
 import { AutoReplyPreview } from '@/components/admin/AutoReplyPreview';
 import { PlaceholderPicker } from '@/components/admin/PlaceholderPicker';
 import { AutoReplyPriorityEditor } from '@/components/admin/AutoReplyPriorityEditor';
+import { AutoReplyTestMode } from '@/components/admin/AutoReplyTestMode';
 
 const ANY = '__any__';
 
@@ -142,6 +143,7 @@ export const CannedRepliesManager = () => {
               onSetPriority={setRulePriority}
             />
 
+            <AutoReplyTestMode />
           </TabsContent>
         </Tabs>
       </CardContent>
