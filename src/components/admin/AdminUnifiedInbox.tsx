@@ -152,10 +152,20 @@ const ConversationItem = ({
 
 const MessageThread = ({ 
   conversation,
-  onUpdateStatus
+  onUpdateStatus,
+  staff,
+  onAssign,
+  onToggleFlag,
+  onArchive,
+  onMarkRead,
 }: { 
   conversation: InboxConversation;
   onUpdateStatus: (status: string) => void;
+  staff: InboxStaff[];
+  onAssign: (userId: string | null) => void;
+  onToggleFlag: () => void;
+  onArchive: () => void;
+  onMarkRead: (read: boolean) => void;
 }) => {
   const { messages, isLoading, isSendingReply, sendMessage } = useInboxMessages(conversation.id);
   const [newMessage, setNewMessage] = useState('');
