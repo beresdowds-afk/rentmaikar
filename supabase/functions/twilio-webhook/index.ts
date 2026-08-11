@@ -4,6 +4,8 @@ import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import { verifyTwilioRequestRaw } from "../_shared/twilio-signature.ts";
 import { isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
 import { maybeAutoReply } from "../_shared/auto-reply.ts";
+import { forwardInboundMessage } from "../_shared/forwarding.ts";
+
 
 
 const corsHeaders = {
