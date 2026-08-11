@@ -420,7 +420,7 @@ const MessageThread = ({
                     metadata={message.metadata}
                     messageId={message.id}
                     conversationId={conversation.id}
-                    highlightQuery={attachmentQuery}
+                    highlightQuery={highlightQuery}
                   />
                   <div className={`text-xs mt-1 ${
                     message.sender_type === 'admin' ? 'text-primary-foreground/70' : 'text-muted-foreground'
