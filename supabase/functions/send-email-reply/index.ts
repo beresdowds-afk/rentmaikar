@@ -45,7 +45,18 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { conversationId, messageContent, recipientEmail, subject } = await req.json();
+    const { conversationId, messageContent, recipientEmail, subject, attachments } = await req.json();
+
+    interface OutboundAttachment {
+      filename: string;
+      contentType: string;
+      size: number;
+      storagePath: string;
+      url: string;
+    }
+    const attachmentList: OutboundAttachment[] = Array.isArray(attachments)
+      ? (attachments as OutboundAttachment[]).filter((a) => a && typeof a.url === "string" && a.url)
+      : [];
 
     if (!conversationId || !messageContent || !recipientEmail) {
       throw new Error("Missing required fields: conversationId, messageContent, recipientEmail");
@@ -97,6 +108,14 @@ serve(async (req) => {
           </div>
         `,
         text: messageContent,
+        ...(attachmentList.length
+          ? {
+              attachments: attachmentList.map((a) => ({
+                filename: a.filename,
+                path: a.url,
+              })),
+            }
+          : {}),
       }),
     });
 
@@ -116,6 +135,7 @@ serve(async (req) => {
         metadata: {
           email_status: "sent",
           sent_at: new Date().toISOString(),
+          ...(attachmentList.length ? { attachments_detail: attachmentList } : {}),
         },
       })
       .eq("conversation_id", conversationId)

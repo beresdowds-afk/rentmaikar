@@ -23,7 +23,20 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { conversationId, messageContent, channel, recipientPhone } = await req.json();
+    const { conversationId, messageContent, channel, recipientPhone, attachments } = await req.json();
+
+    interface OutboundAttachment {
+      filename: string;
+      contentType: string;
+      size: number;
+      storagePath: string;
+      url: string;
+    }
+    const mediaList: OutboundAttachment[] = Array.isArray(attachments)
+      ? (attachments as OutboundAttachment[]).filter((a) => a && typeof a.url === "string" && a.url)
+      : [];
+    // Providers cap outbound media; keep the first 10 and link the rest in the body.
+    const mediaUrls = mediaList.slice(0, 10).map((a) => a.url);
 
     if (!conversationId || !messageContent || !channel) {
       throw new Error("Missing required fields: conversationId, messageContent, channel");
@@ -123,7 +136,9 @@ serve(async (req) => {
         body: JSON.stringify({
           to: recipientPhone.replace("+", ""),
           from: senderId,
-          sms: messageContent,
+          sms: mediaUrls.length
+            ? `${messageContent}\n\n${mediaUrls.join("\n")}`
+            : messageContent,
           type: "plain",
           channel: termiiChannel,
           api_key: termiiApiKey,
@@ -168,6 +183,7 @@ serve(async (req) => {
       formData.append("To", toNumber);
       formData.append("From", fromNumber);
       formData.append("Body", messageContent);
+      for (const url of mediaUrls) formData.append("MediaUrl", url);
       formData.append("StatusCallback", `${supabaseUrl}/functions/v1/twilio-webhook`);
 
 
