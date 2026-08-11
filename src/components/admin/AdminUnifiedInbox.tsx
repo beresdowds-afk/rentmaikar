@@ -40,6 +40,16 @@ import { CannedRepliesManager } from '@/components/admin/CannedRepliesManager';
 import { InboxSlaBadge, useNowTick } from '@/components/admin/InboxSlaBadge';
 import { getSlaInfo } from '@/lib/inbox-sla';
 import { MessageAttachments } from '@/components/admin/MessageAttachments';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { InboxNotificationSettings } from '@/components/admin/InboxNotificationSettings';
 import { useInboxAlerts } from '@/hooks/useInboxAlerts';
 
@@ -435,6 +445,27 @@ export const AdminUnifiedInbox = () => {
     setSelectedIds([]);
   };
 
+  const [pendingBulk, setPendingBulk] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    action: () => Promise<unknown>;
+  } | null>(null);
+  const [selectResetKey, setSelectResetKey] = useState(0);
+
+  const confirmBulk = (
+    title: string,
+    description: string,
+    confirmLabel: string,
+    action: () => Promise<unknown>,
+  ) => setPendingBulk({ title, description, confirmLabel, action });
+
+  const closeBulkConfirm = () => {
+    setPendingBulk(null);
+    setSelectResetKey((k) => k + 1);
+  };
+
+
   const handleUpdateStatus = async (status: string) => {
     if (!current) return;
     await updateConversation(current.id, { status });
@@ -556,7 +587,19 @@ export const AdminUnifiedInbox = () => {
                     <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetFlag(checkedVisibleIds, false))}>
                       <Flag className="h-3.5 w-3.5 mr-1" /> Unflag
                     </Button>
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetArchived(checkedVisibleIds, !showArchived))}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() =>
+                        confirmBulk(
+                          showArchived ? 'Restore conversations?' : 'Archive conversations?',
+                          `This will ${showArchived ? 'restore' : 'archive'} ${checkedVisibleIds.length} selected conversation${checkedVisibleIds.length === 1 ? '' : 's'}.`,
+                          showArchived ? 'Restore' : 'Archive',
+                          () => bulkSetArchived(checkedVisibleIds, !showArchived),
+                        )
+                      }
+                    >
                       <Archive className="h-3.5 w-3.5 mr-1" /> {showArchived ? 'Restore' : 'Archive'}
                     </Button>
                     <Select onValueChange={(v) => runBulk(() => bulkAssign(checkedVisibleIds, v === 'unassigned' ? null : v))}>
@@ -571,7 +614,17 @@ export const AdminUnifiedInbox = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Select onValueChange={(v) => runBulk(() => bulkSetStatus(checkedVisibleIds, v))}>
+                    <Select
+                      key={selectResetKey}
+                      onValueChange={(v) =>
+                        confirmBulk(
+                          'Change status?',
+                          `This will set ${checkedVisibleIds.length} selected conversation${checkedVisibleIds.length === 1 ? '' : 's'} to "${v}".`,
+                          'Change status',
+                          () => bulkSetStatus(checkedVisibleIds, v),
+                        )
+                      }
+                    >
                       <SelectTrigger className="h-7 w-28 text-xs">
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
@@ -582,6 +635,7 @@ export const AdminUnifiedInbox = () => {
                         <SelectItem value="closed">Closed</SelectItem>
                       </SelectContent>
                     </Select>
+
                   </div>
                 </div>
               )}
@@ -645,6 +699,27 @@ export const AdminUnifiedInbox = () => {
       <InboxNotificationSettings />
 
       <CannedRepliesManager />
+
+      <AlertDialog open={!!pendingBulk} onOpenChange={(open) => !open && closeBulkConfirm()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{pendingBulk?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{pendingBulk?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={closeBulkConfirm}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const action = pendingBulk?.action;
+                closeBulkConfirm();
+                if (action) await runBulk(action);
+              }}
+            >
+              {pendingBulk?.confirmLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
