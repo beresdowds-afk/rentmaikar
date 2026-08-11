@@ -440,6 +440,28 @@ serve(async (req) => {
       recipientPhone: cleanFrom,
     });
 
+    // ─── Forward a copy to the configured regional staff number ───
+    const forwardResult = await forwardInboundMessage(supabase, {
+      channel: channel as "sms" | "whatsapp",
+      region,
+      from: cleanFrom,
+      body: parsed.content || `(${parsed.type} message)`,
+      mediaUrl: (mediaMetadata.media_url as string | undefined) || null,
+    });
+    if (forwardResult.forwarded) {
+      await logMessagingEvent(supabase, {
+        channel,
+        provider: "twilio",
+        event_type: "forwarded",
+        direction: "outbound",
+        sender: cleanTo,
+        region,
+        provider_message_id: messageSid,
+        conversation_id: conversationId,
+        metadata: { forwarded_from: cleanFrom },
+      });
+    }
+
 
     // Log inbound messaging event
     await logMessagingEvent(supabase, {
