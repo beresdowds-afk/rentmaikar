@@ -43,10 +43,15 @@ const DriverTraining = () => {
 
   useEffect(() => {
     fetchData();
-    // Training modules rely on TTS playback + optional voice interactions —
-    // request mic/speaker access up front so audio starts without extra taps.
-    void ensureMediaPermissions();
   }, [country]);
+
+  // Mic/speaker access is requested at the point of use — right before a module
+  // (and its TTS narration) opens — rather than on app start.
+  const openModule = async (mod: TrainingModule) => {
+    await ensureMediaPermissions();
+    setActiveModule(mod);
+  };
+
 
   // Cancel any lingering speech when leaving a module
   const handleBackToModules = () => {
