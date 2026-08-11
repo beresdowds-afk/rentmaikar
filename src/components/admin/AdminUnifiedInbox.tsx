@@ -463,6 +463,24 @@ export const AdminUnifiedInbox = () => {
     setAllMatchingIds(null);
   };
 
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async (ids: string[]) => {
+    if (!ids.length) return;
+    setIsExporting(true);
+    try {
+      const names = Object.fromEntries(staff.map((s) => [s.id, s.name]));
+      const count = await exportInboxConversations(ids, names);
+      toast.success(`Exported ${count} thread${count === 1 ? '' : 's'} to CSV`);
+    } catch (error) {
+      console.error('Error exporting conversations:', error);
+      toast.error('Export failed');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+
   const toggleSelected = (id: string, checked: boolean) => {
     setAllMatchingIds(null);
     setSelectedIds((prev) => (checked ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
