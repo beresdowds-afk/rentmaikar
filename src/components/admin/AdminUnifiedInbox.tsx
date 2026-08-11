@@ -74,6 +74,8 @@ const ConversationItem = ({
   onToggleFlag,
   onArchive,
   onMarkRead,
+  isChecked,
+  onCheckedChange,
 }: {
   conversation: InboxConversation;
   isSelected: boolean;
@@ -81,6 +83,8 @@ const ConversationItem = ({
   onToggleFlag: () => void;
   onArchive: () => void;
   onMarkRead: (read: boolean) => void;
+  isChecked: boolean;
+  onCheckedChange: (checked: boolean) => void;
 }) => {
   const ChannelIcon = channelIcons[conversation.channel as keyof typeof channelIcons] || Mail;
   const StatusIcon = statusIcons[conversation.status as keyof typeof statusIcons] || AlertCircle;
@@ -98,6 +102,14 @@ const ConversationItem = ({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
+          <span onClick={(e) => e.stopPropagation()} className="flex items-center">
+            <Checkbox
+              checked={isChecked}
+              onCheckedChange={(v) => onCheckedChange(v === true)}
+              aria-label="Select conversation"
+            />
+          </span>
+
           <ChannelIcon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
           <span className={`truncate ${unread > 0 ? 'font-semibold' : 'font-medium'}`}>
             {conversation.user_name || conversation.user_email || 'Unknown User'}
