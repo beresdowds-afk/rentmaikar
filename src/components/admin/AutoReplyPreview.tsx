@@ -2,7 +2,14 @@ import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Mail, MessageSquare, Phone, CheckCircle2, XCircle } from 'lucide-react';
+import { Mail, MessageSquare, Phone, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import {
+  renderPlaceholders,
+  unknownPlaceholders,
+  usedPlaceholders,
+  SAMPLE_PLACEHOLDER_VALUES,
+  type PlaceholderValues,
+} from '@/lib/reply-placeholders';
 
 type MatchType = 'any' | 'all' | 'exact';
 
@@ -32,6 +39,8 @@ interface Props {
   /** When provided, renders the keyword match tester for auto-reply rules. */
   keywords?: string[];
   matchType?: MatchType;
+  /** Real values to preview with. Falls back to sample data. */
+  placeholderValues?: PlaceholderValues;
 }
 
 const CHANNEL_META: Record<string, { label: string; icon: typeof Mail }> = {
@@ -40,7 +49,14 @@ const CHANNEL_META: Record<string, { label: string; icon: typeof Mail }> = {
   email: { label: 'Email', icon: Mail },
 };
 
-export const AutoReplyPreview = ({ body, channel, region, keywords, matchType = 'any' }: Props) => {
+export const AutoReplyPreview = ({
+  body,
+  channel,
+  region,
+  keywords,
+  matchType = 'any',
+  placeholderValues,
+}: Props) => {
   const [testMessage, setTestMessage] = useState('');
   const effectiveChannel = channel || 'sms';
   const meta = CHANNEL_META[effectiveChannel] ?? CHANNEL_META.sms;
@@ -51,7 +67,15 @@ export const AutoReplyPreview = ({ body, channel, region, keywords, matchType = 
     [keywords, matchType, testMessage],
   );
 
-  const smsSegments = Math.max(1, Math.ceil((body?.length || 0) / 160));
+  const values = placeholderValues ?? SAMPLE_PLACEHOLDER_VALUES;
+  const rendered = useMemo(
+    () => renderPlaceholders(body || '', values, { keepUnknown: true }),
+    [body, values],
+  );
+  const tokens = useMemo(() => usedPlaceholders(body || ''), [body]);
+  const invalidTokens = useMemo(() => unknownPlaceholders(body || ''), [body]);
+
+  const smsSegments = Math.max(1, Math.ceil((rendered?.length || 0) / 160));
 
   return (
     <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
@@ -62,10 +86,27 @@ export const AutoReplyPreview = ({ body, channel, region, keywords, matchType = 
         {region && <Badge variant="outline">{region}</Badge>}
         {effectiveChannel !== 'email' && (
           <Badge variant="outline">
-            {body?.length || 0} chars · {smsSegments} segment{smsSegments > 1 ? 's' : ''}
+            {rendered?.length || 0} chars · {smsSegments} segment{smsSegments > 1 ? 's' : ''}
           </Badge>
         )}
       </div>
+
+      {tokens.length > 0 && (
+        <p className="text-[11px] text-muted-foreground">
+          Placeholders resolved with {placeholderValues ? 'this conversation’s data' : 'sample data'}:{' '}
+          {tokens.map((t) => `{{${t}}}`).join(', ')}
+        </p>
+      )}
+
+      {invalidTokens.length > 0 && (
+        <div className="flex items-start gap-1.5 text-[11px] text-destructive">
+          <AlertTriangle className="h-3.5 w-3.5 mt-0.5" />
+          <span>
+            Unknown placeholder{invalidTokens.length > 1 ? 's' : ''}:{' '}
+            {invalidTokens.map((t) => `{{${t}}}`).join(', ')} — these are sent as-is.
+          </span>
+        </div>
+      )}
 
       {keywords && (
         <div className="space-y-1.5">
@@ -105,13 +146,13 @@ export const AutoReplyPreview = ({ body, channel, region, keywords, matchType = 
               From: Rentmaikar Support · Subject: Re: your message
             </div>
             <p className="whitespace-pre-wrap leading-relaxed">
-              {body?.trim() || <span className="italic text-muted-foreground">No message content yet.</span>}
+              {rendered?.trim() || <span className="italic text-muted-foreground">No message content yet.</span>}
             </p>
           </div>
         ) : (
           <div className="flex justify-start">
             <div className="max-w-[80%] rounded-2xl rounded-bl-sm bg-primary/10 border border-primary/20 px-3 py-2 text-sm whitespace-pre-wrap">
-              {body?.trim() || <span className="italic text-muted-foreground">No message content yet.</span>}
+              {rendered?.trim() || <span className="italic text-muted-foreground">No message content yet.</span>}
             </div>
           </div>
         )}
