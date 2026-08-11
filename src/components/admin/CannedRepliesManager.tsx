@@ -170,7 +170,7 @@ export const CannedRepliesManager = () => {
 
       {/* Canned reply editor */}
       <Dialog open={!!replyDraft} onOpenChange={(o) => !o && setReplyDraft(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{replyDraft?.id ? 'Edit canned reply' : 'New canned reply'}</DialogTitle>
           </DialogHeader>
@@ -247,7 +247,7 @@ export const CannedRepliesManager = () => {
 
       {/* Rule editor */}
       <Dialog open={!!ruleDraft} onOpenChange={(o) => !o && setRuleDraft(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{ruleDraft?.id ? 'Edit auto-reply rule' : 'New auto-reply rule'}</DialogTitle>
           </DialogHeader>
