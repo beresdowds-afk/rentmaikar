@@ -11422,6 +11422,10 @@ export type Database = {
           token_expires_at: string
         }[]
       }
+      get_reply_placeholder_values: {
+        Args: { _conversation_id: string }
+        Returns: Json
+      }
       get_support_staff_city: {
         Args: {
           _type: Database["public"]["Enums"]["support_task_type"]
