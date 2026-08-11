@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -396,6 +396,7 @@ export const AdminUnifiedInbox = () => {
     setArchived,
     assignConversation,
     markConversationRead,
+    fetchAllMatchingIds,
     bulkSetFlag,
     bulkSetArchived,
     bulkAssign,
@@ -417,6 +418,8 @@ export const AdminUnifiedInbox = () => {
   const [selectedConversation, setSelectedConversation] = useState<InboxConversation | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [allMatchingIds, setAllMatchingIds] = useState<string[] | null>(null);
+  const [isResolvingAll, setIsResolvingAll] = useState(false);
   const nowTick = useNowTick();
 
   const overdueCount = conversations.filter(
@@ -434,16 +437,44 @@ export const AdminUnifiedInbox = () => {
   const checkedVisibleIds = selectedIds.filter((id) => visibleIds.includes(id));
   const allVisibleChecked = visibleIds.length > 0 && checkedVisibleIds.length === visibleIds.length;
 
-  const toggleSelected = (id: string, checked: boolean) =>
-    setSelectedIds((prev) => (checked ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
+  // When "select all results" is active, bulk actions target every matching thread
+  const targetIds = allMatchingIds ?? checkedVisibleIds;
+  const targetCount = targetIds.length;
 
-  const toggleSelectAll = (checked: boolean) =>
+  // Any change to filters/search invalidates a whole-result selection
+  useEffect(() => {
+    setAllMatchingIds(null);
+  }, [statusFilter, channelFilter, searchQuery, showArchived, flaggedOnly, overdueOnly]);
+
+  const selectAllResults = async () => {
+    setIsResolvingAll(true);
+    const ids = await fetchAllMatchingIds();
+    setIsResolvingAll(false);
+    if (!ids) return;
+    setAllMatchingIds(ids);
+    setSelectedIds((prev) => [...new Set([...prev, ...ids])]);
+  };
+
+  const clearSelection = () => {
+    setSelectedIds([]);
+    setAllMatchingIds(null);
+  };
+
+  const toggleSelected = (id: string, checked: boolean) => {
+    setAllMatchingIds(null);
+    setSelectedIds((prev) => (checked ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setAllMatchingIds(null);
     setSelectedIds(checked ? [...new Set([...selectedIds, ...visibleIds])] : selectedIds.filter((id) => !visibleIds.includes(id)));
+  };
 
   const runBulk = async (action: () => Promise<unknown>) => {
     await action();
-    setSelectedIds([]);
+    clearSelection();
   };
+
 
   const [pendingBulk, setPendingBulk] = useState<{
     title: string;
@@ -569,22 +600,56 @@ export const AdminUnifiedInbox = () => {
               {checkedVisibleIds.length > 0 && (
                 <div className="rounded-md border bg-background p-2 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium">{checkedVisibleIds.length} selected</span>
-                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setSelectedIds([])}>
+                    <span className="text-xs font-medium">
+                      {allMatchingIds
+                        ? `All ${targetCount} matching thread${targetCount === 1 ? '' : 's'} selected`
+                        : `${checkedVisibleIds.length} selected`}
+                    </span>
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={clearSelection}>
                       Clear
                     </Button>
                   </div>
+
+                  {allVisibleChecked && !overdueOnly && (
+                    <div className="rounded bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground">
+                      {allMatchingIds ? (
+                        <>
+                          Bulk actions apply to all {targetCount} thread{targetCount === 1 ? '' : 's'} matching the current filters.{' '}
+                          <button
+                            type="button"
+                            className="font-medium text-primary underline underline-offset-2"
+                            onClick={() => setAllMatchingIds(null)}
+                          >
+                            Select only these {checkedVisibleIds.length}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          All {checkedVisibleIds.length} thread{checkedVisibleIds.length === 1 ? '' : 's'} on this list selected.{' '}
+                          <button
+                            type="button"
+                            className="font-medium text-primary underline underline-offset-2 disabled:opacity-60"
+                            disabled={isResolvingAll}
+                            onClick={selectAllResults}
+                          >
+                            {isResolvingAll ? 'Selecting…' : 'Select all results matching filters'}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex flex-wrap items-center gap-1">
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkMarkRead(checkedVisibleIds, true))}>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkMarkRead(targetIds, true))}>
                       <MailOpen className="h-3.5 w-3.5 mr-1" /> Read
                     </Button>
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkMarkRead(checkedVisibleIds, false))}>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkMarkRead(targetIds, false))}>
                       <MailQuestion className="h-3.5 w-3.5 mr-1" /> Unread
                     </Button>
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetFlag(checkedVisibleIds, true))}>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetFlag(targetIds, true))}>
                       <Flag className="h-3.5 w-3.5 mr-1" /> Flag
                     </Button>
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetFlag(checkedVisibleIds, false))}>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => runBulk(() => bulkSetFlag(targetIds, false))}>
                       <Flag className="h-3.5 w-3.5 mr-1" /> Unflag
                     </Button>
                     <Button
@@ -594,15 +659,15 @@ export const AdminUnifiedInbox = () => {
                       onClick={() =>
                         confirmBulk(
                           showArchived ? 'Restore conversations?' : 'Archive conversations?',
-                          `This will ${showArchived ? 'restore' : 'archive'} ${checkedVisibleIds.length} selected conversation${checkedVisibleIds.length === 1 ? '' : 's'}.`,
+                          `This will ${showArchived ? 'restore' : 'archive'} ${targetCount} selected conversation${targetCount === 1 ? '' : 's'}.`,
                           showArchived ? 'Restore' : 'Archive',
-                          () => bulkSetArchived(checkedVisibleIds, !showArchived),
+                          () => bulkSetArchived(targetIds, !showArchived),
                         )
                       }
                     >
                       <Archive className="h-3.5 w-3.5 mr-1" /> {showArchived ? 'Restore' : 'Archive'}
                     </Button>
-                    <Select onValueChange={(v) => runBulk(() => bulkAssign(checkedVisibleIds, v === 'unassigned' ? null : v))}>
+                    <Select onValueChange={(v) => runBulk(() => bulkAssign(targetIds, v === 'unassigned' ? null : v))}>
                       <SelectTrigger className="h-7 w-36 text-xs">
                         <UserCheck className="h-3.5 w-3.5 mr-1" />
                         <SelectValue placeholder="Delegate" />
@@ -619,9 +684,9 @@ export const AdminUnifiedInbox = () => {
                       onValueChange={(v) =>
                         confirmBulk(
                           'Change status?',
-                          `This will set ${checkedVisibleIds.length} selected conversation${checkedVisibleIds.length === 1 ? '' : 's'} to "${v}".`,
+                          `This will set ${targetCount} selected conversation${targetCount === 1 ? '' : 's'} to "${v}".`,
                           'Change status',
-                          () => bulkSetStatus(checkedVisibleIds, v),
+                          () => bulkSetStatus(targetIds, v),
                         )
                       }
                     >
@@ -639,6 +704,7 @@ export const AdminUnifiedInbox = () => {
                   </div>
                 </div>
               )}
+
             </div>
             <ScrollArea className="h-[calc(600px-160px)] xl:h-[calc(min(760px,72dvh)-160px)]">
               {isLoading ? (
