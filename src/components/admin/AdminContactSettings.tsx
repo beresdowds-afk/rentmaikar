@@ -12,6 +12,7 @@ import CompanyInfoRealtimeDebug from '@/components/admin/CompanyInfoRealtimeDebu
 
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { ForwardingSettingsPanel } from '@/components/admin/ForwardingSettingsPanel';
 
 const channelIcons = {
   email: Mail,
@@ -545,6 +546,10 @@ export const AdminContactSettings = () => {
       </Card>
 
       <CompanyInfoRealtimeDebug />
+
+      <ForwardingSettingsPanel />
+
+
 
       {/* Message Forwarding Numbers */}
       <Card>

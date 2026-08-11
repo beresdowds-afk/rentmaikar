@@ -4,6 +4,8 @@ import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import { verifyTwilioRequestRaw } from "../_shared/twilio-signature.ts";
 import { isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
 import { maybeAutoReply } from "../_shared/auto-reply.ts";
+import { forwardInboundMessage } from "../_shared/forwarding.ts";
+
 
 
 const corsHeaders = {
@@ -437,6 +439,28 @@ serve(async (req) => {
       region,
       recipientPhone: cleanFrom,
     });
+
+    // ─── Forward a copy to the configured regional staff number ───
+    const forwardResult = await forwardInboundMessage(supabase, {
+      channel: channel as "sms" | "whatsapp",
+      region,
+      from: cleanFrom,
+      body: parsed.content || `(${parsed.type} message)`,
+      mediaUrl: (mediaMetadata.media_url as string | undefined) || null,
+    });
+    if (forwardResult.forwarded) {
+      await logMessagingEvent(supabase, {
+        channel,
+        provider: "twilio",
+        event_type: "forwarded",
+        direction: "outbound",
+        sender: cleanTo,
+        region,
+        provider_message_id: messageSid,
+        conversation_id: conversationId,
+        metadata: { forwarded_from: cleanFrom },
+      });
+    }
 
 
     // Log inbound messaging event
