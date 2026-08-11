@@ -48,9 +48,22 @@ Deno.serve(async (req) => {
       const { data: roles } = await supa.from("user_roles")
         .select("role").eq("user_id", uid)
         .in("role", ["admin", "admin_assistant"] as any);
-      allowed = !!(roles && roles.length > 0);
+      const roleList = (roles ?? []).map((r: any) => r.role);
+      if (roleList.includes("admin")) {
+        allowed = true;
+      } else if (roleList.includes("admin_assistant")) {
+        // Assistants only for explicitly assigned users.
+        const { data: assignment } = await supa
+          .from("admin_assistant_user_assignments")
+          .select("id")
+          .eq("assistant_id", uid)
+          .eq("target_user_id", targetUserId)
+          .limit(1);
+        allowed = !!(assignment && assignment.length > 0);
+      }
     }
     if (!allowed) return json(403, { error: "forbidden" });
+
 
     // Confirm the ZIP actually exists in the audit log to avoid path guessing.
     const { data: audit } = await supa.from("document_export_audit")

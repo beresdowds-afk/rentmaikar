@@ -12053,6 +12053,10 @@ export type Database = {
         Args: { _city: string; _country: string; _region: string }
         Returns: boolean
       }
+      support_staff_region_match: {
+        Args: { _region: string }
+        Returns: boolean
+      }
       switch_primary_role: {
         Args: { _new_role: Database["public"]["Enums"]["app_role"] }
         Returns: Json

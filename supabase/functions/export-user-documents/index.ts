@@ -83,15 +83,29 @@ Deno.serve(async (req) => {
     }
 
     try {
-      // AuthZ: self OR admin/admin_assistant
+      // AuthZ: self OR admin. Admin assistants only for users explicitly
+      // assigned to them (assistant_can_access_user), never the whole userbase.
       let allowed = exporterId === target_user_id;
       if (!allowed) {
         const { data: roles } = await supa.from("user_roles")
           .select("role").eq("user_id", exporterId)
           .in("role", ["admin", "admin_assistant"] as any);
-        allowed = !!(roles && roles.length > 0);
+        const roleList = (roles ?? []).map((r: any) => r.role);
+        if (roleList.includes("admin")) {
+          allowed = true;
+        } else if (roleList.includes("admin_assistant")) {
+          const { data: assignment } = await supa
+            .from("admin_assistant_user_assignments")
+            .select("id")
+            .eq("assistant_id", exporterId)
+            .eq("target_user_id", target_user_id)
+            .limit(1);
+          allowed = !!(assignment && assignment.length > 0);
+        }
+
       }
       if (!allowed) return json(403, { error: "forbidden" });
+
 
     // Load rows
     let q = supa.from("user_documents").select("*").eq("user_id", target_user_id);
