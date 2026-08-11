@@ -49,6 +49,7 @@ const DriverOnboarding = lazy(() => import("./pages/DriverOnboarding"));
 const OwnerOnboarding = lazy(() => import("./pages/OwnerOnboarding"));
 const OwnerDashboard = lazy(() => import("./pages/OwnerDashboard"));
 const Catalogue = lazy(() => import("./pages/Catalogue"));
+const VehicleDetails = lazy(() => import("./pages/VehicleDetails"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminAssistantDashboard = lazy(() => import("./pages/AdminAssistantDashboard"));
 const ApiDocs = lazy(() => import("./pages/ApiDocs"));
@@ -188,6 +189,7 @@ const App = () => (
                   <Route path="/owner/onboarding" element={<OwnerOnboarding />} />
                   <Route path="/onboarding/legal-agreement" element={<OnboardingLegalAgreement />} />
                   <Route path="/catalogue/:category" element={<Catalogue />} />
+                  <Route path="/vehicle/:id" element={<VehicleDetails />} />
                   <Route 
                     path="/api-docs" 
                     element={

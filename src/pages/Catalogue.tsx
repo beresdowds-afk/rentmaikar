@@ -24,6 +24,7 @@ import {
   usaLocationCoordinates,
   USA_DEFAULT_RADIUS_MILES,
 } from "@/lib/geo-utils";
+import BookingRequestDialog from "@/components/catalogue/BookingRequestDialog";
 import categoryBudget from "@/assets/category-budget.jpg";
 import categoryStandard from "@/assets/category-standard.jpg";
 import categoryPremium from "@/assets/category-premium.jpg";
@@ -66,13 +67,27 @@ const getDriverHomeLocation = (country: string) => {
 const isNigeriaLocation = (location: string) =>
   Boolean(getNigeriaParentCity(location)) || /lagos|abuja|port harcourt|ibadan|kano|benin|enugu|nigeria/i.test(location);
 
+const RADIUS_OPTIONS = [5, 10, 25, 50, 100];
+const ANY_DISTANCE = 100000;
+
 const Catalogue = () => {
   const { category = "budget" } = useParams<{ category: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { country, currencySymbol } = useRegion();
   const radiusParam = Number(searchParams.get("radius"));
-  const radiusMiles = Number.isFinite(radiusParam) && radiusParam > 0 ? radiusParam : USA_DEFAULT_RADIUS_MILES;
+  const [radiusMiles, setRadiusMiles] = useState<number>(
+    Number.isFinite(radiusParam) && radiusParam > 0 ? radiusParam : USA_DEFAULT_RADIUS_MILES,
+  );
 
+  // Keep the shareable ?radius= parameter in sync with the control.
+  const changeRadius = (value: number) => {
+    setRadiusMiles(value);
+    const next = new URLSearchParams(searchParams);
+    next.set("radius", String(value));
+    setSearchParams(next, { replace: true });
+  };
+
+  const [bookingVehicle, setBookingVehicle] = useState<CatalogueVehicle | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("nearby");
@@ -284,11 +299,31 @@ const Catalogue = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="nearby">
-                    {country === "Nigeria" ? "My City Only" : `Within ${radiusMiles} Miles`}
+                    {country === "Nigeria"
+                      ? "My City Only"
+                      : radiusMiles >= ANY_DISTANCE
+                        ? "Any distance"
+                        : `Within ${radiusMiles} Miles`}
                   </SelectItem>
                   <SelectItem value="all">All {country === "Nigeria" ? "Nigeria" : "DMV Area"}</SelectItem>
                 </SelectContent>
               </Select>
+
+              {country !== "Nigeria" && (
+                <Select value={String(radiusMiles)} onValueChange={(v) => changeRadius(Number(v))}>
+                  <SelectTrigger className="w-full md:w-44" aria-label="Search radius">
+                    <SelectValue placeholder="Radius" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RADIUS_OPTIONS.map((r) => (
+                      <SelectItem key={r} value={String(r)}>
+                        Within {r} miles
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={String(ANY_DISTANCE)}>Any distance</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
 
               <Select value={availability} onValueChange={(v) => setAvailability(v as CatalogueAvailability)}>
                 <SelectTrigger className="w-full md:w-44">
@@ -348,8 +383,13 @@ const Catalogue = () => {
           <div className="mb-4 flex items-center justify-between">
             <span className="text-muted-foreground">
               {isLoading ? "Loading vehicles…" : `${filteredVehicles.length} of ${total} vehicles`}
-              {!isLoading && locationFilter === "all" && nearbyCount > 0 && (
-                <span className="ml-2 text-xs">({nearbyCount} nearby)</span>
+              {!isLoading && country !== "Nigeria" && (
+                <span className="ml-2 text-xs">
+                  ({nearbyCount} within {radiusMiles >= ANY_DISTANCE ? "any distance" : `${radiusMiles} mi`})
+                </span>
+              )}
+              {!isLoading && country === "Nigeria" && nearbyCount > 0 && (
+                <span className="ml-2 text-xs">({nearbyCount} in your city)</span>
               )}
             </span>
           </div>
@@ -426,14 +466,22 @@ const Catalogue = () => {
                           <div className="absolute top-3 right-3 bg-card/90 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-medium">
                             {vehicle.status === "available" ? "Available" : "Rented"}
                           </div>
-                          {!vehicle.isNearby && (
-                            <div className="absolute top-3 left-3 bg-muted/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-xs">
-                              <MapPin className="w-3 h-3 text-muted-foreground" />
-                              <span className="text-muted-foreground">
-                                {country === "Nigeria" ? vehicle.nearestCity : `${Math.round(vehicle.distance)} mi`}
-                              </span>
-                            </div>
-                          )}
+                          <div
+                            className={`absolute top-3 left-3 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-xs ${
+                              sortBy === "distance"
+                                ? "bg-accent/90 text-accent-foreground font-medium"
+                                : "bg-muted/90 text-muted-foreground"
+                            }`}
+                          >
+                            <MapPin className="w-3 h-3" />
+                            <span>
+                              {country === "Nigeria"
+                                ? vehicle.nearestCity
+                                : Number.isFinite(vehicle.distance)
+                                  ? `${vehicle.distance.toFixed(1)} mi away`
+                                  : "Distance unknown"}
+                            </span>
+                          </div>
                         </div>
 
                         <div className="p-4">
@@ -453,7 +501,7 @@ const Catalogue = () => {
                             {vehicle.location}
                           </div>
 
-                          <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                          <div className="mt-4 pt-4 border-t border-border space-y-3">
                             <div className="flex items-center gap-1">
                               <span className="text-lg font-bold text-accent">{currencySymbol}</span>
                               <span className="text-xl font-bold text-foreground">
@@ -462,7 +510,14 @@ const Catalogue = () => {
                               <span className="text-sm text-muted-foreground">/week</span>
                             </div>
 
-                            <Button size="sm" variant="hero">View</Button>
+                            <div className="flex gap-2">
+                              <Link to={`/vehicle/${vehicle.id}`} className="flex-1">
+                                <Button size="sm" variant="outline" className="w-full">View details</Button>
+                              </Link>
+                              <Button size="sm" variant="hero" className="flex-1" onClick={() => setBookingVehicle(vehicle)}>
+                                Request to book
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -518,6 +573,23 @@ const Catalogue = () => {
         </div>
       </main>
       <Footer />
+
+      <BookingRequestDialog
+        open={Boolean(bookingVehicle)}
+        onOpenChange={(open) => !open && setBookingVehicle(null)}
+        price={bookingVehicle?.price}
+        vehicle={
+          bookingVehicle
+            ? {
+                id: bookingVehicle.id,
+                make: bookingVehicle.make,
+                model: bookingVehicle.model,
+                year: bookingVehicle.year,
+                location: bookingVehicle.location,
+              }
+            : null
+        }
+      />
     </div>
   );
 };

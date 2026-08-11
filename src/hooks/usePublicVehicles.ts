@@ -108,6 +108,26 @@ export const usePublicVehicles = (filters: PublicVehicleFilters) => {
   };
 };
 
+/**
+ * Single public listing, using exactly the same RLS-safe fields as the feed.
+ * Returns `null` when the vehicle is not published (or does not exist).
+ */
+export const usePublicVehicle = (id?: string) =>
+  useQuery({
+    queryKey: ["public-vehicle", id],
+    enabled: Boolean(id),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("public_vehicle_listings")
+        .select("id, make, model, year, color, status, pickup_city, pickup_location, photo_urls, created_at")
+        .eq("id", id!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as unknown as PublicVehicleRow | null) ?? null;
+    },
+    staleTime: 60_000,
+  });
+
 /** Category base prices per region, used to price catalogue listings. */
 export const useCategoryPrices = (region: "USA" | "NIGERIA") =>
   useQuery({

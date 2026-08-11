@@ -8696,6 +8696,87 @@ export type Database = {
           },
         ]
       }
+      vehicle_booking_requests: {
+        Row: {
+          created_at: string
+          driver_id: string
+          driver_message: string | null
+          end_date: string
+          id: string
+          offer_currency: string | null
+          offer_expires_at: string | null
+          offer_note: string | null
+          offer_sent_at: string | null
+          offer_sent_by: string | null
+          offered_rate: number | null
+          region: string | null
+          responded_at: string | null
+          review_note: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["booking_request_status"]
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          driver_id: string
+          driver_message?: string | null
+          end_date: string
+          id?: string
+          offer_currency?: string | null
+          offer_expires_at?: string | null
+          offer_note?: string | null
+          offer_sent_at?: string | null
+          offer_sent_by?: string | null
+          offered_rate?: number | null
+          region?: string | null
+          responded_at?: string | null
+          review_note?: string | null
+          reviewed_by?: string | null
+          start_date: string
+          status?: Database["public"]["Enums"]["booking_request_status"]
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string
+          driver_message?: string | null
+          end_date?: string
+          id?: string
+          offer_currency?: string | null
+          offer_expires_at?: string | null
+          offer_note?: string | null
+          offer_sent_at?: string | null
+          offer_sent_by?: string | null
+          offered_rate?: number | null
+          region?: string | null
+          responded_at?: string | null
+          review_note?: string | null
+          reviewed_by?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["booking_request_status"]
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_booking_requests_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "public_vehicle_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_booking_requests_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_category_prices: {
         Row: {
           category: string
@@ -9209,6 +9290,7 @@ export type Database = {
           id: string
           inspection_expiry: string | null
           insurance_expiry: string | null
+          is_public: boolean
           license_plate: string
           make: string
           model: string
@@ -9230,6 +9312,7 @@ export type Database = {
           id?: string
           inspection_expiry?: string | null
           insurance_expiry?: string | null
+          is_public?: boolean
           license_plate: string
           make: string
           model: string
@@ -9251,6 +9334,7 @@ export type Database = {
           id?: string
           inspection_expiry?: string | null
           insurance_expiry?: string | null
+          is_public?: boolean
           license_plate?: string
           make?: string
           model?: string
@@ -10645,6 +10729,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_review_booking_request: {
+        Args: { _note?: string; _request_id: string; _status: string }
+        Returns: undefined
+      }
       admin_review_persona_inquiry: {
         Args: { _action: string; _inquiry_row_id: string; _notes?: string }
         Returns: Json
@@ -10785,6 +10873,16 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_send_booking_offer: {
+        Args: {
+          _currency: string
+          _expires_at?: string
+          _note?: string
+          _offered_rate: number
+          _request_id: string
+        }
+        Returns: undefined
+      }
       admin_update_elevenlabs_retention: {
         Args: { _audio_days: number; _transcript_days: number }
         Returns: {
@@ -10915,6 +11013,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      driver_respond_to_booking_offer: {
+        Args: { _accept: boolean; _request_id: string }
+        Returns: undefined
+      }
       driver_update_proxy_terms: {
         Args: {
           _max_uses: number
@@ -10976,6 +11078,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      driver_withdraw_booking_request: {
+        Args: { _request_id: string }
+        Returns: undefined
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
       emqx_activate_credentials: {
@@ -11487,6 +11593,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      submit_booking_request: {
+        Args: {
+          _end_date: string
+          _message?: string
+          _region?: string
+          _start_date: string
+          _vehicle_id: string
+        }
+        Returns: string
+      }
       submit_proxy_consent: {
         Args: {
           _ip?: string
@@ -11647,6 +11763,13 @@ export type Database = {
         | "rejected"
         | "needs_info"
       application_type: "driver" | "owner"
+      booking_request_status:
+        | "pending"
+        | "offer_sent"
+        | "accepted"
+        | "declined"
+        | "withdrawn"
+        | "cancelled"
       call_in_status:
         | "active"
         | "expired"
@@ -11876,6 +11999,14 @@ export const Constants = {
         "needs_info",
       ],
       application_type: ["driver", "owner"],
+      booking_request_status: [
+        "pending",
+        "offer_sent",
+        "accepted",
+        "declined",
+        "withdrawn",
+        "cancelled",
+      ],
       call_in_status: [
         "active",
         "expired",
