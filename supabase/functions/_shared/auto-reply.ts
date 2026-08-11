@@ -28,23 +28,27 @@ interface AutoReplyRule {
   trigger_count: number;
 }
 
-function matches(rule: AutoReplyRule, text: string): boolean {
+function matchedKeywords(rule: AutoReplyRule, text: string): string[] {
   const haystack = (text || "").toLowerCase().trim();
-  if (!haystack) return false;
+  if (!haystack) return [];
   const keywords = (rule.keywords || [])
     .map((k) => (k || "").toLowerCase().trim())
     .filter(Boolean);
-  if (keywords.length === 0) return false;
+  if (keywords.length === 0) return [];
 
   switch (rule.match_type) {
     case "exact":
-      return keywords.some((k) => haystack === k);
+      return keywords.filter((k) => haystack === k);
     case "all":
-      return keywords.every((k) => haystack.includes(k));
+      return keywords.every((k) => haystack.includes(k)) ? keywords : [];
     case "any":
     default:
-      return keywords.some((k) => haystack.includes(k));
+      return keywords.filter((k) => haystack.includes(k));
   }
+}
+
+function matches(rule: AutoReplyRule, text: string): boolean {
+  return matchedKeywords(rule, text).length > 0;
 }
 
 /**
