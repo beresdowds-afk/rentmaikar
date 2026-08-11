@@ -435,6 +435,27 @@ export const AdminUnifiedInbox = () => {
     setSelectedIds([]);
   };
 
+  const [pendingBulk, setPendingBulk] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    action: () => Promise<unknown>;
+  } | null>(null);
+  const [selectResetKey, setSelectResetKey] = useState(0);
+
+  const confirmBulk = (
+    title: string,
+    description: string,
+    confirmLabel: string,
+    action: () => Promise<unknown>,
+  ) => setPendingBulk({ title, description, confirmLabel, action });
+
+  const closeBulkConfirm = () => {
+    setPendingBulk(null);
+    setSelectResetKey((k) => k + 1);
+  };
+
+
   const handleUpdateStatus = async (status: string) => {
     if (!current) return;
     await updateConversation(current.id, { status });
