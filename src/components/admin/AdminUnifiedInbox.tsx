@@ -38,6 +38,8 @@ import {
 } from 'lucide-react';
 import { useInboxConversations, useInboxMessages, useInboxStaff, InboxConversation, InboxStaff } from '@/hooks/useUnifiedInbox';
 import { useCannedReplies } from '@/hooks/useCannedReplies';
+import { logCannedReplyUsage } from '@/hooks/useInboxReplyAudit';
+import { InboxReplyAuditPanel } from '@/components/admin/InboxReplyAuditPanel';
 import { CannedRepliesManager } from '@/components/admin/CannedRepliesManager';
 import { InboxSlaBadge, useNowTick } from '@/components/admin/InboxSlaBadge';
 import { getSlaInfo } from '@/lib/inbox-sla';
