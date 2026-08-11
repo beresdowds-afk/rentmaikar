@@ -16,6 +16,7 @@ import {
   CannedReply,
   AutoReplyRule,
 } from '@/hooks/useCannedReplies';
+import { AutoReplyPreview } from '@/components/admin/AutoReplyPreview';
 
 const ANY = '__any__';
 
@@ -26,6 +27,15 @@ export const CannedRepliesManager = () => {
   const [replyDraft, setReplyDraft] = useState<Partial<CannedReply> | null>(null);
   const [ruleDraft, setRuleDraft] = useState<(Partial<AutoReplyRule> & { keywordsText?: string }) | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const ruleKeywords = (ruleDraft?.keywordsText ?? (ruleDraft?.keywords || []).join(', '))
+    .split(',')
+    .map((k) => k.trim())
+    .filter(Boolean);
+
+  const rulePreviewBody = ruleDraft?.canned_reply_id
+    ? replies.find((r) => r.id === ruleDraft.canned_reply_id)?.body || ''
+    : ruleDraft?.reply_body || '';
 
   const handleSaveReply = async () => {
     if (!replyDraft?.title?.trim() || !replyDraft?.body?.trim()) return;
@@ -160,7 +170,7 @@ export const CannedRepliesManager = () => {
 
       {/* Canned reply editor */}
       <Dialog open={!!replyDraft} onOpenChange={(o) => !o && setReplyDraft(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{replyDraft?.id ? 'Edit canned reply' : 'New canned reply'}</DialogTitle>
           </DialogHeader>
@@ -220,6 +230,11 @@ export const CannedRepliesManager = () => {
               />
               <Label>Active</Label>
             </div>
+            <AutoReplyPreview
+              body={replyDraft?.body || ''}
+              channel={replyDraft?.channel}
+              region={replyDraft?.region}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setReplyDraft(null)}>Cancel</Button>
@@ -232,7 +247,7 @@ export const CannedRepliesManager = () => {
 
       {/* Rule editor */}
       <Dialog open={!!ruleDraft} onOpenChange={(o) => !o && setRuleDraft(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{ruleDraft?.id ? 'Edit auto-reply rule' : 'New auto-reply rule'}</DialogTitle>
           </DialogHeader>
@@ -334,6 +349,13 @@ export const CannedRepliesManager = () => {
               />
               <Label>Rule active</Label>
             </div>
+            <AutoReplyPreview
+              body={rulePreviewBody}
+              channel={ruleDraft?.channel}
+              region={ruleDraft?.region}
+              keywords={ruleKeywords}
+              matchType={(ruleDraft?.match_type as 'any' | 'all' | 'exact') || 'any'}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRuleDraft(null)}>Cancel</Button>
