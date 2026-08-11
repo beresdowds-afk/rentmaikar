@@ -988,6 +988,7 @@ export const AdminUnifiedInbox = () => {
                     onMarkRead={(read) => markConversationRead(conv.id, read)}
                     isChecked={selectedIds.includes(conv.id)}
                     onCheckedChange={(checked) => toggleSelected(conv.id, checked)}
+                    attachmentCount={attachmentCountByConversation[conv.id] || 0}
                   />
                 ))
               )}
