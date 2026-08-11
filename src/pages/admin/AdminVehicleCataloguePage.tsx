@@ -514,17 +514,40 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between space-y-0">
               <CardTitle className="text-base">
                 {isLoading
                   ? "Loading..."
                   : `${filtered.length} vehicle${filtered.length === 1 ? "" : "s"}`}
               </CardTitle>
-              {!isLoading && filtered.length > 0 && (
-                <div className="text-xs text-muted-foreground">
-                  Page {currentPage} of {totalPages}
-                </div>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1">
+                  <Plus className="h-4 w-4" /> Add vehicle
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkBusy || isLoading || filtered.length === 0}
+                  onClick={() => bulkSetVisibility(true)}
+                  className="gap-1"
+                >
+                  {bulkBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                  Publish all ({filtered.length})
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={bulkBusy || isLoading || filtered.length === 0}
+                  onClick={() => bulkSetVisibility(false)}
+                >
+                  Hide all
+                </Button>
+                {!isLoading && filtered.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
