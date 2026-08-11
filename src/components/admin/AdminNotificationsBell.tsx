@@ -167,42 +167,72 @@ export function AdminNotificationsBell() {
             </div>
           )}
           <ul className="divide-y">
-            {items.map((n) => (
-              <li
-                key={n.id}
-                className={cn(
-                  "flex gap-3 p-3 text-sm",
-                  !n.read_at && "bg-muted/40",
-                )}
-              >
-                <Badge className={cn("h-fit shrink-0", kindClass(n.kind))} variant="secondary">
-                  {kindLabel(n.kind)}
-                </Badge>
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium">{n.title}</div>
-                  {n.body && (
-                    <div className="text-muted-foreground text-xs mt-0.5 break-words">
-                      {n.body}
-                    </div>
+            {items.map((n) => {
+              const link = notificationDeepLink(n.metadata, n.kind, userRole);
+              const open = () => {
+                if (!link) return;
+                if (!n.read_at) void markOne(n.id);
+                navigate(link);
+              };
+              return (
+                <li
+                  key={n.id}
+                  className={cn(
+                    "flex gap-3 p-3 text-sm",
+                    !n.read_at && "bg-muted/40",
+                    link && "cursor-pointer hover:bg-muted/60",
                   )}
-                  <div className="text-[10px] text-muted-foreground mt-1">
-                    {new Date(n.created_at).toLocaleString()}
+                  onClick={link ? open : undefined}
+                  role={link ? "button" : undefined}
+                  tabIndex={link ? 0 : undefined}
+                  onKeyDown={
+                    link
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            open();
+                          }
+                        }
+                      : undefined
+                  }
+                >
+                  <Badge className={cn("h-fit shrink-0", kindClass(n.kind))} variant="secondary">
+                    {kindLabel(n.kind)}
+                  </Badge>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium flex items-center gap-1">
+                      {n.title}
+                      {link && <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />}
+                    </div>
+                    {n.body && (
+                      <div className="text-muted-foreground text-xs mt-0.5 break-words">
+                        {n.body}
+                      </div>
+                    )}
+                    <div className="text-[10px] text-muted-foreground mt-1">
+                      {new Date(n.created_at).toLocaleString()}
+                      {link && <span className="ml-2 text-primary">Open record</span>}
+                    </div>
                   </div>
-                </div>
-                {!n.read_at && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 shrink-0"
-                    onClick={() => markOne(n.id)}
-                    title="Mark read"
-                  >
-                    <Check className="h-3 w-3" />
-                  </Button>
-                )}
-              </li>
-            ))}
+                  {!n.read_at && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        markOne(n.id);
+                      }}
+                      title="Mark read"
+                    >
+                      <Check className="h-3 w-3" />
+                    </Button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
+
         </ScrollArea>
       </PopoverContent>
     </Popover>
