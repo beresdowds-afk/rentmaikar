@@ -2262,10 +2262,12 @@ export type Database = {
       }
       inbox_conversations: {
         Row: {
+          archived_at: string | null
           assigned_to: string | null
           channel: string
           created_at: string
           id: string
+          is_flagged: boolean
           last_message_at: string
           priority: string
           region: string
@@ -2278,10 +2280,12 @@ export type Database = {
           user_phone: string | null
         }
         Insert: {
+          archived_at?: string | null
           assigned_to?: string | null
           channel: string
           created_at?: string
           id?: string
+          is_flagged?: boolean
           last_message_at?: string
           priority?: string
           region: string
@@ -2294,10 +2298,12 @@ export type Database = {
           user_phone?: string | null
         }
         Update: {
+          archived_at?: string | null
           assigned_to?: string | null
           channel?: string
           created_at?: string
           id?: string
+          is_flagged?: boolean
           last_message_at?: string
           priority?: string
           region?: string

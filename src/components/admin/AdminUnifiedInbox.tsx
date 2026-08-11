@@ -20,13 +20,19 @@ import {
   AlertCircle,
   XCircle,
   Filter,
+  Flag,
+  Archive,
+  MailOpen,
+  MailQuestion,
+  UserCheck,
   Facebook,
   Instagram,
   Linkedin,
   MessageCircle,
   Music
+
 } from 'lucide-react';
-import { useInboxConversations, useInboxMessages, InboxConversation } from '@/hooks/useUnifiedInbox';
+import { useInboxConversations, useInboxMessages, useInboxStaff, InboxConversation, InboxStaff } from '@/hooks/useUnifiedInbox';
 import { format, formatDistanceToNow } from 'date-fns';
 
 const channelIcons = {
@@ -61,41 +67,55 @@ const priorityColors = {
   urgent: 'bg-destructive/10 text-destructive',
 };
 
-const ConversationItem = ({ 
-  conversation, 
-  isSelected, 
-  onClick 
-}: { 
-  conversation: InboxConversation; 
+const ConversationItem = ({
+  conversation,
+  isSelected,
+  onClick,
+  onToggleFlag,
+  onArchive,
+  onMarkRead,
+}: {
+  conversation: InboxConversation;
   isSelected: boolean;
   onClick: () => void;
+  onToggleFlag: () => void;
+  onArchive: () => void;
+  onMarkRead: (read: boolean) => void;
 }) => {
   const ChannelIcon = channelIcons[conversation.channel as keyof typeof channelIcons] || Mail;
   const StatusIcon = statusIcons[conversation.status as keyof typeof statusIcons] || AlertCircle;
+  const unread = conversation.unread_count || 0;
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className={`w-full text-left p-4 border-b transition-colors hover:bg-muted/50 ${
+      onKeyDown={(e) => { if (e.key === 'Enter') onClick(); }}
+      className={`w-full text-left p-4 border-b transition-colors hover:bg-muted/50 cursor-pointer ${
         isSelected ? 'bg-primary/5 border-l-2 border-l-primary' : ''
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <ChannelIcon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-          <span className="font-medium truncate">
+          <span className={`truncate ${unread > 0 ? 'font-semibold' : 'font-medium'}`}>
             {conversation.user_name || conversation.user_email || 'Unknown User'}
           </span>
+          {unread > 0 && (
+            <Badge className="h-5 px-1.5 text-[10px]">{unread}</Badge>
+          )}
+          {conversation.is_flagged && <Flag className="h-3.5 w-3.5 text-orange-500" />}
         </div>
         <Badge variant="outline" className={priorityColors[conversation.priority as keyof typeof priorityColors]}>
           {conversation.priority}
         </Badge>
       </div>
-      
+
       <p className="text-sm text-muted-foreground mt-1 truncate">
         {conversation.subject || 'No subject'}
       </p>
-      
+
       <div className="flex items-center justify-between mt-2">
         <div className="flex items-center gap-2">
           <Badge variant="outline" className={`text-xs ${statusColors[conversation.status as keyof typeof statusColors]}`}>
@@ -110,16 +130,42 @@ const ConversationItem = ({
           {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
         </span>
       </div>
-    </button>
+
+      <div className="flex items-center gap-1 mt-2" onClick={(e) => e.stopPropagation()}>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onToggleFlag}>
+          <Flag className="h-3.5 w-3.5 mr-1" />
+          {conversation.is_flagged ? 'Unflag' : 'Flag'}
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => onMarkRead(unread > 0)}>
+          {unread > 0 ? <MailOpen className="h-3.5 w-3.5 mr-1" /> : <MailQuestion className="h-3.5 w-3.5 mr-1" />}
+          {unread > 0 ? 'Mark read' : 'Mark unread'}
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onArchive}>
+          <Archive className="h-3.5 w-3.5 mr-1" />
+          {conversation.archived_at ? 'Restore' : 'Archive'}
+        </Button>
+      </div>
+    </div>
   );
 };
 
+
 const MessageThread = ({ 
   conversation,
-  onUpdateStatus
+  onUpdateStatus,
+  staff,
+  onAssign,
+  onToggleFlag,
+  onArchive,
+  onMarkRead,
 }: { 
   conversation: InboxConversation;
   onUpdateStatus: (status: string) => void;
+  staff: InboxStaff[];
+  onAssign: (userId: string | null) => void;
+  onToggleFlag: () => void;
+  onArchive: () => void;
+  onMarkRead: (read: boolean) => void;
 }) => {
   const { messages, isLoading, isSendingReply, sendMessage } = useInboxMessages(conversation.id);
   const [newMessage, setNewMessage] = useState('');
@@ -161,18 +207,47 @@ const MessageThread = ({
               </div>
             </div>
           </div>
-          <Select value={conversation.status} onValueChange={onUpdateStatus}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="resolved">Resolved</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant={conversation.is_flagged ? 'default' : 'outline'} onClick={onToggleFlag}>
+              <Flag className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onMarkRead((conversation.unread_count || 0) > 0)}>
+              {(conversation.unread_count || 0) > 0 ? <MailOpen className="h-4 w-4" /> : <MailQuestion className="h-4 w-4" />}
+            </Button>
+            <Button size="sm" variant="outline" onClick={onArchive}>
+              <Archive className="h-4 w-4" />
+            </Button>
+            <Select
+              value={conversation.assigned_to ?? 'unassigned'}
+              onValueChange={(v) => onAssign(v === 'unassigned' ? null : v)}
+            >
+              <SelectTrigger className="w-40">
+                <UserCheck className="h-3.5 w-3.5 mr-1" />
+                <SelectValue placeholder="Delegate" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {staff.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={conversation.status} onValueChange={onUpdateStatus}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="resolved">Resolved</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
+
+
         {conversation.subject && (
           <p className="mt-2 text-sm font-medium">{conversation.subject}</p>
         )}
@@ -249,19 +324,35 @@ export const AdminUnifiedInbox = () => {
     conversations, 
     isLoading, 
     updateConversation,
+    toggleFlag,
+    setArchived,
+    assignConversation,
+    markConversationRead,
     statusFilter,
     setStatusFilter,
     channelFilter,
-    setChannelFilter
+    setChannelFilter,
+    searchQuery,
+    setSearchQuery,
+    showArchived,
+    setShowArchived,
+    flaggedOnly,
+    setFlaggedOnly,
   } = useInboxConversations();
-  
+  const staff = useInboxStaff();
+
   const [selectedConversation, setSelectedConversation] = useState<InboxConversation | null>(null);
 
+  const current = selectedConversation
+    ? conversations.find((c) => c.id === selectedConversation.id) ?? selectedConversation
+    : null;
+
   const handleUpdateStatus = async (status: string) => {
-    if (!selectedConversation) return;
-    await updateConversation(selectedConversation.id, { status });
-    setSelectedConversation({ ...selectedConversation, status });
+    if (!current) return;
+    await updateConversation(current.id, { status });
+    setSelectedConversation({ ...current, status });
   };
+
 
   return (
     <div className="space-y-4">
@@ -313,10 +404,33 @@ export const AdminUnifiedInbox = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 h-[600px] xl:h-[min(760px,72dvh)]">
           {/* Conversation List */}
           <div className="border-r xl:col-span-2">
-            <div className="p-3 border-b bg-muted/30">
-              <Input placeholder="Search conversations..." className="h-8" />
+            <div className="p-3 border-b bg-muted/30 space-y-2">
+              <Input
+                placeholder="Search conversations..."
+                className="h-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={flaggedOnly ? 'default' : 'outline'}
+                  className="h-7 text-xs"
+                  onClick={() => setFlaggedOnly(!flaggedOnly)}
+                >
+                  <Flag className="h-3.5 w-3.5 mr-1" /> Flagged
+                </Button>
+                <Button
+                  size="sm"
+                  variant={showArchived ? 'default' : 'outline'}
+                  className="h-7 text-xs"
+                  onClick={() => setShowArchived(!showArchived)}
+                >
+                  <Archive className="h-3.5 w-3.5 mr-1" /> Archived
+                </Button>
+              </div>
             </div>
-            <ScrollArea className="h-[calc(600px-48px)] xl:h-[calc(min(760px,72dvh)-48px)]">
+            <ScrollArea className="h-[calc(600px-96px)] xl:h-[calc(min(760px,72dvh)-96px)]">
               {isLoading ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -324,7 +438,7 @@ export const AdminUnifiedInbox = () => {
               ) : conversations.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <Inbox className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>No conversations yet</p>
+                  <p>{showArchived ? 'No archived conversations' : 'No conversations yet'}</p>
                   <p className="text-xs mt-1">Messages from customers will appear here</p>
                 </div>
               ) : (
@@ -332,8 +446,11 @@ export const AdminUnifiedInbox = () => {
                   <ConversationItem
                     key={conv.id}
                     conversation={conv}
-                    isSelected={selectedConversation?.id === conv.id}
+                    isSelected={current?.id === conv.id}
                     onClick={() => setSelectedConversation(conv)}
+                    onToggleFlag={() => toggleFlag(conv)}
+                    onArchive={() => setArchived(conv, !conv.archived_at)}
+                    onMarkRead={(read) => markConversationRead(conv.id, read)}
                   />
                 ))
               )}
@@ -343,12 +460,18 @@ export const AdminUnifiedInbox = () => {
           {/* Message Thread */}
           <div className="col-span-2 xl:col-span-3">
 
-            {selectedConversation ? (
+            {current ? (
               <MessageThread 
-                conversation={selectedConversation}
+                conversation={current}
                 onUpdateStatus={handleUpdateStatus}
+                staff={staff}
+                onAssign={(userId) => assignConversation(current.id, userId)}
+                onToggleFlag={() => toggleFlag(current)}
+                onArchive={() => setArchived(current, !current.archived_at)}
+                onMarkRead={(read) => markConversationRead(current.id, read)}
               />
             ) : (
+
               <div className="flex items-center justify-center h-full text-muted-foreground">
                 <div className="text-center">
                   <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
