@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import Seo from '@/components/seo/Seo';
 import { MessagingPreferencesPanel } from '@/components/profile/MessagingPreferencesPanel';
 import { PersonaNotificationPreference } from '@/components/profile/PersonaNotificationPreference';
+import { EventNotificationPreferencesPanel } from '@/components/notifications/EventNotificationPreferencesPanel';
 
 /**
  * Mobile-first notification preferences screen for the iOS / Android
@@ -44,6 +45,7 @@ export default function MobileNotificationPreferences() {
           </CardContent>
         </Card>
 
+        <EventNotificationPreferencesPanel />
         <MessagingPreferencesPanel />
         <PersonaNotificationPreference />
       </div>

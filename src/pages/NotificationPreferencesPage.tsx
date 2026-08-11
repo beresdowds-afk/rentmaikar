@@ -3,6 +3,7 @@ import Footer from '@/components/layout/Footer';
 import Seo from '@/components/seo/Seo';
 import { MessagingPreferencesPanel } from '@/components/profile/MessagingPreferencesPanel';
 import { PersonaNotificationPreference } from '@/components/profile/PersonaNotificationPreference';
+import { EventNotificationPreferencesPanel } from '@/components/notifications/EventNotificationPreferencesPanel';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -30,6 +31,7 @@ export default function NotificationPreferencesPage() {
             </Button>
           </div>
 
+          <EventNotificationPreferencesPanel />
           <MessagingPreferencesPanel />
           <PersonaNotificationPreference />
         </div>
