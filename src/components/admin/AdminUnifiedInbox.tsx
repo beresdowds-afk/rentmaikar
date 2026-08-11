@@ -33,8 +33,9 @@ import {
   MessageCircle,
   Music,
   AlarmClock,
-  Download
-
+  Download,
+  Paperclip,
+  X
 } from 'lucide-react';
 import { useInboxConversations, useInboxMessages, useInboxStaff, InboxConversation, InboxStaff } from '@/hooks/useUnifiedInbox';
 import { renderPlaceholders } from '@/lib/reply-placeholders';
@@ -501,11 +502,18 @@ const MessageThread = ({
               </SelectContent>
             </Select>
             <span className="text-xs text-muted-foreground truncate">
-              {isSendingReply ? 'Delivering message...' : 'Ctrl+Enter to send'}
+              {isUploading
+                ? 'Uploading attachments...'
+                : isSendingReply
+                  ? 'Delivering message...'
+                  : 'Ctrl+Enter to send'}
             </span>
           </div>
 
-          <Button onClick={handleSend} disabled={!newMessage.trim() || isSending || isSendingReply}>
+          <Button
+            onClick={handleSend}
+            disabled={(!newMessage.trim() && pendingFiles.length === 0) || isSending || isSendingReply}
+          >
             {(isSending || isSendingReply) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Send via {conversation.channel}
           </Button>
