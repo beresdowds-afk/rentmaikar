@@ -10,6 +10,19 @@ const corsHeaders = {
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
+// Reminder tiers (days before expiry) for the compulsory monthly renewal cycle
+const REMINDER_TIERS = [14, 7, 3, 1] as const;
+
+/** Adds one calendar month, clamping to the last valid day of the target month. */
+function addOneMonth(from: Date): Date {
+  const d = new Date(from.getTime());
+  const day = d.getUTCDate();
+  d.setUTCMonth(d.getUTCMonth() + 1);
+  if (d.getUTCDate() < day) d.setUTCDate(0); // overflowed → clamp to month end
+  return d;
+}
+
+
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
