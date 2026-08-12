@@ -264,6 +264,10 @@ const Auth = () => {
         forgotPasswordForm.setValue('email', normalized);
         setActiveTab('login');
         setError('This email is already registered — please sign in below.');
+        void logRegistrationEvent('signin_redirect_existing_email', {
+          email: normalized,
+          metadata: { origin: 'auth_signup_tab', requested_role: data.role },
+        });
         toast.info('You already have an account', {
           description: 'We switched you to sign-in. Use "Forgot password" if needed.',
         });
