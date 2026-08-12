@@ -182,7 +182,7 @@ const Catalogue = () => {
           color: row.color ?? "—",
           status: row.status ?? "available",
           location,
-          image: row.photo_urls?.[0] || categoryImages[category] || categoryBudget,
+          image: row.photo_urls![0],
           price: categoryPrice,
           distance,
           isNearby,
