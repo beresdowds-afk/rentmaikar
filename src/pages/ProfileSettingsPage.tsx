@@ -232,22 +232,28 @@ export default function ProfileSettingsPage() {
 
     } catch (err: any) {
       const msg = String(err?.message ?? '');
+      // The address trigger also raises 23514 — keep the two apart so users
+      // don't get a misleading "name is locked" message.
+      const isAddress = /home address/i.test(msg);
       const isImmutable =
-        err?.code === '23514' ||
-        /locked after identity verification|full_name is immutable/i.test(msg);
+        !isAddress &&
+        (err?.code === '23514' ||
+          /locked after identity verification|full_name is immutable/i.test(msg));
       if (isImmutable) {
         setNameImmutableError(
           'Your name is locked after identity verification. Contact support to make changes.',
         );
         setFullName(initial.fullName);
       }
+      if (isAddress) setAddressTouched(true);
       toast({
-        title: isImmutable ? 'Name is locked' : 'Save failed',
+        title: isImmutable ? 'Name is locked' : isAddress ? 'Home address' : 'Save failed',
         description: isImmutable
           ? 'Contact support to change your legal name.'
           : msg,
         variant: 'destructive',
       });
+
     } finally {
       setSaving(false);
     }
