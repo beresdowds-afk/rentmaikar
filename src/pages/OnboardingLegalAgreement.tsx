@@ -20,6 +20,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
+import { buildAgreementValues, renderAgreementTemplate } from '@/lib/agreement-template';
 
 type AgreementRegion = 'USA' | 'Nigeria' | (string & {});
 
@@ -122,7 +124,25 @@ const OnboardingLegalAgreement = () => {
     };
   }, [region, user]);
 
-  const rendered = useMemo(() => template?.content ?? '', [template]);
+  // Placeholders are resolved with what we already know about the signed-in
+  // user; the rest render as blanks until a vehicle is matched and the
+  // personalized, signable copy is generated.
+  const rendered = useMemo(
+    () =>
+      renderAgreementTemplate(
+        template?.content ?? '',
+        buildAgreementValues({
+          driver: {
+            name: (user?.user_metadata as Record<string, string> | undefined)?.full_name ?? null,
+            email: user?.email ?? null,
+          },
+          owner: {},
+          vehicle: {},
+          region,
+        }),
+      ),
+    [template, user, region],
+  );
 
   const handleAccept = async () => {
     if (!template || !user) return;
@@ -195,10 +215,11 @@ const OnboardingLegalAgreement = () => {
         @media print { body{margin:0;} }
       </style></head><body>
       <header>
+        <img src="${rentmaikarLogo}" alt="RentMaiKar" style="height:44px;object-fit:contain;margin-bottom:8px"/>
         <h1>${safeTitle}</h1>
         <div class="meta">Version ${template.version} · Region: ${template.region} · Retrieved ${new Date().toLocaleString()}</div>
       </header>
-      <pre>${template.content.replace(/</g, '&lt;')}</pre>
+      <pre>${rendered.replace(/</g, '&lt;')}</pre>
       <footer>Rentmaikar rental agreement — for reference. A personalized signable copy is generated when a vehicle is matched to you.</footer>
       <script>window.onload=()=>{window.focus();window.print();}</script>
       </body></html>`);
