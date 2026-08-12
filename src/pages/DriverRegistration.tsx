@@ -469,6 +469,18 @@ const DriverRegistration = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="streetAddress">Home Address</Label>
+                  <Input
+                    id="streetAddress"
+                    placeholder="Full residential address"
+                    {...register("streetAddress")}
+                  />
+                  {errors.streetAddress && (
+                    <p className="text-destructive text-sm">{errors.streetAddress.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="zipCode">ZIP / Postal Code</Label>
                   <Input
                     id="zipCode"
@@ -479,6 +491,7 @@ const DriverRegistration = () => {
                     <p className="text-destructive text-sm">{errors.zipCode.message}</p>
                   )}
                 </div>
+
               </div>
 
               {/* Rideshare Platforms */}
