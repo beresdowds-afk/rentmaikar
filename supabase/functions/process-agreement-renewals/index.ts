@@ -205,11 +205,59 @@ async function logAlert(supabase: ReturnType<typeof createClient>, agreementId: 
   });
 }
 
+/** Sends the mandatory secondary channel (SMS, WhatsApp fallback handled downstream). */
+async function sendRenewalSms(
+  supabase: ReturnType<typeof createClient>,
+  phone: string | null | undefined,
+  name: string,
+  daysUntilExpiry: number,
+  expiresAt: Date,
+) {
+  if (!phone) return;
+  const expiryFormatted = expiresAt.toISOString().slice(0, 10);
+  const message = daysUntilExpiry > 0
+    ? `RentMaiKar: Hi ${name}, your monthly rental agreement expires in ${daysUntilExpiry} day${daysUntilExpiry === 1 ? "" : "s"} (${expiryFormatted}). Sign the renewal in your dashboard to avoid service interruption.`
+    : `RentMaiKar: Hi ${name}, your monthly rental agreement has been renewed and is awaiting signatures. New expiry: ${expiryFormatted}. Please sign in your dashboard.`;
+
+  try {
+    await supabase.functions.invoke("send-sms-notification", {
+      body: { to: phone, message, notificationType: "general", channel: "sms" },
+    });
+  } catch (err) {
+    console.error("Renewal SMS failed:", err instanceof Error ? err.message : String(err));
+  }
+}
+
+/** Raises an in-app admin notification with a deep link to the new agreement. */
+async function notifyAdmins(
+  supabase: ReturnType<typeof createClient>,
+  agreementId: string,
+  renewalNumber: number,
+  newExpiresAt: string,
+  driverName: string,
+  ownerName: string,
+) {
+  try {
+    const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+    const rows = (admins ?? []).map((a: { user_id: string }) => ({
+      recipient_id: a.user_id,
+      kind: "agreement_renewal",
+      title: `Agreement renewal #${renewalNumber} awaiting signatures`,
+      body: `${driverName} & ${ownerName} — new monthly agreement expires ${new Date(newExpiresAt).toISOString().slice(0, 10)}.`,
+      metadata: { agreement_id: agreementId, deep_link: `/admin?tab=legal&agreement=${agreementId}` },
+    }));
+    if (rows.length > 0) await supabase.from("admin_notifications").insert(rows);
+  } catch (err) {
+    console.error("Admin renewal notification failed:", err instanceof Error ? err.message : String(err));
+  }
+}
+
 function buildRenewalContent(originalContent: string, renewalNumber: number, newExpiresAt: string): string {
   const renewalDate = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   const expiryDate = new Date(newExpiresAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-  return `RENEWAL #${renewalNumber} — Effective: ${renewalDate} | Expires: ${expiryDate}\n\nThis agreement is a mandatory 30-day renewal of the original rental contract. All original terms remain in effect.\n\n---\n\n${originalContent}`;
+  return `RENEWAL #${renewalNumber} — Effective: ${renewalDate} | Expires: ${expiryDate}\n\nThis agreement is a mandatory monthly renewal of the original rental contract. All original terms remain in effect.\n\n---\n\n${originalContent}`;
 }
+
 
 interface EmailParams {
   driverEmail?: string | null;
