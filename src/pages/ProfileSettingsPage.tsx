@@ -22,6 +22,10 @@ import { RoleSwitchCard } from '@/components/profile/RoleSwitchCard';
 
 import PWASettingsPanel from '@/components/pwa/PWASettingsPanel';
 import LiveSyncSettingsPanel from '@/components/pwa/LiveSyncSettingsPanel';
+import ConflictResolutionDialog from '@/components/sync/ConflictResolutionDialog';
+import { useConflictAwareSave } from '@/hooks/useConflictAwareSave';
+import type { FieldChoice } from '@/lib/conflict-resolution';
+
 
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 import { PhoneNumberInput } from '@/components/ui/phone-number-input';
