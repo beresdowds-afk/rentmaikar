@@ -160,12 +160,18 @@ const Auth = () => {
       finishRedirect(fallbackTarget);
     };
 
-    // Every returning user — including drivers and owners still working
-    // through onboarding — lands on their role dashboard first. The dashboard
-    // renders <OnboardingChecklist /> so they can continue any incomplete
-    // steps from there without being forced back into the wizard on each
-    // sign-in.
-    void routeWithCompletionCheck(ROLE_HOME[userRole as AppRole] ?? from ?? '/');
+    // Role-based landing: staff go to their operations dashboard; drivers and
+    // owners land on the agreement page when a signature is still outstanding,
+    // otherwise on their own dashboard (which renders <OnboardingChecklist />
+    // so they can continue any incomplete steps).
+    void (async () => {
+      const target = await resolvePostLoginDestination(
+        user.id,
+        userRole as AppRole,
+        (from as string) || '/',
+      );
+      await routeWithCompletionCheck(target);
+    })();
   }, [user, authLoading, userRole, navigate, from, twoFactorVerified, show2FA]);
 
   const loginForm = useForm<LoginFormData>({
