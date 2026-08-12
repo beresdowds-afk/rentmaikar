@@ -134,22 +134,86 @@ export function classifyRegistrationError(
 
   // ---- Field-level problems the user can fix on the form ------------------
 
-  // Home address rules enforced by enforce_driver_address_required.
-  if (lower.includes('home address') || lower.includes('street_address')) {
+  // Home address rules enforced by enforce_driver_address_required and
+  // enforce_profile_address_rules. Each database message gets its own copy so
+  // the driver knows exactly what to change.
+  const isAddressError =
+    lower.includes('home address') ||
+    lower.includes('street_address') ||
+    lower.includes('address is required for driver') ||
+    lower.includes('residential address');
+
+  if (isAddressError) {
+    // Too long (> 200 characters).
+    if (lower.includes('200 characters') || lower.includes('or fewer') || lower.includes('less than 200')) {
+      return {
+        ...base,
+        title: 'Your home address is too long',
+        description:
+          'Home addresses are limited to 200 characters so they fit on agreements and handover documents.',
+        fixSteps: [
+          'Shorten the address to 200 characters or fewer.',
+          'Drop the country name and any extra directions or landmarks.',
+          'Keep the house number, street, area and city.',
+        ],
+        fields: ['Home address'],
+        isFixableByUser: true,
+      };
+    }
+
+    // Too short (< 5 characters).
+    if (
+      lower.includes('at least 5 characters') ||
+      lower.includes('at least 5') ||
+      lower.includes('too short')
+    ) {
+      return {
+        ...base,
+        title: 'Your home address is too short',
+        description:
+          'The address you entered is under 5 characters, so it can’t be used to verify you or arrange vehicle handover.',
+        fixSteps: [
+          'Enter the full address: house/apartment number, street name, area and city.',
+          'Example: “24 Ademola Street, Ikeja, Lagos”.',
+          'Initials, abbreviations or a single word won’t be accepted.',
+        ],
+        fields: ['Home address'],
+        isFixableByUser: true,
+      };
+    }
+
+    // Placeholder value rejected.
+    if (lower.includes('placeholder')) {
+      return {
+        ...base,
+        title: 'Enter your real home address',
+        description:
+          'Placeholder values like “N/A”, “none” or “test” are rejected — we use this address for identity verification and handover.',
+        fixSteps: [
+          'Replace the placeholder with the address where you actually live.',
+          'Include the house/apartment number and street name.',
+        ],
+        fields: ['Home address'],
+        isFixableByUser: true,
+      };
+    }
+
+    // Missing entirely (driver-only requirement).
     return {
       ...base,
-      title: 'Your home address is required',
+      title: 'Home address is required for drivers',
       description:
-        'Drivers must provide a full home address so we can verify identity and arrange vehicle handover. Owners can leave it blank.',
+        'Your home address was empty. Drivers must provide a physical home address so we can verify identity and arrange vehicle handover — owners may leave it blank.',
       fixSteps: [
-        'Enter your street address, including house/apartment number.',
-        'Use at least 5 characters — “N/A” or a single word won’t be accepted.',
-        'Avoid PO boxes; we need a physical address.',
+        'Scroll to “Home Address” and enter where you currently live.',
+        'Include your house/apartment number and street name (at least 5 characters).',
+        'Avoid PO boxes — we need a physical address.',
       ],
       fields: ['Home address'],
       isFixableByUser: true,
     };
   }
+
 
   // Phone format rules (E.164 / libphonenumber checks).
   if (
