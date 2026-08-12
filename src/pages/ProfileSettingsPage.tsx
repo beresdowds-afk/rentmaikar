@@ -150,6 +150,15 @@ export default function ProfileSettingsPage() {
       });
       return;
     }
+
+    // Drivers must keep a valid home address; owners may leave it blank.
+    const addressIssue = validateAddress(streetAddress, isDriver);
+    if (addressIssue) {
+      setAddressTouched(true);
+      toast({ title: 'Home address', description: addressIssue, variant: 'destructive' });
+      return;
+    }
+
     setSaving(true);
     try {
       // Normalize to E.164 and enforce the number matches the user's
