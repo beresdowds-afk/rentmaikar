@@ -9319,6 +9319,45 @@ export type Database = {
           },
         ]
       }
+      vehicle_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          changed_fields: string[]
+          created_at: string
+          id: string
+          new_values: Json
+          old_values: Json
+          owner_id: string | null
+          review_notes: string | null
+          vehicle_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          changed_fields?: string[]
+          created_at?: string
+          id?: string
+          new_values?: Json
+          old_values?: Json
+          owner_id?: string | null
+          review_notes?: string | null
+          vehicle_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          changed_fields?: string[]
+          created_at?: string
+          id?: string
+          new_values?: Json
+          old_values?: Json
+          owner_id?: string | null
+          review_notes?: string | null
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
       vehicle_booking_requests: {
         Row: {
           created_at: string
