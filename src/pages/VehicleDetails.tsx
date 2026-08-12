@@ -14,9 +14,6 @@ import { usePublicVehicle, useCategoryPrices } from "@/hooks/usePublicVehicles";
 import BookingRequestDialog from "@/components/catalogue/BookingRequestDialog";
 import VehicleSubmissionHistorySection from "@/components/vehicles/VehicleSubmissionHistorySection";
 
-import categoryBudget from "@/assets/category-budget.jpg";
-import categoryStandard from "@/assets/category-standard.jpg";
-import categoryPremium from "@/assets/category-premium.jpg";
 
 const categoryForYear = (year?: number | null): "budget" | "standard" | "premium" => {
   if (!year) return "standard";
@@ -25,11 +22,6 @@ const categoryForYear = (year?: number | null): "budget" | "standard" | "premium
   return "premium";
 };
 
-const categoryImages: Record<string, string> = {
-  budget: categoryBudget,
-  standard: categoryStandard,
-  premium: categoryPremium,
-};
 
 const VehicleDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -46,7 +38,9 @@ const VehicleDetails = () => {
     return row ? Number(row.price) : undefined;
   }, [categoryPrices, category]);
 
-  const photos = vehicle?.photo_urls?.length ? vehicle.photo_urls : [categoryImages[category]];
+  // Public listings always carry owner-submitted photos; no placeholder stand-ins.
+  const photos = (vehicle?.photo_urls ?? []).filter((p) => Boolean(p?.trim()));
+
   const location = vehicle?.pickup_city || vehicle?.pickup_location || "Pickup location shared after approval";
   const title = vehicle ? `${vehicle.year ?? ""} ${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim() : "Vehicle";
 
@@ -118,13 +112,20 @@ const VehicleDetails = () => {
           {vehicle && (
             <div className="grid md:grid-cols-2 gap-8">
               <div>
-                <div className="rounded-xl overflow-hidden border border-border bg-card">
-                  <img
-                    src={photos[activePhoto] ?? photos[0]}
-                    alt={`${title} photo ${activePhoto + 1}`}
-                    className="w-full h-80 object-cover"
-                  />
-                </div>
+                {photos.length > 0 ? (
+                  <div className="rounded-xl overflow-hidden border border-border bg-card">
+                    <img
+                      src={photos[activePhoto] ?? photos[0]}
+                      alt={`${title} photo ${activePhoto + 1}`}
+                      className="w-full h-80 object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border bg-muted/30 h-80 flex items-center justify-center text-sm text-muted-foreground text-center px-6">
+                    Photos pending owner submission — this listing is not shown publicly until verified photos are added.
+                  </div>
+                )}
+
                 {photos.length > 1 && (
                   <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
                     {photos.map((p, i) => (

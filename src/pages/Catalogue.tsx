@@ -155,11 +155,14 @@ const Catalogue = () => {
 
   const vehicles: CatalogueVehicle[] = useMemo(() => {
     return (rows as PublicVehicleRow[])
+      // Only owner-submitted vehicles with real uploaded photos are listed publicly.
+      .filter((row) => Boolean(row.photo_urls?.[0]?.trim()))
       .map((row) => {
         const location = row.pickup_city || row.pickup_location || "Unknown";
         return { row, location };
       })
       .filter(({ location }) => (country === "Nigeria" ? isNigeriaLocation(location) : !isNigeriaLocation(location)))
+
       .map(({ row, location }) => {
         const coordinates = usaLocationCoordinates[location] ?? null;
         const distance = getVehicleDistance(location, coordinates, driverHome.location, driverHome.coordinates, country);
@@ -179,7 +182,7 @@ const Catalogue = () => {
           color: row.color ?? "—",
           status: row.status ?? "available",
           location,
-          image: row.photo_urls?.[0] || categoryImages[category] || categoryBudget,
+          image: row.photo_urls![0],
           price: categoryPrice,
           distance,
           isNearby,
