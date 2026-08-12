@@ -430,12 +430,21 @@ const OwnerRegistration = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="streetAddress">Address (optional)</Label>
+                  <Input id="streetAddress" placeholder="Street address" {...register("streetAddress")} />
+                  {errors.streetAddress && (
+                    <p className="text-destructive text-sm">{errors.streetAddress.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="zipCode">ZIP / Postal Code</Label>
                   <Input id="zipCode" placeholder="20001" {...register("zipCode")} />
                   {errors.zipCode && (
                     <p className="text-destructive text-sm">{errors.zipCode.message}</p>
                   )}
                 </div>
+
               </div>
 
               {/* Vehicle Details */}
