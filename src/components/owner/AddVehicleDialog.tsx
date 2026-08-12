@@ -148,8 +148,11 @@ export function AddVehicleDialog() {
           ? `Vehicle submitted with ${photoUrls.length} photo${photoUrls.length > 1 ? "s" : ""}`
           : "Vehicle submitted",
         {
-        description: "It is pending admin verification and will appear in the catalogue once approved.",
-      });
+          description:
+            "It is pending admin verification and will appear in the catalogue once approved.",
+        },
+      );
+
       setForm(EMPTY);
       setOpen(false);
       return data;
