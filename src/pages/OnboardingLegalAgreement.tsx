@@ -230,9 +230,7 @@ const OnboardingLegalAgreement = () => {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4 py-10">
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="text-center space-y-2">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <FileText className="h-7 w-7 text-primary" />
-          </div>
+          <img src={rentmaikarLogo} alt="RentMaiKar" className="mx-auto h-12 object-contain" />
           <h1 className="text-2xl md:text-3xl font-bold">Rental Agreement</h1>
           <p className="text-muted-foreground">
             Review the latest approved Rentmaikar rental agreement for {region} before continuing.
