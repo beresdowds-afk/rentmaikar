@@ -111,15 +111,20 @@ const PAGE_SIZE = 15;
 
 type QuickChip = { id: string; label: string; match: (v: VehicleRow) => boolean };
 
+export const hasVerifiedPhotos = (v: { photo_urls?: string[] | null }) =>
+  (v.photo_urls ?? []).some((u) => (u ?? "").trim().length > 0);
+
 const quickChips: QuickChip[] = [
   { id: "usa", label: "🇺🇸 USA", match: (v) => inferCountry(v) === "USA" },
   { id: "ng", label: "🇳🇬 Nigeria", match: (v) => inferCountry(v) === "Nigeria" },
   { id: "active", label: "Active", match: (v) => v.status === "active" },
   { id: "pending", label: "Pending", match: (v) => (v.status || "pending") === "pending" },
   { id: "maintenance", label: "Maintenance", match: (v) => v.status === "maintenance" },
+  { id: "no_photos", label: "📷 Missing owner photos", match: (v) => !hasVerifiedPhotos(v) },
   { id: "recent", label: "2020+", match: (v) => v.year >= 2020 },
   { id: "electric", label: "Tesla", match: (v) => v.make?.toLowerCase() === "tesla" },
 ];
+
 
 interface Props {
   embedded?: boolean;
