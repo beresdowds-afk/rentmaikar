@@ -116,6 +116,7 @@ const AdminVehicleQueuePage = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-vehicle-queue"] });
       queryClient.invalidateQueries({ queryKey: ["owner-vehicles"] });
       queryClient.invalidateQueries({ queryKey: ["public-vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-vehicle-review-audit"] });
       setRejectTarget(null);
       setReason("");
     },
