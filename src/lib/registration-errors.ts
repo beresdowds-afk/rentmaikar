@@ -140,7 +140,8 @@ export function classifyRegistrationError(
   const isAddressError =
     lower.includes('home address') ||
     lower.includes('street_address') ||
-    lower.includes('address is required for driver');
+    lower.includes('address is required for driver') ||
+    lower.includes('residential address');
 
   if (isAddressError) {
     // Too long (> 200 characters).
