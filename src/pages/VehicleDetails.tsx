@@ -191,7 +191,10 @@ const VehicleDetails = () => {
               </div>
             </div>
           )}
+
+          {id && <VehicleSubmissionHistorySection vehicleId={id} />}
         </div>
+
       </main>
       <Footer />
 
