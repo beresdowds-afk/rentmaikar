@@ -552,7 +552,15 @@ export default function OwnerDashboard() {
                 photoUrls={((vehicle as any).photo_urls as string[]) || []}
                 onChange={() => queryClient.invalidateQueries({ queryKey: ['owner-vehicles'] })}
               />
+              <VehicleVerificationAction
+                vehicleId={vehicle.id}
+                photoUrls={((vehicle as any).photo_urls as string[]) || []}
+                reviewStatus={(vehicle as any).review_status}
+                reviewNotes={(vehicle as any).review_notes}
+                onDone={() => queryClient.invalidateQueries({ queryKey: ['owner-vehicles'] })}
+              />
             </CardContent>
+
           </Card>
         ))
 
