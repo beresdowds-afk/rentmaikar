@@ -98,6 +98,7 @@ export default function AdminNotificationRetryPage() {
       <Seo
         title="Notification Retry | Rentmaikar Admin"
         description="Review failed notification deliveries and reprocess them for a specific event run or vehicle submission."
+        path="/admin/notification-retry"
         noindex
       />
 
