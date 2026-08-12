@@ -332,7 +332,19 @@ export default function UserAgreementsList({ userType }: UserAgreementsListProps
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Created: {format(new Date(agreement.created_at), 'MMM dd, yyyy')}
+                      {agreement.renewal_count ? ` • Renewal #${agreement.renewal_count}` : ''}
                     </p>
+                    {agreement.expires_at && agreement.status !== 'superseded' && (
+                      <p className={`text-xs mt-1 flex items-center gap-1 ${
+                        renewalDaysLeft(agreement.expires_at) <= 3 ? 'text-destructive' : 'text-muted-foreground'
+                      }`}>
+                        <CalendarClock className="h-3 w-3" />
+                        {renewalDaysLeft(agreement.expires_at) > 0
+                          ? `Monthly renewal in ${renewalDaysLeft(agreement.expires_at)} day(s) — expires ${format(new Date(agreement.expires_at), 'MMM dd, yyyy')}`
+                          : `Renewal due — expired ${format(new Date(agreement.expires_at), 'MMM dd, yyyy')}`}
+                      </p>
+                    )}
+
                   </div>
 
                   <div className="flex gap-2">
