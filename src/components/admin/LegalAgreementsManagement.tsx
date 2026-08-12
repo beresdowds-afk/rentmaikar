@@ -58,6 +58,8 @@ import SignaturePad from '@/components/legal/SignaturePad';
 import LegalAgreementDocument from '@/components/legal/LegalAgreementDocument';
 import { SplitPane } from '@/components/ui/split-pane';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useAgreementTemplate } from '@/hooks/useAgreementTemplate';
+import { buildAgreementValues, renderAgreementTemplate } from '@/lib/agreement-template';
 
 const PAGE_SIZE = 10;
 
