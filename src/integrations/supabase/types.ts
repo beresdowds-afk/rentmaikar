@@ -12241,6 +12241,10 @@ export type Database = {
       normalize_msisdn: { Args: { _phone: string }; Returns: string }
       notification_category_for: { Args: { _kind: string }; Returns: string }
       onboarding_diagnostics: { Args: never; Returns: Json }
+      owner_resubmit_vehicle_for_review: {
+        Args: { p_vehicle_id: string }
+        Returns: Json
+      }
       owns_vehicle_text: { Args: { _vehicle_id: string }; Returns: boolean }
       payment_preflight: {
         Args: { _context?: Json; _operation: string }

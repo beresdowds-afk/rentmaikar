@@ -53,7 +53,10 @@ import {
   Sparkles,
   Eye,
   Plus,
+  Download,
+  CameraOff,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -111,15 +114,20 @@ const PAGE_SIZE = 15;
 
 type QuickChip = { id: string; label: string; match: (v: VehicleRow) => boolean };
 
+export const hasVerifiedPhotos = (v: { photo_urls?: string[] | null }) =>
+  (v.photo_urls ?? []).some((u) => (u ?? "").trim().length > 0);
+
 const quickChips: QuickChip[] = [
   { id: "usa", label: "🇺🇸 USA", match: (v) => inferCountry(v) === "USA" },
   { id: "ng", label: "🇳🇬 Nigeria", match: (v) => inferCountry(v) === "Nigeria" },
   { id: "active", label: "Active", match: (v) => v.status === "active" },
   { id: "pending", label: "Pending", match: (v) => (v.status || "pending") === "pending" },
   { id: "maintenance", label: "Maintenance", match: (v) => v.status === "maintenance" },
+  { id: "no_photos", label: "📷 Missing owner photos", match: (v) => !hasVerifiedPhotos(v) },
   { id: "recent", label: "2020+", match: (v) => v.year >= 2020 },
   { id: "electric", label: "Tesla", match: (v) => v.make?.toLowerCase() === "tesla" },
 ];
+
 
 interface Props {
   embedded?: boolean;
@@ -269,6 +277,67 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
     setMakeFilter("");
     setPage(1);
   };
+
+  const photolessVehicles = useMemo(
+    () => (vehicles ?? []).filter((v) => !hasVerifiedPhotos(v)),
+    [vehicles]
+  );
+
+  const exportPhotoless = () => {
+    if (!photolessVehicles.length) {
+      toast.info("Nothing to export", {
+        description: "Every vehicle in the registry has at least one owner-uploaded photo.",
+      });
+      return;
+    }
+    const header = [
+      "vehicle_id",
+      "year",
+      "make",
+      "model",
+      "license_plate",
+      "vin",
+      "status",
+      "is_public",
+      "country",
+      "pickup_city",
+      "pickup_location",
+      "owner_id",
+    ];
+    const esc = (val: unknown) => `"${String(val ?? "").replace(/"/g, '""')}"`;
+    const rows = photolessVehicles.map((v) =>
+      [
+        v.id,
+        v.year,
+        v.make,
+        v.model,
+        v.license_plate,
+        v.vin ?? "",
+        v.status ?? "",
+        v.is_public ? "yes" : "no",
+        inferCountry(v),
+        v.pickup_city ?? "",
+        v.pickup_location ?? "",
+        v.owner_id ?? "",
+      ]
+        .map(esc)
+        .join(",")
+    );
+    const blob = new Blob([[header.join(","), ...rows].join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `registry-only-vehicles-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${photolessVehicles.length} registry-only vehicle(s)`, {
+      description: "These vehicles are hidden from the public catalogue until owners upload photos.",
+    });
+  };
+
+
 
   const setVisibility = async (v: VehicleRow, isPublic: boolean) => {
     setSavingVisibility(v.id);
@@ -554,6 +623,19 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
                 >
                   Hide all
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => toggleChip("no_photos")}
+                  className="gap-1"
+                >
+                  <CameraOff className="h-4 w-4" />
+                  {activeChips.includes("no_photos") ? "Showing" : "Show"} missing photos ({photolessVehicles.length})
+                </Button>
+                <Button size="sm" variant="outline" onClick={exportPhotoless} className="gap-1">
+                  <Download className="h-4 w-4" /> Export registry-only CSV
+                </Button>
+
                 {!isLoading && filtered.length > 0 && (
                   <span className="text-xs text-muted-foreground">
                     Page {currentPage} of {totalPages}

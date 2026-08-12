@@ -26,6 +26,8 @@ import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { OwnerRentToOwnListing } from '@/components/owner/OwnerRentToOwnListing';
 import { VehiclePickupLocation } from '@/components/owner/VehiclePickupLocation';
 import { VehiclePhotoManager } from '@/components/owner/VehiclePhotoManager';
+import { VehicleVerificationAction } from '@/components/owner/VehicleVerificationAction';
+
 import { AddVehicleDialog } from '@/components/owner/AddVehicleDialog';
 import VehicleSubmissionTracker, { VehicleSubmissionBadge } from '@/components/owner/VehicleSubmissionTracker';
 import { useQueryClient } from '@tanstack/react-query';
@@ -552,7 +554,15 @@ export default function OwnerDashboard() {
                 photoUrls={((vehicle as any).photo_urls as string[]) || []}
                 onChange={() => queryClient.invalidateQueries({ queryKey: ['owner-vehicles'] })}
               />
+              <VehicleVerificationAction
+                vehicleId={vehicle.id}
+                photoUrls={((vehicle as any).photo_urls as string[]) || []}
+                reviewStatus={(vehicle as any).review_status}
+                reviewNotes={(vehicle as any).review_notes}
+                onDone={() => queryClient.invalidateQueries({ queryKey: ['owner-vehicles'] })}
+              />
             </CardContent>
+
           </Card>
         ))
 
