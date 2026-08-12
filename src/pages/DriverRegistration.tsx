@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import ConsentSection, { type MessagingChannel } from "@/components/registration/ConsentSection";
 import { toast } from "sonner";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -288,6 +289,10 @@ const DriverRegistration = () => {
         agreed_privacy: data.agreePrivacy,
         agreed_iot: data.agreeIoT,
         agreed_fees: data.agreeFees,
+        messaging_consent: data.messagingConsent,
+        messaging_channel: data.messagingChannel,
+        data_sharing_consent: data.dataSharingConsent,
+        consent_recorded_at: new Date().toISOString(),
       });
 
       if (error) throw error;
@@ -897,6 +902,19 @@ const DriverRegistration = () => {
                     <p className="text-destructive text-sm mt-2">{errors.agreeFees.message}</p>
                   )}
                 </div>
+
+                {/* Messaging + third-party data sharing consent */}
+                <ConsentSection
+                  messagingConsent={!!watch("messagingConsent")}
+                  messagingChannel={(watch("messagingChannel") as MessagingChannel) ?? "none"}
+                  dataSharingConsent={!!watch("dataSharingConsent")}
+                  onMessagingConsentChange={(v) => setValue("messagingConsent", v, { shouldValidate: true })}
+                  onMessagingChannelChange={(v) => setValue("messagingChannel", v, { shouldValidate: true })}
+                  onDataSharingConsentChange={(v) => setValue("dataSharingConsent", v, { shouldValidate: true })}
+                  messagingError={errors.messagingConsent?.message as string | undefined}
+                  channelError={errors.messagingChannel?.message as string | undefined}
+                  dataSharingError={errors.dataSharingConsent?.message as string | undefined}
+                />
               </div>
 
               <Button
