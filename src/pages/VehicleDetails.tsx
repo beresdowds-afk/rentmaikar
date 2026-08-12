@@ -14,9 +14,6 @@ import { usePublicVehicle, useCategoryPrices } from "@/hooks/usePublicVehicles";
 import BookingRequestDialog from "@/components/catalogue/BookingRequestDialog";
 import VehicleSubmissionHistorySection from "@/components/vehicles/VehicleSubmissionHistorySection";
 
-import categoryBudget from "@/assets/category-budget.jpg";
-import categoryStandard from "@/assets/category-standard.jpg";
-import categoryPremium from "@/assets/category-premium.jpg";
 
 const categoryForYear = (year?: number | null): "budget" | "standard" | "premium" => {
   if (!year) return "standard";
@@ -25,11 +22,6 @@ const categoryForYear = (year?: number | null): "budget" | "standard" | "premium
   return "premium";
 };
 
-const categoryImages: Record<string, string> = {
-  budget: categoryBudget,
-  standard: categoryStandard,
-  premium: categoryPremium,
-};
 
 const VehicleDetails = () => {
   const { id } = useParams<{ id: string }>();
