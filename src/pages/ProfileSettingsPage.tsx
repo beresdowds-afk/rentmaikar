@@ -52,20 +52,48 @@ const nameSchema = z.object({
 
 const normalize = (v: string | null | undefined) => (v ?? '').trim();
 
+// Same rules the database enforces (enforce_profile_address_rules):
+// drivers must keep a >= 5 character home address, owners may leave it blank.
+const ADDRESS_MIN = 5;
+const ADDRESS_MAX = 200;
+
+export function validateAddress(value: string, isDriver: boolean): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return isDriver ? 'Home address is required for drivers.' : null;
+  }
+  if (trimmed.length < ADDRESS_MIN) {
+    return `Add ${ADDRESS_MIN - trimmed.length} more character${
+      ADDRESS_MIN - trimmed.length === 1 ? '' : 's'
+    } — include your street and house number.`;
+  }
+  if (trimmed.length > ADDRESS_MAX) {
+    return `Too long by ${trimmed.length - ADDRESS_MAX} characters.`;
+  }
+  if (/^(n\/?a|none|nil|test)$/i.test(trimmed)) {
+    return 'Enter your real residential address — placeholders are rejected.';
+  }
+  return null;
+}
+
+
 
 
 export default function ProfileSettingsPage() {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const { country } = useRegion();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [initial, setInitial] = useState({ fullName: '', phone: '' });
+  const [streetAddress, setStreetAddress] = useState('');
+  const [addressTouched, setAddressTouched] = useState(false);
+  const [initial, setInitial] = useState({ fullName: '', phone: '', streetAddress: '' });
   const [identityStatus, setIdentityStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [nameImmutableError, setNameImmutableError] = useState<string | null>(null);
 
   const nameLocked = identityStatus === 'approved';
+  const isDriver = hasRole('driver');
 
   useEffect(() => {
     if (!user?.id) return;
@@ -73,16 +101,18 @@ export default function ProfileSettingsPage() {
       setLoading(true);
       const { data } = await supabase
         .from('profiles')
-        .select('full_name, phone, identity_verification_status, identity_verified_at')
+        .select('full_name, phone, street_address, identity_verification_status, identity_verified_at')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (data) {
         const fn = data.full_name ?? '';
         const ph = data.phone ?? '';
+        const addr = (data as any).street_address ?? '';
         setFullName(fn);
         setPhone(ph);
-        setInitial({ fullName: fn, phone: ph });
+        setStreetAddress(addr);
+        setInitial({ fullName: fn, phone: ph, streetAddress: addr });
         const status = (data as any).identity_verification_status
           ?? ((data as any).identity_verified_at ? 'approved' : null);
         setIdentityStatus(status);
@@ -93,6 +123,11 @@ export default function ProfileSettingsPage() {
 
   const nameChanged = normalize(fullName) !== normalize(initial.fullName);
   const phoneChanged = normalize(phone) !== normalize(initial.phone);
+  const addressChanged = normalize(streetAddress) !== normalize(initial.streetAddress);
+  const addressLength = streetAddress.trim().length;
+  const addressError = validateAddress(streetAddress, isDriver);
+  const showAddressError = (addressTouched || addressChanged) && !!addressError;
+
 
   const save = async () => {
     if (!user?.id) return;
@@ -115,6 +150,15 @@ export default function ProfileSettingsPage() {
       });
       return;
     }
+
+    // Drivers must keep a valid home address; owners may leave it blank.
+    const addressIssue = validateAddress(streetAddress, isDriver);
+    if (addressIssue) {
+      setAddressTouched(true);
+      toast({ title: 'Home address', description: addressIssue, variant: 'destructive' });
+      return;
+    }
+
     setSaving(true);
     try {
       // Normalize to E.164 and enforce the number matches the user's
@@ -135,7 +179,9 @@ export default function ProfileSettingsPage() {
       const updates: Record<string, any> = {
         full_name: parsed.data.full_name,
         phone: newPhone,
+        street_address: streetAddress.trim() || null,
       };
+
 
 
       if (phoneChanged) {
@@ -155,6 +201,7 @@ export default function ProfileSettingsPage() {
       const fields: string[] = [];
       if (nameChanged) fields.push('full_name');
       if (phoneChanged) fields.push('phone');
+      if (addressChanged) fields.push('street_address');
       trackOnboardingEvent('profile_updated', { fields });
 
       if (phoneChanged) {
@@ -176,25 +223,37 @@ export default function ProfileSettingsPage() {
         toast({ title: 'Profile updated' });
       }
 
-      setInitial({ fullName: parsed.data.full_name, phone: newPhone ?? '' });
+      setInitial({
+        fullName: parsed.data.full_name,
+        phone: newPhone ?? '',
+        streetAddress: streetAddress.trim(),
+      });
+      setAddressTouched(false);
+
     } catch (err: any) {
       const msg = String(err?.message ?? '');
+      // The address trigger also raises 23514 — keep the two apart so users
+      // don't get a misleading "name is locked" message.
+      const isAddress = /home address/i.test(msg);
       const isImmutable =
-        err?.code === '23514' ||
-        /locked after identity verification|full_name is immutable/i.test(msg);
+        !isAddress &&
+        (err?.code === '23514' ||
+          /locked after identity verification|full_name is immutable/i.test(msg));
       if (isImmutable) {
         setNameImmutableError(
           'Your name is locked after identity verification. Contact support to make changes.',
         );
         setFullName(initial.fullName);
       }
+      if (isAddress) setAddressTouched(true);
       toast({
-        title: isImmutable ? 'Name is locked' : 'Save failed',
+        title: isImmutable ? 'Name is locked' : isAddress ? 'Home address' : 'Save failed',
         description: isImmutable
           ? 'Contact support to change your legal name.'
           : msg,
         variant: 'destructive',
       });
+
     } finally {
       setSaving(false);
     }
@@ -288,6 +347,60 @@ export default function ProfileSettingsPage() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="street_address">
+                    Home address{' '}
+                    {isDriver ? (
+                      <span className="text-destructive">*</span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">(optional)</span>
+                    )}
+                  </Label>
+                  <span
+                    className={`text-xs tabular-nums ${
+                      showAddressError ? 'text-destructive' : 'text-muted-foreground'
+                    }`}
+                    aria-live="polite"
+                  >
+                    {addressLength}/{ADDRESS_MAX}
+                  </span>
+                </div>
+                <Input
+                  id="street_address"
+                  value={streetAddress}
+                  onChange={(e) => setStreetAddress(e.target.value)}
+                  onBlur={() => setAddressTouched(true)}
+                  disabled={loading || saving}
+                  maxLength={ADDRESS_MAX + 50}
+                  autoComplete="street-address"
+                  aria-invalid={showAddressError}
+                  aria-describedby="street_address-hint"
+                  placeholder="e.g. 24 Ademola Street, Ikeja"
+                />
+                <p
+                  id="street_address-hint"
+                  aria-live="polite"
+                  className={`text-sm ${
+                    showAddressError
+                      ? 'text-destructive'
+                      : addressLength >= ADDRESS_MIN
+                      ? 'text-emerald-500'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  {showAddressError
+                    ? addressError
+                    : addressLength >= ADDRESS_MIN
+                    ? 'Looks good — used for verification and vehicle handover.'
+                    : isDriver
+                    ? `Required for drivers — at least ${ADDRESS_MIN} characters.`
+                    : 'Optional for owners — add it to speed up handover.'}
+                </p>
+              </div>
+
+
+
               {phoneChanged && (
                 <Alert className="border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20">
                   <ShieldAlert className="h-4 w-4 text-yellow-700" />
@@ -298,7 +411,16 @@ export default function ProfileSettingsPage() {
               )}
 
               <div className="pt-2">
-                <Button onClick={save} disabled={loading || saving || (!nameChanged && !phoneChanged)}>
+                <Button
+                  onClick={save}
+                  disabled={
+                    loading ||
+                    saving ||
+                    !!addressError ||
+                    (!nameChanged && !phoneChanged && !addressChanged)
+                  }
+                >
+
                   {saving ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
