@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import SignaturePad from './SignaturePad';
 import LegalAgreementDocument from './LegalAgreementDocument';
 import { supabase } from '@/integrations/supabase/client';
+import { useAgreementTemplate } from '@/hooks/useAgreementTemplate';
+import { buildAgreementValues, renderAgreementTemplate } from '@/lib/agreement-template';
 
 interface Party {
   id: string;
