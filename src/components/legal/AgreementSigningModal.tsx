@@ -82,25 +82,21 @@ const AgreementSigningModal: React.FC<AgreementSigningModalProps> = ({
     return 'Admin Witness Signature';
   };
 
-  const generateAgreementContent = () => {
-    return `
-VEHICLE RENTAL AGREEMENT
-
-Agreement Date: ${new Date().toISOString()}
-
-PARTIES:
-Owner: ${owner.name} (${owner.email})
-Driver: ${driver.name} (${driver.email})
-
-VEHICLE:
-${vehicle.year} ${vehicle.make} ${vehicle.model}
-License Plate: ${vehicle.licensePlate}
-${vehicle.vin ? `VIN: ${vehicle.vin}` : ''}
-
-This agreement is governed by the RentMaiKar Terms of Use and Privacy Policy.
-All pricing and payment terms are as displayed on the RentMaiKar platform.
-    `.trim();
-  };
+  // The body is never hard-coded: it is the active template published in the
+  // admin agreement editor, with the parties/vehicle placeholders resolved.
+  const generateAgreementContent = () =>
+    renderAgreementTemplate(
+      template?.content ?? '',
+      buildAgreementValues({
+        driver,
+        owner,
+        vehicle,
+        region,
+        supportEmail: entity?.email ?? undefined,
+        supportPhone: entity?.phone ?? undefined,
+        platformEntity: entity?.name,
+      }),
+    );
 
   const handleSubmit = async () => {
     if (!signature) {
