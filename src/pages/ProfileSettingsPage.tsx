@@ -186,45 +186,37 @@ export default function ProfileSettingsPage() {
         updates.identity_verification_status = 'pending_reverification';
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      setNameImmutableError(null);
-
-      const fields: string[] = [];
-      if (nameChanged) fields.push('full_name');
-      if (phoneChanged) fields.push('phone');
-      if (addressChanged) fields.push('street_address');
-      trackOnboardingEvent('profile_updated', { fields });
-
-      if (phoneChanged) {
-        setIdentityStatus('pending_reverification');
-        trackOnboardingEvent('profile_reverification_triggered', {
-          fields: ['phone'],
-          extra: { channel: 'both' },
-        });
-        supabase.functions
-          .invoke('persona-send-reverification', {
-            body: { user_id: user.id, channel: 'both', reason: 'Phone number changed.' },
-          })
-          .catch(() => {});
-        toast({
-          title: 'Profile updated',
-          description: 'Your phone changed — please re-verify your identity.',
-        });
-      } else {
-        toast({ title: 'Profile updated' });
-      }
-
-      setInitial({
-        fullName: parsed.data.full_name,
-        phone: newPhone ?? '',
-        streetAddress: streetAddress.trim(),
+      // Guarded write: refuses to overwrite a newer version saved from the
+      // installed app / another tab, and auto-merges non-overlapping edits.
+      const outcome = await conflictSave.save({
+        table: 'profiles',
+        match: { column: 'user_id', value: user.id },
+        updates,
+        base: {
+          full_name: initial.fullName,
+          phone: initial.phone || null,
+          street_address: initial.streetAddress || null,
+        },
+        baseUpdatedAt,
+        compareFields: ['full_name', 'phone', 'street_address'],
       });
-      setAddressTouched(false);
+
+      if (outcome.status === 'conflict') {
+        // The dialog takes over; nothing was written.
+        return;
+      }
+      if (outcome.status === 'error') throw outcome.error;
+
+      finalizeSave(outcome.row, {
+        fullName: parsed.data.full_name,
+        phone: newPhone,
+        streetAddress: streetAddress.trim(),
+        phoneChanged,
+        nameChanged,
+        addressChanged,
+        autoMerged: outcome.autoMerged,
+      });
+
 
     } catch (err: any) {
       const msg = String(err?.message ?? '');
