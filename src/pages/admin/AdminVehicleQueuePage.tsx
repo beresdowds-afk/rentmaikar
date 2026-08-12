@@ -267,11 +267,58 @@ const AdminVehicleQueuePage = () => {
               </CardContent>
             </Card>
           ) : (
-            filtered.map((v) => (
+            <>
+              <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/40 px-3 py-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={(c) => toggleAll(Boolean(c))}
+                    aria-label="Select all submissions"
+                  />
+                  Select all ({filtered.length})
+                </label>
+                {selected.length > 0 && (
+                  <>
+                    <span className="text-sm text-muted-foreground">{selected.length} selected</span>
+                    <Button
+                      size="sm"
+                      onClick={() => bulkReview.mutate({ ids: selected, decision: "published" })}
+                      disabled={bulkReview.isPending}
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      {bulkReview.isPending && bulkProgress
+                        ? `Publishing ${bulkProgress.done}/${bulkProgress.total}`
+                        : "Approve selected"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => {
+                        setBulkReason("");
+                        setPerVehicleReasons({});
+                        setBulkOpen(true);
+                      }}
+                      disabled={bulkReview.isPending}
+                    >
+                      <XCircle className="w-4 h-4 mr-2" /> Reject selected
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setSelected([])} disabled={bulkReview.isPending}>
+                      Clear
+                    </Button>
+                  </>
+                )}
+              </div>
+              {filtered.map((v) => (
               <Card key={v.id}>
                 <CardHeader>
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                     <div className="flex gap-4">
+                      <Checkbox
+                        className="mt-1"
+                        checked={selected.includes(v.id)}
+                        onCheckedChange={(c) => toggleOne(v.id, Boolean(c))}
+                        aria-label={`Select ${v.make ?? "vehicle"} ${v.model ?? ""} submission`}
+                      />
                       {v.photo_urls?.[0] && (
                         <img
                           src={v.photo_urls[0]}
@@ -351,7 +398,8 @@ const AdminVehicleQueuePage = () => {
                   </div>
                 </CardContent>
               </Card>
-            ))
+              ))}
+            </>
           )}
         </TabsContent>
         )}
@@ -391,6 +439,74 @@ const AdminVehicleQueuePage = () => {
           </DialogFooter>
         </DialogContent>
 
+      </Dialog>
+
+      <Dialog open={bulkOpen} onOpenChange={(open) => !open && !bulkReview.isPending && setBulkOpen(false)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Reject {selectedVehicles.length} submission{selectedVehicles.length === 1 ? "" : "s"}</DialogTitle>
+            <DialogDescription>
+              Apply one shared reason, or give any submission its own reason below. Owners see the reason on their
+              dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="bulk-reason">Shared reason</Label>
+            <Textarea
+              id="bulk-reason"
+              rows={3}
+              value={bulkReason}
+              onChange={(e) => setBulkReason(e.target.value)}
+              placeholder="e.g. Photos are unclear and the registration expiry is missing."
+            />
+          </div>
+          <ScrollArea className="max-h-64 pr-3">
+            <div className="space-y-3">
+              {selectedVehicles.map((v) => (
+                <div key={v.id} className="space-y-1">
+                  <Label htmlFor={`reason-${v.id}`} className="text-xs">
+                    {v.year ?? ""} {v.make} {v.model} — {ownerLabel(v.owner_id)}
+                  </Label>
+                  <Input
+                    id={`reason-${v.id}`}
+                    value={perVehicleReasons[v.id] ?? ""}
+                    onChange={(e) =>
+                      setPerVehicleReasons((prev) => ({ ...prev, [v.id]: e.target.value }))
+                    }
+                    placeholder="Optional specific reason (overrides the shared reason)"
+                  />
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkReview.isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={
+                bulkReview.isPending ||
+                selectedVehicles.some(
+                  (v) => ((perVehicleReasons[v.id] ?? bulkReason).trim().length < 5),
+                )
+              }
+              onClick={() =>
+                bulkReview.mutate({
+                  ids: selectedVehicles.map((v) => v.id),
+                  decision: "rejected",
+                  reasons: Object.fromEntries(
+                    selectedVehicles.map((v) => [v.id, (perVehicleReasons[v.id] || bulkReason).trim()]),
+                  ),
+                })
+              }
+            >
+              {bulkReview.isPending && bulkProgress
+                ? `Rejecting ${bulkProgress.done}/${bulkProgress.total}`
+                : "Reject submissions"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );
