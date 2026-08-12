@@ -152,10 +152,15 @@ const DriverRegistration = () => {
     handleSubmit,
     setValue,
     watch,
+    trigger,
     control,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, touchedFields },
   } = useForm<DriverFormData>({
     resolver: zodResolver(driverSchema),
+    // Validate as the user types so the address rules surface immediately
+    // instead of only on submit.
+    mode: "onChange",
+
     defaultValues: {
       country: "usa",
       rideshareApproval: [],
