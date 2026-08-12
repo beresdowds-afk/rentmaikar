@@ -152,10 +152,15 @@ const DriverRegistration = () => {
     handleSubmit,
     setValue,
     watch,
+    trigger,
     control,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, touchedFields },
   } = useForm<DriverFormData>({
     resolver: zodResolver(driverSchema),
+    // Validate as the user types so the address rules surface immediately
+    // instead of only on submit.
+    mode: "onChange",
+
     defaultValues: {
       country: "usa",
       rideshareApproval: [],
@@ -204,6 +209,35 @@ const DriverRegistration = () => {
 
   const selectedCountry = watch("country");
   const cities = selectedCountry === "usa" ? usaCities : nigeriaCities;
+
+  // ---- Live home-address validation ---------------------------------------
+  // Drivers must supply a real physical address (DB trigger enforces >= 5
+  // trimmed chars). Mirror those rules live so nothing surprises them on submit.
+  const ADDRESS_MIN = 5;
+  const ADDRESS_MAX = 200;
+  const streetAddressValue = watch("streetAddress") ?? "";
+  const addressTrimmed = streetAddressValue.trim();
+  const addressLength = addressTrimmed.length;
+  const addressTouched = Boolean(touchedFields.streetAddress) || addressLength > 0;
+
+  const addressHint = (() => {
+    if (!addressTouched) return null;
+    if (addressLength === 0) return { tone: "error" as const, msg: "Home address is required for drivers." };
+    if (addressLength < ADDRESS_MIN)
+      return {
+        tone: "error" as const,
+        msg: `Add ${ADDRESS_MIN - addressLength} more character${ADDRESS_MIN - addressLength === 1 ? "" : "s"} — include your street and house number.`,
+      };
+    if (addressLength > ADDRESS_MAX)
+      return { tone: "error" as const, msg: `Too long by ${addressLength - ADDRESS_MAX} characters.` };
+    if (/^(n\/?a|none|nil|test)$/i.test(addressTrimmed))
+      return { tone: "error" as const, msg: "Enter your real residential address — placeholders are rejected." };
+    if (!/\d/.test(addressTrimmed))
+      return { tone: "warn" as const, msg: "Tip: include your house or apartment number so handover isn’t delayed." };
+    return { tone: "ok" as const, msg: "Looks good — this address will be used for verification and handover." };
+  })();
+
+
 
   const handlePlatformChange = (platformId: string, checked: boolean) => {
     const updated = checked
@@ -489,16 +523,51 @@ const DriverRegistration = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="streetAddress">Home Address</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="streetAddress">
+                      Home Address <span className="text-destructive">*</span>
+                    </Label>
+                    <span
+                      className={`text-xs tabular-nums ${
+                        addressLength > ADDRESS_MAX || (addressTouched && addressLength < ADDRESS_MIN)
+                          ? "text-destructive"
+                          : "text-muted-foreground"
+                      }`}
+                      aria-live="polite"
+                    >
+                      {addressLength}/{ADDRESS_MAX}
+                    </span>
+                  </div>
                   <Input
                     id="streetAddress"
-                    placeholder="Full residential address"
-                    {...register("streetAddress")}
+                    placeholder="e.g. 24 Ademola Street, Ikeja"
+                    aria-invalid={addressHint?.tone === "error" || !!errors.streetAddress}
+                    aria-describedby="streetAddress-hint"
+                    maxLength={ADDRESS_MAX + 50}
+                    {...register("streetAddress", {
+                      onChange: () => void trigger("streetAddress"),
+                      onBlur: () => void trigger("streetAddress"),
+                    })}
                   />
-                  {errors.streetAddress && (
-                    <p className="text-destructive text-sm">{errors.streetAddress.message}</p>
-                  )}
+                  <p
+                    id="streetAddress-hint"
+                    aria-live="polite"
+                    className={`text-sm ${
+                      addressHint?.tone === "error"
+                        ? "text-destructive"
+                        : addressHint?.tone === "warn"
+                        ? "text-amber-500"
+                        : addressHint?.tone === "ok"
+                        ? "text-emerald-500"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {addressHint?.msg ??
+                      errors.streetAddress?.message ??
+                      `Required for drivers — at least ${ADDRESS_MIN} characters.`}
+                  </p>
                 </div>
+
 
                 <div className="space-y-2">
                   <Label htmlFor="zipCode">ZIP / Postal Code</Label>
