@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRegion } from "@/contexts/RegionContext";
 import { useRealtimeSound, shouldChime } from "@/hooks/useRealtimeSound";
+import { toast } from "sonner";
+import { isNewBuildAvailable, primeBuildId } from "@/lib/app-version";
+import type { LiveSyncCommand, LiveSyncTick } from "@/workers/live-sync.worker";
 
 /**
  * Global realtime sync worker. Subscribes to a curated set of tables and
@@ -37,6 +40,18 @@ const TABLES: Array<{ table: string; keys: string[]; alert?: boolean }> = [
   { table: "contact_settings", keys: ["contact-settings", "regions"] },
   { table: "platform_company_info", keys: ["company-info", "regions"] },
   { table: "profiles", keys: ["profile", "my-region"] },
+  // Platform content & feature rollout — keeps installed apps feature-aligned
+  // with the website the moment an admin flips a switch.
+  { table: "platform_features", keys: ["platform-features", "features"] },
+  { table: "platform_feature_overrides", keys: ["platform-features", "feature-overrides"] },
+  { table: "platform_kv_settings", keys: ["platform-settings", "kv-settings"] },
+  { table: "subscription_plans", keys: ["subscription-plans", "plans"] },
+  { table: "faq_items", keys: ["faq", "faq-items"] },
+  { table: "faq_categories", keys: ["faq", "faq-categories"] },
+  { table: "tour_step_configs", keys: ["tour-steps", "tour-config"] },
+  { table: "region_localized_content", keys: ["regions", "localized-content"] },
+  { table: "vehicles", keys: ["vehicles", "catalogue"] },
+  { table: "admin_notifications", keys: ["admin-notifications"], alert: true },
 ];
 
 /** Broadcast channel name used to fan a refresh out to every open tab/window. */
@@ -44,6 +59,9 @@ const SYNC_BROADCAST = "rentmaikar-live-sync";
 
 /** How often to force a refetch when realtime frames are not arriving. */
 const HEARTBEAT_MS = 60_000;
+
+/** How often to check whether a newer build has been deployed. */
+const VERSION_CHECK_MS = 5 * 60_000;
 
 export function useRealtimeSync(enabled: boolean = true) {
   const qc = useQueryClient();
@@ -110,19 +128,64 @@ export function useRealtimeSync(enabled: boolean = true) {
       };
     }
 
-    // 4. Heartbeat — catches a silently dead websocket.
-    const heartbeat = window.setInterval(() => {
+    // 4. Scheduler worker — off-main-thread timers that survive background
+    //    throttling in installed PWAs. Falls back to setInterval when the
+    //    environment has no module-worker support.
+    let worker: Worker | null = null;
+    let fallbackTimer: number | null = null;
+    let updateNotified = false;
+
+    const onHeartbeat = () => {
       if (document.visibilityState !== "visible") return;
       if (Date.now() - lastEventAt < HEARTBEAT_MS) return;
       refreshAll();
-    }, HEARTBEAT_MS);
+    };
+
+    const onVersionCheck = async () => {
+      if (updateNotified) return;
+      if (!(await isNewBuildAvailable())) return;
+      updateNotified = true;
+      toast("A new version of Rentmaikar is available", {
+        description: "Reload to get the latest features and fixes.",
+        duration: Infinity,
+        action: { label: "Reload", onClick: () => window.location.reload() },
+      });
+    };
+
+    void primeBuildId();
+
+    try {
+      worker = new Worker(new URL("../workers/live-sync.worker.ts", import.meta.url), {
+        type: "module",
+      });
+      worker.onmessage = (event: MessageEvent<LiveSyncTick>) => {
+        if (event.data?.type === "heartbeat") onHeartbeat();
+        else if (event.data?.type === "version-check") void onVersionCheck();
+      };
+      const startCmd: LiveSyncCommand = {
+        type: "start",
+        heartbeatMs: HEARTBEAT_MS,
+        versionCheckMs: VERSION_CHECK_MS,
+      };
+      worker.postMessage(startCmd);
+    } catch {
+      worker = null;
+      fallbackTimer = window.setInterval(() => {
+        onHeartbeat();
+        void onVersionCheck();
+      }, HEARTBEAT_MS);
+    }
 
     return () => {
       supabase.removeChannel(channel);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
       window.removeEventListener("online", onOnline);
-      window.clearInterval(heartbeat);
+      if (fallbackTimer !== null) window.clearInterval(fallbackTimer);
+      if (worker) {
+        worker.postMessage({ type: "stop" } as LiveSyncCommand);
+        worker.terminate();
+      }
       bc?.close();
       bc = null;
     };
