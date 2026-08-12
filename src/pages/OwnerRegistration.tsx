@@ -451,12 +451,47 @@ const OwnerRegistration = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="streetAddress">Address (optional)</Label>
-                  <Input id="streetAddress" placeholder="Street address" {...register("streetAddress")} />
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="streetAddress">
+                      Address <span className="text-xs text-muted-foreground">(optional)</span>
+                    </Label>
+                    <span
+                      className={`text-xs tabular-nums ${
+                        ownerAddressLength > ADDRESS_MAX ? "text-destructive" : "text-muted-foreground"
+                      }`}
+                      aria-live="polite"
+                    >
+                      {ownerAddressLength}/{ADDRESS_MAX}
+                    </span>
+                  </div>
+                  <Input
+                    id="streetAddress"
+                    placeholder="Street address"
+                    maxLength={ADDRESS_MAX + 50}
+                    aria-invalid={ownerAddressHint?.tone === "error" || !!errors.streetAddress}
+                    aria-describedby="streetAddress-hint"
+                    {...register("streetAddress")}
+                  />
+                  <p
+                    id="streetAddress-hint"
+                    aria-live="polite"
+                    className={`text-sm ${
+                      ownerAddressHint?.tone === "error"
+                        ? "text-destructive"
+                        : ownerAddressHint?.tone === "warn"
+                        ? "text-amber-500"
+                        : ownerAddressHint?.tone === "ok"
+                        ? "text-emerald-500"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {ownerAddressHint?.msg ?? "Optional for owners — add it to speed up handover."}
+                  </p>
                   {errors.streetAddress && (
                     <p className="text-destructive text-sm">{errors.streetAddress.message}</p>
                   )}
                 </div>
+
 
                 <div className="space-y-2">
                   <Label htmlFor="zipCode">ZIP / Postal Code</Label>
