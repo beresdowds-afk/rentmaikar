@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import ConsentSection, { type MessagingChannel } from "@/components/registration/ConsentSection";
 import { toast } from "sonner";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -105,6 +106,10 @@ const buildDriverSchema = (detailsRequired: boolean) => {
   agreePrivacy: z.boolean().refine(val => val, "You must agree to Privacy Policy"),
   agreeIoT: z.boolean().refine(val => val, "You must consent to IoT tracking"),
   agreeFees: z.boolean().refine(val => val, "You must acknowledge the late payment and default policy"),
+  messagingConsent: z.boolean().refine(val => val, "You must consent to receive service messages"),
+  messagingChannel: z.string().refine((val) => ["sms", "whatsapp"].includes(val), "Select SMS or WhatsApp as your second channel"),
+  dataSharingConsent: z.boolean().refine(val => val, "You must consent to third-party data sharing"),
+
   });
 };
 
@@ -185,6 +190,10 @@ const DriverRegistration = () => {
       agreePrivacy: false,
       agreeIoT: false,
       agreeFees: false,
+      messagingConsent: false,
+      messagingChannel: "none",
+      dataSharingConsent: false,
+
     },
   });
 
@@ -280,6 +289,10 @@ const DriverRegistration = () => {
         agreed_privacy: data.agreePrivacy,
         agreed_iot: data.agreeIoT,
         agreed_fees: data.agreeFees,
+        messaging_consent: data.messagingConsent,
+        messaging_channel: data.messagingChannel,
+        data_sharing_consent: data.dataSharingConsent,
+        consent_recorded_at: new Date().toISOString(),
       });
 
       if (error) throw error;
@@ -889,6 +902,19 @@ const DriverRegistration = () => {
                     <p className="text-destructive text-sm mt-2">{errors.agreeFees.message}</p>
                   )}
                 </div>
+
+                {/* Messaging + third-party data sharing consent */}
+                <ConsentSection
+                  messagingConsent={!!watch("messagingConsent")}
+                  messagingChannel={(watch("messagingChannel") as MessagingChannel) ?? "none"}
+                  dataSharingConsent={!!watch("dataSharingConsent")}
+                  onMessagingConsentChange={(v) => setValue("messagingConsent", v, { shouldValidate: true })}
+                  onMessagingChannelChange={(v) => setValue("messagingChannel", v, { shouldValidate: true })}
+                  onDataSharingConsentChange={(v) => setValue("dataSharingConsent", v, { shouldValidate: true })}
+                  messagingError={errors.messagingConsent?.message as string | undefined}
+                  channelError={errors.messagingChannel?.message as string | undefined}
+                  dataSharingError={errors.dataSharingConsent?.message as string | undefined}
+                />
               </div>
 
               <Button

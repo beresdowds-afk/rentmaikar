@@ -14,6 +14,7 @@ import { AlternativeAuthOptions } from '@/components/auth/AlternativeAuthOptions
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
+import ConsentSection, { type MessagingChannel } from '@/components/registration/ConsentSection';
 import { Loader2, AlertCircle, User, Users, ArrowLeft, Mail, CheckCircle, Smartphone } from 'lucide-react';
 import PhoneOtpPanel from '@/components/auth/PhoneOtpPanel';
 import { toast } from 'sonner';
@@ -38,6 +39,9 @@ const signupSchema = z.object({
   confirmPassword: z.string(),
   role: z.enum(['driver', 'owner'] as const),
   agreeTerms: z.boolean().refine(val => val, 'You must agree to the Terms of Use and Privacy Policy'),
+  messagingConsent: z.boolean().refine(val => val, 'You must consent to receive service messages'),
+  messagingChannel: z.string().refine((val) => ['sms', 'whatsapp'].includes(val), 'Select SMS or WhatsApp as your second channel'),
+  dataSharingConsent: z.boolean().refine(val => val, 'You must consent to third-party data sharing'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
@@ -192,6 +196,9 @@ const Auth = () => {
       confirmPassword: '',
       role: 'driver',
       agreeTerms: false,
+      messagingConsent: false,
+      messagingChannel: 'none',
+      dataSharingConsent: false,
     },
   });
 
@@ -287,6 +294,27 @@ const Auth = () => {
       // Drivers and owners must produce an `applications` record, otherwise the
       // onboarding checklist has no stage to advance. Send them straight into
       // the registration flow instead of leaving them on a dead-end account.
+      // Persist consent choices on the freshly created profile.
+      try {
+        const { data: session } = await supabase.auth.getUser();
+        const uid = session?.user?.id;
+        if (uid) {
+          await supabase
+            .from('profiles')
+            .update({
+              notification_email: true,
+              notification_sms: data.messagingChannel === 'sms',
+              notification_whatsapp: data.messagingChannel === 'whatsapp',
+              messaging_consent_at: new Date().toISOString(),
+              data_sharing_consent: data.dataSharingConsent,
+              data_sharing_consent_at: data.dataSharingConsent ? new Date().toISOString() : null,
+            })
+            .eq('user_id', uid);
+        }
+      } catch (e) {
+        console.warn('Could not persist consent preferences:', e);
+      }
+
       const registrationPath =
         data.role === 'owner' ? '/owner/register' : '/driver/register';
 
@@ -673,6 +701,18 @@ const Auth = () => {
                 </div>
                   </>
                 )}
+
+                <ConsentSection
+                  messagingConsent={!!signupForm.watch('messagingConsent')}
+                  messagingChannel={(signupForm.watch('messagingChannel') as MessagingChannel) ?? 'none'}
+                  dataSharingConsent={!!signupForm.watch('dataSharingConsent')}
+                  onMessagingConsentChange={(v) => signupForm.setValue('messagingConsent', v, { shouldValidate: true })}
+                  onMessagingChannelChange={(v) => signupForm.setValue('messagingChannel', v, { shouldValidate: true })}
+                  onDataSharingConsentChange={(v) => signupForm.setValue('dataSharingConsent', v, { shouldValidate: true })}
+                  messagingError={signupForm.formState.errors.messagingConsent?.message as string | undefined}
+                  channelError={signupForm.formState.errors.messagingChannel?.message as string | undefined}
+                  dataSharingError={signupForm.formState.errors.dataSharingConsent?.message as string | undefined}
+                />
 
                 <AlternativeAuthOptions defaultRole="driver" showPhone={loginMethod === 'email'} />
 
