@@ -15,7 +15,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Download,
-  FileText,
+  
   Loader2,
   RefreshCw,
 } from 'lucide-react';
