@@ -189,6 +189,10 @@ const DriverRegistration = () => {
       agreePrivacy: false,
       agreeIoT: false,
       agreeFees: false,
+      messagingConsent: false,
+      messagingChannel: "none" as const,
+      dataSharingConsent: false,
+
     },
   });
 
