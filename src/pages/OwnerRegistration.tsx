@@ -285,6 +285,7 @@ const OwnerRegistration = () => {
                   error={submitError}
                   onRetry={handleRetry}
                   isRetrying={isRetrying}
+                  signInReturnTo="/owner/register"
                 />
               )}
               {/* Owner Information */}
