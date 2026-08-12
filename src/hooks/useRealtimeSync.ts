@@ -57,11 +57,6 @@ const TABLES: Array<{ table: string; keys: string[]; alert?: boolean }> = [
 /** Broadcast channel name used to fan a refresh out to every open tab/window. */
 const SYNC_BROADCAST = "rentmaikar-live-sync";
 
-/** How often to force a refetch when realtime frames are not arriving. */
-const HEARTBEAT_MS = 60_000;
-
-/** How often to check whether a newer build has been deployed. */
-const VERSION_CHECK_MS = 5 * 60_000;
 
 export function useRealtimeSync(enabled: boolean = true) {
   const qc = useQueryClient();
