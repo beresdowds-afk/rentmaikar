@@ -28,6 +28,9 @@ interface AgreementWithDetails {
   admin_witnessed_at: string | null;
   status: string;
   created_at: string;
+  expires_at: string | null;
+  renewal_count: number | null;
+
   // Joined data
   driver_name: string;
   driver_email: string;
