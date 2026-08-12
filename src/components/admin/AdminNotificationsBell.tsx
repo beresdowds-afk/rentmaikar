@@ -42,6 +42,7 @@ const KIND_COLORS: Record<string, string> = {
   price_negotiations_created: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
   price_negotiations_status: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
   vehicle_review: "bg-teal-500/15 text-teal-700 dark:text-teal-300",
+  vehicles_catalogue_live: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
   other: "bg-muted text-muted-foreground",
 };
 
