@@ -553,14 +553,10 @@ export default function OwnerDashboard() {
       )}
     </div>
 
-    <Button 
-      variant="outline" 
-      className="w-full py-8 border-dashed"
-      onClick={() => setIsAddVehicleOpen(true)}
-    >
-      <Plus className="h-6 w-6 mr-2" />
-      Add Another Vehicle
-    </Button>
+    <div className="[&>button]:w-full [&>button]:py-8">
+      <AddVehicleDialog />
+    </div>
+
   </PortalGate>
 </TabsContent>
 
