@@ -124,6 +124,93 @@ export default function ProfileSettingsPage() {
   const addressError = validateAddress(streetAddress, isDriver);
   const showAddressError = (addressTouched || addressChanged) && !!addressError;
 
+  /** Shared success path for a normal save and a conflict-resolved save. */
+  const finalizeSave = (
+    row: Record<string, unknown> | null,
+    ctx: {
+      fullName: string;
+      phone: string | null;
+      streetAddress: string;
+      phoneChanged: boolean;
+      nameChanged: boolean;
+      addressChanged: boolean;
+      autoMerged: string[];
+    },
+  ) => {
+    setNameImmutableError(null);
+
+    // The saved row is the source of truth — a merge may have kept the other
+    // device's value for some fields.
+    const savedName = (row?.full_name as string | null) ?? ctx.fullName;
+    const savedPhone = (row?.phone as string | null) ?? ctx.phone;
+    const savedAddress = (row?.street_address as string | null) ?? ctx.streetAddress;
+    setFullName(savedName ?? '');
+    setPhone(savedPhone ?? '');
+    setStreetAddress(savedAddress ?? '');
+    setInitial({
+      fullName: savedName ?? '',
+      phone: savedPhone ?? '',
+      streetAddress: savedAddress ?? '',
+    });
+    setBaseUpdatedAt((row?.updated_at as string | null) ?? null);
+    setAddressTouched(false);
+
+    const fields: string[] = [];
+    if (ctx.nameChanged) fields.push('full_name');
+    if (ctx.phoneChanged) fields.push('phone');
+    if (ctx.addressChanged) fields.push('street_address');
+    trackOnboardingEvent('profile_updated', { fields });
+
+    if (ctx.phoneChanged) {
+      setIdentityStatus('pending_reverification');
+      trackOnboardingEvent('profile_reverification_triggered', {
+        fields: ['phone'],
+        extra: { channel: 'both' },
+      });
+      supabase.functions
+        .invoke('persona-send-reverification', {
+          body: { user_id: user!.id, channel: 'both', reason: 'Phone number changed.' },
+        })
+        .catch(() => {});
+      toast({
+        title: 'Profile updated',
+        description: 'Your phone changed — please re-verify your identity.',
+      });
+    } else if (ctx.autoMerged.length > 0) {
+      toast({
+        title: 'Profile updated',
+        description: 'Recent changes from your other device were kept as well.',
+      });
+    } else {
+      toast({ title: 'Profile updated' });
+    }
+  };
+
+  /** User picked which version to keep for each conflicting field. */
+  const resolveConflicts = async (choices: Record<string, FieldChoice>) => {
+    const outcome = await conflictSave.resolve(choices);
+    if (!outcome) return;
+    if (outcome.status === 'error') {
+      toast({
+        title: 'Save failed',
+        description: outcome.error?.message ?? 'Please try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (outcome.status === 'saved') {
+      finalizeSave(outcome.row, {
+        fullName,
+        phone: phone || null,
+        streetAddress,
+        phoneChanged,
+        nameChanged,
+        addressChanged,
+        autoMerged: outcome.autoMerged,
+      });
+    }
+  };
+
 
   const save = async () => {
     if (!user?.id) return;
