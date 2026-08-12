@@ -80,13 +80,18 @@ export default function ProfileSettingsPage() {
   const nameLocked = identityStatus === 'approved';
   const isDriver = hasRole('driver');
 
+  // Optimistic-concurrency token + merge base for simultaneous edits made on
+  // the website and an installed app at the same time.
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState<string | null>(null);
+  const conflictSave = useConflictAwareSave<Record<string, unknown>>();
+
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
       setLoading(true);
       const { data } = await supabase
         .from('profiles')
-        .select('full_name, phone, street_address, identity_verification_status, identity_verified_at')
+        .select('full_name, phone, street_address, identity_verification_status, identity_verified_at, updated_at')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -98,6 +103,7 @@ export default function ProfileSettingsPage() {
         setPhone(ph);
         setStreetAddress(addr);
         setInitial({ fullName: fn, phone: ph, streetAddress: addr });
+        setBaseUpdatedAt((data as any).updated_at ?? null);
         const status = (data as any).identity_verification_status
           ?? ((data as any).identity_verified_at ? 'approved' : null);
         setIdentityStatus(status);
@@ -105,6 +111,7 @@ export default function ProfileSettingsPage() {
       setLoading(false);
     })();
   }, [user?.id]);
+
 
   const nameChanged = normalize(fullName) !== normalize(initial.fullName);
   const phoneChanged = normalize(phone) !== normalize(initial.phone);
