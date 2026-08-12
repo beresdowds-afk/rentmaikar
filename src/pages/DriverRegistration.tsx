@@ -231,6 +231,7 @@ const DriverRegistration = () => {
         country: data.country,
         city: data.city,
         zip_code: data.zipCode,
+        street_address: data.streetAddress,
         region: data.country === 'usa' ? 'usa' : 'nigeria',
         rideshare_platforms: data.rideshareApproval,
         has_driver_license: data.hasDriverLicense,
