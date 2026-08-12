@@ -11958,6 +11958,17 @@ export type Database = {
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
       email_signup_status: { Args: { _email: string }; Returns: Json }
+      emit_owner_vehicle_notification: {
+        Args: {
+          _body: string
+          _kind: string
+          _owner: string
+          _payload: Json
+          _title: string
+          _vehicle_id: string
+        }
+        Returns: undefined
+      }
       emqx_activate_credentials: {
         Args: { _version_id: string }
         Returns: Json
@@ -12655,6 +12666,10 @@ export type Database = {
       }
       update_push_device_prefs: {
         Args: { _device_id: string; _prefs: Json }
+        Returns: boolean
+      }
+      vehicle_is_catalogue_eligible: {
+        Args: { _is_public: boolean; _photos: string[]; _status: string }
         Returns: boolean
       }
       vehicle_publish_fields_unchanged: {
