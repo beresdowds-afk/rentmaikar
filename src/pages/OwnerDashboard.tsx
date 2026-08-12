@@ -27,6 +27,7 @@ import { OwnerRentToOwnListing } from '@/components/owner/OwnerRentToOwnListing'
 import { VehiclePickupLocation } from '@/components/owner/VehiclePickupLocation';
 import { VehiclePhotoManager } from '@/components/owner/VehiclePhotoManager';
 import { AddVehicleDialog } from '@/components/owner/AddVehicleDialog';
+import VehicleSubmissionTracker, { VehicleSubmissionBadge } from '@/components/owner/VehicleSubmissionTracker';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { DocumentUpload } from '@/components/documents/DocumentUpload';
@@ -520,6 +521,8 @@ export default function OwnerDashboard() {
     require="documents"
     hint="upload your ownership documents to add and manage vehicles."
   >
+    <VehicleSubmissionTracker vehicles={dbVehicles as any} />
+
     <div className="grid gap-6">
       {dbVehicles.length === 0 ? (
         <p className="text-center text-muted-foreground py-8">
@@ -536,7 +539,10 @@ export default function OwnerDashboard() {
                   </CardTitle>
                   <CardDescription>{vehicle.license_plate}</CardDescription>
                 </div>
-                <Badge variant="secondary" className="capitalize">{vehicle.status}</Badge>
+                <div className="flex flex-col items-end gap-2">
+                  <VehicleSubmissionBadge status={(vehicle as any).review_status} />
+                  <Badge variant="secondary" className="capitalize">{vehicle.status}</Badge>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
