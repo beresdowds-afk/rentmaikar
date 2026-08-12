@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, RefreshCw, RotateCcw, Search } from "lucide-react";
 import { toast } from "sonner";
-import { Seo } from "@/components/seo/Seo";
+import Seo from "@/components/seo/Seo";
 
 type OutboxRow = {
   id: string;
