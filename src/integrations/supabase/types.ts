@@ -740,6 +740,7 @@ export type Database = {
           rideshare_platforms: string[] | null
           security_deposit_acknowledged: boolean | null
           status: Database["public"]["Enums"]["application_status"]
+          street_address: string | null
           updated_at: string
           user_id: string | null
           vehicle_color: string | null
@@ -797,6 +798,7 @@ export type Database = {
           rideshare_platforms?: string[] | null
           security_deposit_acknowledged?: boolean | null
           status?: Database["public"]["Enums"]["application_status"]
+          street_address?: string | null
           updated_at?: string
           user_id?: string | null
           vehicle_color?: string | null
@@ -854,6 +856,7 @@ export type Database = {
           rideshare_platforms?: string[] | null
           security_deposit_acknowledged?: boolean | null
           status?: Database["public"]["Enums"]["application_status"]
+          street_address?: string | null
           updated_at?: string
           user_id?: string | null
           vehicle_color?: string | null
@@ -6015,6 +6018,7 @@ export type Database = {
         Row: {
           access_level: Database["public"]["Enums"]["access_level_enum"]
           avatar_url: string | null
+          city: string | null
           cookie_consent: Json | null
           cookie_consent_at: string | null
           created_at: string | null
@@ -6059,6 +6063,7 @@ export type Database = {
           role_change_used: boolean
           role_changed_at: string | null
           stage_updated_at: string | null
+          street_address: string | null
           suspended_call_in_id: string | null
           suspended_reason: string | null
           suspended_until: string | null
@@ -6069,6 +6074,7 @@ export type Database = {
         Insert: {
           access_level?: Database["public"]["Enums"]["access_level_enum"]
           avatar_url?: string | null
+          city?: string | null
           cookie_consent?: Json | null
           cookie_consent_at?: string | null
           created_at?: string | null
@@ -6113,6 +6119,7 @@ export type Database = {
           role_change_used?: boolean
           role_changed_at?: string | null
           stage_updated_at?: string | null
+          street_address?: string | null
           suspended_call_in_id?: string | null
           suspended_reason?: string | null
           suspended_until?: string | null
@@ -6123,6 +6130,7 @@ export type Database = {
         Update: {
           access_level?: Database["public"]["Enums"]["access_level_enum"]
           avatar_url?: string | null
+          city?: string | null
           cookie_consent?: Json | null
           cookie_consent_at?: string | null
           created_at?: string | null
@@ -6167,6 +6175,7 @@ export type Database = {
           role_change_used?: boolean
           role_changed_at?: string | null
           stage_updated_at?: string | null
+          street_address?: string | null
           suspended_call_in_id?: string | null
           suspended_reason?: string | null
           suspended_until?: string | null

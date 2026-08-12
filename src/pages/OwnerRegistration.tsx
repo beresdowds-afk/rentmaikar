@@ -44,6 +44,7 @@ const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   country: z.enum(["usa", "nigeria"]),
   city: z.string().min(1, "City is required"),
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
+  streetAddress: z.string().max(200, "Address too long").optional().or(z.literal("")),
   
   // Vehicle Details
   vehicleMake: z.string().min(1, "Vehicle make is required"),
@@ -204,6 +205,7 @@ const OwnerRegistration = () => {
         country: data.country,
         city: data.city,
         zip_code: data.zipCode,
+        street_address: data.streetAddress || null,
         region: data.country === 'usa' ? 'usa' : 'nigeria',
         vehicle_make: data.vehicleMake,
         vehicle_model: data.vehicleModel,
@@ -283,6 +285,7 @@ const OwnerRegistration = () => {
                   error={submitError}
                   onRetry={handleRetry}
                   isRetrying={isRetrying}
+                  signInReturnTo="/owner/register"
                 />
               )}
               {/* Owner Information */}
@@ -430,12 +433,21 @@ const OwnerRegistration = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="streetAddress">Address (optional)</Label>
+                  <Input id="streetAddress" placeholder="Street address" {...register("streetAddress")} />
+                  {errors.streetAddress && (
+                    <p className="text-destructive text-sm">{errors.streetAddress.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="zipCode">ZIP / Postal Code</Label>
                   <Input id="zipCode" placeholder="20001" {...register("zipCode")} />
                   {errors.zipCode && (
                     <p className="text-destructive text-sm">{errors.zipCode.message}</p>
                   )}
                 </div>
+
               </div>
 
               {/* Vehicle Details */}

@@ -70,6 +70,7 @@ const buildDriverSchema = (detailsRequired: boolean) => {
     }, "Enter a valid phone number with country code"),
   country: z.enum(["usa", "nigeria"]),
   city: z.string().min(1, "City is required"),
+  streetAddress: z.string().min(5, "Home address is required").max(200, "Address too long"),
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
   rideshareApproval: z.array(z.string()).min(1, "Select at least one platform"),
   hasDriverLicense: z.boolean().refine(val => val, "Driver license is required"),
@@ -230,6 +231,7 @@ const DriverRegistration = () => {
         country: data.country,
         city: data.city,
         zip_code: data.zipCode,
+        street_address: data.streetAddress,
         region: data.country === 'usa' ? 'usa' : 'nigeria',
         rideshare_platforms: data.rideshareApproval,
         has_driver_license: data.hasDriverLicense,
@@ -316,6 +318,7 @@ const DriverRegistration = () => {
                   error={submitError}
                   onRetry={handleRetry}
                   isRetrying={isRetrying}
+                  signInReturnTo="/driver/register"
                 />
               )}
               {/* Personal Information */}
@@ -469,6 +472,18 @@ const DriverRegistration = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="streetAddress">Home Address</Label>
+                  <Input
+                    id="streetAddress"
+                    placeholder="Full residential address"
+                    {...register("streetAddress")}
+                  />
+                  {errors.streetAddress && (
+                    <p className="text-destructive text-sm">{errors.streetAddress.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="zipCode">ZIP / Postal Code</Label>
                   <Input
                     id="zipCode"
@@ -479,6 +494,7 @@ const DriverRegistration = () => {
                     <p className="text-destructive text-sm">{errors.zipCode.message}</p>
                   )}
                 </div>
+
               </div>
 
               {/* Rideshare Platforms */}
