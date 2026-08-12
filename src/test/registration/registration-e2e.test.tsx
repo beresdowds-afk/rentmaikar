@@ -247,7 +247,7 @@ describe("driver registration (e2e)", () => {
     renderPage(<DriverRegistration />);
 
     await fillDriverForm(user, { address: "24 Ademola Street, Ikeja" });
-    await user.click(screen.getByRole("button", { name: /submit application/i }));
+    await user.click(screen.getByRole("button", { name: /submit (registration|vehicle for review)/i }));
 
     await waitFor(() => expect(insert).toHaveBeenCalledTimes(1));
     expect(insert.mock.calls[0][0]).toMatchObject({
@@ -264,7 +264,7 @@ describe("driver registration (e2e)", () => {
     renderPage(<DriverRegistration />);
 
     await fillDriverForm(user, { address: "" });
-    await user.click(screen.getByRole("button", { name: /submit application/i }));
+    await user.click(screen.getByRole("button", { name: /submit (registration|vehicle for review)/i }));
 
     await waitFor(() =>
       expect(screen.getAllByText(/home address is required/i).length).toBeGreaterThan(0),
@@ -278,7 +278,7 @@ describe("driver registration (e2e)", () => {
     renderPage(<DriverRegistration />);
 
     await fillDriverForm(user, { address: "12" });
-    await user.click(screen.getByRole("button", { name: /submit application/i }));
+    await user.click(screen.getByRole("button", { name: /submit (registration|vehicle for review)/i }));
 
     await waitFor(() =>
       expect(screen.getAllByText(/at least 5 characters/i).length).toBeGreaterThan(0),
@@ -314,7 +314,7 @@ describe("owner registration (e2e)", () => {
       await user.click(box);
     }
 
-    await user.click(screen.getByRole("button", { name: /submit application/i }));
+    await user.click(screen.getByRole("button", { name: /submit (registration|vehicle for review)/i }));
 
     await waitFor(() => expect(insert).toHaveBeenCalledTimes(1));
     expect(insert.mock.calls[0][0]).toMatchObject({
