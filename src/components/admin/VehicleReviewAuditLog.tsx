@@ -25,6 +25,7 @@ interface AuditRow {
   action: string;
   review_notes: string | null;
   new_values: Record<string, unknown> | null;
+  batch_id: string | null;
   created_at: string;
 }
 
@@ -91,7 +92,7 @@ const VehicleReviewAuditLog = () => {
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from("vehicle_audit_log")
-        .select("id, vehicle_id, owner_id, actor_id, action, review_notes, new_values, created_at")
+        .select("id, vehicle_id, owner_id, actor_id, action, review_notes, new_values, batch_id, created_at")
         .in("action", REVIEW_ACTIONS)
         .order("created_at", { ascending: false })
         .limit(300);
@@ -149,7 +150,7 @@ const VehicleReviewAuditLog = () => {
   }, [data, search, filter]);
 
   const exportCsv = () => {
-    const header = ["Timestamp", "Action", "Vehicle", "Owner", "Admin", "Reason"];
+    const header = ["Timestamp", "Action", "Vehicle", "Owner", "Admin", "Bulk job", "Reason"];
     const lines = entries.map((row) =>
       [
         new Date(row.created_at).toISOString(),
@@ -157,6 +158,7 @@ const VehicleReviewAuditLog = () => {
         row.vehicleLabel,
         row.ownerName,
         row.actorName,
+        row.batch_id ?? "",
         (row.review_notes ?? "").replace(/\s+/g, " "),
       ]
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
@@ -249,6 +251,12 @@ const VehicleReviewAuditLog = () => {
                     By <span className="font-medium text-foreground">{row.actorName}</span> · Owner:{" "}
                     {row.ownerName}
                   </p>
+                  {row.batch_id && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Part of bulk job{" "}
+                      <span className="font-mono text-foreground">{row.batch_id.slice(0, 8)}</span>
+                    </p>
+                  )}
                   {row.review_notes && (
                     <p className="mt-2 rounded-md bg-muted/60 p-2 text-xs">{row.review_notes}</p>
                   )}
