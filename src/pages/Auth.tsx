@@ -23,6 +23,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { EmailVerification } from '@/components/auth/EmailVerification';
 import { ROLE_HOME, ROLE_ONBOARDING, isStaffRole, type AppRole } from '@/lib/role-home';
 import { isRestorablePath, readReturnTo, clearReturnTo } from '@/lib/return-to';
+import { logRegistrationEvent } from '@/lib/registration-audit';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -264,6 +265,10 @@ const Auth = () => {
         forgotPasswordForm.setValue('email', normalized);
         setActiveTab('login');
         setError('This email is already registered — please sign in below.');
+        void logRegistrationEvent('signin_redirect_existing_email', {
+          email: normalized,
+          metadata: { origin: 'auth_signup_tab', requested_role: data.role },
+        });
         toast.info('You already have an account', {
           description: 'We switched you to sign-in. Use "Forgot password" if needed.',
         });
