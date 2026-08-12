@@ -120,13 +120,20 @@ const VehicleDetails = () => {
           {vehicle && (
             <div className="grid md:grid-cols-2 gap-8">
               <div>
-                <div className="rounded-xl overflow-hidden border border-border bg-card">
-                  <img
-                    src={photos[activePhoto] ?? photos[0]}
-                    alt={`${title} photo ${activePhoto + 1}`}
-                    className="w-full h-80 object-cover"
-                  />
-                </div>
+                {photos.length > 0 ? (
+                  <div className="rounded-xl overflow-hidden border border-border bg-card">
+                    <img
+                      src={photos[activePhoto] ?? photos[0]}
+                      alt={`${title} photo ${activePhoto + 1}`}
+                      className="w-full h-80 object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border bg-muted/30 h-80 flex items-center justify-center text-sm text-muted-foreground text-center px-6">
+                    Photos pending owner submission — this listing is not shown publicly until verified photos are added.
+                  </div>
+                )}
+
                 {photos.length > 1 && (
                   <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
                     {photos.map((p, i) => (
