@@ -122,6 +122,9 @@ export default function UserAgreementsList({ userType }: UserAgreementsListProps
           admin_witnessed_at: agreement.admin_witnessed_at,
           status: agreement.status,
           created_at: agreement.created_at,
+          expires_at: (agreement as { expires_at?: string | null }).expires_at ?? null,
+          renewal_count: (agreement as { renewal_count?: number | null }).renewal_count ?? null,
+
           driver_name: driver?.full_name || 'Unknown Driver',
           driver_email: driver?.email || '',
           owner_name: owner?.full_name || 'Unknown Owner',
