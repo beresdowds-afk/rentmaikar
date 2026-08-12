@@ -31,6 +31,7 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isValidSession, setIsValidSession] = useState<boolean | null>(null);
+  const [linkErrorMessage, setLinkErrorMessage] = useState<string | null>(null);
   const sessionFoundRef = useRef(false);
 
   const form = useForm<ResetPasswordFormData>({
