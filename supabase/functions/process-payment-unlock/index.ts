@@ -154,7 +154,7 @@ const processPaymentUnlock = async (supabase: SupabaseClient, payment: PaymentCo
     }
 
     // Step 4: If vehicle was locked, send unlock command IMMEDIATELY
-    const wasLocked = activeDefaults?.some(d => d.deactivation_eligible);
+    const wasLocked = activeDefaults?.some((d: any) => d.deactivation_eligible);
     
     if (wasLocked && deviceInfo) {
       console.log(`[Payment Unlock] Vehicle was locked, sending unlock command...`);
@@ -182,7 +182,7 @@ const processPaymentUnlock = async (supabase: SupabaseClient, payment: PaymentCo
           status: "resolved",
           resolved_at: new Date().toISOString(),
         })
-        .in("id", activeDefaults.map(d => d.id));
+        .in("id", activeDefaults.map((d: any) => d.id));
 
       console.log(`[Payment Unlock] Resolved ${activeDefaults.length} payment defaults`);
     }
