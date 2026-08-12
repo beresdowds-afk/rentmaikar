@@ -62,31 +62,35 @@ serve(async (req: Request): Promise<Response> => {
         const ownerName = ownerProfile?.full_name ?? "Owner";
         const ownerEmail = ownerProfile?.email;
 
-        // ─── 7-day warning ───
-        if (daysUntilExpiry === 7) {
-          const alreadySent = await alertAlreadySent(supabase, ag.id, "7_day_warning");
-          if (!alreadySent) {
-            await sendRenewalWarningEmail({ driverEmail, driverName, ownerEmail, ownerName, daysUntilExpiry, agreementId: ag.id, expiresAt });
-            await logAlert(supabase, ag.id, "7_day_warning", { driver: driverEmail, owner: ownerEmail });
-            results.alerted_7day++;
-          }
+        const [{ data: driverPhoneRow }, { data: ownerPhoneRow }] = await Promise.all([
+          supabase.from("profiles").select("phone").eq("user_id", ag.driver_id).single(),
+          supabase.from("profiles").select("phone").eq("user_id", ag.owner_id).single(),
+        ]);
+
+        // ─── Monthly renewal reminders: 14 / 7 / 3 / 1 days before expiry ───
+        for (const tier of REMINDER_TIERS) {
+          if (daysUntilExpiry !== tier) continue;
+          const alertType = `${tier}_day_warning`;
+          if (await alertAlreadySent(supabase, ag.id, alertType)) continue;
+
+          await sendRenewalWarningEmail({ driverEmail, driverName, ownerEmail, ownerName, daysUntilExpiry: tier, agreementId: ag.id, expiresAt });
+          await Promise.all([
+            sendRenewalSms(supabase, driverPhoneRow?.phone, driverName, tier, expiresAt),
+            sendRenewalSms(supabase, ownerPhoneRow?.phone, ownerName, tier, expiresAt),
+          ]);
+          await logAlert(supabase, ag.id, alertType, { driver: driverEmail, owner: ownerEmail });
+
+          if (tier === 7) results.alerted_7day++;
+          if (tier === 3) results.alerted_3day++;
+          results.reminders_sent++;
         }
 
-        // ─── 3-day warning ───
-        if (daysUntilExpiry === 3) {
-          const alreadySent = await alertAlreadySent(supabase, ag.id, "3_day_warning");
-          if (!alreadySent) {
-            await sendRenewalWarningEmail({ driverEmail, driverName, ownerEmail, ownerName, daysUntilExpiry, agreementId: ag.id, expiresAt });
-            await logAlert(supabase, ag.id, "3_day_warning", { driver: driverEmail, owner: ownerEmail });
-            results.alerted_3day++;
-          }
-        }
-
-        // ─── Expired — auto-renew with new 30-day period ───
+        // ─── Expired — auto-renew for the next calendar month ───
         if (daysUntilExpiry <= 0) {
           const alreadyRenewed = await alertAlreadySent(supabase, ag.id, "renewed");
           if (!alreadyRenewed) {
-            const newExpiresAt = new Date(now.getTime() + 30 * 86400000).toISOString();
+            const newExpiresAt = addOneMonth(now).toISOString();
+
             const renewalNumber = (ag.renewal_count ?? 0) + 1;
             const newContent = buildRenewalContent(ag.agreement_content, renewalNumber, newExpiresAt);
 
