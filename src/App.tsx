@@ -413,6 +413,14 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/admin/vehicle-imports"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
+                        <AdminVehicleImportsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/uuid-assignments"
                     element={
                       <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
