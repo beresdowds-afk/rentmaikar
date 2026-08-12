@@ -199,23 +199,31 @@ const LegalAgreementsManagement: React.FC = () => {
       const owner = owners.find(o => o.user_id === selectedOwner);
       const vehicle = vehicles.find(v => v.id === selectedVehicle);
 
-      const agreementContent = `
-VEHICLE RENTAL AGREEMENT
+      if (!template) {
+        toast.error('No active agreement template is published for this region.');
+        setIsCreating(false);
+        return;
+      }
 
-Agreement Date: ${new Date().toISOString()}
-
-PARTIES:
-Owner: ${owner?.full_name} (${owner?.email})
-Driver: ${driver?.full_name} (${driver?.email})
-
-VEHICLE:
-${vehicle?.year} ${vehicle?.make} ${vehicle?.model}
-License Plate: ${vehicle?.license_plate}
-${vehicle?.vin ? `VIN: ${vehicle.vin}` : ''}
-
-This agreement is governed by the RentMaiKar Terms of Use and Privacy Policy.
-All pricing and payment terms are as displayed on the RentMaiKar platform.
-      `.trim();
+      // Body comes from the template published in the agreement editor.
+      const agreementContent = renderAgreementTemplate(
+        template.content,
+        buildAgreementValues({
+          driver: { name: driver?.full_name, email: driver?.email },
+          owner: { name: owner?.full_name, email: owner?.email },
+          vehicle: {
+            make: vehicle?.make,
+            model: vehicle?.model,
+            year: vehicle?.year,
+            licensePlate: vehicle?.license_plate,
+            vin: vehicle?.vin,
+          },
+          region,
+          supportEmail: entity?.email ?? undefined,
+          supportPhone: entity?.phone ?? undefined,
+          platformEntity: entity?.name,
+        }),
+      );
 
       const { error } = await supabase
         .from('legal_agreements')
