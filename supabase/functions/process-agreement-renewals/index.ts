@@ -285,7 +285,7 @@ async function sendRenewalWarningEmail(params: EmailParams) {
     <p style="margin:5px 0 0 0;color:#555;">Your rental agreement requires renewal by <strong>${expiryFormatted}</strong>.</p>
   </div>
   <p>Dear ${driverName} &amp; ${ownerName},</p>
-  <p>Your <strong>compulsory 30-day rental agreement</strong> is expiring soon. A new agreement will be automatically generated on the expiry date. Please ensure all parties sign the renewal promptly to avoid service interruption.</p>
+  <p>Your <strong>compulsory monthly rental agreement</strong> is expiring soon. A new agreement will be automatically generated on the expiry date. Please ensure all parties sign the renewal promptly to avoid service interruption.</p>
   <div style="background:#f5f5f5;padding:15px;border-radius:5px;margin:20px 0;">
     <p style="margin:0;font-size:13px;color:#666;"><strong>Agreement ID:</strong> ${agreementId}</p>
     <p style="margin:5px 0 0 0;font-size:13px;color:#666;"><strong>Expiry Date:</strong> ${expiryFormatted}</p>
@@ -332,10 +332,10 @@ async function sendRenewalCreatedEmail(params: RenewalCreatedParams) {
 <div style="background:#fff;padding:25px;border:1px solid #e0e0e0;border-top:none;">
   <div style="background:#d1fae515;border-left:4px solid #10b981;padding:15px;margin-bottom:20px;border-radius:4px;">
     <strong style="color:#10b981;">✓ Renewal #${renewalNumber} Auto-Generated</strong>
-    <p style="margin:5px 0 0 0;color:#555;">A new 30-day agreement has been created and is awaiting your signatures.</p>
+    <p style="margin:5px 0 0 0;color:#555;">A new monthly agreement has been created and is awaiting your signatures.</p>
   </div>
   <p>Dear ${driverName} &amp; ${ownerName},</p>
-  <p>Your rental agreement has been automatically renewed for another 30-day period as part of our <strong>compulsory renewal policy</strong>. All original terms remain in full effect.</p>
+  <p>Your rental agreement has been automatically renewed for another month as part of our <strong>compulsory renewal policy</strong>. All original terms remain in full effect.</p>
   <div style="background:#f5f5f5;padding:15px;border-radius:5px;margin:20px 0;">
     <p style="margin:0;font-size:13px;color:#666;"><strong>New Agreement ID:</strong> ${newAgreementId}</p>
     <p style="margin:5px 0 0 0;font-size:13px;color:#666;"><strong>Renewal #:</strong> ${renewalNumber}</p>
