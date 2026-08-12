@@ -531,7 +531,19 @@ export default function ProfileSettingsPage() {
           <ProfileAuditHistory />
         </div>
       </main>
+
+      <ConflictResolutionDialog
+        open={conflictSave.hasConflict}
+        conflicts={conflictSave.conflicts}
+        autoMerged={conflictSave.autoMerged}
+        otherSourceLabel="another device"
+        saving={conflictSave.saving}
+        onCancel={conflictSave.cancel}
+        onResolve={(choices) => void resolveConflicts(choices)}
+      />
+
       <Footer />
+
     </div>
   );
 }
