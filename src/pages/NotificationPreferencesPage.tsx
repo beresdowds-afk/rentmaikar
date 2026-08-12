@@ -4,6 +4,7 @@ import Seo from '@/components/seo/Seo';
 import { MessagingPreferencesPanel } from '@/components/profile/MessagingPreferencesPanel';
 import { PersonaNotificationPreference } from '@/components/profile/PersonaNotificationPreference';
 import { EventNotificationPreferencesPanel } from '@/components/notifications/EventNotificationPreferencesPanel';
+import { AgreementReminderPreferencesPanel } from '@/components/notifications/AgreementReminderPreferencesPanel';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -13,7 +14,7 @@ export default function NotificationPreferencesPage() {
     <div className="min-h-screen flex flex-col bg-background">
       <Seo
         title="Notification Preferences | Rentmaikar"
-        description="Manage your SMS and WhatsApp notification preferences for Rentmaikar rental updates, payment reminders and support messages."
+        description="Choose email and SMS reminder frequency for agreement renewals, and manage your Rentmaikar payment, rental and support notification preferences."
         path="/settings/notifications"
         noindex
       />
@@ -32,6 +33,7 @@ export default function NotificationPreferencesPage() {
           </div>
 
           <EventNotificationPreferencesPanel />
+          <AgreementReminderPreferencesPanel />
           <MessagingPreferencesPanel />
           <PersonaNotificationPreference />
         </div>
