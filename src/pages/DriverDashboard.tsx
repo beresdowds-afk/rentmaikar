@@ -50,6 +50,7 @@ import { installDeepLinkListener } from '@/lib/push';
 import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
 import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
+import { UserMessagesPanel } from '@/components/dashboard/UserMessagesPanel';
 import PageSkeleton from '@/components/PageSkeleton';
 
 import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
