@@ -179,7 +179,9 @@ export default function ProfileSettingsPage() {
       const updates: Record<string, any> = {
         full_name: parsed.data.full_name,
         phone: newPhone,
+        street_address: streetAddress.trim() || null,
       };
+
 
 
       if (phoneChanged) {
