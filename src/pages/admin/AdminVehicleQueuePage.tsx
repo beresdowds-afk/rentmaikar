@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import VehicleHistoryDialog from "@/components/vehicles/VehicleHistoryDialog";
 import VehicleReviewAuditLog from "@/components/admin/VehicleReviewAuditLog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -62,6 +64,11 @@ const AdminVehicleQueuePage = () => {
   const [search, setSearch] = useState("");
   const [rejectTarget, setRejectTarget] = useState<QueueVehicle | null>(null);
   const [reason, setReason] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkReason, setBulkReason] = useState("");
+  const [perVehicleReasons, setPerVehicleReasons] = useState<Record<string, string>>({});
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["admin-vehicle-queue", tab],
@@ -123,6 +130,58 @@ const AdminVehicleQueuePage = () => {
     onError: (error: any) => toast.error(error?.message ?? "Could not update this submission"),
   });
 
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["admin-vehicle-queue"] });
+    queryClient.invalidateQueries({ queryKey: ["owner-vehicles"] });
+    queryClient.invalidateQueries({ queryKey: ["public-vehicles"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-vehicle-review-audit"] });
+  };
+
+  /** Applies the same decision to every selected submission, one RPC per vehicle. */
+  const bulkReview = useMutation({
+    mutationFn: async ({
+      ids,
+      decision,
+      reasons,
+    }: {
+      ids: string[];
+      decision: ReviewStatus;
+      reasons?: Record<string, string>;
+    }) => {
+      const failures: { id: string; message: string }[] = [];
+      let done = 0;
+      setBulkProgress({ done: 0, total: ids.length });
+      for (const id of ids) {
+        const { error } = await supabase.rpc("admin_review_vehicle" as any, {
+          _vehicle_id: id,
+          _decision: decision,
+          _reason: reasons?.[id] ?? null,
+        });
+        if (error) failures.push({ id, message: error.message });
+        done += 1;
+        setBulkProgress({ done, total: ids.length });
+      }
+      return { total: ids.length, failures };
+    },
+    onSuccess: ({ total, failures }, vars) => {
+      const ok = total - failures.length;
+      const verb = vars.decision === "published" ? "published" : "rejected";
+      if (ok > 0) toast.success(`${ok} of ${total} submission${total === 1 ? "" : "s"} ${verb}`);
+      if (failures.length) {
+        toast.error(
+          `${failures.length} could not be ${verb}: ${failures[0].message}`,
+        );
+      }
+      invalidateAll();
+      setSelected((prev) => prev.filter((id) => failures.some((f) => f.id === id)));
+      setBulkOpen(false);
+      setBulkReason("");
+      setPerVehicleReasons({});
+    },
+    onError: (error: any) => toast.error(error?.message ?? "Bulk action failed"),
+    onSettled: () => setBulkProgress(null),
+  });
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return data ?? [];
@@ -132,6 +191,24 @@ const AdminVehicleQueuePage = () => {
         .some((field) => String(field).toLowerCase().includes(term)),
     );
   }, [data, search, owners]);
+
+  const selectableIds = useMemo(
+    () => filtered.filter((v) => v.review_status !== "published" || tab !== "published").map((v) => v.id),
+    [filtered, tab],
+  );
+  const selectedVehicles = useMemo(
+    () => filtered.filter((v) => selected.includes(v.id)),
+    [filtered, selected],
+  );
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.includes(id));
+
+  const toggleOne = (id: string, checked: boolean) =>
+    setSelected((prev) => (checked ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
+  const toggleAll = (checked: boolean) => setSelected(checked ? selectableIds : []);
+  const changeTab = (value: QueueTab) => {
+    setSelected([]);
+    setTab(value);
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -164,7 +241,7 @@ const AdminVehicleQueuePage = () => {
         />
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as QueueTab)}>
+      <Tabs value={tab} onValueChange={(v) => changeTab(v as QueueTab)}>
         <TabsList>
           <TabsTrigger value="pending">Pending</TabsTrigger>
           <TabsTrigger value="published">Published</TabsTrigger>
