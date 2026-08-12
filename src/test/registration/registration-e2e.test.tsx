@@ -281,7 +281,7 @@ describe("driver registration (e2e)", () => {
     await user.click(screen.getByRole("button", { name: /submit (registration|vehicle for review)/i }));
 
     await waitFor(() =>
-      expect(screen.getAllByText(/at least 5 characters/i).length).toBeGreaterThan(0),
+      expect(screen.getAllByText(/more characters?/i).length).toBeGreaterThan(0),
     );
     expect(insert).not.toHaveBeenCalled();
   });
