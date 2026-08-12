@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import SignaturePad from './SignaturePad';
 import LegalAgreementDocument from './LegalAgreementDocument';
 import { supabase } from '@/integrations/supabase/client';
+import { useAgreementTemplate } from '@/hooks/useAgreementTemplate';
+import { buildAgreementValues, renderAgreementTemplate } from '@/lib/agreement-template';
 
 interface Party {
   id: string;
@@ -62,6 +64,7 @@ const AgreementSigningModal: React.FC<AgreementSigningModalProps> = ({
 }) => {
   const [signature, setSignature] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { template, entity, region } = useAgreementTemplate();
 
   const canSign = () => {
     if (!existingAgreement) return userRole === 'admin'; // Admin creates new agreements
@@ -82,25 +85,21 @@ const AgreementSigningModal: React.FC<AgreementSigningModalProps> = ({
     return 'Admin Witness Signature';
   };
 
-  const generateAgreementContent = () => {
-    return `
-VEHICLE RENTAL AGREEMENT
-
-Agreement Date: ${new Date().toISOString()}
-
-PARTIES:
-Owner: ${owner.name} (${owner.email})
-Driver: ${driver.name} (${driver.email})
-
-VEHICLE:
-${vehicle.year} ${vehicle.make} ${vehicle.model}
-License Plate: ${vehicle.licensePlate}
-${vehicle.vin ? `VIN: ${vehicle.vin}` : ''}
-
-This agreement is governed by the RentMaiKar Terms of Use and Privacy Policy.
-All pricing and payment terms are as displayed on the RentMaiKar platform.
-    `.trim();
-  };
+  // The body is never hard-coded: it is the active template published in the
+  // admin agreement editor, with the parties/vehicle placeholders resolved.
+  const generateAgreementContent = () =>
+    renderAgreementTemplate(
+      template?.content ?? '',
+      buildAgreementValues({
+        driver,
+        owner,
+        vehicle,
+        region,
+        supportEmail: entity?.email ?? undefined,
+        supportPhone: entity?.phone ?? undefined,
+        platformEntity: entity?.name,
+      }),
+    );
 
   const handleSubmit = async () => {
     if (!signature) {
@@ -115,6 +114,11 @@ All pricing and payment terms are as displayed on the RentMaiKar platform.
       if (!user) throw new Error('Not authenticated');
 
       if (!existingAgreement) {
+        if (!template) {
+          toast.error('No active agreement template is published for this region.');
+          setIsSubmitting(false);
+          return;
+        }
         // Create new agreement (admin only)
         const { data: newAgreement, error: createError } = await supabase
           .from('legal_agreements')

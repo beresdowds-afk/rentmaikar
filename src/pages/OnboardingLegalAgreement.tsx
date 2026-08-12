@@ -15,11 +15,13 @@ import {
   ArrowRight,
   CheckCircle2,
   Download,
-  FileText,
+  
   Loader2,
   RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
+import { buildAgreementValues, renderAgreementTemplate } from '@/lib/agreement-template';
 
 type AgreementRegion = 'USA' | 'Nigeria' | (string & {});
 
@@ -122,7 +124,25 @@ const OnboardingLegalAgreement = () => {
     };
   }, [region, user]);
 
-  const rendered = useMemo(() => template?.content ?? '', [template]);
+  // Placeholders are resolved with what we already know about the signed-in
+  // user; the rest render as blanks until a vehicle is matched and the
+  // personalized, signable copy is generated.
+  const rendered = useMemo(
+    () =>
+      renderAgreementTemplate(
+        template?.content ?? '',
+        buildAgreementValues({
+          driver: {
+            name: (user?.user_metadata as Record<string, string> | undefined)?.full_name ?? null,
+            email: user?.email ?? null,
+          },
+          owner: {},
+          vehicle: {},
+          region,
+        }),
+      ),
+    [template, user, region],
+  );
 
   const handleAccept = async () => {
     if (!template || !user) return;
@@ -195,10 +215,11 @@ const OnboardingLegalAgreement = () => {
         @media print { body{margin:0;} }
       </style></head><body>
       <header>
+        <img src="${rentmaikarLogo}" alt="RentMaiKar" style="height:44px;object-fit:contain;margin-bottom:8px"/>
         <h1>${safeTitle}</h1>
         <div class="meta">Version ${template.version} · Region: ${template.region} · Retrieved ${new Date().toLocaleString()}</div>
       </header>
-      <pre>${template.content.replace(/</g, '&lt;')}</pre>
+      <pre>${rendered.replace(/</g, '&lt;')}</pre>
       <footer>Rentmaikar rental agreement — for reference. A personalized signable copy is generated when a vehicle is matched to you.</footer>
       <script>window.onload=()=>{window.focus();window.print();}</script>
       </body></html>`);
@@ -209,9 +230,7 @@ const OnboardingLegalAgreement = () => {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4 py-10">
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="text-center space-y-2">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <FileText className="h-7 w-7 text-primary" />
-          </div>
+          <img src={rentmaikarLogo} alt="RentMaiKar" className="mx-auto h-12 object-contain" />
           <h1 className="text-2xl md:text-3xl font-bold">Rental Agreement</h1>
           <p className="text-muted-foreground">
             Review the latest approved Rentmaikar rental agreement for {region} before continuing.
