@@ -4,6 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { FriendlyRegistrationError } from '@/lib/registration-errors';
+import { logRegistrationEvent } from '@/lib/registration-audit';
 
 interface Props {
   error: FriendlyRegistrationError;
@@ -55,7 +56,14 @@ export function RegistrationErrorAlert({ error, onRetry, isRetrying, signInRetur
         <div className="flex flex-wrap gap-2">
           {error.isDuplicate ? (
             <Button type="button" size="sm" variant="outline" asChild className="gap-2">
-              <Link to={signInHref}>
+              <Link
+                to={signInHref}
+                onClick={() =>
+                  void logRegistrationEvent('signin_redirect_existing_email', {
+                    metadata: { origin: 'registration_error_alert', reason: error.title },
+                  })
+                }
+              >
                 <LogIn className="h-3.5 w-3.5" />
                 Sign in instead
               </Link>
