@@ -44,6 +44,7 @@ const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   country: z.enum(["usa", "nigeria"]),
   city: z.string().min(1, "City is required"),
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
+  streetAddress: z.string().max(200, "Address too long").optional().or(z.literal("")),
   
   // Vehicle Details
   vehicleMake: z.string().min(1, "Vehicle make is required"),
