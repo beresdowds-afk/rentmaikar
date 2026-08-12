@@ -26,6 +26,11 @@ import { RegistrationErrorAlert } from "@/components/registration/RegistrationEr
 import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  ADDRESS_MAX,
+  addressHint as buildAddressHint,
+  optionalAddressSchema,
+} from "@/lib/address-validation";
 
 const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   // Owner Details
@@ -45,12 +50,7 @@ const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   country: z.enum(["usa", "nigeria"]),
   city: z.string().min(1, "City is required"),
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
-  streetAddress: z
-    .string()
-    .trim()
-    .max(200, "Address must be less than 200 characters")
-    .optional()
-    .or(z.literal("")),
+  streetAddress: optionalAddressSchema,
   
   // Vehicle Details
   vehicleMake: z.string().min(1, "Vehicle make is required"),
@@ -116,7 +116,7 @@ const OwnerRegistration = () => {
     setValue,
     watch,
     control,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, touchedFields },
   } = useForm<OwnerFormData>({
     resolver: zodResolver(createOwnerSchema(currentCountry)),
     defaultValues: {
@@ -152,6 +152,14 @@ const OwnerRegistration = () => {
       if (profile?.phone) setValue('phoneNumber', profile.phone);
     })();
   }, [user, setValue]);
+
+  // Live (optional) address feedback — same shared rules as the driver form.
+  const ownerAddressValue = watch("streetAddress") ?? "";
+  const ownerAddressLength = ownerAddressValue.trim().length;
+  const ownerAddressHint = buildAddressHint(ownerAddressValue, {
+    isDriver: false,
+    touched: Boolean(touchedFields.streetAddress) || ownerAddressLength > 0,
+  });
 
   const selectedCountry = watch("country");
   const selectedYear = watch("vehicleYear");
@@ -451,12 +459,47 @@ const OwnerRegistration = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="streetAddress">Address (optional)</Label>
-                  <Input id="streetAddress" placeholder="Street address" {...register("streetAddress")} />
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="streetAddress">
+                      Address <span className="text-xs text-muted-foreground">(optional)</span>
+                    </Label>
+                    <span
+                      className={`text-xs tabular-nums ${
+                        ownerAddressLength > ADDRESS_MAX ? "text-destructive" : "text-muted-foreground"
+                      }`}
+                      aria-live="polite"
+                    >
+                      {ownerAddressLength}/{ADDRESS_MAX}
+                    </span>
+                  </div>
+                  <Input
+                    id="streetAddress"
+                    placeholder="Street address"
+                    maxLength={ADDRESS_MAX + 50}
+                    aria-invalid={ownerAddressHint?.tone === "error" || !!errors.streetAddress}
+                    aria-describedby="streetAddress-hint"
+                    {...register("streetAddress")}
+                  />
+                  <p
+                    id="streetAddress-hint"
+                    aria-live="polite"
+                    className={`text-sm ${
+                      ownerAddressHint?.tone === "error"
+                        ? "text-destructive"
+                        : ownerAddressHint?.tone === "warn"
+                        ? "text-amber-500"
+                        : ownerAddressHint?.tone === "ok"
+                        ? "text-emerald-500"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {ownerAddressHint?.msg ?? "Optional for owners — add it to speed up handover."}
+                  </p>
                   {errors.streetAddress && (
                     <p className="text-destructive text-sm">{errors.streetAddress.message}</p>
                   )}
                 </div>
+
 
                 <div className="space-y-2">
                   <Label htmlFor="zipCode">ZIP / Postal Code</Label>

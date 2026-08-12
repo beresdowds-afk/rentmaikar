@@ -24,6 +24,12 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePersonaEnabled } from "@/hooks/usePersonaEnabled";
 import { refereeDetailsRequired } from "@/lib/referee-requirements";
+import {
+  ADDRESS_MIN,
+  ADDRESS_MAX,
+  addressHint as buildAddressHint,
+  requiredAddressSchema,
+} from "@/lib/address-validation";
 
 /** Phone field that must parse to a valid international (E.164) number. */
 const toE164 = (v: string) => {
@@ -71,11 +77,7 @@ const buildDriverSchema = (detailsRequired: boolean) => {
     }, "Enter a valid phone number with country code"),
   country: z.enum(["usa", "nigeria"]),
   city: z.string().min(1, "City is required"),
-  streetAddress: z
-    .string()
-    .trim()
-    .min(5, "Home address is required (at least 5 characters)")
-    .max(200, "Address must be less than 200 characters"),
+  streetAddress: requiredAddressSchema,
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
   rideshareApproval: z.array(z.string()).min(1, "Select at least one platform"),
   hasDriverLicense: z.boolean().refine(val => val, "Driver license is required"),
@@ -211,31 +213,17 @@ const DriverRegistration = () => {
   const cities = selectedCountry === "usa" ? usaCities : nigeriaCities;
 
   // ---- Live home-address validation ---------------------------------------
-  // Drivers must supply a real physical address (DB trigger enforces >= 5
-  // trimmed chars). Mirror those rules live so nothing surprises them on submit.
-  const ADDRESS_MIN = 5;
-  const ADDRESS_MAX = 200;
+  // Rules live in `@/lib/address-validation` so web and the Capacitor
+  // iOS/Android shells stay in lockstep with the database triggers.
   const streetAddressValue = watch("streetAddress") ?? "";
   const addressTrimmed = streetAddressValue.trim();
   const addressLength = addressTrimmed.length;
   const addressTouched = Boolean(touchedFields.streetAddress) || addressLength > 0;
 
-  const addressHint = (() => {
-    if (!addressTouched) return null;
-    if (addressLength === 0) return { tone: "error" as const, msg: "Home address is required for drivers." };
-    if (addressLength < ADDRESS_MIN)
-      return {
-        tone: "error" as const,
-        msg: `Add ${ADDRESS_MIN - addressLength} more character${ADDRESS_MIN - addressLength === 1 ? "" : "s"} — include your street and house number.`,
-      };
-    if (addressLength > ADDRESS_MAX)
-      return { tone: "error" as const, msg: `Too long by ${addressLength - ADDRESS_MAX} characters.` };
-    if (/^(n\/?a|none|nil|test)$/i.test(addressTrimmed))
-      return { tone: "error" as const, msg: "Enter your real residential address — placeholders are rejected." };
-    if (!/\d/.test(addressTrimmed))
-      return { tone: "warn" as const, msg: "Tip: include your house or apartment number so handover isn’t delayed." };
-    return { tone: "ok" as const, msg: "Looks good — this address will be used for verification and handover." };
-  })();
+  const addressHint = buildAddressHint(streetAddressValue, {
+    isDriver: true,
+    touched: addressTouched,
+  });
 
 
 
