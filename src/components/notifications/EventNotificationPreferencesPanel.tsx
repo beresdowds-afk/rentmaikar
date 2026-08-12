@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, BellRing, Mail, Hash, Webhook, Copy } from 'lucide-react';
+import { Loader2, BellRing, Mail, Hash, Webhook, Smartphone, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -62,6 +62,14 @@ export function EventNotificationPreferencesPanel() {
                         checked={p.email}
                         onCheckedChange={(v) => savePreference(cat.value, { email: v })}
                         aria-label={`Email alerts for ${cat.label}`}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Smartphone className="h-3.5 w-3.5" /> Push
+                      <Switch
+                        checked={p.push}
+                        onCheckedChange={(v) => savePreference(cat.value, { push: v })}
+                        aria-label={`Push alerts for ${cat.label}`}
                       />
                     </label>
                     <label className="flex items-center gap-2 text-xs text-muted-foreground">

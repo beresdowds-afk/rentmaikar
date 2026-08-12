@@ -2216,6 +2216,7 @@ export type Database = {
           email: boolean
           id: string
           in_app: boolean
+          push: boolean
           slack: boolean
           slack_webhook_url: string | null
           updated_at: string
@@ -2230,6 +2231,7 @@ export type Database = {
           email?: boolean
           id?: string
           in_app?: boolean
+          push?: boolean
           slack?: boolean
           slack_webhook_url?: string | null
           updated_at?: string
@@ -2244,6 +2246,7 @@ export type Database = {
           email?: boolean
           id?: string
           in_app?: boolean
+          push?: boolean
           slack?: boolean
           slack_webhook_url?: string | null
           updated_at?: string

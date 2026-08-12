@@ -14,7 +14,7 @@ const MAX_ATTEMPTS = 5;
 interface OutboxRow {
   id: string;
   recipient_id: string;
-  channel: "email" | "slack" | "webhook";
+  channel: "email" | "slack" | "webhook" | "push";
   category: string;
   kind: string;
   title: string;
@@ -115,6 +115,29 @@ serve(async (req) => {
               status = "failed";
               lastError = `[${res.status}] ${await res.text()}`;
             }
+          }
+        } else if (row.channel === "push") {
+          const res = await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${serviceKey}`,
+            },
+            body: JSON.stringify({
+              user_id: row.recipient_id,
+              event: row.kind,
+              title: row.title,
+              body: row.body ?? row.title,
+              data: {
+                category: row.category,
+                url: row.deep_link ?? "https://rentmaikar.com",
+                record_id: row.record_id ?? "",
+              },
+            }),
+          });
+          if (!res.ok) {
+            status = "failed";
+            lastError = `[${res.status}] ${await res.text()}`;
           }
         } else if (row.channel === "slack") {
           const res = await fetch(row.destination!, {

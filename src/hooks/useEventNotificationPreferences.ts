@@ -14,6 +14,7 @@ export const EVENT_CATEGORIES = [
   { value: 'rent_to_own', label: 'Rent to own' },
   { value: 'negotiations', label: 'Price negotiations' },
   { value: 'bookings', label: 'Booking requests' },
+  { value: 'vehicle_listings', label: 'Vehicle listings & reviews' },
   { value: 'payouts', label: 'Payouts' },
   { value: 'withdrawals', label: 'Withdrawals' },
 ] as const;
@@ -24,6 +25,7 @@ export interface EventNotificationPreference {
   category: string;
   in_app: boolean;
   email: boolean;
+  push: boolean;
   slack: boolean;
   webhook: boolean;
   slack_webhook_url: string | null;
@@ -34,7 +36,8 @@ export interface EventNotificationPreference {
 const defaults = (category: string): EventNotificationPreference => ({
   category,
   in_app: true,
-  email: false,
+  email: true,
+  push: true,
   slack: false,
   webhook: false,
   slack_webhook_url: null,
@@ -42,7 +45,7 @@ const defaults = (category: string): EventNotificationPreference => ({
   webhook_secret: null,
 });
 
-/** Per-event-category channel preferences (in-app, email, Slack, webhook). */
+/** Per-event-category channel preferences (in-app, email, push, Slack, webhook). */
 export function useEventNotificationPreferences() {
   const { user } = useAuth();
   const [prefs, setPrefs] = useState<Record<string, EventNotificationPreference>>({});
@@ -67,6 +70,7 @@ export function useEventNotificationPreferences() {
           category: row.category,
           in_app: row.in_app,
           email: row.email,
+          push: (row as { push?: boolean }).push ?? true,
           slack: row.slack,
           webhook: row.webhook,
           slack_webhook_url: row.slack_webhook_url,
@@ -95,6 +99,7 @@ export function useEventNotificationPreferences() {
           category,
           in_app: next.in_app,
           email: next.email,
+          push: next.push,
           slack: next.slack,
           webhook: next.webhook,
           slack_webhook_url: next.slack_webhook_url || null,

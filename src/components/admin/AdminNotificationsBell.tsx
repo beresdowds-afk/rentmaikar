@@ -41,6 +41,7 @@ const KIND_COLORS: Record<string, string> = {
   legal_agreements_status: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
   price_negotiations_created: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
   price_negotiations_status: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
+  vehicle_review: "bg-teal-500/15 text-teal-700 dark:text-teal-300",
   other: "bg-muted text-muted-foreground",
 };
 
@@ -48,6 +49,7 @@ const KIND_LABEL: Record<string, string> = {
   onboarding_stage: "Onboarding",
   access_grant: "Grant",
   access_revoke: "Revoke",
+  vehicle_review: "Vehicle review",
 };
 
 const kindClass = (kind: string) => KIND_COLORS[kind] ?? KIND_COLORS.other;
