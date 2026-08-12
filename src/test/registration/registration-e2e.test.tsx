@@ -12,6 +12,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// jsdom lacks ResizeObserver, which Radix primitives use.
+if (!(globalThis as unknown as { ResizeObserver?: unknown }).ResizeObserver) {
+  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
 
 // ---------------------------------------------------------------- mocks ----
 const navigate = vi.fn();
@@ -154,8 +164,14 @@ import DriverRegistration from "@/pages/DriverRegistration";
 import OwnerRegistration from "@/pages/OwnerRegistration";
 
 // ------------------------------------------------------------- helpers ----
-const renderPage = (ui: React.ReactElement) =>
-  render(<MemoryRouter initialEntries={["/register"]}>{ui}</MemoryRouter>);
+const renderPage = (ui: React.ReactElement) => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={["/register"]}>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  );
+};
 
 const type = async (user: ReturnType<typeof userEvent.setup>, id: string, value: string) => {
   const el = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement;
