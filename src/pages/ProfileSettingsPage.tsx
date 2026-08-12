@@ -21,6 +21,8 @@ import { MessagingPreferencesPanel } from '@/components/profile/MessagingPrefere
 import { RoleSwitchCard } from '@/components/profile/RoleSwitchCard';
 
 import PWASettingsPanel from '@/components/pwa/PWASettingsPanel';
+import LiveSyncSettingsPanel from '@/components/pwa/LiveSyncSettingsPanel';
+
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 import { useRegion } from '@/contexts/RegionContext';
@@ -429,6 +431,9 @@ export default function ProfileSettingsPage() {
 
 
           <PWASettingsPanel />
+
+          <LiveSyncSettingsPanel />
+
 
           <ConnectedAccounts />
 

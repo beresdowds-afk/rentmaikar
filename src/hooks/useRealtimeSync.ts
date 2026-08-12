@@ -6,6 +6,14 @@ import { useRealtimeSound, shouldChime } from "@/hooks/useRealtimeSound";
 import { toast } from "sonner";
 import { isNewBuildAvailable, primeBuildId } from "@/lib/app-version";
 import type { LiveSyncCommand, LiveSyncTick } from "@/workers/live-sync.worker";
+import {
+  isDataSaverActive,
+  loadLiveSyncSettings,
+  resolveEffectiveIntervals,
+  subscribeLiveSyncSettings,
+  watchLowBattery,
+} from "@/lib/live-sync-settings";
+
 
 /**
  * Global realtime sync worker. Subscribes to a curated set of tables and
@@ -57,11 +65,6 @@ const TABLES: Array<{ table: string; keys: string[]; alert?: boolean }> = [
 /** Broadcast channel name used to fan a refresh out to every open tab/window. */
 const SYNC_BROADCAST = "rentmaikar-live-sync";
 
-/** How often to force a refetch when realtime frames are not arriving. */
-const HEARTBEAT_MS = 60_000;
-
-/** How often to check whether a newer build has been deployed. */
-const VERSION_CHECK_MS = 5 * 60_000;
 
 export function useRealtimeSync(enabled: boolean = true) {
   const qc = useQueryClient();
@@ -129,15 +132,23 @@ export function useRealtimeSync(enabled: boolean = true) {
     }
 
     // 4. Scheduler worker — off-main-thread timers that survive background
-    //    throttling in installed PWAs. Falls back to setInterval when the
-    //    environment has no module-worker support.
+    //    throttling in installed PWAs. Intervals come from the user's live-sync
+    //    settings and adapt to data-saver / low-battery conditions. Falls back
+    //    to setInterval when the environment has no module-worker support.
     let worker: Worker | null = null;
     let fallbackTimer: number | null = null;
     let updateNotified = false;
 
+    let settings = loadLiveSyncSettings();
+    let lowBattery = false;
+    let effective = resolveEffectiveIntervals(settings, {
+      dataSaver: isDataSaverActive(),
+      lowBattery,
+    });
+
     const onHeartbeat = () => {
       if (document.visibilityState !== "visible") return;
-      if (Date.now() - lastEventAt < HEARTBEAT_MS) return;
+      if (Date.now() - lastEventAt < effective.heartbeatMs) return;
       refreshAll();
     };
 
@@ -154,6 +165,33 @@ export function useRealtimeSync(enabled: boolean = true) {
 
     void primeBuildId();
 
+    const postToWorker = (cmd: LiveSyncCommand) => worker?.postMessage(cmd);
+
+    /** Recomputes intervals and pushes them to the worker (or fallback timer). */
+    const applySchedule = () => {
+      effective = resolveEffectiveIntervals(settings, {
+        dataSaver: isDataSaverActive(),
+        lowBattery,
+      });
+      const hidden = settings.pauseWhenHidden && document.visibilityState !== "visible";
+      if (worker) {
+        postToWorker({
+          type: "configure",
+          heartbeatMs: effective.heartbeatMs,
+          versionCheckMs: effective.versionCheckMs,
+        });
+        postToWorker({ type: hidden ? "pause" : "resume" });
+      } else if (fallbackTimer !== null) {
+        window.clearInterval(fallbackTimer);
+        fallbackTimer = hidden
+          ? null
+          : window.setInterval(() => {
+              onHeartbeat();
+              void onVersionCheck();
+            }, effective.heartbeatMs);
+      }
+    };
+
     try {
       worker = new Worker(new URL("../workers/live-sync.worker.ts", import.meta.url), {
         type: "module",
@@ -162,25 +200,46 @@ export function useRealtimeSync(enabled: boolean = true) {
         if (event.data?.type === "heartbeat") onHeartbeat();
         else if (event.data?.type === "version-check") void onVersionCheck();
       };
-      const startCmd: LiveSyncCommand = {
+      postToWorker({
         type: "start",
-        heartbeatMs: HEARTBEAT_MS,
-        versionCheckMs: VERSION_CHECK_MS,
-      };
-      worker.postMessage(startCmd);
+        heartbeatMs: effective.heartbeatMs,
+        versionCheckMs: effective.versionCheckMs,
+      });
     } catch {
       worker = null;
       fallbackTimer = window.setInterval(() => {
         onHeartbeat();
         void onVersionCheck();
-      }, HEARTBEAT_MS);
+      }, effective.heartbeatMs);
     }
+
+    // Pause/resume with visibility, and react to setting or condition changes.
+    const onVisibilityForSchedule = () => applySchedule();
+    document.addEventListener("visibilitychange", onVisibilityForSchedule);
+
+    const unsubscribeSettings = subscribeLiveSyncSettings((next) => {
+      settings = next;
+      applySchedule();
+    });
+    const unwatchBattery = watchLowBattery((low) => {
+      lowBattery = low;
+      applySchedule();
+    });
+    const connection = (navigator as Navigator & { connection?: EventTarget }).connection;
+    const onConnectionChange = () => applySchedule();
+    connection?.addEventListener?.("change", onConnectionChange);
+
+    applySchedule();
 
     return () => {
       supabase.removeChannel(channel);
       document.removeEventListener("visibilitychange", onVisible);
+      document.removeEventListener("visibilitychange", onVisibilityForSchedule);
       window.removeEventListener("focus", onVisible);
       window.removeEventListener("online", onOnline);
+      connection?.removeEventListener?.("change", onConnectionChange);
+      unsubscribeSettings();
+      unwatchBattery();
       if (fallbackTimer !== null) window.clearInterval(fallbackTimer);
       if (worker) {
         worker.postMessage({ type: "stop" } as LiveSyncCommand);
@@ -189,6 +248,7 @@ export function useRealtimeSync(enabled: boolean = true) {
       bc?.close();
       bc = null;
     };
+
   }, [enabled, qc, country, play]);
 }
 
