@@ -6,6 +6,14 @@ import { useRealtimeSound, shouldChime } from "@/hooks/useRealtimeSound";
 import { toast } from "sonner";
 import { isNewBuildAvailable, primeBuildId } from "@/lib/app-version";
 import type { LiveSyncCommand, LiveSyncTick } from "@/workers/live-sync.worker";
+import {
+  isDataSaverActive,
+  loadLiveSyncSettings,
+  resolveEffectiveIntervals,
+  subscribeLiveSyncSettings,
+  watchLowBattery,
+} from "@/lib/live-sync-settings";
+
 
 /**
  * Global realtime sync worker. Subscribes to a curated set of tables and
