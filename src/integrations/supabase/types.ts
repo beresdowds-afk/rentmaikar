@@ -12517,6 +12517,15 @@ export type Database = {
         Args: { _device_id: string; _prefs: Json }
         Returns: boolean
       }
+      vehicle_publish_fields_unchanged: {
+        Args: {
+          _id: string
+          _is_public: boolean
+          _review_status: string
+          _status: string
+        }
+        Returns: boolean
+      }
       verify_cron_secret: { Args: { _secret: string }; Returns: boolean }
       verify_cron_token: { Args: { _token: string }; Returns: boolean }
     }
