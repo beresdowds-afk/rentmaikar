@@ -99,22 +99,13 @@ const sendIoTUnlockCommand = async (vehicleId: string, deviceId: string) => {
   return { success: true, timestamp: new Date().toISOString() };
 };
 
-const handler = async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-  const cronDenied = await requireCronSecretAsync(req);
-  if (cronDenied) return cronDenied;
+// deno-lint-ignore no-explicit-any
+type SupabaseClient = any;
 
+const processPaymentUnlock = async (supabase: SupabaseClient, payment: PaymentConfirmation) => {
   const startTime = Date.now();
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const payment: PaymentConfirmation = await req.json();
-
+  {
     console.log(`[Payment Unlock] Processing payment ${payment.transactionId} for driver ${payment.driverId}`);
 
     // Step 1: Resolve any active payment defaults
@@ -163,7 +154,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Step 4: If vehicle was locked, send unlock command IMMEDIATELY
-    const wasLocked = activeDefaults?.some(d => d.deactivation_eligible);
+    const wasLocked = activeDefaults?.some((d: any) => d.deactivation_eligible);
     
     if (wasLocked && deviceInfo) {
       console.log(`[Payment Unlock] Vehicle was locked, sending unlock command...`);
@@ -191,7 +182,7 @@ const handler = async (req: Request): Promise<Response> => {
           status: "resolved",
           resolved_at: new Date().toISOString(),
         })
-        .in("id", activeDefaults.map(d => d.id));
+        .in("id", activeDefaults.map((d: any) => d.id));
 
       console.log(`[Payment Unlock] Resolved ${activeDefaults.length} payment defaults`);
     }
@@ -276,18 +267,129 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        vehicleUnlocked: wasLocked,
-        unlockLatencyMs: unlockLatency,
-        withinGuarantee,
-        defaultsResolved: activeDefaults?.length || 0,
-        timestamp: new Date().toISOString(),
-      }),
-      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    return {
+      success: true,
+      transactionId: payment.transactionId,
+      driverId: payment.driverId,
+      vehicleUnlocked: Boolean(wasLocked),
+      unlockLatencyMs: unlockLatency,
+      withinGuarantee,
+      defaultsResolved: activeDefaults?.length || 0,
+    };
+  }
+};
+
+/**
+ * Scheduled sweep: find drivers who still carry an active payment default even
+ * though a completed payment has landed since the default was raised, and
+ * release them. The 10-minute cron hits this path (no payment body), while
+ * payment webhooks post a single PaymentConfirmation.
+ */
+const runScheduledSweep = async (supabase: SupabaseClient) => {
+  const { data: defaults, error } = await supabase
+    .from("payment_defaults")
+    .select("id, driver_id, vehicle_id, created_at, currency")
+    .eq("status", "active");
+
+  if (error) throw new Error(`Failed to fetch active defaults: ${error.message}`);
+  if (!defaults?.length) {
+    return { mode: "scheduled", candidates: 0, processed: 0, results: [] };
+  }
+
+  const driverIds = Array.from(new Set(defaults.map((d: any) => d.driver_id).filter(Boolean)));
+  const { data: settledPayments, error: payError } = await supabase
+    .from("payments")
+    .select("id, driver_id, vehicle_id, amount, currency, payment_method, transaction_id, settled_at, processed_at, created_at, status")
+    .in("driver_id", driverIds)
+    .in("status", ["completed", "succeeded", "settled", "paid"])
+    .order("created_at", { ascending: false });
+
+  if (payError) throw new Error(`Failed to fetch settled payments: ${payError.message}`);
+
+  const results: unknown[] = [];
+  const handledDrivers = new Set<string>();
+
+  for (const def of defaults) {
+    if (handledDrivers.has(def.driver_id)) continue;
+
+    const paidAfterDefault = (settledPayments || []).find((p: any) => {
+      if (p.driver_id !== def.driver_id) return false;
+      const paidAt = new Date(p.settled_at || p.processed_at || p.created_at).getTime();
+      return paidAt >= new Date(def.created_at).getTime();
+    });
+    if (!paidAfterDefault) continue;
+
+    handledDrivers.add(def.driver_id);
+    try {
+      results.push(
+        await processPaymentUnlock(supabase, {
+          transactionId: paidAfterDefault.transaction_id || paidAfterDefault.id,
+          driverId: def.driver_id,
+          amount: Number(paidAfterDefault.amount || 0),
+          currency: (paidAfterDefault.currency || def.currency || "USD") as "USD" | "NGN",
+          paymentMethod: paidAfterDefault.payment_method || "unknown",
+          vehicleId: paidAfterDefault.vehicle_id || def.vehicle_id || undefined,
+        }),
+      );
+    } catch (err) {
+      console.error(`[Payment Unlock] Sweep failed for driver ${def.driver_id}:`, err);
+      results.push({ driverId: def.driver_id, success: false, error: (err as Error).message });
+    }
+  }
+
+  return { mode: "scheduled", candidates: defaults.length, processed: results.length, results };
+};
+
+const handler = async (req: Request): Promise<Response> => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+  const cronDenied = await requireCronSecretAsync(req);
+  if (cronDenied) return cronDenied;
+
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    let body: Partial<PaymentConfirmation> = {};
+    try {
+      body = (await req.json()) ?? {};
+    } catch {
+      body = {};
+    }
+
+    // Scheduled invocation: no payment payload, sweep for paid-but-locked drivers.
+    if (!body.driverId) {
+      const summary = await runScheduledSweep(supabase);
+      console.log(`[Payment Unlock] Scheduled sweep: ${summary.processed}/${summary.candidates} released`);
+      return new Response(JSON.stringify({ ...summary, timestamp: new Date().toISOString() }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    if (!body.transactionId) {
+      return new Response(
+        JSON.stringify({ error: "transactionId is required when driverId is supplied" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+
+    const result = await processPaymentUnlock(supabase, {
+      transactionId: body.transactionId,
+      driverId: body.driverId,
+      amount: Number(body.amount || 0),
+      currency: (body.currency || "USD") as "USD" | "NGN",
+      paymentMethod: body.paymentMethod || "unknown",
+      vehicleId: body.vehicleId,
+    });
+
+    return new Response(JSON.stringify({ ...result, timestamp: new Date().toISOString() }), {
+      status: 200,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   } catch (error: any) {
     console.error("[Payment Unlock Error]", error);
     return new Response(
