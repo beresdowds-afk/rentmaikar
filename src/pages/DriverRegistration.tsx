@@ -107,7 +107,7 @@ const buildDriverSchema = (detailsRequired: boolean) => {
   agreeIoT: z.boolean().refine(val => val, "You must consent to IoT tracking"),
   agreeFees: z.boolean().refine(val => val, "You must acknowledge the late payment and default policy"),
   messagingConsent: z.boolean().refine(val => val, "You must consent to receive service messages"),
-  messagingChannel: z.string().refine(val => val === "sms" || val === "whatsapp", "Select SMS or WhatsApp as your second channel"),
+  messagingChannel: z.string().refine((val) => ["sms", "whatsapp"].includes(val), "Select SMS or WhatsApp as your second channel"),
   dataSharingConsent: z.boolean().refine(val => val, "You must consent to third-party data sharing"),
 
   });
