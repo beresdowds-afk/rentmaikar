@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Edit, Eye, FileText, GitBranch, Loader2, Plus, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { AGREEMENT_PLACEHOLDERS } from '@/lib/agreement-template';
 
 type AgreementRegion = 'USA' | 'Nigeria' | (string & {});
 
@@ -195,7 +196,7 @@ export function LegalAgreementTemplateManagement() {
                 <FileText className="h-5 w-5" />
                 Template Library
               </CardTitle>
-              <CardDescription>Use placeholders like {'{{driver_name}}'}, {'{{owner_name}}'}, and {'{{daily_rate}}'} in the body.</CardDescription>
+              <CardDescription>Author the binding agreement body here. Use the {'{{token}}'} placeholders listed in the editor so parties, vehicle and pricing details fill in automatically.</CardDescription>
             </div>
             <Select value={regionFilter} onValueChange={(value) => setRegionFilter(value as 'all' | AgreementRegion)}>
               <SelectTrigger className="w-full sm:w-44">
@@ -303,6 +304,25 @@ export function LegalAgreementTemplateManagement() {
             </div>
             <div className="space-y-2 md:col-span-2">
               <Label>Template content</Label>
+              <div className="rounded-md border bg-muted/40 p-3">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Available placeholders (click to copy)</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {AGREEMENT_PLACEHOLDERS.map((placeholder) => (
+                    <button
+                      key={placeholder.token}
+                      type="button"
+                      title={placeholder.description}
+                      onClick={() => {
+                        navigator.clipboard?.writeText(placeholder.token);
+                        toast.success(`Copied ${placeholder.token}`);
+                      }}
+                      className="rounded border bg-background px-2 py-0.5 font-mono text-[11px] hover:bg-accent"
+                    >
+                      {placeholder.token}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <Textarea rows={16} value={form.content} onChange={(event) => setForm((current) => ({ ...current, content: event.target.value }))} />
             </div>
             <div className="flex items-center gap-3 md:col-span-2">
