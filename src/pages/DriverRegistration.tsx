@@ -318,6 +318,7 @@ const DriverRegistration = () => {
                   error={submitError}
                   onRetry={handleRetry}
                   isRetrying={isRetrying}
+                  signInReturnTo="/driver/register"
                 />
               )}
               {/* Personal Information */}
