@@ -623,6 +623,19 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
                 >
                   Hide all
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => toggleChip("no_photos")}
+                  className="gap-1"
+                >
+                  <CameraOff className="h-4 w-4" />
+                  {activeChips.includes("no_photos") ? "Showing" : "Show"} missing photos ({photolessVehicles.length})
+                </Button>
+                <Button size="sm" variant="outline" onClick={exportPhotoless} className="gap-1">
+                  <Download className="h-4 w-4" /> Export registry-only CSV
+                </Button>
+
                 {!isLoading && filtered.length > 0 && (
                   <span className="text-xs text-muted-foreground">
                     Page {currentPage} of {totalPages}
