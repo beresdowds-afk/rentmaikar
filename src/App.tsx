@@ -422,6 +422,15 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/admin/notification-retry"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminNotificationRetryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
                     path="/admin/uuid-assignments"
                     element={
                       <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
