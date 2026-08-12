@@ -80,17 +80,20 @@ export function validateAddress(value: string, isDriver: boolean): string | null
 
 
 export default function ProfileSettingsPage() {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const { country } = useRegion();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [initial, setInitial] = useState({ fullName: '', phone: '' });
+  const [streetAddress, setStreetAddress] = useState('');
+  const [addressTouched, setAddressTouched] = useState(false);
+  const [initial, setInitial] = useState({ fullName: '', phone: '', streetAddress: '' });
   const [identityStatus, setIdentityStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [nameImmutableError, setNameImmutableError] = useState<string | null>(null);
 
   const nameLocked = identityStatus === 'approved';
+  const isDriver = hasRole('driver');
 
   useEffect(() => {
     if (!user?.id) return;
@@ -98,16 +101,18 @@ export default function ProfileSettingsPage() {
       setLoading(true);
       const { data } = await supabase
         .from('profiles')
-        .select('full_name, phone, identity_verification_status, identity_verified_at')
+        .select('full_name, phone, street_address, identity_verification_status, identity_verified_at')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (data) {
         const fn = data.full_name ?? '';
         const ph = data.phone ?? '';
+        const addr = (data as any).street_address ?? '';
         setFullName(fn);
         setPhone(ph);
-        setInitial({ fullName: fn, phone: ph });
+        setStreetAddress(addr);
+        setInitial({ fullName: fn, phone: ph, streetAddress: addr });
         const status = (data as any).identity_verification_status
           ?? ((data as any).identity_verified_at ? 'approved' : null);
         setIdentityStatus(status);
@@ -118,6 +123,11 @@ export default function ProfileSettingsPage() {
 
   const nameChanged = normalize(fullName) !== normalize(initial.fullName);
   const phoneChanged = normalize(phone) !== normalize(initial.phone);
+  const addressChanged = normalize(streetAddress) !== normalize(initial.streetAddress);
+  const addressLength = streetAddress.trim().length;
+  const addressError = validateAddress(streetAddress, isDriver);
+  const showAddressError = (addressTouched || addressChanged) && !!addressError;
+
 
   const save = async () => {
     if (!user?.id) return;
