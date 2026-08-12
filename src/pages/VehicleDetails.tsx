@@ -12,6 +12,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useRegion } from "@/contexts/RegionContext";
 import { usePublicVehicle, useCategoryPrices } from "@/hooks/usePublicVehicles";
 import BookingRequestDialog from "@/components/catalogue/BookingRequestDialog";
+import VehicleSubmissionHistorySection from "@/components/vehicles/VehicleSubmissionHistorySection";
+
 import categoryBudget from "@/assets/category-budget.jpg";
 import categoryStandard from "@/assets/category-standard.jpg";
 import categoryPremium from "@/assets/category-premium.jpg";
