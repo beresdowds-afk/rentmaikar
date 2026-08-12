@@ -275,6 +275,67 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
     setPage(1);
   };
 
+  const photolessVehicles = useMemo(
+    () => (vehicles ?? []).filter((v) => !hasVerifiedPhotos(v)),
+    [vehicles]
+  );
+
+  const exportPhotoless = () => {
+    if (!photolessVehicles.length) {
+      toast.info("Nothing to export", {
+        description: "Every vehicle in the registry has at least one owner-uploaded photo.",
+      });
+      return;
+    }
+    const header = [
+      "vehicle_id",
+      "year",
+      "make",
+      "model",
+      "license_plate",
+      "vin",
+      "status",
+      "is_public",
+      "country",
+      "pickup_city",
+      "pickup_location",
+      "owner_id",
+    ];
+    const esc = (val: unknown) => `"${String(val ?? "").replace(/"/g, '""')}"`;
+    const rows = photolessVehicles.map((v) =>
+      [
+        v.id,
+        v.year,
+        v.make,
+        v.model,
+        v.license_plate,
+        v.vin ?? "",
+        v.status ?? "",
+        v.is_public ? "yes" : "no",
+        inferCountry(v),
+        v.pickup_city ?? "",
+        v.pickup_location ?? "",
+        v.owner_id ?? "",
+      ]
+        .map(esc)
+        .join(",")
+    );
+    const blob = new Blob([[header.join(","), ...rows].join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `registry-only-vehicles-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${photolessVehicles.length} registry-only vehicle(s)`, {
+      description: "These vehicles are hidden from the public catalogue until owners upload photos.",
+    });
+  };
+
+
+
   const setVisibility = async (v: VehicleRow, isPublic: boolean) => {
     setSavingVisibility(v.id);
     try {
