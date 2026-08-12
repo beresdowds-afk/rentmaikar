@@ -11711,6 +11711,7 @@ export type Database = {
         Returns: undefined
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
+      email_signup_status: { Args: { _email: string }; Returns: Json }
       emqx_activate_credentials: {
         Args: { _version_id: string }
         Returns: Json
