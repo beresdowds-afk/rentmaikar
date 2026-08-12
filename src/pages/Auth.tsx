@@ -22,6 +22,7 @@ import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
 import { PasswordInput } from '@/components/ui/password-input';
 import { EmailVerification } from '@/components/auth/EmailVerification';
 import { ROLE_HOME, ROLE_ONBOARDING, isStaffRole, type AppRole } from '@/lib/role-home';
+import { resolvePostLoginDestination } from '@/lib/post-login-destination';
 import { isRestorablePath, readReturnTo, clearReturnTo } from '@/lib/return-to';
 import { logRegistrationEvent } from '@/lib/registration-audit';
 
