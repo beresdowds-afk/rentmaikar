@@ -22,6 +22,10 @@ import { RoleSwitchCard } from '@/components/profile/RoleSwitchCard';
 
 import PWASettingsPanel from '@/components/pwa/PWASettingsPanel';
 import LiveSyncSettingsPanel from '@/components/pwa/LiveSyncSettingsPanel';
+import ConflictResolutionDialog from '@/components/sync/ConflictResolutionDialog';
+import { useConflictAwareSave } from '@/hooks/useConflictAwareSave';
+import type { FieldChoice } from '@/lib/conflict-resolution';
+
 
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 import { PhoneNumberInput } from '@/components/ui/phone-number-input';
@@ -80,13 +84,18 @@ export default function ProfileSettingsPage() {
   const nameLocked = identityStatus === 'approved';
   const isDriver = hasRole('driver');
 
+  // Optimistic-concurrency token + merge base for simultaneous edits made on
+  // the website and an installed app at the same time.
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState<string | null>(null);
+  const conflictSave = useConflictAwareSave<Record<string, unknown>>();
+
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
       setLoading(true);
       const { data } = await supabase
         .from('profiles')
-        .select('full_name, phone, street_address, identity_verification_status, identity_verified_at')
+        .select('full_name, phone, street_address, identity_verification_status, identity_verified_at, updated_at')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -98,6 +107,7 @@ export default function ProfileSettingsPage() {
         setPhone(ph);
         setStreetAddress(addr);
         setInitial({ fullName: fn, phone: ph, streetAddress: addr });
+        setBaseUpdatedAt((data as any).updated_at ?? null);
         const status = (data as any).identity_verification_status
           ?? ((data as any).identity_verified_at ? 'approved' : null);
         setIdentityStatus(status);
@@ -106,12 +116,100 @@ export default function ProfileSettingsPage() {
     })();
   }, [user?.id]);
 
+
   const nameChanged = normalize(fullName) !== normalize(initial.fullName);
   const phoneChanged = normalize(phone) !== normalize(initial.phone);
   const addressChanged = normalize(streetAddress) !== normalize(initial.streetAddress);
   const addressLength = streetAddress.trim().length;
   const addressError = validateAddress(streetAddress, isDriver);
   const showAddressError = (addressTouched || addressChanged) && !!addressError;
+
+  /** Shared success path for a normal save and a conflict-resolved save. */
+  const finalizeSave = (
+    row: Record<string, unknown> | null,
+    ctx: {
+      fullName: string;
+      phone: string | null;
+      streetAddress: string;
+      phoneChanged: boolean;
+      nameChanged: boolean;
+      addressChanged: boolean;
+      autoMerged: string[];
+    },
+  ) => {
+    setNameImmutableError(null);
+
+    // The saved row is the source of truth — a merge may have kept the other
+    // device's value for some fields.
+    const savedName = (row?.full_name as string | null) ?? ctx.fullName;
+    const savedPhone = (row?.phone as string | null) ?? ctx.phone;
+    const savedAddress = (row?.street_address as string | null) ?? ctx.streetAddress;
+    setFullName(savedName ?? '');
+    setPhone(savedPhone ?? '');
+    setStreetAddress(savedAddress ?? '');
+    setInitial({
+      fullName: savedName ?? '',
+      phone: savedPhone ?? '',
+      streetAddress: savedAddress ?? '',
+    });
+    setBaseUpdatedAt((row?.updated_at as string | null) ?? null);
+    setAddressTouched(false);
+
+    const fields: string[] = [];
+    if (ctx.nameChanged) fields.push('full_name');
+    if (ctx.phoneChanged) fields.push('phone');
+    if (ctx.addressChanged) fields.push('street_address');
+    trackOnboardingEvent('profile_updated', { fields });
+
+    if (ctx.phoneChanged) {
+      setIdentityStatus('pending_reverification');
+      trackOnboardingEvent('profile_reverification_triggered', {
+        fields: ['phone'],
+        extra: { channel: 'both' },
+      });
+      supabase.functions
+        .invoke('persona-send-reverification', {
+          body: { user_id: user!.id, channel: 'both', reason: 'Phone number changed.' },
+        })
+        .catch(() => {});
+      toast({
+        title: 'Profile updated',
+        description: 'Your phone changed — please re-verify your identity.',
+      });
+    } else if (ctx.autoMerged.length > 0) {
+      toast({
+        title: 'Profile updated',
+        description: 'Recent changes from your other device were kept as well.',
+      });
+    } else {
+      toast({ title: 'Profile updated' });
+    }
+  };
+
+  /** User picked which version to keep for each conflicting field. */
+  const resolveConflicts = async (choices: Record<string, FieldChoice>) => {
+    const outcome = await conflictSave.resolve(choices);
+    if (!outcome) return;
+    if (outcome.status === 'error') {
+      toast({
+        title: 'Save failed',
+        description: outcome.error?.message ?? 'Please try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (outcome.status === 'saved') {
+      finalizeSave(outcome.row, {
+        fullName,
+        phone: phone || null,
+        streetAddress,
+        phoneChanged,
+        nameChanged,
+        addressChanged,
+        autoMerged: outcome.autoMerged,
+      });
+    }
+  };
 
 
   const save = async () => {
@@ -175,45 +273,37 @@ export default function ProfileSettingsPage() {
         updates.identity_verification_status = 'pending_reverification';
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      setNameImmutableError(null);
-
-      const fields: string[] = [];
-      if (nameChanged) fields.push('full_name');
-      if (phoneChanged) fields.push('phone');
-      if (addressChanged) fields.push('street_address');
-      trackOnboardingEvent('profile_updated', { fields });
-
-      if (phoneChanged) {
-        setIdentityStatus('pending_reverification');
-        trackOnboardingEvent('profile_reverification_triggered', {
-          fields: ['phone'],
-          extra: { channel: 'both' },
-        });
-        supabase.functions
-          .invoke('persona-send-reverification', {
-            body: { user_id: user.id, channel: 'both', reason: 'Phone number changed.' },
-          })
-          .catch(() => {});
-        toast({
-          title: 'Profile updated',
-          description: 'Your phone changed — please re-verify your identity.',
-        });
-      } else {
-        toast({ title: 'Profile updated' });
-      }
-
-      setInitial({
-        fullName: parsed.data.full_name,
-        phone: newPhone ?? '',
-        streetAddress: streetAddress.trim(),
+      // Guarded write: refuses to overwrite a newer version saved from the
+      // installed app / another tab, and auto-merges non-overlapping edits.
+      const outcome = await conflictSave.save({
+        table: 'profiles',
+        match: { column: 'user_id', value: user.id },
+        updates,
+        base: {
+          full_name: initial.fullName,
+          phone: initial.phone || null,
+          street_address: initial.streetAddress || null,
+        },
+        baseUpdatedAt,
+        compareFields: ['full_name', 'phone', 'street_address'],
       });
-      setAddressTouched(false);
+
+      if (outcome.status === 'conflict') {
+        // The dialog takes over; nothing was written.
+        return;
+      }
+      if (outcome.status === 'error') throw outcome.error;
+
+      finalizeSave(outcome.row, {
+        fullName: parsed.data.full_name,
+        phone: newPhone,
+        streetAddress: streetAddress.trim(),
+        phoneChanged,
+        nameChanged,
+        addressChanged,
+        autoMerged: outcome.autoMerged,
+      });
+
 
     } catch (err: any) {
       const msg = String(err?.message ?? '');
@@ -441,7 +531,19 @@ export default function ProfileSettingsPage() {
           <ProfileAuditHistory />
         </div>
       </main>
+
+      <ConflictResolutionDialog
+        open={conflictSave.hasConflict}
+        conflicts={conflictSave.conflicts}
+        autoMerged={conflictSave.autoMerged}
+        otherSourceLabel="another device"
+        saving={conflictSave.saving}
+        onCancel={conflictSave.cancel}
+        onResolve={(choices) => void resolveConflicts(choices)}
+      />
+
       <Footer />
+
     </div>
   );
 }
