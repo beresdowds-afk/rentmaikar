@@ -23,7 +23,7 @@ interface AuthContextType {
   twoFactorStatus: TwoFactorStatus | null;
   twoFactorVerified: boolean;
   setTwoFactorVerified: (verified: boolean) => void;
-  signUp: (email: string, password: string, fullName: string, role: AppRole) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, role: AppRole) => Promise<{ error: Error | null; emailExists?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null; userId?: string }>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
