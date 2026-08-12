@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import VehicleHistoryDialog from "@/components/vehicles/VehicleHistoryDialog";
 import VehicleReviewAuditLog from "@/components/admin/VehicleReviewAuditLog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -62,6 +64,11 @@ const AdminVehicleQueuePage = () => {
   const [search, setSearch] = useState("");
   const [rejectTarget, setRejectTarget] = useState<QueueVehicle | null>(null);
   const [reason, setReason] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkReason, setBulkReason] = useState("");
+  const [perVehicleReasons, setPerVehicleReasons] = useState<Record<string, string>>({});
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["admin-vehicle-queue", tab],
@@ -123,6 +130,58 @@ const AdminVehicleQueuePage = () => {
     onError: (error: any) => toast.error(error?.message ?? "Could not update this submission"),
   });
 
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["admin-vehicle-queue"] });
+    queryClient.invalidateQueries({ queryKey: ["owner-vehicles"] });
+    queryClient.invalidateQueries({ queryKey: ["public-vehicles"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-vehicle-review-audit"] });
+  };
+
+  /** Applies the same decision to every selected submission, one RPC per vehicle. */
+  const bulkReview = useMutation({
+    mutationFn: async ({
+      ids,
+      decision,
+      reasons,
+    }: {
+      ids: string[];
+      decision: ReviewStatus;
+      reasons?: Record<string, string>;
+    }) => {
+      const failures: { id: string; message: string }[] = [];
+      let done = 0;
+      setBulkProgress({ done: 0, total: ids.length });
+      for (const id of ids) {
+        const { error } = await supabase.rpc("admin_review_vehicle" as any, {
+          _vehicle_id: id,
+          _decision: decision,
+          _reason: reasons?.[id] ?? null,
+        });
+        if (error) failures.push({ id, message: error.message });
+        done += 1;
+        setBulkProgress({ done, total: ids.length });
+      }
+      return { total: ids.length, failures };
+    },
+    onSuccess: ({ total, failures }, vars) => {
+      const ok = total - failures.length;
+      const verb = vars.decision === "published" ? "published" : "rejected";
+      if (ok > 0) toast.success(`${ok} of ${total} submission${total === 1 ? "" : "s"} ${verb}`);
+      if (failures.length) {
+        toast.error(
+          `${failures.length} could not be ${verb}: ${failures[0].message}`,
+        );
+      }
+      invalidateAll();
+      setSelected((prev) => prev.filter((id) => failures.some((f) => f.id === id)));
+      setBulkOpen(false);
+      setBulkReason("");
+      setPerVehicleReasons({});
+    },
+    onError: (error: any) => toast.error(error?.message ?? "Bulk action failed"),
+    onSettled: () => setBulkProgress(null),
+  });
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return data ?? [];
@@ -132,6 +191,24 @@ const AdminVehicleQueuePage = () => {
         .some((field) => String(field).toLowerCase().includes(term)),
     );
   }, [data, search, owners]);
+
+  const selectableIds = useMemo(
+    () => filtered.filter((v) => v.review_status !== "published" || tab !== "published").map((v) => v.id),
+    [filtered, tab],
+  );
+  const selectedVehicles = useMemo(
+    () => filtered.filter((v) => selected.includes(v.id)),
+    [filtered, selected],
+  );
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.includes(id));
+
+  const toggleOne = (id: string, checked: boolean) =>
+    setSelected((prev) => (checked ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
+  const toggleAll = (checked: boolean) => setSelected(checked ? selectableIds : []);
+  const changeTab = (value: QueueTab) => {
+    setSelected([]);
+    setTab(value);
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -164,7 +241,7 @@ const AdminVehicleQueuePage = () => {
         />
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as QueueTab)}>
+      <Tabs value={tab} onValueChange={(v) => changeTab(v as QueueTab)}>
         <TabsList>
           <TabsTrigger value="pending">Pending</TabsTrigger>
           <TabsTrigger value="published">Published</TabsTrigger>
@@ -190,11 +267,58 @@ const AdminVehicleQueuePage = () => {
               </CardContent>
             </Card>
           ) : (
-            filtered.map((v) => (
+            <>
+              <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/40 px-3 py-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={(c) => toggleAll(Boolean(c))}
+                    aria-label="Select all submissions"
+                  />
+                  Select all ({filtered.length})
+                </label>
+                {selected.length > 0 && (
+                  <>
+                    <span className="text-sm text-muted-foreground">{selected.length} selected</span>
+                    <Button
+                      size="sm"
+                      onClick={() => bulkReview.mutate({ ids: selected, decision: "published" })}
+                      disabled={bulkReview.isPending}
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      {bulkReview.isPending && bulkProgress
+                        ? `Publishing ${bulkProgress.done}/${bulkProgress.total}`
+                        : "Approve selected"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => {
+                        setBulkReason("");
+                        setPerVehicleReasons({});
+                        setBulkOpen(true);
+                      }}
+                      disabled={bulkReview.isPending}
+                    >
+                      <XCircle className="w-4 h-4 mr-2" /> Reject selected
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setSelected([])} disabled={bulkReview.isPending}>
+                      Clear
+                    </Button>
+                  </>
+                )}
+              </div>
+              {filtered.map((v) => (
               <Card key={v.id}>
                 <CardHeader>
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                     <div className="flex gap-4">
+                      <Checkbox
+                        className="mt-1"
+                        checked={selected.includes(v.id)}
+                        onCheckedChange={(c) => toggleOne(v.id, Boolean(c))}
+                        aria-label={`Select ${v.make ?? "vehicle"} ${v.model ?? ""} submission`}
+                      />
                       {v.photo_urls?.[0] && (
                         <img
                           src={v.photo_urls[0]}
@@ -274,7 +398,8 @@ const AdminVehicleQueuePage = () => {
                   </div>
                 </CardContent>
               </Card>
-            ))
+              ))}
+            </>
           )}
         </TabsContent>
         )}
@@ -314,6 +439,74 @@ const AdminVehicleQueuePage = () => {
           </DialogFooter>
         </DialogContent>
 
+      </Dialog>
+
+      <Dialog open={bulkOpen} onOpenChange={(open) => !open && !bulkReview.isPending && setBulkOpen(false)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Reject {selectedVehicles.length} submission{selectedVehicles.length === 1 ? "" : "s"}</DialogTitle>
+            <DialogDescription>
+              Apply one shared reason, or give any submission its own reason below. Owners see the reason on their
+              dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="bulk-reason">Shared reason</Label>
+            <Textarea
+              id="bulk-reason"
+              rows={3}
+              value={bulkReason}
+              onChange={(e) => setBulkReason(e.target.value)}
+              placeholder="e.g. Photos are unclear and the registration expiry is missing."
+            />
+          </div>
+          <ScrollArea className="max-h-64 pr-3">
+            <div className="space-y-3">
+              {selectedVehicles.map((v) => (
+                <div key={v.id} className="space-y-1">
+                  <Label htmlFor={`reason-${v.id}`} className="text-xs">
+                    {v.year ?? ""} {v.make} {v.model} — {ownerLabel(v.owner_id)}
+                  </Label>
+                  <Input
+                    id={`reason-${v.id}`}
+                    value={perVehicleReasons[v.id] ?? ""}
+                    onChange={(e) =>
+                      setPerVehicleReasons((prev) => ({ ...prev, [v.id]: e.target.value }))
+                    }
+                    placeholder="Optional specific reason (overrides the shared reason)"
+                  />
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkReview.isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={
+                bulkReview.isPending ||
+                selectedVehicles.some(
+                  (v) => ((perVehicleReasons[v.id] ?? bulkReason).trim().length < 5),
+                )
+              }
+              onClick={() =>
+                bulkReview.mutate({
+                  ids: selectedVehicles.map((v) => v.id),
+                  decision: "rejected",
+                  reasons: Object.fromEntries(
+                    selectedVehicles.map((v) => [v.id, (perVehicleReasons[v.id] || bulkReason).trim()]),
+                  ),
+                })
+              }
+            >
+              {bulkReview.isPending && bulkProgress
+                ? `Rejecting ${bulkProgress.done}/${bulkProgress.total}`
+                : "Reject submissions"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );
