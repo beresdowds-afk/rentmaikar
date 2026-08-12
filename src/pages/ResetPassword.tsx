@@ -192,6 +192,7 @@ const ResetPassword = () => {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
+                {linkErrorMessage ? `${linkErrorMessage} ` : ''}
                 Password reset links expire <strong>1 hour</strong> after they are sent, and can only be used once.
               </AlertDescription>
             </Alert>
