@@ -18,6 +18,7 @@ import PricingHintBanner from "@/components/home/PricingHintBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureAuthUserForApplicant } from "@/lib/user-provisioning";
 import { classifyRegistrationError, type FriendlyRegistrationError } from "@/lib/registration-errors";
+import { logRegistrationEvent } from "@/lib/registration-audit";
 import { RegistrationErrorAlert } from "@/components/registration/RegistrationErrorAlert";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
@@ -261,6 +262,13 @@ const DriverRegistration = () => {
 
       if (error) throw error;
 
+      // Audit: registration data reached the database.
+      void logRegistrationEvent("registration_upsert_succeeded", {
+        email: data.email,
+        applicationType: "driver",
+        metadata: { country: data.country },
+      });
+
       // Move new signup to 'account_opened' — grants view-only dashboard.
       try {
         await supabase.rpc('advance_registration_stage', { _target: 'account_opened' });
@@ -274,6 +282,11 @@ const DriverRegistration = () => {
     } catch (error) {
       console.error("Driver registration error:", error);
       const friendly = classifyRegistrationError(error);
+      void logRegistrationEvent("registration_upsert_failed", {
+        email: data.email,
+        applicationType: "driver",
+        metadata: { reason: friendly.title, raw: friendly.raw.slice(0, 500) },
+      });
       setSubmitError(friendly);
       toast.error(friendly.title);
     } finally {
