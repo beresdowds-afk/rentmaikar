@@ -11930,6 +11930,10 @@ export type Database = {
         }
         Returns: Json
       }
+      profile_insert_fields_safe: {
+        Args: { _new: Database["public"]["Tables"]["profiles"]["Row"] }
+        Returns: boolean
+      }
       profile_privileged_fields_unchanged: {
         Args: { _new: Database["public"]["Tables"]["profiles"]["Row"] }
         Returns: boolean
