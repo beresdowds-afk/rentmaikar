@@ -1665,3 +1665,32 @@ export const providerHealthAlertEmail = (data: {
   };
 };
 
+
+/**
+ * Generic event notification email used by the event-category fanout
+ * (dispatch-event-notifications). Always carries the deep link to the record.
+ */
+export const eventNotificationEmail = (data: {
+  title: string;
+  body?: string;
+  category: string;
+  status?: string;
+  recordId?: string;
+  deepLink: string;
+}) => {
+  const content = `
+    <h1>${escapeHtml(data.title)}</h1>
+    <p style="color:#64748b;">Category: ${escapeHtml(data.category.replace(/_/g, ' '))}${
+      data.status ? ` &middot; Status: ${escapeHtml(data.status)}` : ''
+    }</p>
+    ${data.body ? `<p>${escapeHtml(data.body)}</p>` : ''}
+    ${data.recordId ? `<p style="color:#94a3b8;font-size:12px;">Record: ${escapeHtml(data.recordId)}</p>` : ''}
+    <a href="${data.deepLink}" class="cta-button">Open record →</a>
+  `;
+  return {
+    subject: data.title,
+    html: emailWrapper(content, 'Event Notification'),
+    text: `${data.title}\n\n${data.body ?? ''}\n\nOpen: ${data.deepLink}`,
+    from: formatSenderEmail('notifications'),
+  };
+};

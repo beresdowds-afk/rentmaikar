@@ -47,6 +47,7 @@ import {
   personaStatusUpdateEmail,
   personaStatusDigestEmail,
   providerHealthAlertEmail,
+  eventNotificationEmail,
 
 } from "../_shared/email-templates.ts";
 
@@ -141,6 +142,7 @@ function renderTemplate(
     persona_status_update: personaStatusUpdateEmail,
     persona_status_digest: personaStatusDigestEmail,
     provider_health_alert: providerHealthAlertEmail,
+    event_notification: eventNotificationEmail,
 
   };
 

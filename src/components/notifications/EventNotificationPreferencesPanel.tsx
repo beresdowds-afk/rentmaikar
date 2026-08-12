@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Loader2, BellRing, Mail, Hash, Webhook } from 'lucide-react';
+import { Loader2, BellRing, Mail, Hash, Webhook, Copy } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
@@ -118,6 +119,34 @@ export function EventNotificationPreferencesPanel() {
                         }
                       />
                     </div>
+                    {p.webhook_secret && (
+                      <div className="space-y-1 sm:col-span-2">
+                        <Label className="text-xs">Signing secret</Label>
+                        <div className="flex gap-2">
+                          <Input readOnly value={p.webhook_secret} className="font-mono text-xs" />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              navigator.clipboard.writeText(p.webhook_secret ?? '');
+                              toast.success('Signing secret copied');
+                            }}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Each POST carries <code>X-Rentmaikar-Timestamp</code> and{' '}
+                          <code>X-Rentmaikar-Signature: sha256=HMAC_SHA256(secret, "{'{'}timestamp{'}'}.{'{'}raw
+                          body{'}'}")</code>. Body:{' '}
+                          <code>
+                            {'{ id, type, category, created_at, title, message, record: { table, id, status, previous_status, operation, url } }'}
+                          </code>{' '}
+                          — <code>record.url</code> is the deep link to the exact record.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

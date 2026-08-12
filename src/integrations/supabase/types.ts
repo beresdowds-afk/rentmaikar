@@ -2110,6 +2110,69 @@ export type Database = {
         }
         Relationships: []
       }
+      event_notification_outbox: {
+        Row: {
+          attempts: number
+          body: string | null
+          category: string
+          channel: string
+          created_at: string
+          deep_link: string | null
+          delivered_at: string | null
+          destination: string | null
+          id: string
+          kind: string
+          last_error: string | null
+          payload: Json
+          recipient_id: string
+          record_id: string | null
+          source_table: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          body?: string | null
+          category: string
+          channel: string
+          created_at?: string
+          deep_link?: string | null
+          delivered_at?: string | null
+          destination?: string | null
+          id?: string
+          kind: string
+          last_error?: string | null
+          payload?: Json
+          recipient_id: string
+          record_id?: string | null
+          source_table?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          body?: string | null
+          category?: string
+          channel?: string
+          created_at?: string
+          deep_link?: string | null
+          delivered_at?: string | null
+          destination?: string | null
+          id?: string
+          kind?: string
+          last_error?: string | null
+          payload?: Json
+          recipient_id?: string
+          record_id?: string | null
+          source_table?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       event_notification_preferences: {
         Row: {
           category: string
@@ -2122,6 +2185,7 @@ export type Database = {
           updated_at: string
           user_id: string
           webhook: boolean
+          webhook_secret: string
           webhook_url: string | null
         }
         Insert: {
@@ -2135,6 +2199,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           webhook?: boolean
+          webhook_secret?: string
           webhook_url?: string | null
         }
         Update: {
@@ -2148,6 +2213,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           webhook?: boolean
+          webhook_secret?: string
           webhook_url?: string | null
         }
         Relationships: []
@@ -11607,6 +11673,10 @@ export type Database = {
         }
         Returns: Json
       }
+      event_deep_link: {
+        Args: { _recipient: string; _record_id: string; _table: string }
+        Returns: string
+      }
       get_allowed_regions: {
         Args: never
         Returns: {
@@ -11859,6 +11929,10 @@ export type Database = {
           _user_id: string
         }
         Returns: Json
+      }
+      profile_insert_fields_safe: {
+        Args: { _new: Database["public"]["Tables"]["profiles"]["Row"] }
+        Returns: boolean
       }
       profile_privileged_fields_unchanged: {
         Args: { _new: Database["public"]["Tables"]["profiles"]["Row"] }

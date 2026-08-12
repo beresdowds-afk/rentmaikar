@@ -50,6 +50,7 @@ import { installDeepLinkListener } from '@/lib/push';
 import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
 import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
+import { UserMessagesPanel } from '@/components/dashboard/UserMessagesPanel';
 import PageSkeleton from '@/components/PageSkeleton';
 
 import { SubscriptionPlansPanel } from '@/components/subscriptions/SubscriptionPlansPanel';
@@ -340,6 +341,10 @@ export default function DriverDashboard() {
                 <Phone className="h-3 w-3" />
                 Call History
               </TabsTrigger>
+              <TabsTrigger value="messages" className="flex items-center gap-1">
+                <MessageSquare className="h-3 w-3" />
+                Messages
+              </TabsTrigger>
               <TabsTrigger value="settings" data-tour="driver-settings">Settings</TabsTrigger>
             </TabsList>
 
@@ -588,6 +593,11 @@ export default function DriverDashboard() {
                 onRefresh={refreshHistory}
                 userRole="driver"
               />
+            </TabsContent>
+
+            {/* Messages Tab */}
+            <TabsContent value="messages" className="space-y-6">
+              <UserMessagesPanel />
             </TabsContent>
 
             {/* Settings Tab */}

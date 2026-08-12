@@ -76,6 +76,7 @@ import { toast } from 'sonner';
 import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
 import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
+import { UserMessagesPanel } from '@/components/dashboard/UserMessagesPanel';
 import PageSkeleton from '@/components/PageSkeleton';
 import { WithdrawalAuthorizationGate } from '@/components/payments/WithdrawalAuthorizationGate';
 import { usePersistedTab } from '@/hooks/usePersistedTab';
@@ -503,6 +504,7 @@ export default function OwnerDashboard() {
               </TabsTrigger>
               <TabsTrigger value="call-history">Call History</TabsTrigger>
               <TabsTrigger value="recalls">Recalls</TabsTrigger>
+              <TabsTrigger value="messages">Messages</TabsTrigger>
               <TabsTrigger value="settings" data-tour="owner-settings">Settings</TabsTrigger>
             </TabsList>
 
@@ -833,6 +835,9 @@ export default function OwnerDashboard() {
             </TabsContent>
 
             {/* Settings Tab */}
+            <TabsContent value="messages" className="space-y-6">
+              <UserMessagesPanel />
+            </TabsContent>
             <TabsContent value="settings" className="space-y-6">
               {/* Editable personal info (email/phone changes trigger re-verification) */}
               <ProfileEditor subjectRole="owner" />

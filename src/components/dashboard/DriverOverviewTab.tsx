@@ -88,11 +88,12 @@ export function DriverOverviewTab({ onNavigateTab }: Props) {
           .gt("expires_at", now)
           .lt("expires_at", in30Days),
 
-        (supabase as any)
+        supabase
           .from("inbox_messages")
-          .select("id", { count: "exact", head: true })
-          .eq("recipient_id", targetId)
-          .eq("read", false),
+          .select("id, inbox_conversations!inner(user_id)", { count: "exact", head: true })
+          .eq("inbox_conversations.user_id", targetId)
+          .neq("sender_type", "user")
+          .is("read_at", null),
 
         (supabase as any)
           .from("vehicle_incidents")
@@ -217,6 +218,7 @@ export function DriverOverviewTab({ onNavigateTab }: Props) {
         id: 'msg',
         severity: 'info',
         title: `${unreadMessages} unread admin message${unreadMessages > 1 ? 's' : ''}`,
+        action: { label: 'Open messages', tab: 'messages' },
       });
     }
     if (!trainingComplete) {
@@ -351,7 +353,7 @@ export function DriverOverviewTab({ onNavigateTab }: Props) {
         <QuickAction icon={Camera} label="Submit inspection" onClick={() => onNavigateTab('inspection')} />
         <QuickAction icon={FileText} label="View agreements" onClick={() => onNavigateTab('agreements')} />
         <QuickAction icon={ShieldCheck} label="Insurance & training" onClick={() => onNavigateTab('subscriptions')} />
-        <QuickAction icon={MessageSquare} label="Contact admin" onClick={() => onNavigateTab('call-history')} />
+        <QuickAction icon={MessageSquare} label="Open messages" onClick={() => onNavigateTab('messages')} />
       </div>
 
       {/* Active vehicle summary */}
