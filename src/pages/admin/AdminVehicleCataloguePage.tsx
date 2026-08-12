@@ -273,13 +273,12 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
   const setVisibility = async (v: VehicleRow, isPublic: boolean) => {
     setSavingVisibility(v.id);
     try {
-      const { error } = await supabase
-        .from("vehicles")
-        .update({
-          is_public: isPublic,
-          status: isPublic ? (v.status === "available" ? "available" : "active") : "inactive",
-        })
-        .eq("id", v.id);
+      // Visibility is controlled by is_public only. Never overwrite a real
+      // operational status (rented, maintenance, sold...). The only safe
+      // promotion is lifting a vehicle out of "inactive" when publishing.
+      const patch: { is_public: boolean; status?: string } = { is_public: isPublic };
+      if (isPublic && v.status === "inactive") patch.status = "available";
+      const { error } = await supabase.from("vehicles").update(patch).eq("id", v.id);
       if (error) throw error;
       toast.success(isPublic ? "Vehicle published" : "Vehicle hidden", {
         description: `${v.year} ${v.make} ${v.model} is now ${isPublic ? "visible" : "hidden"} on the public catalogue.`,
@@ -297,14 +296,26 @@ export default function AdminVehicleCataloguePage({ embedded = false }: Props) {
     if (!ids.length) return;
     setBulkBusy(true);
     try {
-      const { error } = await supabase
-        .from("vehicles")
-        .update({ is_public: isPublic, status: isPublic ? "available" : "inactive" })
-        .in("id", ids);
+      // Only flip the public flag in bulk — statuses like rented, maintenance
+      // or sold must survive a publish/hide sweep.
+      const { error } = await supabase.from("vehicles").update({ is_public: isPublic }).in("id", ids);
       if (error) throw error;
+
+      // Vehicles parked as "inactive" would stay invisible after publishing,
+      // so promote just those back to "available".
+      if (isPublic) {
+        const reactivateIds = filtered.filter((v) => v.status === "inactive").map((v) => v.id);
+        if (reactivateIds.length) {
+          const { error: statusError } = await supabase
+            .from("vehicles")
+            .update({ status: "available" })
+            .in("id", reactivateIds);
+          if (statusError) throw statusError;
+        }
+      }
       toast.success(
         isPublic ? `Published ${ids.length} vehicle${ids.length === 1 ? "" : "s"}` : `Hid ${ids.length} vehicle${ids.length === 1 ? "" : "s"}`,
-        { description: "The public catalogue has been updated." },
+        { description: "Operational statuses (rented, maintenance, sold) were left unchanged." },
       );
       await refetchVehicles();
     } catch (e: any) {

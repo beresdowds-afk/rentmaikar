@@ -111,12 +111,20 @@ export const useInboxStaff = () => {
         .in('role', ['admin', 'admin_assistant']);
       const ids = Array.from(new Set((roles || []).map(r => r.user_id))).filter(Boolean) as string[];
       if (!ids.length) return;
+      // user_roles.user_id is the auth user id — profiles must be matched on
+      // profiles.user_id (not profiles.id), which is what assigned_to stores.
       const { data: profs } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
-        .in('id', ids);
+        .select('user_id, full_name, email')
+        .in('user_id', ids);
       if (cancelled) return;
-      setStaff((profs || []).map(p => ({ id: p.id, name: p.full_name || p.email || 'Staff member' })));
+      const byId = new Map((profs || []).map(p => [p.user_id as string, p]));
+      setStaff(
+        ids.map(id => {
+          const p = byId.get(id);
+          return { id, name: p?.full_name || p?.email || 'Staff member' };
+        }),
+      );
     })();
     return () => { cancelled = true; };
   }, []);
