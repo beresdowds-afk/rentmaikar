@@ -23,6 +23,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { EmailVerification } from '@/components/auth/EmailVerification';
 import { ROLE_HOME, ROLE_ONBOARDING, isStaffRole, type AppRole } from '@/lib/role-home';
 import { isRestorablePath, readReturnTo, clearReturnTo } from '@/lib/return-to';
+import { logRegistrationEvent } from '@/lib/registration-audit';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
