@@ -88,10 +88,31 @@ serve(async (req: Request): Promise<Response> => {
           const alertType = `${tier}_day_warning`;
           if (await alertAlreadySent(supabase, ag.id, alertType)) continue;
 
-          await sendRenewalWarningEmail({ driverEmail, driverName, ownerEmail, ownerName, daysUntilExpiry: tier, agreementId: ag.id, expiresAt });
+          // Honour each party's own opt-in, channel and frequency choices.
+          const [driverPrefs, ownerPrefs] = await Promise.all([
+            getReminderPrefs(supabase, ag.driver_id),
+            getReminderPrefs(supabase, ag.owner_id),
+          ]);
+          const driverWants = wantsReminder(driverPrefs, tier);
+          const ownerWants = wantsReminder(ownerPrefs, tier);
+          if (!driverWants && !ownerWants) continue;
+
+          await sendRenewalWarningEmail({
+            driverEmail: driverWants && driverPrefs.email_enabled ? driverEmail : undefined,
+            driverName,
+            ownerEmail: ownerWants && ownerPrefs.email_enabled ? ownerEmail : undefined,
+            ownerName,
+            daysUntilExpiry: tier,
+            agreementId: ag.id,
+            expiresAt,
+          });
           await Promise.all([
-            sendRenewalSms(supabase, driverPhoneRow?.phone, driverName, tier, expiresAt),
-            sendRenewalSms(supabase, ownerPhoneRow?.phone, ownerName, tier, expiresAt),
+            driverWants && driverPrefs.sms_enabled
+              ? sendRenewalSms(supabase, driverPhoneRow?.phone, driverName, tier, expiresAt)
+              : Promise.resolve(),
+            ownerWants && ownerPrefs.sms_enabled
+              ? sendRenewalSms(supabase, ownerPhoneRow?.phone, ownerName, tier, expiresAt)
+              : Promise.resolve(),
           ]);
           await logAlert(supabase, ag.id, alertType, { driver: driverEmail, owner: ownerEmail });
 
@@ -186,6 +207,40 @@ serve(async (req: Request): Promise<Response> => {
 });
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
+
+/** Per-user renewal reminder settings; defaults to all channels/tiers on. */
+type ReminderPrefs = { opted_in: boolean; email_enabled: boolean; sms_enabled: boolean; reminder_days: number[] };
+
+const DEFAULT_REMINDER_PREFS: ReminderPrefs = {
+  opted_in: true,
+  email_enabled: true,
+  sms_enabled: true,
+  reminder_days: [14, 7, 3, 1],
+};
+
+async function getReminderPrefs(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<ReminderPrefs> {
+  const { data } = await supabase
+    .from("agreement_reminder_preferences")
+    .select("opted_in, email_enabled, sms_enabled, reminder_days")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!data) return DEFAULT_REMINDER_PREFS;
+  return {
+    opted_in: data.opted_in ?? true,
+    email_enabled: data.email_enabled ?? true,
+    sms_enabled: data.sms_enabled ?? true,
+    reminder_days: (data.reminder_days ?? DEFAULT_REMINDER_PREFS.reminder_days) as number[],
+  };
+}
+
+function wantsReminder(prefs: ReminderPrefs, tier: number): boolean {
+  if (!prefs.opted_in) return false;
+  if (!prefs.email_enabled && !prefs.sms_enabled) return false;
+  return prefs.reminder_days.includes(tier);
+}
 
 async function alertAlreadySent(supabase: ReturnType<typeof createClient>, agreementId: string, alertType: string): Promise<boolean> {
   const { data } = await supabase

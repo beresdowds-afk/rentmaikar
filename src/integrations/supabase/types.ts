@@ -323,6 +323,39 @@ export type Database = {
         }
         Relationships: []
       }
+      agreement_reminder_preferences: {
+        Row: {
+          created_at: string
+          email_enabled: boolean
+          id: string
+          opted_in: boolean
+          reminder_days: number[]
+          sms_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          opted_in?: boolean
+          reminder_days?: number[]
+          sms_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          opted_in?: boolean
+          reminder_days?: number[]
+          sms_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       agreement_renewal_alerts: {
         Row: {
           agreement_id: string
