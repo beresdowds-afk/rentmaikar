@@ -447,6 +447,10 @@ const AdminDashboard = () => {
               <Button asChild variant="outline" size="sm" className="justify-start">
                 <a href="/admin/tour-analytics">Tour analytics</a>
               </Button>
+              <Button asChild variant="outline" size="sm" className="justify-start">
+                <a href="/admin/vehicle-queue">Vehicle submission queue</a>
+              </Button>
+
             </div>
           </Card>
 

@@ -9923,8 +9923,14 @@ export type Database = {
           pickup_city: string | null
           pickup_instructions: string | null
           pickup_location: string | null
+          published_at: string | null
           registration_expiry: string | null
+          review_notes: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: string | null
+          submitted_at: string
           updated_at: string | null
           vin: string | null
           year: number
@@ -9945,8 +9951,14 @@ export type Database = {
           pickup_city?: string | null
           pickup_instructions?: string | null
           pickup_location?: string | null
+          published_at?: string | null
           registration_expiry?: string | null
+          review_notes?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
+          submitted_at?: string
           updated_at?: string | null
           vin?: string | null
           year: number
@@ -9967,8 +9979,14 @@ export type Database = {
           pickup_city?: string | null
           pickup_instructions?: string | null
           pickup_location?: string | null
+          published_at?: string | null
           registration_expiry?: string | null
+          review_notes?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
+          submitted_at?: string
           updated_at?: string | null
           vin?: string | null
           year?: number
@@ -11419,6 +11437,43 @@ export type Database = {
       admin_review_training_completion: {
         Args: { _approve: boolean; _completion_id: string; _notes?: string }
         Returns: Json
+      }
+      admin_review_vehicle: {
+        Args: { _decision: string; _reason?: string; _vehicle_id: string }
+        Returns: {
+          color: string | null
+          created_at: string | null
+          id: string
+          inspection_expiry: string | null
+          insurance_expiry: string | null
+          is_public: boolean
+          license_plate: string
+          make: string
+          model: string
+          owner_id: string
+          photo_urls: string[]
+          pickup_address: string | null
+          pickup_city: string | null
+          pickup_instructions: string | null
+          pickup_location: string | null
+          published_at: string | null
+          registration_expiry: string | null
+          review_notes: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          submitted_at: string
+          updated_at: string | null
+          vin: string | null
+          year: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "vehicles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       admin_revoke_proxy_billing: {
         Args: { _proxy_id: string; _reason: string }
