@@ -28,6 +28,7 @@ export interface EventNotificationPreference {
   webhook: boolean;
   slack_webhook_url: string | null;
   webhook_url: string | null;
+  webhook_secret?: string | null;
 }
 
 const defaults = (category: string): EventNotificationPreference => ({
@@ -38,6 +39,7 @@ const defaults = (category: string): EventNotificationPreference => ({
   webhook: false,
   slack_webhook_url: null,
   webhook_url: null,
+  webhook_secret: null,
 });
 
 /** Per-event-category channel preferences (in-app, email, Slack, webhook). */
@@ -69,6 +71,7 @@ export function useEventNotificationPreferences() {
           webhook: row.webhook,
           slack_webhook_url: row.slack_webhook_url,
           webhook_url: row.webhook_url,
+          webhook_secret: (row as { webhook_secret?: string | null }).webhook_secret ?? null,
         };
       });
     }
