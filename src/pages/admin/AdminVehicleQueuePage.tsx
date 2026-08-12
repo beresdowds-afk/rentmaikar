@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import VehicleHistoryDialog from "@/components/vehicles/VehicleHistoryDialog";
 import {
   Dialog,
   DialogContent,
@@ -249,6 +250,7 @@ const AdminVehicleQueuePage = () => {
                         <XCircle className="w-4 h-4 mr-2" /> Reject
                       </Button>
                     )}
+                    <VehicleHistoryDialog vehicleId={v.id} />
                     {v.review_status !== "pending" && (
                       <Button
                         size="sm"

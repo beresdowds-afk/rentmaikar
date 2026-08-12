@@ -40,6 +40,8 @@ export const VehicleSubmissionBadge = ({ status }: { status?: string | null }) =
   );
 };
 
+import VehicleHistoryDialog from "@/components/vehicles/VehicleHistoryDialog";
+
 const VehicleSubmissionTracker = ({ vehicles }: { vehicles: TrackedVehicle[] }) => {
   const grouped = useMemo(() => {
     const buckets: Record<OwnerReviewStatus, TrackedVehicle[]> = { pending: [], published: [], rejected: [] };
@@ -84,7 +86,10 @@ const VehicleSubmissionTracker = ({ vehicles }: { vehicles: TrackedVehicle[] }) 
                     </p>
                     <p className="text-xs text-muted-foreground">{v.license_plate || "No plate on record"}</p>
                   </div>
-                  <VehicleSubmissionBadge status={key} />
+                  <div className="flex items-center gap-2">
+                    <VehicleSubmissionBadge status={key} />
+                    <VehicleHistoryDialog vehicleId={v.id} />
+                  </div>
                 </div>
                 <div className="grid sm:grid-cols-3 gap-2 text-xs text-muted-foreground">
                   <span>Submitted: {formatDate(v.submitted_at ?? v.created_at)}</span>
