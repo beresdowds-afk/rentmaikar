@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRegion } from "@/contexts/RegionContext";
 import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
+import {
+  VehiclePhotoUploader,
+  type VehiclePhotoUploaderHandle,
+  type PhotoItem,
+} from "./VehiclePhotoUploader";
 
 type FormState = {
   make: string;
@@ -58,6 +63,15 @@ export function AddVehicleDialog() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [submitting, setSubmitting] = useState(false);
+  const [photoState, setPhotoState] = useState<{ items: PhotoItem[]; uploading: boolean }>({
+    items: [],
+    uploading: false,
+  });
+  const photosRef = useRef<VehiclePhotoUploaderHandle>(null);
+  // A stable folder for this draft so uploads can happen before the row exists.
+  const [draftId] = useState(() =>
+    (globalThis.crypto?.randomUUID?.() ?? `draft-${Date.now()}`),
+  );
 
   const set = (key: keyof FormState) => (value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -76,12 +90,31 @@ export function AddVehicleDialog() {
     errors.year = `Enter a year between 1990 and ${currentYear + 1}`;
   if (form.license_plate.trim().length < 3) errors.license_plate = "Enter the plate number";
 
-  const canSubmit = Object.keys(errors).length === 0 && !submitting && !!user;
+  const photoErrors = photoState.items.filter((i) => i.status === "error").length;
+  const canSubmit =
+    Object.keys(errors).length === 0 &&
+    !submitting &&
+    !photoState.uploading &&
+    photoErrors === 0 &&
+    !!user;
 
   const submit = async () => {
     if (!user || !canSubmit) return;
     setSubmitting(true);
     try {
+      // Photos must be fully uploaded before the vehicle row is written, so a
+      // listing is never saved with missing or partial imagery.
+      let photoUrls: string[] = [];
+      try {
+        photoUrls = (await photosRef.current?.uploadAll()) ?? [];
+      } catch (uploadErr: any) {
+        toast.error("Photos not uploaded", {
+          description: uploadErr?.message ?? "Retry the failed photos and submit again.",
+        });
+        setSubmitting(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("vehicles")
         .insert({
@@ -95,6 +128,7 @@ export function AddVehicleDialog() {
           pickup_city: form.pickup_city.trim() || null,
           pickup_address: form.pickup_address.trim() || null,
           pickup_instructions: form.pickup_instructions.trim() || null,
+          photo_urls: photoUrls,
           status: "pending",
           is_public: false,
         })
@@ -109,7 +143,11 @@ export function AddVehicleDialog() {
         (key) => queryClient.invalidateQueries({ queryKey: [key] }),
       );
 
-      toast.success("Vehicle submitted", {
+      toast.success(
+        photoUrls.length
+          ? `Vehicle submitted with ${photoUrls.length} photo${photoUrls.length > 1 ? "s" : ""}`
+          : "Vehicle submitted",
+        {
         description: "It is pending admin verification and will appear in the catalogue once approved.",
       });
       setForm(EMPTY);
@@ -200,12 +238,25 @@ export function AddVehicleDialog() {
               onChange={(e) => set("pickup_instructions")(e.target.value)}
             />
           </div>
+          {user && (
+            <VehiclePhotoUploader
+              ref={photosRef}
+              ownerId={user.id}
+              draftId={draftId}
+              disabled={submitting}
+              onStateChange={setPhotoState}
+            />
+          )}
           <p className="text-xs text-muted-foreground">
-            Add photos from the vehicle card on the “My Vehicles” tab once the vehicle is saved.
+            You can add or reorder photos later from the vehicle card on the “My Vehicles” tab.
           </p>
           <Button onClick={submit} disabled={!canSubmit} className="w-full">
             {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {submitting ? "Submitting…" : "Submit Vehicle for Approval"}
+            {submitting
+              ? photoState.uploading || photoState.items.some((i) => i.status === "uploading")
+                ? "Uploading photos…"
+                : "Submitting…"
+              : "Submit Vehicle for Approval"}
           </Button>
         </div>
       </DialogContent>
