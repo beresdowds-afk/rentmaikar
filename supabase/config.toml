@@ -108,3 +108,6 @@ project_id = "bwvocmhcledbwqlpcswp"
     verify_jwt = false
   [functions.whatsapp-commands]
     verify_jwt = false
+
+  [functions.sync-approved-vehicles]
+    verify_jwt = false
