@@ -22,6 +22,8 @@ import LegalAgreementDocument from '@/components/legal/LegalAgreementDocument';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAgreementTemplate } from '@/hooks/useAgreementTemplate';
+import { buildAgreementValues, renderAgreementTemplate } from '@/lib/agreement-template';
 
 interface Profile {
   user_id: string;
@@ -75,6 +77,7 @@ export function CreateAgreementDialog({
   const [selectedNegotiation, setSelectedNegotiation] = useState<string>('');
   const [adminSignature, setAdminSignature] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const { template, entity, region } = useAgreementTemplate();
 
   useEffect(() => {
     if (open) {
