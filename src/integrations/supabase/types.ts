@@ -9347,6 +9347,7 @@ export type Database = {
         Row: {
           action: string
           actor_id: string | null
+          batch_id: string | null
           changed_fields: string[]
           created_at: string
           id: string
@@ -9359,6 +9360,7 @@ export type Database = {
         Insert: {
           action: string
           actor_id?: string | null
+          batch_id?: string | null
           changed_fields?: string[]
           created_at?: string
           id?: string
@@ -9371,6 +9373,7 @@ export type Database = {
         Update: {
           action?: string
           actor_id?: string | null
+          batch_id?: string | null
           changed_fields?: string[]
           created_at?: string
           id?: string
@@ -11537,6 +11540,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      admin_review_vehicles_bulk: {
+        Args: {
+          _batch_id?: string
+          _decision: string
+          _reasons?: Json
+          _vehicle_ids: string[]
+        }
+        Returns: Json
       }
       admin_revoke_proxy_billing: {
         Args: { _proxy_id: string; _reason: string }

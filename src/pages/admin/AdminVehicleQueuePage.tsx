@@ -137,7 +137,11 @@ const AdminVehicleQueuePage = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-vehicle-review-audit"] });
   };
 
-  /** Applies the same decision to every selected submission, one RPC per vehicle. */
+  /**
+   * Applies the same decision to every selected submission in a single bulk job.
+   * The server records one audit entry per vehicle, all tagged with the same
+   * batch id and the acting admin.
+   */
   const bulkReview = useMutation({
     mutationFn: async ({
       ids,
@@ -148,20 +152,24 @@ const AdminVehicleQueuePage = () => {
       decision: ReviewStatus;
       reasons?: Record<string, string>;
     }) => {
-      const failures: { id: string; message: string }[] = [];
-      let done = 0;
       setBulkProgress({ done: 0, total: ids.length });
-      for (const id of ids) {
-        const { error } = await supabase.rpc("admin_review_vehicle" as any, {
-          _vehicle_id: id,
-          _decision: decision,
-          _reason: reasons?.[id] ?? null,
-        });
-        if (error) failures.push({ id, message: error.message });
-        done += 1;
-        setBulkProgress({ done, total: ids.length });
-      }
-      return { total: ids.length, failures };
+      const batchId =
+        typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : undefined;
+      const { data: result, error } = await supabase.rpc("admin_review_vehicles_bulk" as any, {
+        _vehicle_ids: ids,
+        _decision: decision,
+        _reasons: reasons ?? {},
+        ...(batchId ? { _batch_id: batchId } : {}),
+      });
+      if (error) throw error;
+      const payload = (result ?? {}) as {
+        total?: number;
+        succeeded?: number;
+        failures?: { id: string; message: string }[];
+      };
+      const failures = payload.failures ?? [];
+      setBulkProgress({ done: ids.length, total: ids.length });
+      return { total: payload.total ?? ids.length, failures };
     },
     onSuccess: ({ total, failures }, vars) => {
       const ok = total - failures.length;
