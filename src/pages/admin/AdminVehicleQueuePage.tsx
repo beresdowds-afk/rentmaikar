@@ -299,8 +299,8 @@ const AdminVehicleQueuePage = () => {
               Reject submission
             </Button>
           </DialogFooter>
-        </DialogFooter>
         </DialogContent>
+
       </Dialog>
     </div>
   );
