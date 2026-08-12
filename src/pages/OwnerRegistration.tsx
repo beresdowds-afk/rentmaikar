@@ -26,6 +26,11 @@ import { RegistrationErrorAlert } from "@/components/registration/RegistrationEr
 import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  ADDRESS_MAX,
+  addressHint as buildAddressHint,
+  optionalAddressSchema,
+} from "@/lib/address-validation";
 
 const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   // Owner Details
@@ -45,12 +50,7 @@ const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   country: z.enum(["usa", "nigeria"]),
   city: z.string().min(1, "City is required"),
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
-  streetAddress: z
-    .string()
-    .trim()
-    .max(200, "Address must be less than 200 characters")
-    .optional()
-    .or(z.literal("")),
+  streetAddress: optionalAddressSchema,
   
   // Vehicle Details
   vehicleMake: z.string().min(1, "Vehicle make is required"),

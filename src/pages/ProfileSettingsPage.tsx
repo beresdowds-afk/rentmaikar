@@ -50,31 +50,14 @@ const nameSchema = z.object({
     }, 'Enter a valid international phone number (e.g. +14155551234)'),
 });
 
+import { validateAddress, ADDRESS_MIN, ADDRESS_MAX } from '@/lib/address-validation';
+
 const normalize = (v: string | null | undefined) => (v ?? '').trim();
 
-// Same rules the database enforces (enforce_profile_address_rules):
-// drivers must keep a >= 5 character home address, owners may leave it blank.
-const ADDRESS_MIN = 5;
-const ADDRESS_MAX = 200;
+// Address rules are shared with the registration screens (and the Capacitor
+// iOS/Android shells) via `@/lib/address-validation`.
+export { validateAddress, ADDRESS_MIN, ADDRESS_MAX };
 
-export function validateAddress(value: string, isDriver: boolean): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return isDriver ? 'Home address is required for drivers.' : null;
-  }
-  if (trimmed.length < ADDRESS_MIN) {
-    return `Add ${ADDRESS_MIN - trimmed.length} more character${
-      ADDRESS_MIN - trimmed.length === 1 ? '' : 's'
-    } — include your street and house number.`;
-  }
-  if (trimmed.length > ADDRESS_MAX) {
-    return `Too long by ${trimmed.length - ADDRESS_MAX} characters.`;
-  }
-  if (/^(n\/?a|none|nil|test)$/i.test(trimmed)) {
-    return 'Enter your real residential address — placeholders are rejected.';
-  }
-  return null;
-}
 
 
 

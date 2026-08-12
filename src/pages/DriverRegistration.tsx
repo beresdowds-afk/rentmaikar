@@ -24,6 +24,12 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePersonaEnabled } from "@/hooks/usePersonaEnabled";
 import { refereeDetailsRequired } from "@/lib/referee-requirements";
+import {
+  ADDRESS_MIN,
+  ADDRESS_MAX,
+  addressHint as buildAddressHint,
+  requiredAddressSchema,
+} from "@/lib/address-validation";
 
 /** Phone field that must parse to a valid international (E.164) number. */
 const toE164 = (v: string) => {
@@ -71,11 +77,7 @@ const buildDriverSchema = (detailsRequired: boolean) => {
     }, "Enter a valid phone number with country code"),
   country: z.enum(["usa", "nigeria"]),
   city: z.string().min(1, "City is required"),
-  streetAddress: z
-    .string()
-    .trim()
-    .min(5, "Home address is required (at least 5 characters)")
-    .max(200, "Address must be less than 200 characters"),
+  streetAddress: requiredAddressSchema,
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
   rideshareApproval: z.array(z.string()).min(1, "Select at least one platform"),
   hasDriverLicense: z.boolean().refine(val => val, "Driver license is required"),
