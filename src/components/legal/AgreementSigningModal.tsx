@@ -114,6 +114,11 @@ const AgreementSigningModal: React.FC<AgreementSigningModalProps> = ({
       if (!user) throw new Error('Not authenticated');
 
       if (!existingAgreement) {
+        if (!template) {
+          toast.error('No active agreement template is published for this region.');
+          setIsSubmitting(false);
+          return;
+        }
         // Create new agreement (admin only)
         const { data: newAgreement, error: createError } = await supabase
           .from('legal_agreements')
