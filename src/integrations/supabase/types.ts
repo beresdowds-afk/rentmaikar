@@ -9608,6 +9608,122 @@ export type Database = {
           },
         ]
       }
+      vehicle_import_items: {
+        Row: {
+          application_id: string
+          color: string | null
+          created_at: string
+          existing_vehicle_id: string | null
+          id: string
+          license_plate: string | null
+          make: string | null
+          model: string | null
+          normalized_plate: string | null
+          outcome: string
+          owner_id: string | null
+          resolution: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          run_id: string | null
+          skip_reason: string | null
+          updated_at: string
+          vehicle_id: string | null
+          year: number | null
+        }
+        Insert: {
+          application_id: string
+          color?: string | null
+          created_at?: string
+          existing_vehicle_id?: string | null
+          id?: string
+          license_plate?: string | null
+          make?: string | null
+          model?: string | null
+          normalized_plate?: string | null
+          outcome: string
+          owner_id?: string | null
+          resolution?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          run_id?: string | null
+          skip_reason?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+          year?: number | null
+        }
+        Update: {
+          application_id?: string
+          color?: string | null
+          created_at?: string
+          existing_vehicle_id?: string | null
+          id?: string
+          license_plate?: string | null
+          make?: string | null
+          model?: string | null
+          normalized_plate?: string | null
+          outcome?: string
+          owner_id?: string | null
+          resolution?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          run_id?: string | null
+          skip_reason?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_import_items_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_import_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicle_import_runs: {
+        Row: {
+          created_at: string
+          error_count: number
+          finished_at: string | null
+          id: string
+          imported_count: number
+          scanned_count: number
+          skipped_count: number
+          source: string
+          started_at: string
+          triggered_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_count?: number
+          finished_at?: string | null
+          id?: string
+          imported_count?: number
+          scanned_count?: number
+          skipped_count?: number
+          source?: string
+          started_at?: string
+          triggered_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_count?: number
+          finished_at?: string | null
+          id?: string
+          imported_count?: number
+          scanned_count?: number
+          skipped_count?: number
+          source?: string
+          started_at?: string
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       vehicle_incidents: {
         Row: {
           acknowledged_at: string | null
@@ -12248,6 +12364,10 @@ export type Database = {
         Args: { _currency: string; _region?: string }
         Returns: string
       }
+      resolve_vehicle_import_duplicate: {
+        Args: { p_action: string; p_item_id: string; p_notes?: string }
+        Returns: Json
+      }
       reverse_wallet_entry: {
         Args: { _entry_id: string; _reason?: string }
         Returns: Json
@@ -12456,6 +12576,10 @@ export type Database = {
       }
       switch_primary_role: {
         Args: { _new_role: Database["public"]["Enums"]["app_role"] }
+        Returns: Json
+      }
+      sync_approved_application_vehicles: {
+        Args: { p_source?: string }
         Returns: Json
       }
       sync_device_identity: { Args: { _device_id: string }; Returns: string }
