@@ -70,6 +70,7 @@ const buildDriverSchema = (detailsRequired: boolean) => {
     }, "Enter a valid phone number with country code"),
   country: z.enum(["usa", "nigeria"]),
   city: z.string().min(1, "City is required"),
+  streetAddress: z.string().min(5, "Home address is required").max(200, "Address too long"),
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
   rideshareApproval: z.array(z.string()).min(1, "Select at least one platform"),
   hasDriverLicense: z.boolean().refine(val => val, "Driver license is required"),
