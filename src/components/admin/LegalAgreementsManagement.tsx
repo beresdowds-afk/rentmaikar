@@ -114,6 +114,7 @@ const LegalAgreementsManagement: React.FC = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<string>('');
   const [adminSignature, setAdminSignature] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const { template, entity, region } = useAgreementTemplate();
   
   // View agreement state
   const [viewAgreement, setViewAgreement] = useState<Agreement | null>(null);
