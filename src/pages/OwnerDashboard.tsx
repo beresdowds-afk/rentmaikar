@@ -26,6 +26,7 @@ import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { OwnerRentToOwnListing } from '@/components/owner/OwnerRentToOwnListing';
 import { VehiclePickupLocation } from '@/components/owner/VehiclePickupLocation';
 import { VehiclePhotoManager } from '@/components/owner/VehiclePhotoManager';
+import { AddVehicleDialog } from '@/components/owner/AddVehicleDialog';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { DocumentUpload } from '@/components/documents/DocumentUpload';
@@ -102,7 +103,6 @@ export default function OwnerDashboard() {
 
   const isAdminView = userRole === 'admin';
   const [activeTab, setActiveTab] = usePersistedTab('overview');
-  const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -146,11 +146,6 @@ export default function OwnerDashboard() {
   const totalEarnings = dbTotalEarnings || 0;
   const availableBalance = dbAvailableBalance || 0;
   const activeVehicles = dbActiveRentals || 0;
-
-  const handleAddVehicle = () => {
-    toast.success('Vehicle added successfully! Pending admin verification.');
-    setIsAddVehicleOpen(false);
-  };
 
   const [withdrawing, setWithdrawing] = useState(false);
 
@@ -347,70 +342,7 @@ export default function OwnerDashboard() {
                 </DialogContent>
               </Dialog>
               
-              <Dialog open={isAddVehicleOpen} onOpenChange={setIsAddVehicleOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Vehicle
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>Add New Vehicle</DialogTitle>
-                    <DialogDescription>
-                      List a new vehicle for rent. Subject to admin approval.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 mt-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Make</Label>
-                        <Input placeholder="e.g. Toyota" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Model</Label>
-                        <Input placeholder="e.g. Camry" />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Year</Label>
-                        <Input type="number" placeholder="e.g. 2021" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Plate Number</Label>
-                        <Input placeholder="e.g. ABC-123" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Category</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category based on year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {vehicleCategories.map(cat => (
-                            <SelectItem key={cat.value} value={cat.value}>
-                              {cat.label} - Up to {formatCurrency(cat.maxWeekly * multiplier, currency)}/week
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Vehicle Photos</Label>
-                      <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                        <p className="text-sm text-muted-foreground">
-                          Click to upload or drag and drop vehicle photos
-                        </p>
-                      </div>
-                    </div>
-                    <Button onClick={handleAddVehicle} className="w-full">
-                      Submit Vehicle for Approval
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <AddVehicleDialog />
             </div>
           </div>
 
@@ -621,14 +553,10 @@ export default function OwnerDashboard() {
       )}
     </div>
 
-    <Button 
-      variant="outline" 
-      className="w-full py-8 border-dashed"
-      onClick={() => setIsAddVehicleOpen(true)}
-    >
-      <Plus className="h-6 w-6 mr-2" />
-      Add Another Vehicle
-    </Button>
+    <div className="[&>button]:w-full [&>button]:py-8">
+      <AddVehicleDialog />
+    </div>
+
   </PortalGate>
 </TabsContent>
 

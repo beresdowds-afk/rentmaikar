@@ -58,7 +58,7 @@ const TABLES: Array<{ table: string; keys: string[]; alert?: boolean }> = [
   { table: "faq_categories", keys: ["faq", "faq-categories"] },
   { table: "tour_step_configs", keys: ["tour-steps", "tour-config"] },
   { table: "region_localized_content", keys: ["regions", "localized-content"] },
-  { table: "vehicles", keys: ["vehicles", "catalogue"] },
+  { table: "vehicles", keys: ["vehicles", "catalogue", "owner-vehicles", "public-vehicles", "public-vehicle", "admin-vehicles"] },
   { table: "admin_notifications", keys: ["admin-notifications"], alert: true },
 ];
 
