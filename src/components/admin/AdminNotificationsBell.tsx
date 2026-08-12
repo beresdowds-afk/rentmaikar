@@ -51,6 +51,7 @@ const KIND_LABEL: Record<string, string> = {
   access_grant: "Grant",
   access_revoke: "Revoke",
   vehicle_review: "Vehicle review",
+  vehicles_catalogue_live: "Catalogue live",
 };
 
 const kindClass = (kind: string) => KIND_COLORS[kind] ?? KIND_COLORS.other;
