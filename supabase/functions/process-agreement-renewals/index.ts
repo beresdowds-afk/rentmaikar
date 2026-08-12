@@ -38,11 +38,13 @@ serve(async (req: Request): Promise<Response> => {
   const now = new Date();
   const results = {
     renewed: 0,
+    reminders_sent: 0,
     alerted_7day: 0,
     alerted_3day: 0,
     expired_blocked: 0,
     errors: [] as string[],
   };
+
 
   try {
     // ─── 1. Fetch all active/pending_signatures compulsory agreements ───
