@@ -7062,6 +7062,42 @@ export type Database = {
           },
         ]
       }
+      registration_audit_log: {
+        Row: {
+          application_id: string | null
+          application_type: string | null
+          created_at: string
+          email: string | null
+          event_type: string
+          id: string
+          metadata: Json
+          source: string
+          user_id: string | null
+        }
+        Insert: {
+          application_id?: string | null
+          application_type?: string | null
+          created_at?: string
+          email?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json
+          source?: string
+          user_id?: string | null
+        }
+        Update: {
+          application_id?: string | null
+          application_type?: string | null
+          created_at?: string
+          email?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+          source?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       rent_to_own_agreements: {
         Row: {
           admin_witness_id: string | null
@@ -11854,6 +11890,16 @@ export type Database = {
           _table: string
           _target_id: string
           _values?: Json
+        }
+        Returns: undefined
+      }
+      log_registration_event: {
+        Args: {
+          _application_id?: string
+          _application_type?: string
+          _email?: string
+          _event_type: string
+          _metadata?: Json
         }
         Returns: undefined
       }
