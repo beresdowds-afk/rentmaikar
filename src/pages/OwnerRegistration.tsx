@@ -205,6 +205,7 @@ const OwnerRegistration = () => {
         country: data.country,
         city: data.city,
         zip_code: data.zipCode,
+        street_address: data.streetAddress || null,
         region: data.country === 'usa' ? 'usa' : 'nigeria',
         vehicle_make: data.vehicleMake,
         vehicle_model: data.vehicleModel,
