@@ -116,7 +116,7 @@ const OwnerRegistration = () => {
     setValue,
     watch,
     control,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, touchedFields },
   } = useForm<OwnerFormData>({
     resolver: zodResolver(createOwnerSchema(currentCountry)),
     defaultValues: {
@@ -152,6 +152,14 @@ const OwnerRegistration = () => {
       if (profile?.phone) setValue('phoneNumber', profile.phone);
     })();
   }, [user, setValue]);
+
+  // Live (optional) address feedback — same shared rules as the driver form.
+  const ownerAddressValue = watch("streetAddress") ?? "";
+  const ownerAddressLength = ownerAddressValue.trim().length;
+  const ownerAddressHint = buildAddressHint(ownerAddressValue, {
+    isDriver: false,
+    touched: Boolean(touchedFields.streetAddress) || ownerAddressLength > 0,
+  });
 
   const selectedCountry = watch("country");
   const selectedYear = watch("vehicleYear");
