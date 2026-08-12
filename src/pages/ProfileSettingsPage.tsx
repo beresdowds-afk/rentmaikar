@@ -52,6 +52,31 @@ const nameSchema = z.object({
 
 const normalize = (v: string | null | undefined) => (v ?? '').trim();
 
+// Same rules the database enforces (enforce_profile_address_rules):
+// drivers must keep a >= 5 character home address, owners may leave it blank.
+const ADDRESS_MIN = 5;
+const ADDRESS_MAX = 200;
+
+export function validateAddress(value: string, isDriver: boolean): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return isDriver ? 'Home address is required for drivers.' : null;
+  }
+  if (trimmed.length < ADDRESS_MIN) {
+    return `Add ${ADDRESS_MIN - trimmed.length} more character${
+      ADDRESS_MIN - trimmed.length === 1 ? '' : 's'
+    } — include your street and house number.`;
+  }
+  if (trimmed.length > ADDRESS_MAX) {
+    return `Too long by ${trimmed.length - ADDRESS_MAX} characters.`;
+  }
+  if (/^(n\/?a|none|nil|test)$/i.test(trimmed)) {
+    return 'Enter your real residential address — placeholders are rejected.';
+  }
+  return null;
+}
+
+
 
 
 export default function ProfileSettingsPage() {
