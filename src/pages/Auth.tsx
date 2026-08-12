@@ -253,11 +253,21 @@ const Auth = () => {
     setIsSubmitting(true);
     setError(null);
 
-    const { error } = await signUp(data.email, data.password, data.fullName, data.role);
+    const { error, emailExists } = await signUp(data.email, data.password, data.fullName, data.role);
 
     if (error) {
-      if (error.message.includes('already registered')) {
-        setError('This email is already registered. Please log in instead.');
+      const normalized = data.email.trim().toLowerCase();
+      if (emailExists || error.message.includes('already registered')) {
+        // Registered email: switch to the sign-in tab with the email prefilled
+        // instead of leaving the user stuck on the sign-up form.
+        loginForm.setValue('email', normalized);
+        forgotPasswordForm.setValue('email', normalized);
+        setActiveTab('login');
+        setError('This email is already registered — please sign in below.');
+        toast.info('You already have an account', {
+          description: 'We switched you to sign-in. Use "Forgot password" if needed.',
+        });
+        setTimeout(() => loginForm.setFocus('password'), 100);
       } else {
         setError(error.message);
       }
