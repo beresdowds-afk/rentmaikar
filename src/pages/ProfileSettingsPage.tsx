@@ -430,6 +430,9 @@ export default function ProfileSettingsPage() {
 
           <PWASettingsPanel />
 
+          <LiveSyncSettingsPanel />
+
+
           <ConnectedAccounts />
 
 
