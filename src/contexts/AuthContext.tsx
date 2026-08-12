@@ -23,7 +23,7 @@ interface AuthContextType {
   twoFactorStatus: TwoFactorStatus | null;
   twoFactorVerified: boolean;
   setTwoFactorVerified: (verified: boolean) => void;
-  signUp: (email: string, password: string, fullName: string, role: AppRole) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, role: AppRole) => Promise<{ error: Error | null; emailExists?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null; userId?: string }>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
@@ -241,13 +241,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (error) {
-        // Do NOT leak whether the email is already registered — return a
-        // generic message. Real diagnostics live in auth_event_log.
         await logAuthEvent('sign_up_failure', { email, errorCode: error.message });
-        const generic = /already|registered|exists/i.test(error.message)
-          ? new Error('If this email is available, an account has been created. Please check your inbox.')
-          : error;
-        return { error: generic };
+        // The email is already registered: surface it as a routable signal so
+        // the UI can send the user to sign-in instead of a dead-end error.
+        if (/already|registered|exists/i.test(error.message)) {
+          return {
+            error: new Error('This email is already registered. Please sign in instead.'),
+            emailExists: true,
+          };
+        }
+        return { error };
+      }
+
+      // Supabase obfuscates duplicate sign-ups when email confirmation is on:
+      // it returns a user object with an EMPTY identities array instead of an
+      // error. Treat that as "already registered" and route to sign-in.
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        await logAuthEvent('sign_up_failure', { email, errorCode: 'email_already_registered' });
+        return {
+          error: new Error('This email is already registered. Please sign in instead.'),
+          emailExists: true,
+        };
       }
 
       // Safety net only: the trigger already provisioned the account. Route
@@ -259,6 +273,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.error('Error assigning role:', roleError);
         }
       }
+
 
       await logAuthEvent('sign_up_success', { email, metadata: { role } });
       return { error: null };
