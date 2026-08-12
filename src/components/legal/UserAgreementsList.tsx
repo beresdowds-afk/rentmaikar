@@ -5,7 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, FileText, Download, Eye, PenTool, CheckCircle } from 'lucide-react';
+import { Loader2, FileText, Download, Eye, PenTool, CheckCircle, CalendarClock } from 'lucide-react';
+
+const renewalDaysLeft = (expiresAt: string) =>
+  Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86400000);
+
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
