@@ -249,6 +249,7 @@ const AdminVehicleImportsPage = () => {
       <Seo
         title="Vehicle Import Report | Rentmaikar Admin"
         description="Scheduled sync of approved owner vehicles into the catalogue and asset registry, with duplicate handling."
+        path="/admin/vehicle-imports"
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
