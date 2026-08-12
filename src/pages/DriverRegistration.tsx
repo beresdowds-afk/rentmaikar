@@ -523,16 +523,51 @@ const DriverRegistration = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="streetAddress">Home Address</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="streetAddress">
+                      Home Address <span className="text-destructive">*</span>
+                    </Label>
+                    <span
+                      className={`text-xs tabular-nums ${
+                        addressLength > ADDRESS_MAX || (addressTouched && addressLength < ADDRESS_MIN)
+                          ? "text-destructive"
+                          : "text-muted-foreground"
+                      }`}
+                      aria-live="polite"
+                    >
+                      {addressLength}/{ADDRESS_MAX}
+                    </span>
+                  </div>
                   <Input
                     id="streetAddress"
-                    placeholder="Full residential address"
-                    {...register("streetAddress")}
+                    placeholder="e.g. 24 Ademola Street, Ikeja"
+                    aria-invalid={addressHint?.tone === "error" || !!errors.streetAddress}
+                    aria-describedby="streetAddress-hint"
+                    maxLength={ADDRESS_MAX + 50}
+                    {...register("streetAddress", {
+                      onChange: () => void trigger("streetAddress"),
+                      onBlur: () => void trigger("streetAddress"),
+                    })}
                   />
-                  {errors.streetAddress && (
-                    <p className="text-destructive text-sm">{errors.streetAddress.message}</p>
-                  )}
+                  <p
+                    id="streetAddress-hint"
+                    aria-live="polite"
+                    className={`text-sm ${
+                      addressHint?.tone === "error"
+                        ? "text-destructive"
+                        : addressHint?.tone === "warn"
+                        ? "text-amber-500"
+                        : addressHint?.tone === "ok"
+                        ? "text-emerald-500"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {addressHint?.msg ??
+                      errors.streetAddress?.message ??
+                      `Required for drivers — at least ${ADDRESS_MIN} characters.`}
+                  </p>
                 </div>
+
 
                 <div className="space-y-2">
                   <Label htmlFor="zipCode">ZIP / Postal Code</Label>
