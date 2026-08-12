@@ -736,8 +736,10 @@ export type Database = {
           assigned_by: string | null
           assigned_to: string | null
           city: string
+          consent_recorded_at: string | null
           country: string
           created_at: string
+          data_sharing_consent: boolean
           desired_weekly_price: number | null
           email: string
           first_name: string
@@ -746,6 +748,8 @@ export type Database = {
           has_registration: boolean | null
           id: string
           last_name: string
+          messaging_channel: string
+          messaging_consent: boolean
           phone_country: string
           phone_number: string
           recovered_from_application_id: string | null
@@ -794,8 +798,10 @@ export type Database = {
           assigned_by?: string | null
           assigned_to?: string | null
           city: string
+          consent_recorded_at?: string | null
           country: string
           created_at?: string
+          data_sharing_consent?: boolean
           desired_weekly_price?: number | null
           email: string
           first_name: string
@@ -804,6 +810,8 @@ export type Database = {
           has_registration?: boolean | null
           id?: string
           last_name: string
+          messaging_channel?: string
+          messaging_consent?: boolean
           phone_country: string
           phone_number: string
           recovered_from_application_id?: string | null
@@ -852,8 +860,10 @@ export type Database = {
           assigned_by?: string | null
           assigned_to?: string | null
           city?: string
+          consent_recorded_at?: string | null
           country?: string
           created_at?: string
+          data_sharing_consent?: boolean
           desired_weekly_price?: number | null
           email?: string
           first_name?: string
@@ -862,6 +872,8 @@ export type Database = {
           has_registration?: boolean | null
           id?: string
           last_name?: string
+          messaging_channel?: string
+          messaging_consent?: boolean
           phone_country?: string
           phone_number?: string
           recovered_from_application_id?: string | null
@@ -6061,6 +6073,8 @@ export type Database = {
           daily_plan_forbidden: boolean | null
           daily_plan_forbidden_at: string | null
           daily_plan_forbidden_reason: string | null
+          data_sharing_consent: boolean
+          data_sharing_consent_at: string | null
           driver_license_expiry: string | null
           driver_license_number: string | null
           email: string | null
@@ -6074,6 +6088,7 @@ export type Database = {
           identity_verified_at: string | null
           identity_verified_inquiry_id: string | null
           is_active: boolean
+          messaging_consent_at: string | null
           notification_email: boolean | null
           notification_sms: boolean | null
           notification_whatsapp: boolean | null
@@ -6117,6 +6132,8 @@ export type Database = {
           daily_plan_forbidden?: boolean | null
           daily_plan_forbidden_at?: string | null
           daily_plan_forbidden_reason?: string | null
+          data_sharing_consent?: boolean
+          data_sharing_consent_at?: string | null
           driver_license_expiry?: string | null
           driver_license_number?: string | null
           email?: string | null
@@ -6130,6 +6147,7 @@ export type Database = {
           identity_verified_at?: string | null
           identity_verified_inquiry_id?: string | null
           is_active?: boolean
+          messaging_consent_at?: string | null
           notification_email?: boolean | null
           notification_sms?: boolean | null
           notification_whatsapp?: boolean | null
@@ -6173,6 +6191,8 @@ export type Database = {
           daily_plan_forbidden?: boolean | null
           daily_plan_forbidden_at?: string | null
           daily_plan_forbidden_reason?: string | null
+          data_sharing_consent?: boolean
+          data_sharing_consent_at?: string | null
           driver_license_expiry?: string | null
           driver_license_number?: string | null
           email?: string | null
@@ -6186,6 +6206,7 @@ export type Database = {
           identity_verified_at?: string | null
           identity_verified_inquiry_id?: string | null
           is_active?: boolean
+          messaging_consent_at?: string | null
           notification_email?: boolean | null
           notification_sms?: boolean | null
           notification_whatsapp?: boolean | null
