@@ -134,7 +134,7 @@ const AdminVehicleQueuePage = () => {
         title="Vehicle submission queue — Rentmaikar admin"
         description="Review owner vehicle submissions and publish or reject them with a reason."
         path="/admin/vehicle-queue"
-        noIndex
+        noindex
       />
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
