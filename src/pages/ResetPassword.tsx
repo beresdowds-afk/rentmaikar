@@ -49,7 +49,6 @@ const ResetPassword = () => {
 
     // Listen for auth state changes FIRST (recovery link will trigger this)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[ResetPassword] Auth event:', event);
       if (event === 'PASSWORD_RECOVERY') {
         markValid();
       } else if (event === 'SIGNED_IN' && session) {
@@ -57,19 +56,63 @@ const ResetPassword = () => {
       }
     });
 
-    // Then check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        markValid();
+    // Recovery links arrive in three shapes depending on how they were minted:
+    //   #access_token=...        -> handled automatically by detectSessionInUrl
+    //   ?code=...                -> PKCE, needs an explicit exchange
+    //   ?token_hash=...&type=recovery -> needs verifyOtp
+    // Providers can also bounce back an error in the hash/query.
+    const consumeLink = async () => {
+      const query = new URLSearchParams(window.location.search);
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+
+      const linkError = query.get('error_description') || hash.get('error_description')
+        || query.get('error') || hash.get('error');
+      if (linkError) {
+        setLinkErrorMessage(
+          /expired|invalid/i.test(linkError)
+            ? 'This reset link has expired or was already used.'
+            : linkError,
+        );
+        sessionFoundRef.current = true;
+        setIsValidSession(false);
+        return;
       }
-    });
+
+      const code = query.get('code');
+      const tokenHash = query.get('token_hash') ?? hash.get('token_hash');
+
+      try {
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (!error) {
+            markValid();
+            window.history.replaceState({}, '', '/reset-password');
+            return;
+          }
+        } else if (tokenHash) {
+          const { error } = await supabase.auth.verifyOtp({ type: 'recovery', token_hash: tokenHash });
+          if (!error) {
+            markValid();
+            window.history.replaceState({}, '', '/reset-password');
+            return;
+          }
+        }
+      } catch {
+        /* fall through to the session check below */
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) markValid();
+    };
+
+    void consumeLink();
 
     // Fallback timeout — use ref to avoid stale closure
     const timeout = setTimeout(() => {
       if (!sessionFoundRef.current) {
         setIsValidSession(false);
       }
-    }, 4000);
+    }, 6000);
 
     return () => {
       subscription.unsubscribe();
