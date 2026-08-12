@@ -140,10 +140,16 @@ serve(async (req: Request): Promise<Response> => {
             // Log renewal
             await logAlert(supabase, newAg!.id, "renewed", { driver: driverEmail, owner: ownerEmail });
 
-            // Notify parties
+            // Notify parties (email + SMS/WhatsApp)
             await sendRenewalCreatedEmail({ driverEmail, driverName, ownerEmail, ownerName, renewalNumber, newExpiresAt, newAgreementId: newAg!.id });
+            await Promise.all([
+              sendRenewalSms(supabase, driverPhoneRow?.phone, driverName, 0, new Date(newExpiresAt)),
+              sendRenewalSms(supabase, ownerPhoneRow?.phone, ownerName, 0, new Date(newExpiresAt)),
+            ]);
+            await notifyAdmins(supabase, newAg!.id, renewalNumber, newExpiresAt, driverName, ownerName);
 
             results.renewed++;
+
           }
         }
 
