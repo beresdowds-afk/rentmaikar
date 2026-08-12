@@ -64,6 +64,7 @@ const AgreementSigningModal: React.FC<AgreementSigningModalProps> = ({
 }) => {
   const [signature, setSignature] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { template, entity, region } = useAgreementTemplate();
 
   const canSign = () => {
     if (!existingAgreement) return userRole === 'admin'; // Admin creates new agreements
