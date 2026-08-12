@@ -201,6 +201,7 @@ export default function ProfileSettingsPage() {
       const fields: string[] = [];
       if (nameChanged) fields.push('full_name');
       if (phoneChanged) fields.push('phone');
+      if (addressChanged) fields.push('street_address');
       trackOnboardingEvent('profile_updated', { fields });
 
       if (phoneChanged) {
@@ -222,7 +223,13 @@ export default function ProfileSettingsPage() {
         toast({ title: 'Profile updated' });
       }
 
-      setInitial({ fullName: parsed.data.full_name, phone: newPhone ?? '' });
+      setInitial({
+        fullName: parsed.data.full_name,
+        phone: newPhone ?? '',
+        streetAddress: streetAddress.trim(),
+      });
+      setAddressTouched(false);
+
     } catch (err: any) {
       const msg = String(err?.message ?? '');
       const isImmutable =
