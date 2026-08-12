@@ -46,7 +46,9 @@ const VehicleDetails = () => {
     return row ? Number(row.price) : undefined;
   }, [categoryPrices, category]);
 
-  const photos = vehicle?.photo_urls?.length ? vehicle.photo_urls : [categoryImages[category]];
+  // Public listings always carry owner-submitted photos; no placeholder stand-ins.
+  const photos = (vehicle?.photo_urls ?? []).filter((p) => Boolean(p?.trim()));
+
   const location = vehicle?.pickup_city || vehicle?.pickup_location || "Pickup location shared after approval";
   const title = vehicle ? `${vehicle.year ?? ""} ${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim() : "Vehicle";
 
