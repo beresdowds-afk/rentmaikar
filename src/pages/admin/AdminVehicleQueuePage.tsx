@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import VehicleHistoryDialog from "@/components/vehicles/VehicleHistoryDialog";
+import VehicleReviewAuditLog from "@/components/admin/VehicleReviewAuditLog";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ import { CheckCircle2, XCircle, RefreshCw, Search, Clock, MapPin } from "lucide-
 import Seo from "@/components/seo/Seo";
 
 type ReviewStatus = "pending" | "published" | "rejected";
+type QueueTab = ReviewStatus | "audit";
 
 interface QueueVehicle {
   id: string;
@@ -56,13 +58,14 @@ const formatDate = (value?: string | null) =>
 
 const AdminVehicleQueuePage = () => {
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<ReviewStatus>("pending");
+  const [tab, setTab] = useState<QueueTab>("pending");
   const [search, setSearch] = useState("");
   const [rejectTarget, setRejectTarget] = useState<QueueVehicle | null>(null);
   const [reason, setReason] = useState("");
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["admin-vehicle-queue", tab],
+    enabled: tab !== "audit",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vehicles")
@@ -113,6 +116,7 @@ const AdminVehicleQueuePage = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-vehicle-queue"] });
       queryClient.invalidateQueries({ queryKey: ["owner-vehicles"] });
       queryClient.invalidateQueries({ queryKey: ["public-vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-vehicle-review-audit"] });
       setRejectTarget(null);
       setReason("");
     },
@@ -160,13 +164,19 @@ const AdminVehicleQueuePage = () => {
         />
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as ReviewStatus)}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as QueueTab)}>
         <TabsList>
           <TabsTrigger value="pending">Pending</TabsTrigger>
           <TabsTrigger value="published">Published</TabsTrigger>
           <TabsTrigger value="rejected">Rejected</TabsTrigger>
+          <TabsTrigger value="audit">Audit log</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="audit" className="mt-6">
+          <VehicleReviewAuditLog />
+        </TabsContent>
+
+        {tab !== "audit" && (
         <TabsContent value={tab} className="mt-6 space-y-4">
           {isLoading ? (
             <>
@@ -267,6 +277,7 @@ const AdminVehicleQueuePage = () => {
             ))
           )}
         </TabsContent>
+        )}
       </Tabs>
 
       <Dialog open={Boolean(rejectTarget)} onOpenChange={(open) => !open && setRejectTarget(null)}>
