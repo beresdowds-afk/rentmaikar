@@ -26,6 +26,8 @@ import UserAgreementsList from '@/components/legal/UserAgreementsList';
 import { OwnerRentToOwnListing } from '@/components/owner/OwnerRentToOwnListing';
 import { VehiclePickupLocation } from '@/components/owner/VehiclePickupLocation';
 import { VehiclePhotoManager } from '@/components/owner/VehiclePhotoManager';
+import { VehicleVerificationAction } from '@/components/owner/VehicleVerificationAction';
+
 import { AddVehicleDialog } from '@/components/owner/AddVehicleDialog';
 import VehicleSubmissionTracker, { VehicleSubmissionBadge } from '@/components/owner/VehicleSubmissionTracker';
 import { useQueryClient } from '@tanstack/react-query';
