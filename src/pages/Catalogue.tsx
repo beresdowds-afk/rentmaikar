@@ -95,6 +95,9 @@ const Catalogue = () => {
   const [minPriceInput, setMinPriceInput] = useState("");
   const [maxPriceInput, setMaxPriceInput] = useState("");
   const [sortBy, setSortBy] = useState("price-low");
+  const [makeFilter, setMakeFilter] = useState("all");
+  const [modelFilter, setModelFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
 
   // Debounce the search box so each keystroke doesn't hit the database.
   useEffect(() => {
@@ -190,10 +193,34 @@ const Catalogue = () => {
   const minPrice = minPriceInput ? Number(minPriceInput) : undefined;
   const maxPrice = maxPriceInput ? Number(maxPriceInput) : undefined;
 
+  const makeOptions = useMemo(
+    () => Array.from(new Set(vehicles.map((v) => v.make).filter(Boolean))).sort(),
+    [vehicles],
+  );
+  const modelOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          vehicles
+            .filter((v) => makeFilter === "all" || v.make === makeFilter)
+            .map((v) => v.model)
+            .filter(Boolean),
+        ),
+      ).sort(),
+    [vehicles, makeFilter],
+  );
+  const cityOptions = useMemo(
+    () => Array.from(new Set(vehicles.map((v) => v.location).filter(Boolean))).sort(),
+    [vehicles],
+  );
+
   const filteredVehicles = useMemo(() => {
     return vehicles
       .filter((v) => {
         if (locationFilter === "nearby" && !v.isNearby) return false;
+        if (makeFilter !== "all" && v.make !== makeFilter) return false;
+        if (modelFilter !== "all" && v.model !== modelFilter) return false;
+        if (cityFilter !== "all" && v.location !== cityFilter) return false;
         if (typeof minPrice === "number" && !Number.isNaN(minPrice) && v.price < minPrice) return false;
         if (typeof maxPrice === "number" && !Number.isNaN(maxPrice) && v.price > maxPrice) return false;
         return true;
@@ -205,7 +232,7 @@ const Catalogue = () => {
         if (sortBy === "newest") return (b.year ?? 0) - (a.year ?? 0);
         return a.distance - b.distance;
       });
-  }, [vehicles, locationFilter, minPrice, maxPrice, sortBy]);
+  }, [vehicles, locationFilter, minPrice, maxPrice, sortBy, makeFilter, modelFilter, cityFilter]);
 
   const clearFilters = () => {
     setSearchInput("");
@@ -214,6 +241,9 @@ const Catalogue = () => {
     setAvailability("all");
     setMinPriceInput("");
     setMaxPriceInput("");
+    setMakeFilter("all");
+    setModelFilter("all");
+    setCityFilter("all");
   };
 
   const categoryLabel = (category || "vehicles").replace(/-/g, " ");
@@ -373,6 +403,48 @@ const Catalogue = () => {
                   aria-label="Maximum weekly price"
                 />
               </div>
+              <Select
+                value={makeFilter}
+                onValueChange={(v) => {
+                  setMakeFilter(v);
+                  setModelFilter("all");
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-40" aria-label="Filter by make">
+                  <SelectValue placeholder="Make" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All makes</SelectItem>
+                  {makeOptions.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={modelFilter} onValueChange={setModelFilter}>
+                <SelectTrigger className="w-full sm:w-40" aria-label="Filter by model">
+                  <SelectValue placeholder="Model" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All models</SelectItem>
+                  {modelOptions.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={cityFilter} onValueChange={setCityFilter}>
+                <SelectTrigger className="w-full sm:w-44" aria-label="Filter by pickup location">
+                  <SelectValue placeholder="Location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All locations</SelectItem>
+                  {cityOptions.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <Button variant="ghost" size="sm" onClick={clearFilters} className="sm:ml-auto">
                 Reset filters
               </Button>
