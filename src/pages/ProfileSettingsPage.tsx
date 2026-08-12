@@ -341,6 +341,60 @@ export default function ProfileSettingsPage() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="street_address">
+                    Home address{' '}
+                    {isDriver ? (
+                      <span className="text-destructive">*</span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">(optional)</span>
+                    )}
+                  </Label>
+                  <span
+                    className={`text-xs tabular-nums ${
+                      showAddressError ? 'text-destructive' : 'text-muted-foreground'
+                    }`}
+                    aria-live="polite"
+                  >
+                    {addressLength}/{ADDRESS_MAX}
+                  </span>
+                </div>
+                <Input
+                  id="street_address"
+                  value={streetAddress}
+                  onChange={(e) => setStreetAddress(e.target.value)}
+                  onBlur={() => setAddressTouched(true)}
+                  disabled={loading || saving}
+                  maxLength={ADDRESS_MAX + 50}
+                  autoComplete="street-address"
+                  aria-invalid={showAddressError}
+                  aria-describedby="street_address-hint"
+                  placeholder="e.g. 24 Ademola Street, Ikeja"
+                />
+                <p
+                  id="street_address-hint"
+                  aria-live="polite"
+                  className={`text-sm ${
+                    showAddressError
+                      ? 'text-destructive'
+                      : addressLength >= ADDRESS_MIN
+                      ? 'text-emerald-500'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  {showAddressError
+                    ? addressError
+                    : addressLength >= ADDRESS_MIN
+                    ? 'Looks good — used for verification and vehicle handover.'
+                    : isDriver
+                    ? `Required for drivers — at least ${ADDRESS_MIN} characters.`
+                    : 'Optional for owners — add it to speed up handover.'}
+                </p>
+              </div>
+
+
+
               {phoneChanged && (
                 <Alert className="border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20">
                   <ShieldAlert className="h-4 w-4 text-yellow-700" />
