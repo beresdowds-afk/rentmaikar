@@ -31,29 +31,32 @@ interface LegalAgreementTemplate {
   updated_at: string;
 }
 
-const DEFAULT_CONTENT = `VEHICLE RENTAL AGREEMENT
+// Starter scaffold only — the binding agreement text lives in the database and
+// is authored/versioned here, never hard-coded in the application.
+const DEFAULT_CONTENT = `OWNER AND RENTER AGREEMENT
 
 Agreement Date: {{agreement_date}}
+Region: {{region}}
 
-PARTIES:
-Owner: {{owner_name}} ({{owner_email}})
-Driver: {{driver_name}} ({{driver_email}})
+{{owner_full_name}}, known as "OWNER"
+{{driver_full_name}}, known as "DRIVER"
 
-VEHICLE:
-{{vehicle_year}} {{vehicle_make}} {{vehicle_model}}
-License Plate: {{license_plate}}
-{{vin_line}}
+Vehicle: {{vehicle_make_model_year}} | VIN: {{vehicle_vin}} | Plate: {{license_plate}}
 
-NEGOTIATION REFERENCE: {{negotiation_id}}
-Agreed Daily Rate: {{currency}} {{daily_rate}}/day
+1. TERM
+Start: {{contract_start_date}} {{contract_start_time}} — End: {{contract_end_date}} {{contract_end_time}}
 
-This agreement is governed by the RentMaiKar Terms of Use and Privacy Policy. All pricing and payment terms are as displayed on the RentMaiKar platform.`;
+2. PAYMENTS
+Basic rental price: {{currency}} {{basic_rental_price}}
+
+EXECUTION
+Owner, Driver and the {{platform_entity}} Administrator sign this agreement electronically on the RentMaiKar platform.`;
 
 const emptyForm = (region: AgreementRegion) => ({
-  template_key: 'vehicle_rental_standard',
+  template_key: 'owner_driver_agreement',
   agreement_type: 'vehicle_rental',
   region,
-  title: `Vehicle Rental Agreement - ${region}`,
+  title: `Owner and Driver Rental Agreement - ${region}`,
   version: '1.0',
   content: DEFAULT_CONTENT,
   is_active: false,
