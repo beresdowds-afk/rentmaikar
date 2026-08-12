@@ -5,7 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, FileText, Download, Eye, PenTool, CheckCircle } from 'lucide-react';
+import { Loader2, FileText, Download, Eye, PenTool, CheckCircle, CalendarClock } from 'lucide-react';
+
+const renewalDaysLeft = (expiresAt: string) =>
+  Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86400000);
+
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -28,6 +32,9 @@ interface AgreementWithDetails {
   admin_witnessed_at: string | null;
   status: string;
   created_at: string;
+  expires_at: string | null;
+  renewal_count: number | null;
+
   // Joined data
   driver_name: string;
   driver_email: string;
@@ -119,6 +126,9 @@ export default function UserAgreementsList({ userType }: UserAgreementsListProps
           admin_witnessed_at: agreement.admin_witnessed_at,
           status: agreement.status,
           created_at: agreement.created_at,
+          expires_at: (agreement as { expires_at?: string | null }).expires_at ?? null,
+          renewal_count: (agreement as { renewal_count?: number | null }).renewal_count ?? null,
+
           driver_name: driver?.full_name || 'Unknown Driver',
           driver_email: driver?.email || '',
           owner_name: owner?.full_name || 'Unknown Owner',
@@ -326,7 +336,19 @@ export default function UserAgreementsList({ userType }: UserAgreementsListProps
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Created: {format(new Date(agreement.created_at), 'MMM dd, yyyy')}
+                      {agreement.renewal_count ? ` • Renewal #${agreement.renewal_count}` : ''}
                     </p>
+                    {agreement.expires_at && agreement.status !== 'superseded' && (
+                      <p className={`text-xs mt-1 flex items-center gap-1 ${
+                        renewalDaysLeft(agreement.expires_at) <= 3 ? 'text-destructive' : 'text-muted-foreground'
+                      }`}>
+                        <CalendarClock className="h-3 w-3" />
+                        {renewalDaysLeft(agreement.expires_at) > 0
+                          ? `Monthly renewal in ${renewalDaysLeft(agreement.expires_at)} day(s) — expires ${format(new Date(agreement.expires_at), 'MMM dd, yyyy')}`
+                          : `Renewal due — expired ${format(new Date(agreement.expires_at), 'MMM dd, yyyy')}`}
+                      </p>
+                    )}
+
                   </div>
 
                   <div className="flex gap-2">

@@ -10,6 +10,19 @@ const corsHeaders = {
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
+// Reminder tiers (days before expiry) for the compulsory monthly renewal cycle
+const REMINDER_TIERS = [14, 7, 3, 1] as const;
+
+/** Adds one calendar month, clamping to the last valid day of the target month. */
+function addOneMonth(from: Date): Date {
+  const d = new Date(from.getTime());
+  const day = d.getUTCDate();
+  d.setUTCMonth(d.getUTCMonth() + 1);
+  if (d.getUTCDate() < day) d.setUTCDate(0); // overflowed → clamp to month end
+  return d;
+}
+
+
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -25,11 +38,13 @@ serve(async (req: Request): Promise<Response> => {
   const now = new Date();
   const results = {
     renewed: 0,
+    reminders_sent: 0,
     alerted_7day: 0,
     alerted_3day: 0,
     expired_blocked: 0,
     errors: [] as string[],
   };
+
 
   try {
     // ─── 1. Fetch all active/pending_signatures compulsory agreements ───
@@ -62,31 +77,35 @@ serve(async (req: Request): Promise<Response> => {
         const ownerName = ownerProfile?.full_name ?? "Owner";
         const ownerEmail = ownerProfile?.email;
 
-        // ─── 7-day warning ───
-        if (daysUntilExpiry === 7) {
-          const alreadySent = await alertAlreadySent(supabase, ag.id, "7_day_warning");
-          if (!alreadySent) {
-            await sendRenewalWarningEmail({ driverEmail, driverName, ownerEmail, ownerName, daysUntilExpiry, agreementId: ag.id, expiresAt });
-            await logAlert(supabase, ag.id, "7_day_warning", { driver: driverEmail, owner: ownerEmail });
-            results.alerted_7day++;
-          }
+        const [{ data: driverPhoneRow }, { data: ownerPhoneRow }] = await Promise.all([
+          supabase.from("profiles").select("phone").eq("user_id", ag.driver_id).single(),
+          supabase.from("profiles").select("phone").eq("user_id", ag.owner_id).single(),
+        ]);
+
+        // ─── Monthly renewal reminders: 14 / 7 / 3 / 1 days before expiry ───
+        for (const tier of REMINDER_TIERS) {
+          if (daysUntilExpiry !== tier) continue;
+          const alertType = `${tier}_day_warning`;
+          if (await alertAlreadySent(supabase, ag.id, alertType)) continue;
+
+          await sendRenewalWarningEmail({ driverEmail, driverName, ownerEmail, ownerName, daysUntilExpiry: tier, agreementId: ag.id, expiresAt });
+          await Promise.all([
+            sendRenewalSms(supabase, driverPhoneRow?.phone, driverName, tier, expiresAt),
+            sendRenewalSms(supabase, ownerPhoneRow?.phone, ownerName, tier, expiresAt),
+          ]);
+          await logAlert(supabase, ag.id, alertType, { driver: driverEmail, owner: ownerEmail });
+
+          if (tier === 7) results.alerted_7day++;
+          if (tier === 3) results.alerted_3day++;
+          results.reminders_sent++;
         }
 
-        // ─── 3-day warning ───
-        if (daysUntilExpiry === 3) {
-          const alreadySent = await alertAlreadySent(supabase, ag.id, "3_day_warning");
-          if (!alreadySent) {
-            await sendRenewalWarningEmail({ driverEmail, driverName, ownerEmail, ownerName, daysUntilExpiry, agreementId: ag.id, expiresAt });
-            await logAlert(supabase, ag.id, "3_day_warning", { driver: driverEmail, owner: ownerEmail });
-            results.alerted_3day++;
-          }
-        }
-
-        // ─── Expired — auto-renew with new 30-day period ───
+        // ─── Expired — auto-renew for the next calendar month ───
         if (daysUntilExpiry <= 0) {
           const alreadyRenewed = await alertAlreadySent(supabase, ag.id, "renewed");
           if (!alreadyRenewed) {
-            const newExpiresAt = new Date(now.getTime() + 30 * 86400000).toISOString();
+            const newExpiresAt = addOneMonth(now).toISOString();
+
             const renewalNumber = (ag.renewal_count ?? 0) + 1;
             const newContent = buildRenewalContent(ag.agreement_content, renewalNumber, newExpiresAt);
 
@@ -121,10 +140,16 @@ serve(async (req: Request): Promise<Response> => {
             // Log renewal
             await logAlert(supabase, newAg!.id, "renewed", { driver: driverEmail, owner: ownerEmail });
 
-            // Notify parties
+            // Notify parties (email + SMS/WhatsApp)
             await sendRenewalCreatedEmail({ driverEmail, driverName, ownerEmail, ownerName, renewalNumber, newExpiresAt, newAgreementId: newAg!.id });
+            await Promise.all([
+              sendRenewalSms(supabase, driverPhoneRow?.phone, driverName, 0, new Date(newExpiresAt)),
+              sendRenewalSms(supabase, ownerPhoneRow?.phone, ownerName, 0, new Date(newExpiresAt)),
+            ]);
+            await notifyAdmins(supabase, newAg!.id, renewalNumber, newExpiresAt, driverName, ownerName);
 
             results.renewed++;
+
           }
         }
 
@@ -180,11 +205,59 @@ async function logAlert(supabase: ReturnType<typeof createClient>, agreementId: 
   });
 }
 
+/** Sends the mandatory secondary channel (SMS, WhatsApp fallback handled downstream). */
+async function sendRenewalSms(
+  supabase: ReturnType<typeof createClient>,
+  phone: string | null | undefined,
+  name: string,
+  daysUntilExpiry: number,
+  expiresAt: Date,
+) {
+  if (!phone) return;
+  const expiryFormatted = expiresAt.toISOString().slice(0, 10);
+  const message = daysUntilExpiry > 0
+    ? `RentMaiKar: Hi ${name}, your monthly rental agreement expires in ${daysUntilExpiry} day${daysUntilExpiry === 1 ? "" : "s"} (${expiryFormatted}). Sign the renewal in your dashboard to avoid service interruption.`
+    : `RentMaiKar: Hi ${name}, your monthly rental agreement has been renewed and is awaiting signatures. New expiry: ${expiryFormatted}. Please sign in your dashboard.`;
+
+  try {
+    await supabase.functions.invoke("send-sms-notification", {
+      body: { to: phone, message, notificationType: "general", channel: "sms" },
+    });
+  } catch (err) {
+    console.error("Renewal SMS failed:", err instanceof Error ? err.message : String(err));
+  }
+}
+
+/** Raises an in-app admin notification with a deep link to the new agreement. */
+async function notifyAdmins(
+  supabase: ReturnType<typeof createClient>,
+  agreementId: string,
+  renewalNumber: number,
+  newExpiresAt: string,
+  driverName: string,
+  ownerName: string,
+) {
+  try {
+    const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+    const rows = (admins ?? []).map((a: { user_id: string }) => ({
+      recipient_id: a.user_id,
+      kind: "agreement_renewal",
+      title: `Agreement renewal #${renewalNumber} awaiting signatures`,
+      body: `${driverName} & ${ownerName} — new monthly agreement expires ${new Date(newExpiresAt).toISOString().slice(0, 10)}.`,
+      metadata: { agreement_id: agreementId, deep_link: `/admin?tab=legal&agreement=${agreementId}` },
+    }));
+    if (rows.length > 0) await supabase.from("admin_notifications").insert(rows);
+  } catch (err) {
+    console.error("Admin renewal notification failed:", err instanceof Error ? err.message : String(err));
+  }
+}
+
 function buildRenewalContent(originalContent: string, renewalNumber: number, newExpiresAt: string): string {
   const renewalDate = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   const expiryDate = new Date(newExpiresAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-  return `RENEWAL #${renewalNumber} — Effective: ${renewalDate} | Expires: ${expiryDate}\n\nThis agreement is a mandatory 30-day renewal of the original rental contract. All original terms remain in effect.\n\n---\n\n${originalContent}`;
+  return `RENEWAL #${renewalNumber} — Effective: ${renewalDate} | Expires: ${expiryDate}\n\nThis agreement is a mandatory monthly renewal of the original rental contract. All original terms remain in effect.\n\n---\n\n${originalContent}`;
 }
+
 
 interface EmailParams {
   driverEmail?: string | null;
@@ -212,7 +285,7 @@ async function sendRenewalWarningEmail(params: EmailParams) {
     <p style="margin:5px 0 0 0;color:#555;">Your rental agreement requires renewal by <strong>${expiryFormatted}</strong>.</p>
   </div>
   <p>Dear ${driverName} &amp; ${ownerName},</p>
-  <p>Your <strong>compulsory 30-day rental agreement</strong> is expiring soon. A new agreement will be automatically generated on the expiry date. Please ensure all parties sign the renewal promptly to avoid service interruption.</p>
+  <p>Your <strong>compulsory monthly rental agreement</strong> is expiring soon. A new agreement will be automatically generated on the expiry date. Please ensure all parties sign the renewal promptly to avoid service interruption.</p>
   <div style="background:#f5f5f5;padding:15px;border-radius:5px;margin:20px 0;">
     <p style="margin:0;font-size:13px;color:#666;"><strong>Agreement ID:</strong> ${agreementId}</p>
     <p style="margin:5px 0 0 0;font-size:13px;color:#666;"><strong>Expiry Date:</strong> ${expiryFormatted}</p>
@@ -259,10 +332,10 @@ async function sendRenewalCreatedEmail(params: RenewalCreatedParams) {
 <div style="background:#fff;padding:25px;border:1px solid #e0e0e0;border-top:none;">
   <div style="background:#d1fae515;border-left:4px solid #10b981;padding:15px;margin-bottom:20px;border-radius:4px;">
     <strong style="color:#10b981;">✓ Renewal #${renewalNumber} Auto-Generated</strong>
-    <p style="margin:5px 0 0 0;color:#555;">A new 30-day agreement has been created and is awaiting your signatures.</p>
+    <p style="margin:5px 0 0 0;color:#555;">A new monthly agreement has been created and is awaiting your signatures.</p>
   </div>
   <p>Dear ${driverName} &amp; ${ownerName},</p>
-  <p>Your rental agreement has been automatically renewed for another 30-day period as part of our <strong>compulsory renewal policy</strong>. All original terms remain in full effect.</p>
+  <p>Your rental agreement has been automatically renewed for another month as part of our <strong>compulsory renewal policy</strong>. All original terms remain in full effect.</p>
   <div style="background:#f5f5f5;padding:15px;border-radius:5px;margin:20px 0;">
     <p style="margin:0;font-size:13px;color:#666;"><strong>New Agreement ID:</strong> ${newAgreementId}</p>
     <p style="margin:5px 0 0 0;font-size:13px;color:#666;"><strong>Renewal #:</strong> ${renewalNumber}</p>
