@@ -24,6 +24,7 @@ const ADMIN_TARGETS: Record<string, { path: string; portal?: string; tab?: strin
   rent_to_own_agreements: { path: '/admin', portal: 'crm', tab: 'rent-to-own' },
   price_negotiations: { path: '/admin', portal: 'crm', tab: 'negotiations' },
   vehicle_booking_requests: { path: '/admin', portal: 'crm', tab: 'approvals' },
+  vehicles: { path: '/admin/vehicle-queue' },
   owner_payouts: { path: '/admin/treasury' },
   withdrawal_authorizations: { path: '/admin/treasury' },
 };
@@ -39,6 +40,7 @@ const SELF_TARGETS: Record<string, Record<'driver' | 'owner', string | undefined
   rent_to_own_agreements: { driver: '/driver-dashboard?tab=rentals', owner: '/owner-dashboard?tab=vehicles' },
   price_negotiations: { driver: '/driver-dashboard?tab=negotiations', owner: '/owner-dashboard?tab=negotiations' },
   vehicle_booking_requests: { driver: '/driver-dashboard?tab=bookings', owner: '/owner-dashboard?tab=bookings' },
+  vehicles: { driver: undefined, owner: '/owner-dashboard?tab=vehicles' },
   owner_payouts: { driver: undefined, owner: '/owner-dashboard?tab=earnings' },
   withdrawal_authorizations: { driver: undefined, owner: '/owner-dashboard?tab=earnings' },
 };
