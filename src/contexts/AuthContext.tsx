@@ -228,10 +228,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signUp = async (email: string, password: string, fullName: string, role: AppRole) => {
     try {
       const redirectUrl = `${window.location.origin}/`;
+      const normalizedEmail = email.trim().toLowerCase();
+
+      // Server-side duplicate guard: authoritative check against auth.users
+      // (rate limited) so a registered email is routed to sign-in instead of
+      // producing a silent/duplicate sign-up attempt.
+      try {
+        const { data: statusData } = await supabase.rpc('email_signup_status', {
+          _email: normalizedEmail,
+        });
+        const status = statusData as { registered?: boolean; rate_limited?: boolean } | null;
+        if (status?.registered) {
+          await logAuthEvent('sign_up_failure', {
+            email: normalizedEmail,
+            errorCode: 'email_already_registered_precheck',
+          });
+          return {
+            error: new Error('This email is already registered. Please sign in instead.'),
+            emailExists: true,
+          };
+        }
+      } catch (precheckError) {
+        // Non-fatal: fall through to Supabase's own duplicate handling below.
+        console.warn('Sign-up precheck unavailable:', precheckError);
+      }
 
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+
         options: {
           emailRedirectTo: redirectUrl,
           // `requested_role` is consumed by the handle_new_user trigger, which
