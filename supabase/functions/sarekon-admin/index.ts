@@ -13,6 +13,8 @@ import {
   type SarekonResult,
 } from "../_shared/sarekon-client.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
+import { invalidateProviderConfig } from "../_shared/provider-config.ts";
+
 
 const PROVIDER = "sarekon";
 
