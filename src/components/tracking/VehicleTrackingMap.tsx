@@ -88,7 +88,12 @@ const VehicleTrackingMap = () => {
           make: d.make,
           model: d.model,
           licensePlate: d.licensePlate,
-          driverName: d.provider === 'traccar' ? `Traccar · ${d.serialNumber}` : d.serialNumber,
+          driverName: d.provider === 'traccar'
+            ? `Traccar · ${d.serialNumber}`
+            : d.provider === 'sarekon'
+              ? `Sarekon · ${d.serialNumber}`
+              : d.serialNumber,
+
           serialNumber: d.serialNumber,
           isStale,
         };
