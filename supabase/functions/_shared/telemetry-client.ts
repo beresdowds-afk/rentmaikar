@@ -227,7 +227,7 @@ export async function testProvider(
   }
 }
 
-// -------- Sarekon adapter (REST, session auth)
+// -------- GPSANDTRACK adapter (REST, session auth)
 const sarekonAdapter: TelemetryAdapter = {
   name: "sarekon",
   async getDeviceState(deviceId) {
@@ -249,15 +249,15 @@ const sarekonAdapter: TelemetryAdapter = {
   },
   async sendCommand(deviceId, command, payload = {}) {
     await sarekon.ensureReady();
-    if (!sarekon.isConfigured()) return { ok: false, error: "Sarekon not configured" };
+    if (!sarekon.isConfigured()) return { ok: false, error: "GPSANDTRACK not configured" };
     const mapped = SAREKON_COMMAND_MAP[command] ?? command;
     const r = await sarekon.sendCommand(deviceId, mapped, payload);
     if (r.ok) return { ok: true };
     const err = r.reason === "provider_error" || r.reason === "auth_error"
-      ? `Sarekon ${r.status}`
+      ? `GPSANDTRACK ${r.status}`
       : r.reason === "network_error"
       ? r.message
-      : "Sarekon not configured";
+      : "GPSANDTRACK not configured";
     return { ok: false, error: err };
   },
 };

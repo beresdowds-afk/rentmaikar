@@ -4,7 +4,7 @@ import { DeviceRegistry } from './hardware/DeviceRegistry';
 import { DeviceLinking } from './hardware/DeviceLinking';
 import { DeviceActivation } from './hardware/DeviceActivation';
 import { DeviceHealth } from './hardware/DeviceHealth';
-import SarekonDashboard from './SarekonDashboard';
+import GPSANDTRACKDashboard from './GPSANDTRACKDashboard';
 import { Cpu, Link, Power, Activity, Satellite } from 'lucide-react';
 
 export const HardwareManagement = () => {
@@ -35,7 +35,7 @@ export const HardwareManagement = () => {
           </TabsTrigger>
           <TabsTrigger value="sarekon" className="flex items-center gap-2">
             <Satellite className="h-4 w-4" />
-            Sarekon
+            GPSANDTRACK
           </TabsTrigger>
           <TabsTrigger value="health" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
@@ -56,7 +56,7 @@ export const HardwareManagement = () => {
         </TabsContent>
 
         <TabsContent value="sarekon">
-          <SarekonDashboard />
+          <GPSANDTRACKDashboard />
         </TabsContent>
 
         <TabsContent value="health">

@@ -1,4 +1,4 @@
-// Sarekon telemetry API client.
+// GPSANDTRACK telemetry API client.
 //
 // Server address + path prefix: https://api.sarekon.com/v1
 // Authentication: POST /session/create.json with a user id + password, which
@@ -21,7 +21,7 @@ type ErrResult =
   | { ok: false; reason: "network_error"; message: string }
   | { ok: false; reason: "auth_error"; status: number; body: unknown }
   | { ok: false; reason: "provider_error"; status: number; body: unknown };
-export type SarekonResult<T = unknown> = OkResult<T> | ErrResult;
+export type GPSANDTRACKResult<T = unknown> = OkResult<T> | ErrResult;
 
 const DEFAULT_BASE = "https://api.sarekon.com/v1";
 
@@ -54,7 +54,7 @@ function pick(obj: unknown, keys: string[]): unknown {
   return undefined;
 }
 
-/** Sarekon nests payloads inconsistently — dig out the first array we find. */
+/** GPSANDTRACK nests payloads inconsistently — dig out the first array we find. */
 function extractList(body: unknown, keys: string[]): Record<string, unknown>[] {
   if (Array.isArray(body)) return body as Record<string, unknown>[];
   if (!body || typeof body !== "object") return [];
@@ -72,7 +72,7 @@ function extractList(body: unknown, keys: string[]): Record<string, unknown>[] {
 async function rawPost<T = unknown>(
   path: string,
   payload: Record<string, unknown>,
-): Promise<SarekonResult<T>> {
+): Promise<GPSANDTRACKResult<T>> {
   const c = creds();
   if (!c) return { ok: false, reason: "not_configured", missing: missingCredentials() };
   let res: Response;
@@ -89,7 +89,7 @@ async function rawPost<T = unknown>(
   const raw = await res.text().catch(() => "");
   let body: unknown = {};
   try { body = raw ? JSON.parse(raw) : {}; } catch { body = raw.slice(0, 400); }
-  // Sarekon reports failures in-band: { error: { id, description } } — often
+  // GPSANDTRACK reports failures in-band: { error: { id, description } } — often
   // with HTTP 400 rather than 401 — so inspect the envelope too.
   const envelope = (body && typeof body === "object" ? (body as Record<string, unknown>).error : null) as
     | Record<string, unknown>
@@ -103,7 +103,7 @@ async function rawPost<T = unknown>(
 }
 
 /** Authenticate and cache the session token. */
-async function login(force = false): Promise<SarekonResult<string>> {
+async function login(force = false): Promise<GPSANDTRACKResult<string>> {
   const c = creds();
   if (!c) return { ok: false, reason: "not_configured", missing: missingCredentials() };
   if (!force && session && Date.now() - session.issuedAt < SESSION_TTL_MS) {
@@ -131,7 +131,7 @@ async function login(force = false): Promise<SarekonResult<string>> {
 async function call<T = unknown>(
   path: string,
   payload: Record<string, unknown> = {},
-): Promise<SarekonResult<T>> {
+): Promise<GPSANDTRACKResult<T>> {
   const auth = await login();
   if (!auth.ok) return auth;
   let r = await rawPost<T>(path, { session_id: auth.body, ...payload });
@@ -145,7 +145,7 @@ async function call<T = unknown>(
 
 // ---- normalised shapes ---------------------------------------------------
 
-export interface SarekonDevice {
+export interface GPSANDTRACKDevice {
   id: string;
   serial: string;
   name: string | null;
@@ -175,7 +175,7 @@ const bool = (v: unknown): boolean | null => {
   return null;
 };
 
-export function normaliseDevice(row: Record<string, unknown>): SarekonDevice {
+export function normaliseDevice(row: Record<string, unknown>): GPSANDTRACKDevice {
   const loc = (row.location ?? row.last_location ?? row.position ?? row) as Record<string, unknown>;
   const id = pick(row, ["dvd_id", "dvdId", "device_id", "id", "uid"]);
   const serial = pick(row, ["serial", "serial_number", "imei", "esn", "unique_id", "dvd_id", "id"]);
@@ -207,14 +207,14 @@ export const sarekon = {
   /** Verify credentials by creating a fresh session. */
   ping: () => login(true),
 
-  async listDevices(): Promise<SarekonResult<SarekonDevice[]>> {
+  async listDevices(): Promise<GPSANDTRACKResult<GPSANDTRACKDevice[]>> {
     const r = await call("/dvd/enumerate.json", {});
     if (!r.ok) return r;
     const rows = extractList(r.body, ["dvds", "devices", "results", "data", "items"]);
     return { ok: true, body: rows.map(normaliseDevice) };
   },
 
-  async showDevice(dvdId: string): Promise<SarekonResult<SarekonDevice | null>> {
+  async showDevice(dvdId: string): Promise<GPSANDTRACKResult<GPSANDTRACKDevice | null>> {
     const r = await call("/dvd/show.json", { dvd_id: dvdId });
     if (!r.ok) return r;
     const body = r.body as Record<string, unknown>;
@@ -222,31 +222,31 @@ export const sarekon = {
     return { ok: true, body: row ? normaliseDevice(row) : null };
   },
 
-  async locations(dvdId: string, limit = 50): Promise<SarekonResult<Record<string, unknown>[]>> {
+  async locations(dvdId: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
     const r = await call("/location/list.json", { dvd_id: dvdId, limit });
     if (!r.ok) return r;
     return { ok: true, body: extractList(r.body, ["locations", "results", "data", "items"]) };
   },
 
-  async messages(dvdId: string, limit = 50): Promise<SarekonResult<Record<string, unknown>[]>> {
+  async messages(dvdId: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
     const r = await call("/message/list.json", { dvd_id: dvdId, limit });
     if (!r.ok) return r;
     return { ok: true, body: extractList(r.body, ["messages", "results", "data", "items"]) };
   },
 
-  async trips(dvdId: string, limit = 50): Promise<SarekonResult<Record<string, unknown>[]>> {
+  async trips(dvdId: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
     const r = await call("/trip/list.json", { dvd_id: dvdId, limit });
     if (!r.ok) return r;
     return { ok: true, body: extractList(r.body, ["trips", "results", "data", "items"]) };
   },
 
-  async stops(dvdId: string, limit = 50): Promise<SarekonResult<Record<string, unknown>[]>> {
+  async stops(dvdId: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
     const r = await call("/stop/list.json", { dvd_id: dvdId, limit });
     if (!r.ok) return r;
     return { ok: true, body: extractList(r.body, ["stops", "results", "data", "items"]) };
   },
 
-  async commandParameters(): Promise<SarekonResult<Record<string, unknown>[]>> {
+  async commandParameters(): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
     const r = await call("/command_queue/parameters_enumerate.json", {});
     if (!r.ok) return r;
     return { ok: true, body: extractList(r.body, ["parameters", "commands", "results", "data", "items"]) };
@@ -255,20 +255,20 @@ export const sarekon = {
   sendCommand: (dvdId: string, command: string, parameters: Record<string, unknown> = {}) =>
     call("/command_queue/create.json", { dvd_id: dvdId, command, parameters }),
 
-  async commandHistory(dvdId?: string, limit = 50): Promise<SarekonResult<Record<string, unknown>[]>> {
+  async commandHistory(dvdId?: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
     const r = await call("/command_queue/list.json", dvdId ? { dvd_id: dvdId, limit } : { limit });
     if (!r.ok) return r;
     return { ok: true, body: extractList(r.body, ["commands", "command_queue", "results", "data", "items"]) };
   },
 
-  async subscriptions(): Promise<SarekonResult<Record<string, unknown>[]>> {
+  async subscriptions(): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
     const r = await call("/subscription/list.json", {});
     if (!r.ok) return r;
     return { ok: true, body: extractList(r.body, ["subscriptions", "results", "data", "items"]) };
   },
 };
 
-/** Platform command name -> Sarekon command name. */
+/** Platform command name -> GPSANDTRACK command name. */
 export const SAREKON_COMMAND_MAP: Record<string, string> = {
   immobilize: "engine_disable",
   engineStop: "engine_disable",

@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, RefreshCw, MapPin, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 /**
- * Admin status panel: last successful sync + error detail for each Sarekon
+ * Admin status panel: last successful sync + error detail for each GPSANDTRACK
  * subsystem (telemetry, devices, commands), plus the map-merge safeguard
  * indicator proving positions land on the shared fleet map.
  */
@@ -51,7 +51,7 @@ function stateBadge(state: string | null | undefined) {
   return <Badge variant="outline">Never run</Badge>;
 }
 
-export default function SarekonStatusPanel({ refreshKey = 0 }: { refreshKey?: number }) {
+export default function GPSANDTRACKStatusPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [data, setData] = useState<StatusPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,7 +144,7 @@ export default function SarekonStatusPanel({ refreshKey = 0 }: { refreshKey?: nu
             <MapPin className="h-4 w-4" aria-hidden="true" /> Fleet map merge
           </CardTitle>
           <CardDescription>
-            Sarekon positions are written to the shared device registry that the existing fleet map reads — no second
+            GPSANDTRACK positions are written to the shared device registry that the existing fleet map reads — no second
             map or provider-specific layer is created.
           </CardDescription>
         </CardHeader>
@@ -155,7 +155,7 @@ export default function SarekonStatusPanel({ refreshKey = 0 }: { refreshKey?: nu
             <Badge variant="outline" className="gap-1"><AlertTriangle className="h-3 w-3" /> No positions on the map yet</Badge>
           )}
           <span className="text-muted-foreground">
-            {merge?.devices_on_map ?? 0} of {merge?.devices_total ?? 0} Sarekon device(s) carry coordinates
+            {merge?.devices_on_map ?? 0} of {merge?.devices_total ?? 0} GPSANDTRACK device(s) carry coordinates
           </span>
         </CardContent>
       </Card>
@@ -166,7 +166,7 @@ export default function SarekonStatusPanel({ refreshKey = 0 }: { refreshKey?: nu
         </CardHeader>
         <CardContent className="space-y-2">
           {!data?.activity?.length ? (
-            <p className="text-sm text-muted-foreground">No Sarekon sync activity recorded yet.</p>
+            <p className="text-sm text-muted-foreground">No GPSANDTRACK sync activity recorded yet.</p>
           ) : (
             data.activity.map((a, i) => (
               <div key={i} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-xs">
