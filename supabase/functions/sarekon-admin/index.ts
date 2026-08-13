@@ -133,7 +133,14 @@ Deno.serve(async (req) => {
 
     const parsed = Body.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
-    const { action, dvd_id, device_row_id, vehicle_id, vehicle_ids, command, parameters, limit } = parsed.data;
+    const { action, dvd_id, device_row_id, vehicle_id, vehicle_ids, command, parameters, limit, refresh_credentials } =
+      parsed.data;
+
+    // A freshly saved credential version must beat the 60s config cache.
+    if (refresh_credentials) {
+      invalidateProviderConfig("sarekon");
+      sarekon.resetSession();
+    }
 
     const audit = async (row: {
       action: string;
@@ -150,12 +157,17 @@ Deno.serve(async (req) => {
       } as never);
     };
 
-    const setSyncState = async (patch: Record<string, unknown>) => {
+    const setScopeState = async (
+      scope: keyof typeof SCOPE_PROVIDER,
+      patch: Record<string, unknown>,
+    ) => {
       await supa.from("iot_sync_state").upsert(
-        { provider: PROVIDER, ...patch, updated_at: new Date().toISOString() },
+        { provider: SCOPE_PROVIDER[scope], ...patch, updated_at: new Date().toISOString() },
         { onConflict: "provider" },
       );
     };
+
+    const setSyncState = async (patch: Record<string, unknown>) => setScopeState("devices", patch);
 
     const activity = async (
       event: string,
@@ -172,6 +184,41 @@ Deno.serve(async (req) => {
       const { data } = await supa.from("iot_sync_state").select("*").eq("provider", PROVIDER).maybeSingle();
       return json({ ok: true, state: data });
     }
+
+    if (action === "sync_status") {
+      const { data: states } = await supa
+        .from("iot_sync_state")
+        .select("*")
+        .in("provider", Object.values(SCOPE_PROVIDER));
+      const { data: events } = await supa
+        .from("iot_sync_activity_log")
+        .select("event, level, message, details, created_at")
+        .eq("provider", PROVIDER)
+        .order("created_at", { ascending: false })
+        .limit(limit ?? 25);
+      const { count: mapped } = await supa
+        .from("iot_devices")
+        .select("id", { count: "exact", head: true })
+        .eq("provider", PROVIDER)
+        .not("latitude", "is", null)
+        .not("longitude", "is", null);
+      const { count: total } = await supa
+        .from("iot_devices")
+        .select("id", { count: "exact", head: true })
+        .eq("provider", PROVIDER);
+      const byScope: Record<string, unknown> = {};
+      for (const [scope, provider] of Object.entries(SCOPE_PROVIDER)) {
+        byScope[scope] = (states ?? []).find((s: Record<string, unknown>) => s.provider === provider) ?? null;
+      }
+      return json({
+        ok: true,
+        scopes: byScope,
+        activity: events ?? [],
+        map_merge: { devices_total: total ?? 0, devices_on_map: mapped ?? 0 },
+      });
+    }
+
+
 
     if (action === "link_device" || action === "unlink_device") {
       if (!device_row_id) return json({ error: "device_row_id required" }, 400);
