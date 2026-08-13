@@ -102,7 +102,7 @@ export function SetupStagesPanel({
           </TabsContent>
 
           <TabsContent value="documents" className="pt-4 space-y-4">
-            <DocumentUpload />
+            <DocumentUpload userType={role} />
             {!docsDone && (
               <Button onClick={() => advance('documents_submitted')} disabled={advancing !== null}>
                 {advancing === 'documents_submitted' ? (
@@ -143,7 +143,7 @@ export function SetupStagesPanel({
           </TabsContent>
 
           <TabsContent value="agreements" className="pt-4">
-            <UserAgreementsList />
+            <UserAgreementsList userType={role} />
           </TabsContent>
 
           <TabsContent value="subscriptions" className="pt-4">
