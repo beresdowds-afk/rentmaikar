@@ -194,7 +194,7 @@ export function isProviderConfigured(name: TelemetryProviderName): boolean {
     );
   }
   if (name === "sarekon") {
-    return Boolean(Deno.env.get("SAREKON_USER_ID") && Deno.env.get("SAREKON_PASSWORD"));
+    return Boolean((Deno.env.get("SAREKON_USER_ID") && Deno.env.get("SAREKON_PASSWORD")) || sarekon.isConfigured());
   }
   return Boolean(Deno.env.get("EMQX_API_URL") && Deno.env.get("EMQX_API_KEY") && Deno.env.get("EMQX_API_SECRET"));
 }
