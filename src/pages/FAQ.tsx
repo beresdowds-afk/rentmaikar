@@ -2,7 +2,9 @@ import { Link } from "react-router-dom";
 import Seo from "@/components/seo/Seo";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import { HelpCircle, Search, Globe } from "lucide-react";
+import { HelpCircle, Search, Globe, Download, FileText, Shield, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { useRegion } from "@/contexts/RegionContext";
 import { useFAQ } from "@/hooks/useFAQ";
 import { useState, useMemo } from "react";
@@ -60,6 +62,76 @@ const FAQ = () => {
     return categories.find(c => c.id === categoryId)?.name || 'Unknown';
   };
 
+  const [downloading, setDownloading] = useState(false);
+
+  // Builds a printable PDF of every FAQ visible to the current region.
+  const handleDownloadPdf = async () => {
+    if (!items.length) {
+      toast.error("No FAQ content available to download yet.");
+      return;
+    }
+    setDownloading(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const margin = 48;
+      const width = doc.internal.pageSize.getWidth() - margin * 2;
+      const bottom = doc.internal.pageSize.getHeight() - margin;
+      let y = margin;
+
+      const addLines = (text: string, size: number, style: "bold" | "normal", gap = 6) => {
+        doc.setFont("helvetica", style);
+        doc.setFontSize(size);
+        for (const line of doc.splitTextToSize(text, width)) {
+          if (y > bottom) {
+            doc.addPage();
+            y = margin;
+          }
+          doc.text(line, margin, y);
+          y += size + 2;
+        }
+        y += gap;
+      };
+
+      addLines("Rentmaikar — Frequently Asked Questions", 18, "bold", 4);
+      addLines(
+        `Region: ${regionFilter === "USA" ? "United States" : "Nigeria"} · Generated ${new Date().toLocaleDateString()}`,
+        10,
+        "normal",
+        14,
+      );
+
+      const order = categories.length
+        ? categories.map((c) => c.id)
+        : Array.from(new Set(items.map((i) => i.category_id)));
+
+      order.forEach((categoryId) => {
+        const list = items.filter((i) => i.category_id === categoryId);
+        if (!list.length) return;
+        addLines(getCategoryName(categoryId), 14, "bold", 4);
+        list.forEach((item, idx) => {
+          addLines(`${idx + 1}. ${item.question}`, 11, "bold", 2);
+          addLines(item.answer, 10, "normal", 10);
+        });
+      });
+
+      addLines(
+        "Rentmaikar operates as a technology-enabled marketplace and administrator. Fees, policies and supported features may change with notice.",
+        9,
+        "normal",
+        0,
+      );
+
+      doc.save(`rentmaikar-faq-${regionFilter.toLowerCase()}.pdf`);
+      toast.success("FAQ downloaded");
+    } catch (error) {
+      console.error("FAQ download failed", error);
+      toast.error("Could not generate the FAQ download. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const faqJsonLd = items.length
     ? {
         "@context": "https://schema.org",
@@ -99,7 +171,29 @@ const FAQ = () => {
               Showing content for {regionFilter === 'USA' ? 'United States' : 'Nigeria'}
             </span>
           </div>
+
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <Button asChild variant="outline">
+              <Link to="/terms">
+                <FileText className="h-4 w-4" /> View Terms
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/privacy">
+                <Shield className="h-4 w-4" /> View Privacy Policy
+              </Link>
+            </Button>
+            <Button onClick={handleDownloadPdf} disabled={downloading || loading}>
+              {downloading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Download FAQ (PDF)
+            </Button>
+          </div>
         </div>
+
 
         {/* Search */}
         <div className="max-w-2xl mx-auto mb-8">
