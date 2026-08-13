@@ -9,9 +9,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCw, Satellite, ShieldAlert, ShieldCheck, Search, Send, Eye, Link2, Power } from "lucide-react";
+import { Loader2, RefreshCw, Satellite, ShieldAlert, ShieldCheck, Search, Send, Eye, Power, Cpu, ListRestart, Activity, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { VehiclePicker } from "./VehiclePicker";
+import SarekonStatusPanel from "./SarekonStatusPanel";
+import SarekonCredentialsPanel from "./SarekonCredentialsPanel";
+
 
 interface SarekonDevice {
   id: string;
@@ -55,7 +58,9 @@ export default function SarekonDashboard() {
   const [devices, setDevices] = useState<SarekonDevice[]>([]);
   const [localDevices, setLocalDevices] = useState<Record<string, LocalDevice>>({});
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const [syncing, setSyncing] = useState<null | "sync" | "sync_devices" | "sync_telemetry" | "refresh_commands">(null);
+  const [statusRefresh, setStatusRefresh] = useState(0);
+
   const [testing, setTesting] = useState(false);
   const [query, setQuery] = useState("");
   const [detail, setDetail] = useState<{ dvd_id: string; device: SarekonDevice | null; locations: Record<string, unknown>[]; trips: Record<string, unknown>[]; messages: Record<string, unknown>[]; commands: Record<string, unknown>[] } | null>(null);
@@ -130,19 +135,34 @@ export default function SarekonDashboard() {
     }
   };
 
-  const sync = async () => {
-    setSyncing(true);
+  const runSync = async (
+    action: "sync" | "sync_devices" | "sync_telemetry" | "refresh_commands",
+    label: string,
+  ) => {
+    setSyncing(action);
     try {
-      const d = await call({ action: "sync" });
-      if (d.ok === false) toast.error((d.diagnosis as Diagnosis)?.title ?? "Sync failed");
-      else toast.success(`Synced ${d.devices_synced ?? 0} device(s), ${d.positions_imported ?? 0} position(s) — now on the live map`);
-      await Promise.all([loadLocal(), loadDevices()]);
+      const d = await call({ action, limit: action === "refresh_commands" ? 50 : undefined });
+      if (d.ok === false) {
+        toast.error((d.diagnosis as Diagnosis)?.title ?? `${label} failed`);
+      } else if (action === "refresh_commands") {
+        const rows = (d.commands as Record<string, unknown>[]) || [];
+        setHistory(rows);
+        toast.success(`Command queue refreshed — ${rows.length} entr${rows.length === 1 ? "y" : "ies"}`);
+      } else {
+        toast.success(
+          `${label}: ${d.devices_synced ?? 0} device(s), ${d.positions_imported ?? 0} position(s) — ` +
+            `${d.devices_on_shared_map ?? 0} on the shared fleet map`,
+        );
+      }
+      if (action !== "refresh_commands") await Promise.all([loadLocal(), loadDevices()]);
+      setStatusRefresh((n) => n + 1);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
-      setSyncing(false);
+      setSyncing(null);
     }
   };
+
 
   const openDetail = async (dvdId: string) => {
     setDetailLoading(true);
@@ -237,16 +257,29 @@ export default function SarekonDashboard() {
               registry, live map and telemetry feed as every other provider.
             </CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button variant="outline" size="sm" onClick={test} disabled={testing}>
               {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
               <span className="ml-2">Test connection</span>
             </Button>
-            <Button size="sm" onClick={sync} disabled={syncing}>
-              {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            <Button variant="outline" size="sm" onClick={() => runSync("sync_devices", "Device sync")} disabled={!!syncing}>
+              {syncing === "sync_devices" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Cpu className="h-4 w-4" />}
+              <span className="ml-2">Sync devices</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => runSync("sync_telemetry", "Telemetry sync")} disabled={!!syncing}>
+              {syncing === "sync_telemetry" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Satellite className="h-4 w-4" />}
+              <span className="ml-2">Sync telemetry</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => runSync("refresh_commands", "Command queue")} disabled={!!syncing}>
+              {syncing === "refresh_commands" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ListRestart className="h-4 w-4" />}
+              <span className="ml-2">Refresh commands</span>
+            </Button>
+            <Button size="sm" onClick={() => runSync("sync", "Full sync")} disabled={!!syncing}>
+              {syncing === "sync" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               <span className="ml-2">Sync now</span>
             </Button>
           </div>
+
         </CardHeader>
         <CardContent>
           {status && !status.configured && (
@@ -278,7 +311,22 @@ export default function SarekonDashboard() {
         <TabsList>
           <TabsTrigger value="devices">Devices</TabsTrigger>
           <TabsTrigger value="commands">Commands</TabsTrigger>
+          <TabsTrigger value="status" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" /> Status
+          </TabsTrigger>
+          <TabsTrigger value="credentials" className="flex items-center gap-2">
+            <KeyRound className="h-4 w-4" /> Credentials
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="status">
+          <SarekonStatusPanel refreshKey={statusRefresh} />
+        </TabsContent>
+
+        <TabsContent value="credentials">
+          <SarekonCredentialsPanel onStatusChange={() => { loadStatus(); setStatusRefresh((n) => n + 1); }} />
+        </TabsContent>
+
 
         <TabsContent value="devices" className="space-y-4">
           <div className="flex items-center gap-2">
@@ -394,9 +442,14 @@ export default function SarekonDashboard() {
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
               <CardTitle className="text-base">Command queue history</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => runSync("refresh_commands", "Command queue")} disabled={!!syncing}>
+                {syncing === "refresh_commands" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ListRestart className="h-4 w-4" />}
+                <span className="ml-2">Refresh queue</span>
+              </Button>
             </CardHeader>
+
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
@@ -429,7 +482,7 @@ export default function SarekonDashboard() {
       <Sheet open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
           <SheetHeader>
-            <SheetTitle className="flex items-center gap-2"><Link2 className="h-4 w-4" /> {detail?.device?.name || detail?.dvd_id}</SheetTitle>
+            <SheetTitle className="flex items-center gap-2"><Satellite className="h-4 w-4" /> {detail?.device?.name || detail?.dvd_id}</SheetTitle>
             <SheetDescription>Latest Sarekon locations, trips and messages for this device.</SheetDescription>
           </SheetHeader>
           {detailLoading && <div className="flex items-center gap-2 py-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}

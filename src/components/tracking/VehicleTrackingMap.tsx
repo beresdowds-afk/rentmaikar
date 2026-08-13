@@ -88,7 +88,12 @@ const VehicleTrackingMap = () => {
           make: d.make,
           model: d.model,
           licensePlate: d.licensePlate,
-          driverName: d.provider === 'traccar' ? `Traccar · ${d.serialNumber}` : d.serialNumber,
+          driverName: d.provider === 'traccar'
+            ? `Traccar · ${d.serialNumber}`
+            : d.provider === 'sarekon'
+              ? `Sarekon · ${d.serialNumber}`
+              : d.serialNumber,
+
           serialNumber: d.serialNumber,
           isStale,
         };
@@ -393,9 +398,27 @@ const VehicleTrackingMap = () => {
         onThresholdChange={setThresholdMinutes}
       />
 
+      {/* Provider merge indicator — every provider plots on THIS single map */}
+
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span>Plotted on this shared map:</span>
+        {(['traccar', 'sarekon', 'emqx'] as const).map((p) => {
+          const count = devices.filter((d) => (d.provider ?? 'emqx') === p).length;
+          return (
+            <span
+              key={p}
+              className={`rounded-full border px-2 py-0.5 capitalize ${count > 0 ? 'border-primary/40 text-foreground' : 'opacity-60'}`}
+            >
+              {p}: {count}
+            </span>
+          );
+        })}
+      </div>
+
       {error && (
         <p className="text-sm text-destructive">Could not load device positions: {error}</p>
       )}
+
       {!loading && !error && vehicles.length === 0 && (
         <p className="text-sm text-muted-foreground">
           No device positions stored yet — run <strong>Sync now</strong> to pull the latest fixes from the

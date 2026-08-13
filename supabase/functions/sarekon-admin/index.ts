@@ -13,6 +13,8 @@ import {
   type SarekonResult,
 } from "../_shared/sarekon-client.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
+import { invalidateProviderConfig } from "../_shared/provider-config.ts";
+
 
 const PROVIDER = "sarekon";
 
@@ -22,6 +24,10 @@ const Body = z.object({
     "test_connection",
     "list_devices",
     "sync",
+    "sync_devices",
+    "sync_telemetry",
+    "refresh_commands",
+    "sync_status",
     "send_command",
     "command_parameters",
     "command_history",
@@ -37,7 +43,16 @@ const Body = z.object({
   command: z.string().min(2).max(64).optional(),
   parameters: z.record(z.unknown()).optional(),
   limit: z.number().int().positive().max(200).optional(),
+  refresh_credentials: z.boolean().optional(),
 });
+
+/** Scoped sync-state rows so telemetry, devices and commands report separately. */
+const SCOPE_PROVIDER = {
+  devices: "sarekon",
+  telemetry: "sarekon_telemetry",
+  commands: "sarekon_commands",
+} as const;
+
 
 interface Diagnosis {
   code: string;
@@ -118,7 +133,14 @@ Deno.serve(async (req) => {
 
     const parsed = Body.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
-    const { action, dvd_id, device_row_id, vehicle_id, vehicle_ids, command, parameters, limit } = parsed.data;
+    const { action, dvd_id, device_row_id, vehicle_id, vehicle_ids, command, parameters, limit, refresh_credentials } =
+      parsed.data;
+
+    // A freshly saved credential version must beat the 60s config cache.
+    if (refresh_credentials) {
+      invalidateProviderConfig("sarekon");
+      sarekon.resetSession();
+    }
 
     const audit = async (row: {
       action: string;
@@ -135,12 +157,17 @@ Deno.serve(async (req) => {
       } as never);
     };
 
-    const setSyncState = async (patch: Record<string, unknown>) => {
+    const setScopeState = async (
+      scope: keyof typeof SCOPE_PROVIDER,
+      patch: Record<string, unknown>,
+    ) => {
       await supa.from("iot_sync_state").upsert(
-        { provider: PROVIDER, ...patch, updated_at: new Date().toISOString() },
+        { provider: SCOPE_PROVIDER[scope], ...patch, updated_at: new Date().toISOString() },
         { onConflict: "provider" },
       );
     };
+
+    const setSyncState = async (patch: Record<string, unknown>) => setScopeState("devices", patch);
 
     const activity = async (
       event: string,
@@ -157,6 +184,41 @@ Deno.serve(async (req) => {
       const { data } = await supa.from("iot_sync_state").select("*").eq("provider", PROVIDER).maybeSingle();
       return json({ ok: true, state: data });
     }
+
+    if (action === "sync_status") {
+      const { data: states } = await supa
+        .from("iot_sync_state")
+        .select("*")
+        .in("provider", Object.values(SCOPE_PROVIDER));
+      const { data: events } = await supa
+        .from("iot_sync_activity_log")
+        .select("event, level, message, details, created_at")
+        .eq("provider", PROVIDER)
+        .order("created_at", { ascending: false })
+        .limit(limit ?? 25);
+      const { count: mapped } = await supa
+        .from("iot_devices")
+        .select("id", { count: "exact", head: true })
+        .eq("provider", PROVIDER)
+        .not("latitude", "is", null)
+        .not("longitude", "is", null);
+      const { count: total } = await supa
+        .from("iot_devices")
+        .select("id", { count: "exact", head: true })
+        .eq("provider", PROVIDER);
+      const byScope: Record<string, unknown> = {};
+      for (const [scope, provider] of Object.entries(SCOPE_PROVIDER)) {
+        byScope[scope] = (states ?? []).find((s: Record<string, unknown>) => s.provider === provider) ?? null;
+      }
+      return json({
+        ok: true,
+        scopes: byScope,
+        activity: events ?? [],
+        map_merge: { devices_total: total ?? 0, devices_on_map: mapped ?? 0 },
+      });
+    }
+
+
 
     if (action === "link_device" || action === "unlink_device") {
       if (!device_row_id) return json({ error: "device_row_id required" }, 400);
@@ -256,10 +318,31 @@ Deno.serve(async (req) => {
       return json({ ok: r.ok, parameters: r.ok ? r.body : [], diagnosis: diagnose(r) });
     }
 
-    if (action === "command_history") {
+    if (action === "command_history" || action === "refresh_commands") {
+      const startedMs = Date.now();
+      const nowIso = new Date().toISOString();
       const r = await sarekon.commandHistory(dvd_id, limit ?? 50);
-      return json({ ok: r.ok, commands: r.ok ? r.body : [], diagnosis: diagnose(r) });
+      const dg = diagnose(r);
+      if (action === "refresh_commands") {
+        await setScopeState("commands", {
+          last_sync_at: nowIso,
+          state: r.ok ? "ok" : "error",
+          ...(r.ok
+            ? { last_success_at: nowIso, devices_synced: (r.body as unknown[]).length, last_error: null, last_error_at: null }
+            : { last_error: `${dg.title}: ${dg.detail}`, last_error_at: nowIso }),
+        });
+        await activity(
+          r.ok ? "command_queue_refreshed" : "command_queue_refresh_failed",
+          r.ok ? "info" : "error",
+          r.ok
+            ? `Command queue refreshed (${(r.body as unknown[]).length} entries) in ${Date.now() - startedMs}ms`
+            : `${dg.title} — ${dg.detail}`,
+          { dvd_id: dvd_id ?? null, diagnosis: dg },
+        );
+      }
+      return json({ ok: r.ok, commands: r.ok ? r.body : [], diagnosis: dg });
     }
+
 
     if (action === "send_command") {
       if (!dvd_id || !command) return json({ error: "dvd_id and command are required" }, 400);
@@ -285,21 +368,31 @@ Deno.serve(async (req) => {
       return json({ ok: r.ok, provider: PROVIDER, diagnosis: diagnose(r), response: r.ok ? r.body : undefined });
     }
 
-    if (action === "sync") {
+    if (action === "sync" || action === "sync_devices" || action === "sync_telemetry") {
+      // devices  -> registry/asset metadata only (no telemetry rows written)
+      // telemetry-> registry positions + mqtt_telemetry_logs feed
+      const writeTelemetry = action !== "sync_devices";
+      const scopeLabel = action === "sync_devices" ? "device" : action === "sync_telemetry" ? "telemetry" : "full";
       const startedMs = Date.now();
       const nowIso = new Date().toISOString();
       await setSyncState({ state: "running", last_sync_at: nowIso });
-      await activity("sync_started", "info", "Sarekon device sync started", {
+      if (writeTelemetry) await setScopeState("telemetry", { state: "running", last_sync_at: nowIso });
+      await activity("sync_started", "info", `Sarekon ${scopeLabel} sync started`, {
         triggered_by: isCron ? "schedule" : "admin",
+        scope: scopeLabel,
       });
 
       const dr = await sarekon.listDevices();
       if (!dr.ok) {
         const dg = diagnose(dr);
         await setSyncState({ state: "error", last_error_at: nowIso, last_error: `${dg.title}: ${dg.detail}` });
+        if (writeTelemetry) {
+          await setScopeState("telemetry", { state: "error", last_error_at: nowIso, last_error: `${dg.title}: ${dg.detail}` });
+        }
         await activity("device_fetch_failed", "error", `${dg.title} — ${dg.detail}`, { diagnosis: dg });
         return json({ ok: false, step: "devices", diagnosis: dg }, 502);
       }
+
 
       const vehicleFilter = vehicle_ids && vehicle_ids.length ? new Set(vehicle_ids) : null;
       const deviceErrors: Array<{ device: string; error: string }> = [];
@@ -357,7 +450,7 @@ Deno.serve(async (req) => {
 
         const linkedVehicleId = upserted?.vehicle_id ?? existing?.vehicle_id ?? null;
 
-        if (d.latitude !== null && d.longitude !== null) {
+        if (writeTelemetry && d.latitude !== null && d.longitude !== null) {
           const { error: telErr } = await supa.from("mqtt_telemetry_logs").insert({
             data_type: "sarekon_position",
             vehicle_id: linkedVehicleId ?? serial,
@@ -389,24 +482,46 @@ Deno.serve(async (req) => {
         last_error: hasErrors ? deviceErrors[0].error : null,
         last_error_at: hasErrors ? nowIso : null,
       });
+      if (writeTelemetry) {
+        await setScopeState("telemetry", {
+          state: hasErrors ? "degraded" : "ok",
+          last_success_at: nowIso,
+          devices_synced: upserts,
+          positions_imported: inserts,
+          last_error: hasErrors ? deviceErrors[0].error : null,
+          last_error_at: hasErrors ? nowIso : null,
+        });
+      }
       for (const de of deviceErrors.slice(0, 25)) {
         await activity("device_sync_error", "error", `${de.device}: ${de.error}`, de);
       }
       await activity(
         "sync_completed",
         hasErrors ? "warn" : "info",
-        `Synced ${upserts} device(s), imported ${inserts} position(s) in ${Date.now() - startedMs}ms` +
+        `${scopeLabel} sync: ${upserts} device(s), ${inserts} position(s) in ${Date.now() - startedMs}ms` +
           (hasErrors ? ` — ${deviceErrors.length} error(s)` : ""),
-        { devices_synced: upserts, positions_imported: inserts, skipped_by_vehicle_filter: skippedByFilter },
+        { scope: scopeLabel, devices_synced: upserts, positions_imported: inserts, skipped_by_vehicle_filter: skippedByFilter },
       );
+
+      // Map-merge safeguard: positions only ever land on iot_devices, which the
+      // single existing fleet map reads — never a separate provider map/table.
+      const { count: onMap } = await supa
+        .from("iot_devices")
+        .select("id", { count: "exact", head: true })
+        .eq("provider", PROVIDER)
+        .not("latitude", "is", null)
+        .not("longitude", "is", null);
 
       return json({
         ok: true,
+        scope: scopeLabel,
         devices_synced: upserts,
         positions_imported: inserts,
+        devices_on_shared_map: onMap ?? 0,
         skipped_by_vehicle_filter: skippedByFilter,
         device_errors: deviceErrors.slice(0, 25),
       });
+
     }
 
     return json({ error: "Unsupported action" }, 400);
