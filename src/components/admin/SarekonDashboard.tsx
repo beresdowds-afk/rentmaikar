@@ -462,7 +462,7 @@ export default function SarekonDashboard() {
       <Sheet open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
           <SheetHeader>
-            <SheetTitle className="flex items-center gap-2"><Link2 className="h-4 w-4" /> {detail?.device?.name || detail?.dvd_id}</SheetTitle>
+            <SheetTitle className="flex items-center gap-2"><Satellite className="h-4 w-4" /> {detail?.device?.name || detail?.dvd_id}</SheetTitle>
             <SheetDescription>Latest Sarekon locations, trips and messages for this device.</SheetDescription>
           </SheetHeader>
           {detailLoading && <div className="flex items-center gap-2 py-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
