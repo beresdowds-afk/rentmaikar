@@ -117,7 +117,7 @@ export function useFleetDeviceLocations() {
       const parts: string[] = [];
       const failures: string[] = [];
       for (const { fn, data, err } of results) {
-        const label = fn === "traccar-admin" ? "Traccar" : "Sarekon";
+        const label = fn === "traccar-admin" ? "Traccar" : "GPSANDTRACK";
         if (err) { failures.push(`${label}: ${err.message}`); continue; }
         if (data?.configured === false) continue; // provider not set up — silent
         if (data?.ok === false) {

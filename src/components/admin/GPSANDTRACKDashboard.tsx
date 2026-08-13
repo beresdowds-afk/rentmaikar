@@ -12,11 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, RefreshCw, Satellite, ShieldAlert, ShieldCheck, Search, Send, Eye, Power, Cpu, ListRestart, Activity, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { VehiclePicker } from "./VehiclePicker";
-import SarekonStatusPanel from "./SarekonStatusPanel";
-import SarekonCredentialsPanel from "./SarekonCredentialsPanel";
+import GPSANDTRACKStatusPanel from "./GPSANDTRACKStatusPanel";
+import GPSANDTRACKCredentialsPanel from "./GPSANDTRACKCredentialsPanel";
 
 
-interface SarekonDevice {
+interface GPSANDTRACKDevice {
   id: string;
   serial: string;
   name: string | null;
@@ -53,9 +53,9 @@ const COMMANDS = [
 
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : "—");
 
-export default function SarekonDashboard() {
+export default function GPSANDTRACKDashboard() {
   const [status, setStatus] = useState<{ configured: boolean; authenticated?: boolean; base_url?: string; latency_ms?: number; diagnosis?: Diagnosis } | null>(null);
-  const [devices, setDevices] = useState<SarekonDevice[]>([]);
+  const [devices, setDevices] = useState<GPSANDTRACKDevice[]>([]);
   const [localDevices, setLocalDevices] = useState<Record<string, LocalDevice>>({});
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState<null | "sync" | "sync_devices" | "sync_telemetry" | "refresh_commands">(null);
@@ -63,7 +63,7 @@ export default function SarekonDashboard() {
 
   const [testing, setTesting] = useState(false);
   const [query, setQuery] = useState("");
-  const [detail, setDetail] = useState<{ dvd_id: string; device: SarekonDevice | null; locations: Record<string, unknown>[]; trips: Record<string, unknown>[]; messages: Record<string, unknown>[]; commands: Record<string, unknown>[] } | null>(null);
+  const [detail, setDetail] = useState<{ dvd_id: string; device: GPSANDTRACKDevice | null; locations: Record<string, unknown>[]; trips: Record<string, unknown>[]; messages: Record<string, unknown>[]; commands: Record<string, unknown>[] } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [command, setCommand] = useState("immobilize");
   const [commandTarget, setCommandTarget] = useState<string>("");
@@ -105,8 +105,8 @@ export default function SarekonDashboard() {
     setLoading(true);
     try {
       const d = await call({ action: "list_devices" });
-      setDevices((d.devices as SarekonDevice[]) || []);
-      if (d.ok === false) toast.error((d.diagnosis as Diagnosis)?.title ?? "Could not list Sarekon devices");
+      setDevices((d.devices as GPSANDTRACKDevice[]) || []);
+      if (d.ok === false) toast.error((d.diagnosis as Diagnosis)?.title ?? "Could not list GPSANDTRACK devices");
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -125,7 +125,7 @@ export default function SarekonDashboard() {
     try {
       const d = await call({ action: "test_connection" });
       const diag = d.diagnosis as Diagnosis;
-      if (d.authenticated) toast.success(`Sarekon reachable (${d.latency_ms}ms)`);
+      if (d.authenticated) toast.success(`GPSANDTRACK reachable (${d.latency_ms}ms)`);
       else toast.error(`${diag?.title ?? "Test failed"} — ${diag?.detail ?? ""}`);
       await loadStatus();
     } catch (e) {
@@ -171,7 +171,7 @@ export default function SarekonDashboard() {
       const d = await call({ action: "device_detail", dvd_id: dvdId, limit: 25 });
       setDetail({
         dvd_id: dvdId,
-        device: (d.device as SarekonDevice) ?? null,
+        device: (d.device as GPSANDTRACKDevice) ?? null,
         locations: (d.locations as Record<string, unknown>[]) || [],
         trips: (d.trips as Record<string, unknown>[]) || [],
         messages: (d.messages as Record<string, unknown>[]) || [],
@@ -215,7 +215,7 @@ export default function SarekonDashboard() {
         command,
         vehicle_id: local?.vehicle_id ?? undefined,
       });
-      if (d.ok) toast.success("Command queued with Sarekon");
+      if (d.ok) toast.success("Command queued with GPSANDTRACK");
       else toast.error((d.diagnosis as Diagnosis)?.title ?? "Command failed");
       await loadHistory();
     } catch (e) {
@@ -250,7 +250,7 @@ export default function SarekonDashboard() {
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Satellite className="h-5 w-5" /> Sarekon tracking
+              <Satellite className="h-5 w-5" /> GPSANDTRACK tracking
             </CardTitle>
             <CardDescription>
               {status?.base_url ?? "https://api.sarekon.com/v1"} — devices, positions and commands flow into the same
@@ -285,7 +285,7 @@ export default function SarekonDashboard() {
           {status && !status.configured && (
             <Alert variant="destructive">
               <ShieldAlert className="h-4 w-4" />
-              <AlertTitle>{status.diagnosis?.title ?? "Sarekon is not configured"}</AlertTitle>
+              <AlertTitle>{status.diagnosis?.title ?? "GPSANDTRACK is not configured"}</AlertTitle>
               <AlertDescription>
                 {status.diagnosis?.detail} {status.diagnosis?.hints?.join(" ")}
               </AlertDescription>
@@ -320,11 +320,11 @@ export default function SarekonDashboard() {
         </TabsList>
 
         <TabsContent value="status">
-          <SarekonStatusPanel refreshKey={statusRefresh} />
+          <GPSANDTRACKStatusPanel refreshKey={statusRefresh} />
         </TabsContent>
 
         <TabsContent value="credentials">
-          <SarekonCredentialsPanel onStatusChange={() => { loadStatus(); setStatusRefresh((n) => n + 1); }} />
+          <GPSANDTRACKCredentialsPanel onStatusChange={() => { loadStatus(); setStatusRefresh((n) => n + 1); }} />
         </TabsContent>
 
 
@@ -356,7 +356,7 @@ export default function SarekonDashboard() {
                   {filtered.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                        {loading ? "Loading devices…" : "No Sarekon devices returned."}
+                        {loading ? "Loading devices…" : "No GPSANDTRACK devices returned."}
                       </TableCell>
                     </TableRow>
                   )}
@@ -414,7 +414,7 @@ export default function SarekonDashboard() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base"><Send className="h-4 w-4" /> Send command</CardTitle>
               <CardDescription>
-                Queued through Sarekon's command queue and recorded in the IoT audit log.
+                Queued through GPSANDTRACK's command queue and recorded in the IoT audit log.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap items-center gap-3">
@@ -483,7 +483,7 @@ export default function SarekonDashboard() {
         <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2"><Satellite className="h-4 w-4" /> {detail?.device?.name || detail?.dvd_id}</SheetTitle>
-            <SheetDescription>Latest Sarekon locations, trips and messages for this device.</SheetDescription>
+            <SheetDescription>Latest GPSANDTRACK locations, trips and messages for this device.</SheetDescription>
           </SheetHeader>
           {detailLoading && <div className="flex items-center gap-2 py-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
           {detail && !detailLoading && (

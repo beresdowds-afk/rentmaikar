@@ -91,7 +91,7 @@ const VehicleTrackingMap = () => {
           driverName: d.provider === 'traccar'
             ? `Traccar · ${d.serialNumber}`
             : d.provider === 'sarekon'
-              ? `Sarekon · ${d.serialNumber}`
+              ? `GPSANDTRACK · ${d.serialNumber}`
               : d.serialNumber,
 
           serialNumber: d.serialNumber,

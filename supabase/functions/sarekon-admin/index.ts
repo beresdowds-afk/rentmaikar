@@ -1,6 +1,6 @@
-// Admin-only Sarekon operations: connection status, device list, pull sync
+// Admin-only GPSANDTRACK operations: connection status, device list, pull sync
 // (writes to iot_devices + mqtt_telemetry_logs so the existing live map and
-// telemetry feed pick the data up), remote commands via the Sarekon command
+// telemetry feed pick the data up), remote commands via the GPSANDTRACK command
 // queue, device→vehicle linking, and iot_sync_state for the ingestion monitor.
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -9,8 +9,8 @@ import {
   SAREKON_COMMAND_MAP,
   missingCredentials,
   sarekon,
-  type SarekonDevice,
-  type SarekonResult,
+  type GPSANDTRACKDevice,
+  type GPSANDTRACKResult,
 } from "../_shared/sarekon-client.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { invalidateProviderConfig } from "../_shared/provider-config.ts";
@@ -62,22 +62,22 @@ interface Diagnosis {
   status?: number;
 }
 
-function diagnose(r: SarekonResult): Diagnosis {
+function diagnose(r: GPSANDTRACKResult): Diagnosis {
   if (r.ok) {
-    return { code: "ok", title: "Connection successful", detail: "Sarekon session created.", hints: [] };
+    return { code: "ok", title: "Connection successful", detail: "GPSANDTRACK session created.", hints: [] };
   }
   if (r.reason === "not_configured") {
     return {
       code: "not_configured",
-      title: "Sarekon credentials are missing",
+      title: "GPSANDTRACK credentials are missing",
       detail: `Missing: ${(r.missing ?? []).join(", ") || "credentials"}.`,
-      hints: ["Save the Sarekon user ID and password in the platform secrets, then test again."],
+      hints: ["Save the GPSANDTRACK user ID and password in the platform secrets, then test again."],
     };
   }
   if (r.reason === "network_error") {
     return {
       code: "network_error",
-      title: "Could not reach the Sarekon API",
+      title: "Could not reach the GPSANDTRACK API",
       detail: r.message,
       hints: ["Confirm https://api.sarekon.com/v1 is reachable and not blocked."],
     };
@@ -85,21 +85,21 @@ function diagnose(r: SarekonResult): Diagnosis {
   if (r.reason === "auth_error") {
     return {
       code: "invalid_credentials",
-      title: "Sarekon rejected the credentials",
+      title: "GPSANDTRACK rejected the credentials",
       detail: (r.body && typeof r.body === "object"
         ? String((r.body as Record<string, unknown>).description ?? "")
         : "") || `The user ID/password was refused (HTTP ${r.status}).`,
-      hints: ["Re-enter the Sarekon user ID and password.", "Confirm the account is active."],
+      hints: ["Re-enter the GPSANDTRACK user ID and password.", "Confirm the account is active."],
       status: r.status,
     };
   }
   return {
     code: "provider_error",
-    title: `Sarekon returned HTTP ${r.status}`,
+    title: `GPSANDTRACK returned HTTP ${r.status}`,
     detail: typeof r.body === "string"
       ? r.body.slice(0, 300)
       : String((r.body as Record<string, unknown> | null)?.description ?? JSON.stringify(r.body ?? {})).slice(0, 300),
-    hints: ["Retry; if it persists check the Sarekon account subscription/permissions."],
+    hints: ["Retry; if it persists check the GPSANDTRACK account subscription/permissions."],
     status: r.status,
   };
 }
@@ -261,10 +261,10 @@ Deno.serve(async (req) => {
         ok: true,
         configured: false,
         base_url: sarekon.baseUrl(),
-        message: "Sarekon is not configured. Save the Sarekon user ID and password.",
+        message: "GPSANDTRACK is not configured. Save the GPSANDTRACK user ID and password.",
         diagnosis: {
           code: "not_configured",
-          title: "Sarekon credentials are missing",
+          title: "GPSANDTRACK credentials are missing",
           detail: `Missing: ${missing.join(", ") || "credentials"}.`,
           hints: ["Add SAREKON_USER_ID and SAREKON_PASSWORD in platform secrets."],
           missing,
@@ -282,7 +282,7 @@ Deno.serve(async (req) => {
         await activity(
           ping.ok ? "test_connection_ok" : "test_connection_failed",
           ping.ok ? "info" : "error",
-          ping.ok ? `Authenticated with Sarekon in ${latency_ms}ms` : `${diagnosis.title} — ${diagnosis.detail}`,
+          ping.ok ? `Authenticated with GPSANDTRACK in ${latency_ms}ms` : `${diagnosis.title} — ${diagnosis.detail}`,
           { diagnosis, base_url: sarekon.baseUrl() },
         );
       }
@@ -377,7 +377,7 @@ Deno.serve(async (req) => {
       const nowIso = new Date().toISOString();
       await setSyncState({ state: "running", last_sync_at: nowIso });
       if (writeTelemetry) await setScopeState("telemetry", { state: "running", last_sync_at: nowIso });
-      await activity("sync_started", "info", `Sarekon ${scopeLabel} sync started`, {
+      await activity("sync_started", "info", `GPSANDTRACK ${scopeLabel} sync started`, {
         triggered_by: isCron ? "schedule" : "admin",
         scope: scopeLabel,
       });
@@ -400,7 +400,7 @@ Deno.serve(async (req) => {
       let inserts = 0;
       let skippedByFilter = 0;
 
-      for (const d of dr.body as SarekonDevice[]) {
+      for (const d of dr.body as GPSANDTRACKDevice[]) {
         const serial = d.serial || d.id;
         if (!serial) continue;
 

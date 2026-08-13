@@ -10,7 +10,7 @@ import { Loader2, KeyRound, ShieldCheck, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
 /**
- * Sarekon credentials screen. The user ID / password are written through
+ * GPSANDTRACK credentials screen. The user ID / password are written through
  * `provider_write_credentials`, which stores them encrypted in the vault —
  * only masked previews are ever readable back. Saving immediately runs a live
  * session test so the admin sees the real connection status.
@@ -37,7 +37,7 @@ interface ConnStatus {
   diagnosis?: Diagnosis;
 }
 
-export default function SarekonCredentialsPanel({ onStatusChange }: { onStatusChange?: () => void }) {
+export default function GPSANDTRACKCredentialsPanel({ onStatusChange }: { onStatusChange?: () => void }) {
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
@@ -90,7 +90,7 @@ export default function SarekonCredentialsPanel({ onStatusChange }: { onStatusCh
 
   const save = async () => {
     if (!userId.trim() || !password.trim()) {
-      toast.error("Enter both the Sarekon user ID and password");
+      toast.error("Enter both the GPSANDTRACK user ID and password");
       return;
     }
     setSaving(true);
@@ -100,15 +100,15 @@ export default function SarekonCredentialsPanel({ onStatusChange }: { onStatusCh
       const { error } = await supabase.rpc("provider_write_credentials" as never, {
         _provider: "sarekon",
         _values: values,
-        _notes: "Sarekon credentials saved from the admin panel",
+        _notes: "GPSANDTRACK credentials saved from the admin panel",
       } as never);
       if (error) throw error;
       setPassword("");
       toast.success("Credentials stored securely — testing the session…");
       await loadVersions();
       const res = await runTest(true);
-      if (res.authenticated) toast.success(`Sarekon session created (${res.latency_ms ?? 0}ms)`);
-      else toast.error(res.diagnosis?.title ?? "Sarekon rejected the credentials");
+      if (res.authenticated) toast.success(`GPSANDTRACK session created (${res.latency_ms ?? 0}ms)`);
+      else toast.error(res.diagnosis?.title ?? "GPSANDTRACK rejected the credentials");
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -121,7 +121,7 @@ export default function SarekonCredentialsPanel({ onStatusChange }: { onStatusCh
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <KeyRound className="h-4 w-4" aria-hidden="true" /> Sarekon credentials
+            <KeyRound className="h-4 w-4" aria-hidden="true" /> GPSANDTRACK credentials
           </CardTitle>
           <CardDescription>
             Stored encrypted in the platform vault and picked up by the sync jobs within a minute. Only a masked
@@ -137,7 +137,7 @@ export default function SarekonCredentialsPanel({ onStatusChange }: { onStatusCh
                 autoComplete="off"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
-                placeholder="Sarekon account user ID"
+                placeholder="GPSANDTRACK account user ID"
               />
             </div>
             <div>
@@ -148,7 +148,7 @@ export default function SarekonCredentialsPanel({ onStatusChange }: { onStatusCh
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Sarekon account password"
+                placeholder="GPSANDTRACK account password"
               />
             </div>
             <div className="sm:col-span-2">
