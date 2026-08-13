@@ -22,6 +22,10 @@ const Body = z.object({
     "test_connection",
     "list_devices",
     "sync",
+    "sync_devices",
+    "sync_telemetry",
+    "refresh_commands",
+    "sync_status",
     "send_command",
     "command_parameters",
     "command_history",
@@ -37,7 +41,16 @@ const Body = z.object({
   command: z.string().min(2).max(64).optional(),
   parameters: z.record(z.unknown()).optional(),
   limit: z.number().int().positive().max(200).optional(),
+  refresh_credentials: z.boolean().optional(),
 });
+
+/** Scoped sync-state rows so telemetry, devices and commands report separately. */
+const SCOPE_PROVIDER = {
+  devices: "sarekon",
+  telemetry: "sarekon_telemetry",
+  commands: "sarekon_commands",
+} as const;
+
 
 interface Diagnosis {
   code: string;
