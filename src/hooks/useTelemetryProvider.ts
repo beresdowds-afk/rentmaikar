@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type TelemetryProviderName = "emqx" | "traccar";
+export type TelemetryProviderName = "emqx" | "traccar" | "sarekon";
 
 export interface ProviderStatus {
   active: TelemetryProviderName;

@@ -47,6 +47,13 @@ Deno.serve(async (req) => {
           body: JSON.stringify({ action: "sync" }),
         });
         results.traccar = { status: r.status, body: await r.json().catch(() => null) };
+      } else if (s.provider === "sarekon") {
+        const r = await fetch(`${SUPABASE_URL}/functions/v1/sarekon-admin`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-cron-secret": CRON_SECRET, Authorization: `Bearer ${SERVICE_KEY}` },
+          body: JSON.stringify({ action: "sync" }),
+        });
+        results.sarekon = { status: r.status, body: await r.json().catch(() => null) };
       }
     } catch (e) {
       results[s.provider] = { error: (e as Error).message };

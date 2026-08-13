@@ -11,7 +11,7 @@
 // Nothing here throws: a failed lookup silently falls back to the env layer so
 // an unreachable database can never take the integrations offline.
 
-export type ManagedProvider = "hologram" | "traccar";
+export type ManagedProvider = "hologram" | "traccar" | "sarekon";
 
 type Bag = Record<string, string>;
 
@@ -28,12 +28,14 @@ const inflight = new Map<ManagedProvider, Promise<Entry>>();
 const KV_KEY: Record<ManagedProvider, string> = {
   hologram: "hologram_config",
   traccar: "traccar_config",
+  sarekon: "sarekon_config",
 };
 
 /** Non-secret keys that may live in platform_kv_settings. */
 const PUBLIC_KEYS: Record<ManagedProvider, string[]> = {
   hologram: ["org_id", "base_url"],
   traccar: ["base_url", "email"],
+  sarekon: ["base_url", "user_id"],
 };
 
 function restHeaders() {

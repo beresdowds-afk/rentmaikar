@@ -4,8 +4,9 @@
 // an admin flips the toggle in the Admin dashboard.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SAREKON_COMMAND_MAP, sarekon } from "./sarekon-client.ts";
 
-export type TelemetryProviderName = "emqx" | "traccar";
+export type TelemetryProviderName = "emqx" | "traccar" | "sarekon";
 
 export interface DeviceState {
   online: boolean;
@@ -156,10 +157,13 @@ export async function getTelemetryAdapter(): Promise<TelemetryAdapter> {
  */
 export async function getActiveProviderName(): Promise<TelemetryProviderName> {
   const { name } = await fetchActiveProvider();
-  const primary: TelemetryProviderName = name === "emqx" ? "emqx" : DEFAULT_PROVIDER;
+  const primary: TelemetryProviderName =
+    name === "emqx" || name === "sarekon" || name === "traccar" ? name : DEFAULT_PROVIDER;
   if (isProviderConfigured(primary)) return primary;
-  const fallback = primary === "traccar" ? FALLBACK_PROVIDER : "traccar";
-  return isProviderConfigured(fallback) ? fallback : primary;
+  for (const candidate of ["traccar", "sarekon", "emqx"] as TelemetryProviderName[]) {
+    if (candidate !== primary && isProviderConfigured(candidate)) return candidate;
+  }
+  return primary;
 }
 
 /** Send a command through the active provider, retrying on the other provider on failure. */
@@ -171,10 +175,13 @@ export async function sendCommandWithFallback(
   const primary = await getActiveProviderName();
   const first = await adapters[primary].sendCommand(deviceId, command, payload);
   if (first.ok) return { ...first, provider: primary };
-  const other: TelemetryProviderName = primary === "traccar" ? "emqx" : "traccar";
-  if (!isProviderConfigured(other)) return { ...first, provider: primary };
-  const second = await adapters[other].sendCommand(deviceId, command, payload);
-  return { ...second, provider: other, fell_back: true };
+  const order: TelemetryProviderName[] = ["traccar", "sarekon", "emqx"];
+  for (const other of order) {
+    if (other === primary || !isProviderConfigured(other)) continue;
+    const next = await adapters[other].sendCommand(deviceId, command, payload);
+    if (next.ok) return { ...next, provider: other, fell_back: true };
+  }
+  return { ...first, provider: primary };
 }
 
 export function isProviderConfigured(name: TelemetryProviderName): boolean {
@@ -185,6 +192,9 @@ export function isProviderConfigured(name: TelemetryProviderName): boolean {
           Deno.env.get("TRACCAR_TOKEN") ||
           (Deno.env.get("TRACCAR_EMAIL") && Deno.env.get("TRACCAR_PASSWORD"))),
     );
+  }
+  if (name === "sarekon") {
+    return Boolean((Deno.env.get("SAREKON_USER_ID") && Deno.env.get("SAREKON_PASSWORD")) || sarekon.isConfigured());
   }
   return Boolean(Deno.env.get("EMQX_API_URL") && Deno.env.get("EMQX_API_KEY") && Deno.env.get("EMQX_API_SECRET"));
 }
@@ -203,6 +213,11 @@ export async function testProvider(
 
       return { ok: res.ok, configured: true, status: res.status };
     }
+    if (name === "sarekon") {
+      await sarekon.ensureReady();
+      const r = await sarekon.ping();
+      return { ok: r.ok, configured: true, status: r.ok ? 200 : (r as { status?: number }).status };
+    }
     const url = Deno.env.get("EMQX_API_URL")!;
     const auth = "Basic " + btoa(`${Deno.env.get("EMQX_API_KEY")}:${Deno.env.get("EMQX_API_SECRET")}`);
     const res = await fetch(`${url}/nodes`, { headers: { Authorization: auth } });
@@ -212,4 +227,39 @@ export async function testProvider(
   }
 }
 
-export const adapters = { emqx: emqxAdapter, traccar: traccarAdapter };
+// -------- Sarekon adapter (REST, session auth)
+const sarekonAdapter: TelemetryAdapter = {
+  name: "sarekon",
+  async getDeviceState(deviceId) {
+    await sarekon.ensureReady();
+    if (!sarekon.isConfigured()) return { online: false, lastSeen: null };
+    const r = await sarekon.showDevice(deviceId);
+    if (!r.ok || !r.body) return { online: false, lastSeen: null };
+    const d = r.body;
+    const stale = d.lastUpdate ? Date.now() - new Date(d.lastUpdate).getTime() > 30 * 60_000 : true;
+    return {
+      online: (d.status ? /online|active|connected/i.test(d.status) : false) || !stale,
+      lastSeen: d.lastUpdate,
+      latitude: d.latitude,
+      longitude: d.longitude,
+      speed: d.speedKmh,
+      ignition: d.ignition,
+      raw: d.raw,
+    };
+  },
+  async sendCommand(deviceId, command, payload = {}) {
+    await sarekon.ensureReady();
+    if (!sarekon.isConfigured()) return { ok: false, error: "Sarekon not configured" };
+    const mapped = SAREKON_COMMAND_MAP[command] ?? command;
+    const r = await sarekon.sendCommand(deviceId, mapped, payload);
+    if (r.ok) return { ok: true };
+    const err = r.reason === "provider_error" || r.reason === "auth_error"
+      ? `Sarekon ${r.status}`
+      : r.reason === "network_error"
+      ? r.message
+      : "Sarekon not configured";
+    return { ok: false, error: err };
+  },
+};
+
+export const adapters = { emqx: emqxAdapter, traccar: traccarAdapter, sarekon: sarekonAdapter };

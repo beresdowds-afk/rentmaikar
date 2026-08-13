@@ -4,7 +4,8 @@ import { DeviceRegistry } from './hardware/DeviceRegistry';
 import { DeviceLinking } from './hardware/DeviceLinking';
 import { DeviceActivation } from './hardware/DeviceActivation';
 import { DeviceHealth } from './hardware/DeviceHealth';
-import { Cpu, Link, Power, Activity } from 'lucide-react';
+import SarekonDashboard from './SarekonDashboard';
+import { Cpu, Link, Power, Activity, Satellite } from 'lucide-react';
 
 export const HardwareManagement = () => {
   const [activeTab, setActiveTab] = useState('registry');
@@ -19,7 +20,7 @@ export const HardwareManagement = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="registry" className="flex items-center gap-2">
             <Cpu className="h-4 w-4" />
             Device Registry
@@ -31,6 +32,10 @@ export const HardwareManagement = () => {
           <TabsTrigger value="activation" className="flex items-center gap-2">
             <Power className="h-4 w-4" />
             Activation
+          </TabsTrigger>
+          <TabsTrigger value="sarekon" className="flex items-center gap-2">
+            <Satellite className="h-4 w-4" />
+            Sarekon
           </TabsTrigger>
           <TabsTrigger value="health" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
@@ -48,6 +53,10 @@ export const HardwareManagement = () => {
 
         <TabsContent value="activation">
           <DeviceActivation />
+        </TabsContent>
+
+        <TabsContent value="sarekon">
+          <SarekonDashboard />
         </TabsContent>
 
         <TabsContent value="health">

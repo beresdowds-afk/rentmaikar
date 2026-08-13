@@ -17,7 +17,7 @@ import { checkRateLimit } from "../_shared/rate-limit.ts";
 
 const Body = z.object({
   action: z.enum(["get_active_provider", "test_connection", "device_state", "send_command"]),
-  provider: z.enum(["emqx", "traccar"]).optional(),
+  provider: z.enum(["emqx", "traccar", "sarekon"]).optional(),
   device_id: z.string().min(1).max(128).optional(),
   vehicle_id: z.string().uuid().optional(),
   command: z.string().min(2).max(48).optional(),
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
 
     if (action === "get_active_provider") {
       const status: Record<string, unknown> = {};
-      for (const name of ["emqx", "traccar"] as TelemetryProviderName[]) {
+      for (const name of ["emqx", "traccar", "sarekon"] as TelemetryProviderName[]) {
         status[name] = { configured: isProviderConfigured(name) };
       }
       return json({ ok: true, active, providers: status });
@@ -82,12 +82,13 @@ Deno.serve(async (req) => {
       let state = await adapter.getDeviceState(target);
       let usedProvider = active;
       if (!state.online && !state.lastSeen) {
-        const other = active === "traccar" ? "emqx" : "traccar";
-        if (isProviderConfigured(other as TelemetryProviderName)) {
-          const alt = await adapters[other as TelemetryProviderName].getDeviceState(target);
+        for (const other of ["traccar", "sarekon", "emqx"] as TelemetryProviderName[]) {
+          if (other === active || !isProviderConfigured(other)) continue;
+          const alt = await adapters[other].getDeviceState(target);
           if (alt.online || alt.lastSeen) {
             state = alt;
-            usedProvider = other as TelemetryProviderName;
+            usedProvider = other;
+            break;
           }
         }
       }

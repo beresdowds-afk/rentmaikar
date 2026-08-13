@@ -94,27 +94,49 @@ export function useFleetDeviceLocations() {
     setLoading(false);
   }, []);
 
-  /** Pull fresh positions from the telemetry provider, then reload the map. */
+  /** Pull fresh positions from every configured telemetry provider, then reload the map. */
   const syncNow = useCallback(async (): Promise<{ ok: boolean; message: string }> => {
     setSyncing(true);
     try {
-      const { data, error: err } = await supabase.functions.invoke("traccar-admin", {
-        body: { action: "sync" },
-      });
+      type SyncRes = {
+        ok?: boolean;
+        configured?: boolean;
+        devices_synced?: number;
+        positions_imported?: number;
+        diagnosis?: { title?: string; detail?: string };
+      };
+      const providers = ["traccar-admin", "sarekon-admin"] as const;
+      const results = await Promise.all(
+        providers.map(async (fn) => {
+          const { data, error: err } = await supabase.functions.invoke(fn, { body: { action: "sync" } });
+          return { fn, data: data as SyncRes | null, err };
+        }),
+      );
       await load();
-      if (err) return { ok: false, message: err.message };
-      const res = data as { ok?: boolean; devices_synced?: number; positions_imported?: number; diagnosis?: { title?: string; detail?: string } };
-      if (res?.ok === false) {
-        return { ok: false, message: `${res.diagnosis?.title ?? "Sync failed"} — ${res.diagnosis?.detail ?? ""}` };
+
+      const parts: string[] = [];
+      const failures: string[] = [];
+      for (const { fn, data, err } of results) {
+        const label = fn === "traccar-admin" ? "Traccar" : "Sarekon";
+        if (err) { failures.push(`${label}: ${err.message}`); continue; }
+        if (data?.configured === false) continue; // provider not set up — silent
+        if (data?.ok === false) {
+          failures.push(`${label}: ${data.diagnosis?.title ?? "sync failed"}${data.diagnosis?.detail ? ` — ${data.diagnosis.detail}` : ""}`);
+          continue;
+        }
+        parts.push(`${label} ${data?.devices_synced ?? 0} device(s)/${data?.positions_imported ?? 0} position(s)`);
       }
+
+      if (parts.length === 0 && failures.length > 0) return { ok: false, message: failures.join(" · ") };
       return {
-        ok: true,
-        message: `Synced ${res?.devices_synced ?? 0} device(s), ${res?.positions_imported ?? 0} new position(s)`,
+        ok: failures.length === 0,
+        message: [parts.length ? `Synced ${parts.join(", ")}` : "No provider synced", ...failures].join(" · "),
       };
     } finally {
       setSyncing(false);
     }
   }, [load]);
+
 
   useEffect(() => { load(); }, [load]);
 
