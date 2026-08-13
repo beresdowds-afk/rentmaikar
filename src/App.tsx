@@ -134,6 +134,8 @@ const App = () => (
               <NativeDeepLinkBridge />
               <DocumentExpiryInAppNotifier />
               <OnboardingStageToaster />
+              <PhoneVerificationPrompt />
+
 
               <SkipToContent />
               <LiveAnnouncer />
