@@ -368,21 +368,31 @@ Deno.serve(async (req) => {
       return json({ ok: r.ok, provider: PROVIDER, diagnosis: diagnose(r), response: r.ok ? r.body : undefined });
     }
 
-    if (action === "sync") {
+    if (action === "sync" || action === "sync_devices" || action === "sync_telemetry") {
+      // devices  -> registry/asset metadata only (no telemetry rows written)
+      // telemetry-> registry positions + mqtt_telemetry_logs feed
+      const writeTelemetry = action !== "sync_devices";
+      const scopeLabel = action === "sync_devices" ? "device" : action === "sync_telemetry" ? "telemetry" : "full";
       const startedMs = Date.now();
       const nowIso = new Date().toISOString();
       await setSyncState({ state: "running", last_sync_at: nowIso });
-      await activity("sync_started", "info", "Sarekon device sync started", {
+      if (writeTelemetry) await setScopeState("telemetry", { state: "running", last_sync_at: nowIso });
+      await activity("sync_started", "info", `Sarekon ${scopeLabel} sync started`, {
         triggered_by: isCron ? "schedule" : "admin",
+        scope: scopeLabel,
       });
 
       const dr = await sarekon.listDevices();
       if (!dr.ok) {
         const dg = diagnose(dr);
         await setSyncState({ state: "error", last_error_at: nowIso, last_error: `${dg.title}: ${dg.detail}` });
+        if (writeTelemetry) {
+          await setScopeState("telemetry", { state: "error", last_error_at: nowIso, last_error: `${dg.title}: ${dg.detail}` });
+        }
         await activity("device_fetch_failed", "error", `${dg.title} — ${dg.detail}`, { diagnosis: dg });
         return json({ ok: false, step: "devices", diagnosis: dg }, 502);
       }
+
 
       const vehicleFilter = vehicle_ids && vehicle_ids.length ? new Set(vehicle_ids) : null;
       const deviceErrors: Array<{ device: string; error: string }> = [];
