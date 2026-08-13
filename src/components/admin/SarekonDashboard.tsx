@@ -9,9 +9,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCw, Satellite, ShieldAlert, ShieldCheck, Search, Send, Eye, Link2, Power } from "lucide-react";
+import { Loader2, RefreshCw, Satellite, ShieldAlert, ShieldCheck, Search, Send, Eye, Power, Cpu, ListRestart, Activity, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { VehiclePicker } from "./VehiclePicker";
+import SarekonStatusPanel from "./SarekonStatusPanel";
+import SarekonCredentialsPanel from "./SarekonCredentialsPanel";
+
 
 interface SarekonDevice {
   id: string;
