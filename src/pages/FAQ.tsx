@@ -62,6 +62,76 @@ const FAQ = () => {
     return categories.find(c => c.id === categoryId)?.name || 'Unknown';
   };
 
+  const [downloading, setDownloading] = useState(false);
+
+  // Builds a printable PDF of every FAQ visible to the current region.
+  const handleDownloadPdf = async () => {
+    if (!items.length) {
+      toast.error("No FAQ content available to download yet.");
+      return;
+    }
+    setDownloading(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const margin = 48;
+      const width = doc.internal.pageSize.getWidth() - margin * 2;
+      const bottom = doc.internal.pageSize.getHeight() - margin;
+      let y = margin;
+
+      const addLines = (text: string, size: number, style: "bold" | "normal", gap = 6) => {
+        doc.setFont("helvetica", style);
+        doc.setFontSize(size);
+        for (const line of doc.splitTextToSize(text, width)) {
+          if (y > bottom) {
+            doc.addPage();
+            y = margin;
+          }
+          doc.text(line, margin, y);
+          y += size + 2;
+        }
+        y += gap;
+      };
+
+      addLines("Rentmaikar — Frequently Asked Questions", 18, "bold", 4);
+      addLines(
+        `Region: ${regionFilter === "USA" ? "United States" : "Nigeria"} · Generated ${new Date().toLocaleDateString()}`,
+        10,
+        "normal",
+        14,
+      );
+
+      const order = categories.length
+        ? categories.map((c) => c.id)
+        : Array.from(new Set(items.map((i) => i.category_id)));
+
+      order.forEach((categoryId) => {
+        const list = items.filter((i) => i.category_id === categoryId);
+        if (!list.length) return;
+        addLines(getCategoryName(categoryId), 14, "bold", 4);
+        list.forEach((item, idx) => {
+          addLines(`${idx + 1}. ${item.question}`, 11, "bold", 2);
+          addLines(item.answer, 10, "normal", 10);
+        });
+      });
+
+      addLines(
+        "Rentmaikar operates as a technology-enabled marketplace and administrator. Fees, policies and supported features may change with notice.",
+        9,
+        "normal",
+        0,
+      );
+
+      doc.save(`rentmaikar-faq-${regionFilter.toLowerCase()}.pdf`);
+      toast.success("FAQ downloaded");
+    } catch (error) {
+      console.error("FAQ download failed", error);
+      toast.error("Could not generate the FAQ download. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const faqJsonLd = items.length
     ? {
         "@context": "https://schema.org",
