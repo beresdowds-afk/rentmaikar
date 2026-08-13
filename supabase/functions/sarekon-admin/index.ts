@@ -450,7 +450,7 @@ Deno.serve(async (req) => {
 
         const linkedVehicleId = upserted?.vehicle_id ?? existing?.vehicle_id ?? null;
 
-        if (d.latitude !== null && d.longitude !== null) {
+        if (writeTelemetry && d.latitude !== null && d.longitude !== null) {
           const { error: telErr } = await supa.from("mqtt_telemetry_logs").insert({
             data_type: "sarekon_position",
             vehicle_id: linkedVehicleId ?? serial,
@@ -482,24 +482,46 @@ Deno.serve(async (req) => {
         last_error: hasErrors ? deviceErrors[0].error : null,
         last_error_at: hasErrors ? nowIso : null,
       });
+      if (writeTelemetry) {
+        await setScopeState("telemetry", {
+          state: hasErrors ? "degraded" : "ok",
+          last_success_at: nowIso,
+          devices_synced: upserts,
+          positions_imported: inserts,
+          last_error: hasErrors ? deviceErrors[0].error : null,
+          last_error_at: hasErrors ? nowIso : null,
+        });
+      }
       for (const de of deviceErrors.slice(0, 25)) {
         await activity("device_sync_error", "error", `${de.device}: ${de.error}`, de);
       }
       await activity(
         "sync_completed",
         hasErrors ? "warn" : "info",
-        `Synced ${upserts} device(s), imported ${inserts} position(s) in ${Date.now() - startedMs}ms` +
+        `${scopeLabel} sync: ${upserts} device(s), ${inserts} position(s) in ${Date.now() - startedMs}ms` +
           (hasErrors ? ` — ${deviceErrors.length} error(s)` : ""),
-        { devices_synced: upserts, positions_imported: inserts, skipped_by_vehicle_filter: skippedByFilter },
+        { scope: scopeLabel, devices_synced: upserts, positions_imported: inserts, skipped_by_vehicle_filter: skippedByFilter },
       );
+
+      // Map-merge safeguard: positions only ever land on iot_devices, which the
+      // single existing fleet map reads — never a separate provider map/table.
+      const { count: onMap } = await supa
+        .from("iot_devices")
+        .select("id", { count: "exact", head: true })
+        .eq("provider", PROVIDER)
+        .not("latitude", "is", null)
+        .not("longitude", "is", null);
 
       return json({
         ok: true,
+        scope: scopeLabel,
         devices_synced: upserts,
         positions_imported: inserts,
+        devices_on_shared_map: onMap ?? 0,
         skipped_by_vehicle_filter: skippedByFilter,
         device_errors: deviceErrors.slice(0, 25),
       });
+
     }
 
     return json({ error: "Unsupported action" }, 400);
