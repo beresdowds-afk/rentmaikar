@@ -130,19 +130,34 @@ export default function SarekonDashboard() {
     }
   };
 
-  const sync = async () => {
-    setSyncing(true);
+  const runSync = async (
+    action: "sync" | "sync_devices" | "sync_telemetry" | "refresh_commands",
+    label: string,
+  ) => {
+    setSyncing(action);
     try {
-      const d = await call({ action: "sync" });
-      if (d.ok === false) toast.error((d.diagnosis as Diagnosis)?.title ?? "Sync failed");
-      else toast.success(`Synced ${d.devices_synced ?? 0} device(s), ${d.positions_imported ?? 0} position(s) — now on the live map`);
-      await Promise.all([loadLocal(), loadDevices()]);
+      const d = await call({ action, limit: action === "refresh_commands" ? 50 : undefined });
+      if (d.ok === false) {
+        toast.error((d.diagnosis as Diagnosis)?.title ?? `${label} failed`);
+      } else if (action === "refresh_commands") {
+        const rows = (d.commands as Record<string, unknown>[]) || [];
+        setHistory(rows);
+        toast.success(`Command queue refreshed — ${rows.length} entr${rows.length === 1 ? "y" : "ies"}`);
+      } else {
+        toast.success(
+          `${label}: ${d.devices_synced ?? 0} device(s), ${d.positions_imported ?? 0} position(s) — ` +
+            `${d.devices_on_shared_map ?? 0} on the shared fleet map`,
+        );
+      }
+      if (action !== "refresh_commands") await Promise.all([loadLocal(), loadDevices()]);
+      setStatusRefresh((n) => n + 1);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
-      setSyncing(false);
+      setSyncing(null);
     }
   };
+
 
   const openDetail = async (dvdId: string) => {
     setDetailLoading(true);
