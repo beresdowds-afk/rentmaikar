@@ -1,7 +1,9 @@
 import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Loader2, Lock, LogIn } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Header from '@/components/layout/Header';
@@ -24,6 +26,26 @@ interface GateArgs {
 export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNode | null {
   const { user, isLoading, userRole, isRoleLoading } = useAuth();
   const location = useLocation();
+
+  // A user who already registered must never be pushed back into a fresh
+  // sign-up. Look up their existing application so the "no role yet" screen
+  // can show status instead of registration CTAs.
+  const { data: existingApplication } = useQuery({
+    queryKey: ['auth-gate-application', user?.id],
+    enabled: !!user?.id && !userRole && !isRoleLoading,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('applications')
+        .select('id, status, application_type')
+        .eq('user_id', user!.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data ?? null;
+    },
+  });
+
 
   if (isLoading || (user && isRoleLoading)) {
     return (
@@ -99,6 +121,14 @@ export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNo
                     <span className="font-semibold">{userRole.replace('_', ' ')}</span>.
                     Please head to your own workspace instead.
                   </>
+                ) : existingApplication ? (
+                  <>
+                    Your {existingApplication.application_type ?? ''} registration is on
+                    file (status:{' '}
+                    <span className="font-semibold">{existingApplication.status}</span>).
+                    You don’t need to sign up again — access opens as soon as an admin
+                    finishes the review.
+                  </>
                 ) : (
                   <>
                     No role has been assigned to your account yet. Complete your
@@ -110,6 +140,15 @@ export function useDashboardAuthGate({ allowedRoles, label }: GateArgs): ReactNo
                 <Button asChild>
                   <Link to={ROLE_HOME[userRole]}>Go to my dashboard</Link>
                 </Button>
+              ) : existingApplication ? (
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <Button onClick={() => window.location.reload()}>
+                    Refresh access
+                  </Button>
+                  <Button asChild variant="ghost">
+                    <Link to="/faq">Contact support</Link>
+                  </Button>
+                </div>
               ) : (
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
                   <Button asChild>

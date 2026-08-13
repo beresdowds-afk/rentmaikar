@@ -1,9 +1,13 @@
 import { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Lock, Sparkles } from 'lucide-react';
 import type { RegistrationStage } from '@/hooks/useRegistrationProgress';
 
-type Tile = { title: string; desc: string };
+type Tile = { title: string; desc: string; href?: string };
+
+/** Tiles that must never appear on a driver's dashboard. */
+const DRIVER_HIDDEN_TILES = ['Earnings & payouts', 'Live fleet map'];
 
 const STAGE_ORDER: RegistrationStage[] = [
   'auth',
@@ -22,44 +26,44 @@ const STAGE_LABEL: Record<RegistrationStage, string> = {
 };
 
 const DRIVER_UNLOCKS: Record<RegistrationStage, Tile[]> = {
-  auth: [{ title: 'Profile & notifications', desc: 'Personalize your account.' }],
+  auth: [{ title: 'Profile & notifications', desc: 'Personalize your account.', href: '/profile/settings' }],
   account_opened: [
-    { title: 'Dashboard preview', desc: 'Peek at what unlocks next.' },
-    { title: 'Support chat', desc: 'Message admin any time.' },
+    { title: 'Dashboard preview', desc: 'Peek at what unlocks next.', href: '/driver/dashboard' },
+    { title: 'Support chat', desc: 'Message admin any time.', href: '/driver/dashboard' },
   ],
   documents_submitted: [
-    { title: 'Vehicle browsing', desc: 'Explore rentable vehicles.' },
-    { title: 'Rideshare uploads', desc: 'Submit weekly performance proof.' },
+    { title: 'Vehicle browsing', desc: 'Explore rentable vehicles.', href: '/driver/portal/browse' },
+    { title: 'Rideshare uploads', desc: 'Submit weekly performance proof.', href: '/driver/portal/rideshare' },
   ],
   verification_pending: [
-    { title: 'Payments & billing', desc: 'Weekly/daily payments and receipts.' },
-    { title: 'In-app voice calls', desc: 'Talk to admin securely.' },
+    { title: 'Payments & billing', desc: 'Weekly/daily payments and receipts.', href: '/driver/portal/payments' },
+    { title: 'In-app voice calls', desc: 'Talk to admin securely.', href: '/driver/dashboard' },
   ],
   approved: [
-    { title: 'Active rentals', desc: 'View agreement & assignment.' },
-    { title: 'Vehicle tracking', desc: 'Live GPS & IoT telemetry.' },
-    { title: 'Inspections', desc: 'File weekly photos & incidents.' },
+    { title: 'Active rentals', desc: 'View agreement & assignment.', href: '/driver/dashboard' },
+    { title: 'Vehicle tracking', desc: 'Live GPS & IoT telemetry.', href: '/driver/dashboard' },
+    { title: 'Inspections', desc: 'File weekly photos & incidents.', href: '/driver/portal/inspection' },
   ],
 };
 
 const OWNER_UNLOCKS: Record<RegistrationStage, Tile[]> = {
-  auth: [{ title: 'Profile & notifications', desc: 'Personalize your account.' }],
+  auth: [{ title: 'Profile & notifications', desc: 'Personalize your account.', href: '/profile/settings' }],
   account_opened: [
-    { title: 'Dashboard preview', desc: 'Peek at what unlocks next.' },
-    { title: 'Support chat', desc: 'Message admin any time.' },
+    { title: 'Dashboard preview', desc: 'Peek at what unlocks next.', href: '/owner/dashboard' },
+    { title: 'Support chat', desc: 'Message admin any time.', href: '/owner/dashboard' },
   ],
   documents_submitted: [
-    { title: 'Vehicle registrations', desc: 'Draft vehicle listings.' },
-    { title: 'Pickup logistics', desc: 'Configure pickup locations.' },
+    { title: 'Vehicle registrations', desc: 'Draft vehicle listings.', href: '/owner/portal/vehicles' },
+    { title: 'Pickup location', desc: 'Configure pickup locations.', href: '/owner/portal/pickup' },
   ],
   verification_pending: [
-    { title: 'IoT devices', desc: 'Purchase & manage trackers.' },
-    { title: 'Insurance & subscriptions', desc: 'Enroll in insurance/training.' },
+    { title: 'IoT devices', desc: 'Purchase & manage trackers.', href: '/owner/portal/iot' },
+    { title: 'Insurance & subscriptions', desc: 'Enroll in insurance/training.', href: '/owner/portal/insurance' },
   ],
   approved: [
-    { title: 'Earnings & payouts', desc: 'Track weekly earnings & withdraw.' },
-    { title: 'Weekly reports', desc: 'Review driver submissions.' },
-    { title: 'Live fleet map', desc: 'See all your vehicles at once.' },
+    { title: 'Earnings & payouts', desc: 'Track weekly earnings & withdraw.', href: '/owner/portal/earnings' },
+    { title: 'Weekly reports', desc: 'Review driver submissions.', href: '/owner/portal/inspections' },
+    { title: 'Live fleet map', desc: 'See all your vehicles at once.', href: '/owner/dashboard' },
   ],
 };
 
@@ -72,7 +76,18 @@ export function UnlockBubbles({
   stage: RegistrationStage;
   userId?: string | null;
 }) {
-  const map = role === 'driver' ? DRIVER_UNLOCKS : OWNER_UNLOCKS;
+  const navigate = useNavigate();
+  const baseMap = role === 'driver' ? DRIVER_UNLOCKS : OWNER_UNLOCKS;
+  const map = (
+    role === 'driver'
+      ? (Object.fromEntries(
+          Object.entries(baseMap).map(([k, tiles]) => [
+            k,
+            tiles.filter((t) => !DRIVER_HIDDEN_TILES.includes(t.title)),
+          ]),
+        ) as Record<RegistrationStage, Tile[]>)
+      : baseMap
+  );
   const currentIdx = Math.max(0, STAGE_ORDER.indexOf(stage));
   const firedRef = useRef(false);
 
@@ -133,7 +148,8 @@ export function UnlockBubbles({
                     type="button"
                     onClick={() => {
                       if (unlocked) {
-                        toast.success(t.title, { description: t.desc, duration: 4000 });
+                        toast.success(t.title, { description: t.desc, duration: 3000 });
+                        if (t.href) navigate(t.href);
                       } else {
                         toast(t.title, {
                           description: `Unlocks at: ${STAGE_LABEL[s]}. ${t.desc}`,

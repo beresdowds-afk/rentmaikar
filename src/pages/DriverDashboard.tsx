@@ -50,6 +50,7 @@ import { installDeepLinkListener } from '@/lib/push';
 import { useDashboardAuthGate } from '@/components/auth/DashboardAuthGate';
 import { useRegistrationProgress } from '@/hooks/useRegistrationProgress';
 import { ViewOnlyDashboardShell } from '@/components/registration/ViewOnlyDashboardShell';
+import { PostApprovalTasks } from '@/components/driver/PostApprovalTasks';
 import { UserMessagesPanel } from '@/components/dashboard/UserMessagesPanel';
 import PageSkeleton from '@/components/PageSkeleton';
 
@@ -300,6 +301,10 @@ export default function DriverDashboard() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          <div className="mb-6">
+            <PostApprovalTasks onOpenDocuments={() => setActiveTab('documents')} />
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
