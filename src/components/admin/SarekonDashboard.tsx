@@ -55,7 +55,9 @@ export default function SarekonDashboard() {
   const [devices, setDevices] = useState<SarekonDevice[]>([]);
   const [localDevices, setLocalDevices] = useState<Record<string, LocalDevice>>({});
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const [syncing, setSyncing] = useState<null | "sync" | "sync_devices" | "sync_telemetry" | "refresh_commands">(null);
+  const [statusRefresh, setStatusRefresh] = useState(0);
+
   const [testing, setTesting] = useState(false);
   const [query, setQuery] = useState("");
   const [detail, setDetail] = useState<{ dvd_id: string; device: SarekonDevice | null; locations: Record<string, unknown>[]; trips: Record<string, unknown>[]; messages: Record<string, unknown>[]; commands: Record<string, unknown>[] } | null>(null);
