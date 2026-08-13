@@ -311,7 +311,22 @@ export default function SarekonDashboard() {
         <TabsList>
           <TabsTrigger value="devices">Devices</TabsTrigger>
           <TabsTrigger value="commands">Commands</TabsTrigger>
+          <TabsTrigger value="status" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" /> Status
+          </TabsTrigger>
+          <TabsTrigger value="credentials" className="flex items-center gap-2">
+            <KeyRound className="h-4 w-4" /> Credentials
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="status">
+          <SarekonStatusPanel refreshKey={statusRefresh} />
+        </TabsContent>
+
+        <TabsContent value="credentials">
+          <SarekonCredentialsPanel onStatusChange={() => { loadStatus(); setStatusRefresh((n) => n + 1); }} />
+        </TabsContent>
+
 
         <TabsContent value="devices" className="space-y-4">
           <div className="flex items-center gap-2">
