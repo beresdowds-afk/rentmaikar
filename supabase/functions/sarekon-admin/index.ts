@@ -318,10 +318,31 @@ Deno.serve(async (req) => {
       return json({ ok: r.ok, parameters: r.ok ? r.body : [], diagnosis: diagnose(r) });
     }
 
-    if (action === "command_history") {
+    if (action === "command_history" || action === "refresh_commands") {
+      const startedMs = Date.now();
+      const nowIso = new Date().toISOString();
       const r = await sarekon.commandHistory(dvd_id, limit ?? 50);
-      return json({ ok: r.ok, commands: r.ok ? r.body : [], diagnosis: diagnose(r) });
+      const dg = diagnose(r);
+      if (action === "refresh_commands") {
+        await setScopeState("commands", {
+          last_sync_at: nowIso,
+          state: r.ok ? "ok" : "error",
+          ...(r.ok
+            ? { last_success_at: nowIso, devices_synced: (r.body as unknown[]).length, last_error: null, last_error_at: null }
+            : { last_error: `${dg.title}: ${dg.detail}`, last_error_at: nowIso }),
+        });
+        await activity(
+          r.ok ? "command_queue_refreshed" : "command_queue_refresh_failed",
+          r.ok ? "info" : "error",
+          r.ok
+            ? `Command queue refreshed (${(r.body as unknown[]).length} entries) in ${Date.now() - startedMs}ms`
+            : `${dg.title} — ${dg.detail}`,
+          { dvd_id: dvd_id ?? null, diagnosis: dg },
+        );
+      }
+      return json({ ok: r.ok, commands: r.ok ? r.body : [], diagnosis: dg });
     }
+
 
     if (action === "send_command") {
       if (!dvd_id || !command) return json({ error: "dvd_id and command are required" }, 400);
