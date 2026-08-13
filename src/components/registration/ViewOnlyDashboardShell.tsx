@@ -5,6 +5,8 @@ import { ProfileEditor } from '@/components/profile/ProfileEditor';
 import { NotificationPreferences } from '@/components/phone/NotificationPreferences';
 import { RegistrationProgressPanel } from './RegistrationProgressPanel';
 import { UnlockBubbles } from './UnlockBubbles';
+import { SetupStagesPanel } from './SetupStagesPanel';
+
 import { useAuth } from '@/contexts/AuthContext';
 import type { RegistrationProgress } from '@/hooks/useRegistrationProgress';
 
