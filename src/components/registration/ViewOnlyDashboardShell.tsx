@@ -5,6 +5,8 @@ import { ProfileEditor } from '@/components/profile/ProfileEditor';
 import { NotificationPreferences } from '@/components/phone/NotificationPreferences';
 import { RegistrationProgressPanel } from './RegistrationProgressPanel';
 import { UnlockBubbles } from './UnlockBubbles';
+import { SetupStagesPanel } from './SetupStagesPanel';
+
 import { useAuth } from '@/contexts/AuthContext';
 import type { RegistrationProgress } from '@/hooks/useRegistrationProgress';
 
@@ -32,7 +34,10 @@ export function ViewOnlyDashboardShell({
 
           <RegistrationProgressPanel progress={progress} role={role} />
 
+          <SetupStagesPanel role={role} progress={progress} />
+
           <UnlockBubbles role={role} stage={progress.stage} userId={user?.id} />
+
 
 
           <div className="grid gap-6 lg:grid-cols-2">
