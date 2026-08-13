@@ -12621,6 +12621,14 @@ export type Database = {
         Args: { _city: string; _country: string; _region: string }
         Returns: boolean
       }
+      support_staff_can_view_task: {
+        Args: {
+          _city: string
+          _region: string
+          _type: Database["public"]["Enums"]["support_task_type"]
+        }
+        Returns: boolean
+      }
       support_staff_region_match: {
         Args: { _region: string }
         Returns: boolean
