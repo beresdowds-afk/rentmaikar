@@ -3824,6 +3824,42 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_ads_action_log: {
+        Row: {
+          action: string
+          ad_account_id: string | null
+          admin_user_id: string | null
+          campaign_id: string
+          campaign_name: string | null
+          created_at: string
+          error_detail: string | null
+          id: string
+          success: boolean
+        }
+        Insert: {
+          action: string
+          ad_account_id?: string | null
+          admin_user_id?: string | null
+          campaign_id: string
+          campaign_name?: string | null
+          created_at?: string
+          error_detail?: string | null
+          id?: string
+          success?: boolean
+        }
+        Update: {
+          action?: string
+          ad_account_id?: string | null
+          admin_user_id?: string | null
+          campaign_id?: string
+          campaign_name?: string | null
+          created_at?: string
+          error_detail?: string | null
+          id?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
       mqtt_telemetry_logs: {
         Row: {
           data_type: string
