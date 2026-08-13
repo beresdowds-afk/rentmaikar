@@ -427,9 +427,14 @@ export default function SarekonDashboard() {
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
               <CardTitle className="text-base">Command queue history</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => runSync("refresh_commands", "Command queue")} disabled={!!syncing}>
+                {syncing === "refresh_commands" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ListRestart className="h-4 w-4" />}
+                <span className="ml-2">Refresh queue</span>
+              </Button>
             </CardHeader>
+
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
