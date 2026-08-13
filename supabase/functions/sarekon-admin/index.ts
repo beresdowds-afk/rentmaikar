@@ -71,7 +71,9 @@ function diagnose(r: SarekonResult): Diagnosis {
     return {
       code: "invalid_credentials",
       title: "Sarekon rejected the credentials",
-      detail: `The user ID/password was refused (HTTP ${r.status}).`,
+      detail: (r.body && typeof r.body === "object"
+        ? String((r.body as Record<string, unknown>).description ?? "")
+        : "") || `The user ID/password was refused (HTTP ${r.status}).`,
       hints: ["Re-enter the Sarekon user ID and password.", "Confirm the account is active."],
       status: r.status,
     };
@@ -79,7 +81,9 @@ function diagnose(r: SarekonResult): Diagnosis {
   return {
     code: "provider_error",
     title: `Sarekon returned HTTP ${r.status}`,
-    detail: typeof r.body === "string" ? r.body.slice(0, 300) : JSON.stringify(r.body ?? {}).slice(0, 300),
+    detail: typeof r.body === "string"
+      ? r.body.slice(0, 300)
+      : String((r.body as Record<string, unknown> | null)?.description ?? JSON.stringify(r.body ?? {})).slice(0, 300),
     hints: ["Retry; if it persists check the Sarekon account subscription/permissions."],
     status: r.status,
   };

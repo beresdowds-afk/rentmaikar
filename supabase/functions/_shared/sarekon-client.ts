@@ -89,7 +89,15 @@ async function rawPost<T = unknown>(
   const raw = await res.text().catch(() => "");
   let body: unknown = {};
   try { body = raw ? JSON.parse(raw) : {}; } catch { body = raw.slice(0, 400); }
-  if (res.status === 401 || res.status === 403) return { ok: false, reason: "auth_error", status: res.status, body };
+  // Sarekon reports failures in-band: { error: { id, description } } — often
+  // with HTTP 400 rather than 401 — so inspect the envelope too.
+  const envelope = (body && typeof body === "object" ? (body as Record<string, unknown>).error : null) as
+    | Record<string, unknown>
+    | null;
+  const isAuthFailure = res.status === 401 || res.status === 403 ||
+    (envelope ? /username|password|session|login|authenticat/i.test(String(envelope.description ?? envelope.id_description ?? "")) : false);
+  if (isAuthFailure) return { ok: false, reason: "auth_error", status: res.status, body: envelope ?? body };
+  if (envelope) return { ok: false, reason: "provider_error", status: res.status, body: envelope };
   if (!res.ok) return { ok: false, reason: "provider_error", status: res.status, body };
   return { ok: true, body: body as T };
 }
