@@ -254,16 +254,29 @@ export default function SarekonDashboard() {
               registry, live map and telemetry feed as every other provider.
             </CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button variant="outline" size="sm" onClick={test} disabled={testing}>
               {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
               <span className="ml-2">Test connection</span>
             </Button>
-            <Button size="sm" onClick={sync} disabled={syncing}>
-              {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            <Button variant="outline" size="sm" onClick={() => runSync("sync_devices", "Device sync")} disabled={!!syncing}>
+              {syncing === "sync_devices" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Cpu className="h-4 w-4" />}
+              <span className="ml-2">Sync devices</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => runSync("sync_telemetry", "Telemetry sync")} disabled={!!syncing}>
+              {syncing === "sync_telemetry" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Satellite className="h-4 w-4" />}
+              <span className="ml-2">Sync telemetry</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => runSync("refresh_commands", "Command queue")} disabled={!!syncing}>
+              {syncing === "refresh_commands" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ListRestart className="h-4 w-4" />}
+              <span className="ml-2">Refresh commands</span>
+            </Button>
+            <Button size="sm" onClick={() => runSync("sync", "Full sync")} disabled={!!syncing}>
+              {syncing === "sync" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               <span className="ml-2">Sync now</span>
             </Button>
           </div>
+
         </CardHeader>
         <CardContent>
           {status && !status.configured && (
