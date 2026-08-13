@@ -171,7 +171,29 @@ const FAQ = () => {
               Showing content for {regionFilter === 'USA' ? 'United States' : 'Nigeria'}
             </span>
           </div>
+
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <Button asChild variant="outline">
+              <Link to="/terms">
+                <FileText className="h-4 w-4" /> View Terms
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/privacy">
+                <Shield className="h-4 w-4" /> View Privacy Policy
+              </Link>
+            </Button>
+            <Button onClick={handleDownloadPdf} disabled={downloading || loading}>
+              {downloading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Download FAQ (PDF)
+            </Button>
+          </div>
         </div>
+
 
         {/* Search */}
         <div className="max-w-2xl mx-auto mb-8">
