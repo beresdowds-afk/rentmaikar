@@ -32,7 +32,10 @@ export function ViewOnlyDashboardShell({
 
           <RegistrationProgressPanel progress={progress} role={role} />
 
+          <SetupStagesPanel role={role} progress={progress} />
+
           <UnlockBubbles role={role} stage={progress.stage} userId={user?.id} />
+
 
 
           <div className="grid gap-6 lg:grid-cols-2">
