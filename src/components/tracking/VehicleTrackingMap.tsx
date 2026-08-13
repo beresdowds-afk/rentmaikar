@@ -396,7 +396,10 @@ const VehicleTrackingMap = () => {
         devices={devices}
         thresholdMinutes={thresholdMinutes}
         onThresholdChange={setThresholdMinutes}
+      />
+
       {/* Provider merge indicator — every provider plots on THIS single map */}
+
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span>Plotted on this shared map:</span>
         {(['traccar', 'sarekon', 'emqx'] as const).map((p) => {
