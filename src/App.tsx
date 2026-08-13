@@ -110,6 +110,8 @@ const NotificationPreferencesPage = lazy(() => import("./pages/NotificationPrefe
 const ProfileCompletionWizard = lazy(() => import("./pages/ProfileCompletionWizard"));
 const VerificationStatusPage = lazy(() => import("./pages/VerificationStatusPage"));
 import { OnboardingStageToaster } from "@/components/onboarding/OnboardingStageToaster";
+import PhoneVerificationPrompt from "@/components/phone/PhoneVerificationPrompt";
+
 
 const queryClient = new QueryClient();
 
@@ -132,6 +134,8 @@ const App = () => (
               <NativeDeepLinkBridge />
               <DocumentExpiryInAppNotifier />
               <OnboardingStageToaster />
+              <PhoneVerificationPrompt />
+
 
               <SkipToContent />
               <LiveAnnouncer />
