@@ -107,6 +107,19 @@ export function SmsConsentPanel() {
               </AlertDescription>
             </Alert>
 
+            <Link
+              to="/sms-opt-in"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="sms-program-link"
+              className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+            >
+              Review SMS keywords &amp; message timing
+              <ExternalLink className="w-4 h-4" />
+            </Link>
+
+
+
             <div className="flex items-start gap-3">
               <Checkbox
                 id="panelSmsService"
