@@ -11,6 +11,7 @@ Last updated: 2026-08-14
 | Website | https://www.rentmaikar.com |
 | Privacy Policy URL | https://www.rentmaikar.com/privacy |
 | Terms & Conditions URL | https://www.rentmaikar.com/terms |
+| SMS opt-in / program page | https://www.rentmaikar.com/sms-opt-in |
 | Embedded links | **YES** (links to rentmaikar.com pages/receipts) |
 | Embedded phone numbers | **NO** |
 | Age-gated content | NO |
@@ -36,7 +37,8 @@ Last updated: 2026-08-14
 
 > End users opt in on the Rentmaikar website at https://www.rentmaikar.com/auth,
 > https://www.rentmaikar.com/driver-registration and
-> https://www.rentmaikar.com/owner-registration. During account creation and
+> https://www.rentmaikar.com/owner-registration, and on the standalone public opt-in
+> page https://www.rentmaikar.com/sms-opt-in. During account creation and
 > registration the user sees a dedicated "Text message (SMS) consent — optional"
 > block containing two separate checkboxes, both unchecked by default and both
 > independent of Terms acceptance: one for service/transactional SMS and one for
@@ -76,12 +78,28 @@ Header shown above both checkboxes:
 4. `Rentmaikar: Vehicle pickup confirmed for Sat Aug 22, 10:00 AM. Details: rentmaikar.com/dashboard. Reply STOP to opt out, HELP for help.`
 5. `Rentmaikar: New vehicles are available in your city this week. See them at rentmaikar.com/catalogue. Reply STOP to opt out.` (promotional — sent only to promotional opt-ins)
 
-## 6. Required keyword responses
+## 6. Program keywords (published on /sms-opt-in and in the consent block)
 
-- HELP: `Rentmaikar: For help email support@rentmaikar.com or visit rentmaikar.com/contact. Msg frequency varies. Msg&data rates may apply. Reply STOP to opt out.`
-- STOP: `Rentmaikar: You have been unsubscribed and will receive no further messages. Reply START to resubscribe.`
+| Keyword | Meaning | Reply |
+|---|---|---|
+| START | Re-subscribe after opting out | `Rentmaikar: You are re-subscribed to Rentmaikar text messages. Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.` |
+| STOP | Opt out of all Rentmaikar text messages | `Rentmaikar: You have been unsubscribed and will receive no further messages. Reply START to re-subscribe.` |
+| HELP | Get support contact details | `Rentmaikar: For help email support@rentmaikar.com or visit rentmaikar.com/contact. Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out.` |
 
-(Leave opt-in keyword / opt-in message blank — opt-in is web-based. STOP/HELP handled by Twilio Advanced Opt-Out.)
+(Leave the opt-in keyword / opt-in message fields blank — opt-in is web-based. STOP/HELP/START are handled by Twilio Advanced Opt-Out.)
+
+## 6b. Opt-in timing disclosure (published verbatim on /sms-opt-in)
+
+- Consent takes effect immediately when the user checks the box and submits the form.
+- Verification codes are sent within seconds of the user requesting one.
+- Account, application, payment and rental service messages start as soon as the related
+  event happens on the account — typically within minutes.
+- Payment reminders are sent up to 72 hours before a due date, then at 12-hour intervals
+  until the payment clears.
+- Optional promotional messages are sent no more than a few times per month.
+- Messages are only sent 9:00 AM - 9:00 PM ET (US) or 8:00 AM - 8:00 PM WAT (Nigeria),
+  except for security/verification codes the user requested.
+- Opting out takes effect immediately via STOP or Profile Settings.
 
 ## 7. Privacy Policy / Terms language already published
 
@@ -96,6 +114,7 @@ plus message frequency, message and data rates, STOP/HELP instructions, and how 
 ## 8. Evidence to attach to the review
 
 - Screenshot of the SMS consent block on `/driver-registration` (both checkboxes unchecked).
+- Screenshot of `https://www.rentmaikar.com/sms-opt-in` showing the optional form, keywords and timing.
 - Screenshot of `/profile-settings` SMS consent & preferences panel with consent history.
 - Screenshot of the SMS section on `/privacy` and `/terms`.
 - Optional: a row export from the consent audit log showing phone number, consent type,
@@ -103,6 +122,8 @@ plus message frequency, message and data rates, STOP/HELP instructions, and how 
 
 ## 9. Where this lives in the codebase
 
+- Public opt-in page: `src/pages/SmsOptIn.tsx` (route `/sms-opt-in`, linked in the site footer)
+- Keywords + timing block: `src/components/registration/SmsProgramDetails.tsx`
 - Disclosure text + audit writer: `src/lib/sms-consent.ts`
 - Registration/signup checkboxes: `src/components/registration/SmsConsentCheckboxes.tsx`
 - Profile management + history: `src/components/profile/SmsConsentPanel.tsx`
