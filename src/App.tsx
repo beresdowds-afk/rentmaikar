@@ -152,11 +152,14 @@ const App = () => (
                     landmark, so this wrapper must NOT be a <main> — nested /
                     duplicate main landmarks break screen-reader navigation. */}
                 <div id="main-content" tabIndex={-1} className="outline-none">
+                  <CanonicalRedirects />
                   <Routes>
 
                     <Route path="/" element={<Index />} />
                     <Route path="/index" element={<Navigate to="/" replace />} />
                     <Route path="/home" element={<Navigate to="/" replace />} />
+                    <Route path="/catalogue" element={<Navigate to="/catalogue/budget" replace />} />
+                    <Route path="/vehicles/:id" element={<VehicleRedirect />} />
                     <Route path="/auth" element={<Auth />} />
                 
                   <Route path="/reset-password" element={<ResetPassword />} />
