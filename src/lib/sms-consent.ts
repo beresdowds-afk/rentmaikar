@@ -52,8 +52,13 @@ export async function recordSmsConsent(input: SmsConsentRecordInput): Promise<bo
       disclosure_version: SMS_DISCLOSURE_VERSION,
       disclosure_text: disclosureFor(input.consentType),
       source: input.source,
+      program_version: SMS_PROGRAM_VERSION,
+      keywords_shown: SMS_KEYWORDS as unknown as Json,
+      timing_shown: SMS_OPT_IN_TIMING as unknown as Json,
+      page_url: typeof window !== "undefined" ? window.location.href : null,
       user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
     });
+
     if (error) {
       console.warn("[sms-consent] failed to record consent", error.message);
       return false;
