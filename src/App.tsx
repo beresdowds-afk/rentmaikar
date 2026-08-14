@@ -209,6 +209,7 @@ const App = () => (
                   />
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/sms-opt-in" element={<SmsOptIn />} />
                   <Route path="/faq" element={<FAQ />} />
                   <Route path="/how-it-works" element={<HowItWorksPage />} />
                   <Route path="/guides/renting-vs-owning-for-rideshare" element={<RentingVsOwning />} />
