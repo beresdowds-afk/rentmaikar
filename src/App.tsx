@@ -55,6 +55,7 @@ const AdminAssistantDashboard = lazy(() => import("./pages/AdminAssistantDashboa
 const ApiDocs = lazy(() => import("./pages/ApiDocs"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
+const SmsOptIn = lazy(() => import("./pages/SmsOptIn"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const HowItWorksPage = lazy(() => import("./pages/HowItWorksPage"));
 const RentingVsOwning = lazy(() => import("./pages/guides/RentingVsOwning"));
