@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin, Code, FileText, Shield, HelpCircle, Cookie } from "lucide-react";
+import { Mail, Phone, MapPin, Code, FileText, Shield, HelpCircle, Cookie, MessageSquare } from "lucide-react";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRegion } from "@/contexts/RegionContext";
