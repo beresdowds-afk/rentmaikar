@@ -112,6 +112,12 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
+                <Link to="/sms-opt-in" className="text-primary-foreground/70 hover:text-accent transition-colors flex items-center gap-1">
+                  <MessageSquare className="w-3 h-3" />
+                  SMS Opt-In
+                </Link>
+              </li>
+              <li>
                 <Link to="/faq" className="text-primary-foreground/70 hover:text-accent transition-colors flex items-center gap-1">
                   <HelpCircle className="w-3 h-3" />
                   FAQ
