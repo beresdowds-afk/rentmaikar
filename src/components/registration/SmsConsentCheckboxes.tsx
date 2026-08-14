@@ -71,6 +71,15 @@ export function SmsConsentCheckboxes({
           HELP for help.
         </label>
       </div>
+
+      <details className="pl-8 group">
+        <summary className="text-sm text-primary cursor-pointer hover:underline">
+          Program keywords &amp; when messages are sent
+        </summary>
+        <div className="pt-3">
+          <SmsProgramDetails bare />
+        </div>
+      </details>
     </div>
   );
 }
