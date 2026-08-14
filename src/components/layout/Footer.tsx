@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin, Code, FileText, Shield, HelpCircle, Cookie } from "lucide-react";
+import { Mail, Phone, MapPin, Code, FileText, Shield, HelpCircle, Cookie, MessageSquare } from "lucide-react";
 import rentmaikarLogo from "@/assets/rentmaikar-logo.jpg";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRegion } from "@/contexts/RegionContext";
@@ -109,6 +109,12 @@ const Footer = () => {
                 <Link to="/privacy" className="text-primary-foreground/70 hover:text-accent transition-colors flex items-center gap-1">
                   <Shield className="w-3 h-3" />
                   Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/sms-opt-in" className="text-primary-foreground/70 hover:text-accent transition-colors flex items-center gap-1">
+                  <MessageSquare className="w-3 h-3" />
+                  SMS Opt-In
                 </Link>
               </li>
               <li>

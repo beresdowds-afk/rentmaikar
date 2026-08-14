@@ -36,6 +36,7 @@ const entries: SitemapEntry[] = [
   { path: "/owner/register", changefreq: "monthly", priority: "0.8" },
   { path: "/terms", changefreq: "yearly", priority: "0.3" },
   { path: "/privacy", changefreq: "yearly", priority: "0.3" },
+  { path: "/sms-opt-in", changefreq: "yearly", priority: "0.3" },
 ];
 
 /**
