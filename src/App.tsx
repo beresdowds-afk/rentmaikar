@@ -12,6 +12,7 @@ import CookieConsent from "@/components/CookieConsent";
 import MessageConsent from "@/components/MessageConsent";
 import PageSkeleton from "@/components/PageSkeleton";
 import ErrorBoundary from "@/components/errors/ErrorBoundary";
+import CanonicalRedirects, { VehicleAliasRedirect as VehicleRedirect } from "@/components/seo/CanonicalRedirects";
 import SkipToContent from "@/components/SkipToContent";
 import LiveAnnouncer from "@/components/LiveAnnouncer";
 import MetaPixelRouteTracker from "@/components/MetaPixelRouteTracker";

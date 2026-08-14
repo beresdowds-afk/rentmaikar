@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 
 /**
  * Normalises the URL crawlers and users land on so a single page is never
@@ -80,4 +80,13 @@ export default function CanonicalRedirects() {
   }, [location.pathname, location.search, location.hash, navigate]);
 
   return null;
+}
+
+/**
+ * Legacy/alias path "/vehicles/:id" permanently resolves to the canonical
+ * "/vehicle/:id" detail route.
+ */
+export function VehicleAliasRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={id ? `/vehicle/${id}` : "/catalogue/budget"} replace />;
 }
