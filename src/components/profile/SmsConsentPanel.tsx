@@ -155,8 +155,23 @@ export function SmsConsentPanel() {
 
             {history.length > 0 && (
               <div className="space-y-2 pt-2 border-t">
-                <p className="text-sm font-medium text-foreground">Consent history</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-foreground">Consent history</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      downloadTextFile(
+                        `my-sms-consent-history-${new Date().toISOString().slice(0, 10)}.csv`,
+                        smsConsentRecordsToCsv(history),
+                      )
+                    }
+                  >
+                    <Download className="w-4 h-4 mr-2" /> Export CSV
+                  </Button>
+                </div>
                 <ul className="space-y-1">
+
                   {history.slice(0, 8).map((h) => (
                     <li key={h.id} className="flex items-center justify-between text-xs text-muted-foreground">
                       <span className="capitalize">{h.consent_type} · {h.source}</span>
