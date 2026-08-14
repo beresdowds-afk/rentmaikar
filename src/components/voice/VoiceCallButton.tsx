@@ -164,14 +164,27 @@ export const VoiceCallButton = ({
   }
 
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          <Phone className="h-4 w-4" />
-          {targetName ? `Call ${targetName}` : `Call ${targetRole === 'admin' ? 'Support' : targetRole}`}
-        </Button>
-      </DialogTrigger>
-      {dialogContent}
-    </Dialog>
+    <div className="flex flex-wrap gap-2">
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" className="gap-2">
+            <Phone className="h-4 w-4" />
+            {targetName ? `Call ${targetName}` : `Call ${targetRole === 'admin' ? 'Support' : targetRole}`}
+          </Button>
+        </DialogTrigger>
+        {dialogContent}
+      </Dialog>
+      <Button className="gap-2" onClick={() => setIsInAppOpen(true)}>
+        <PhoneCall className="h-4 w-4" />
+        Call now (in-app)
+      </Button>
+      <InAppCallDialog
+        open={isInAppOpen}
+        onOpenChange={setIsInAppOpen}
+        destination={targetId ? `client:user_${targetId}` : 'support'}
+        title={targetName ? `Call ${targetName}` : 'Call support'}
+      />
+    </div>
   );
 };
+
