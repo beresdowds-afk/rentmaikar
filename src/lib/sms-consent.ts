@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
+import { SMS_KEYWORDS, SMS_OPT_IN_TIMING } from "@/components/registration/sms-program";
 
 /**
  * A2P 10DLC (Twilio / TCR) compliant SMS consent handling.
@@ -10,7 +12,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const SMS_DISCLOSURE_VERSION = "2026-08-14.v1";
 
+/** Version of the keyword + timing program disclosure snapshot stored per consent row. */
+export const SMS_PROGRAM_VERSION = "2026-08-14.program.v1";
+
 export type SmsConsentType = "service" | "marketing";
+
 
 export const SMS_SERVICE_DISCLOSURE =
   "SMS Communications (Optional): I agree to receive text messages from Rentmaikar regarding my account, vehicle rentals, applications, reservations, payments, customer support and service updates. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchasing or using Rentmaikar services. See our Terms and Privacy Policy.";
