@@ -10,6 +10,8 @@ import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { useRegion } from '@/contexts/RegionContext';
 import { format } from 'date-fns';
 import { ensureMediaPermissions } from '@/lib/media-permissions';
+import { InAppCallDialog } from '@/components/voice/InAppCallDialog';
+
 
 interface VoiceCallButtonProps {
   userRole: 'driver' | 'owner';
