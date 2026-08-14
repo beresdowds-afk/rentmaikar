@@ -1,7 +1,8 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
-import { Smartphone } from "lucide-react";
+import { Smartphone, ExternalLink } from "lucide-react";
 import SmsProgramDetails from "@/components/registration/SmsProgramDetails";
+
 
 interface SmsConsentCheckboxesProps {
   smsServiceConsent: boolean;
