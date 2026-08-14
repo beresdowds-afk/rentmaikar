@@ -338,6 +338,11 @@ const DriverRegistration = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="Become a Rideshare Driver — Rentmaikar Driver Signup"
+        description="Register as a Rentmaikar driver to rent a rideshare-ready vehicle for Uber, Lyft or Bolt in the USA and Nigeria."
+        path="/driver/register"
+      />
       <Header />
       <PricingHintBanner />
       <main className="pt-8 pb-16">
