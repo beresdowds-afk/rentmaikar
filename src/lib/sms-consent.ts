@@ -143,3 +143,99 @@ export async function fetchSmsConsentState(userId: string): Promise<{
     history,
   };
 }
+
+export interface SmsConsentAuditFilters {
+  /** Free-text match on phone number or source page. */
+  search?: string;
+  consentType?: SmsConsentType | "all";
+  granted?: "all" | "granted" | "withdrawn";
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
+/** Full consent audit trail (admin only — enforced by RLS). */
+export async function fetchSmsConsentAudit(
+  filters: SmsConsentAuditFilters = {},
+): Promise<{ records: SmsConsentRecord[]; error: string | null }> {
+  let query = supabase
+    .from("sms_consent_records")
+    .select(AUDIT_COLUMNS)
+    .order("created_at", { ascending: false })
+    .limit(filters.limit ?? 1000);
+
+  if (filters.consentType && filters.consentType !== "all") {
+    query = query.eq("consent_type", filters.consentType);
+  }
+  if (filters.granted === "granted") query = query.eq("granted", true);
+  if (filters.granted === "withdrawn") query = query.eq("granted", false);
+  if (filters.from) query = query.gte("created_at", filters.from);
+  if (filters.to) query = query.lte("created_at", filters.to);
+  if (filters.search?.trim()) {
+    const term = `%${filters.search.trim()}%`;
+    query = query.or(`phone_number.ilike.${term},source.ilike.${term}`);
+  }
+
+  const { data, error } = await query;
+  if (error) return { records: [], error: error.message };
+  return { records: (data ?? []) as unknown as SmsConsentRecord[], error: null };
+}
+
+function csvCell(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+/** CSV of the consent audit trail, ready to attach to the A2P evidence pack. */
+export function smsConsentRecordsToCsv(records: SmsConsentRecord[]): string {
+  const headers = [
+    "opted_at_utc",
+    "user_id",
+    "phone_number",
+    "consent_type",
+    "decision",
+    "source_page",
+    "page_url",
+    "disclosure_version",
+    "disclosure_text",
+    "program_version",
+    "keywords_shown",
+    "timing_shown",
+    "user_agent",
+  ];
+  const rows = records.map((r) =>
+    [
+      new Date(r.created_at).toISOString(),
+      r.user_id ?? "",
+      r.phone_number ?? "",
+      r.consent_type,
+      r.granted ? "opted_in" : "opted_out",
+      r.source,
+      r.page_url ?? "",
+      r.disclosure_version,
+      r.disclosure_text,
+      r.program_version ?? "",
+      r.keywords_shown ?? [],
+      r.timing_shown ?? [],
+      r.user_agent ?? "",
+    ]
+      .map(csvCell)
+      .join(","),
+  );
+  return [headers.join(","), ...rows].join("\r\n");
+}
+
+/** Triggers a browser download of the given text content. */
+export function downloadTextFile(filename: string, content: string, mime = "text/csv;charset=utf-8") {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
