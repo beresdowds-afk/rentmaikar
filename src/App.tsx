@@ -177,6 +177,10 @@ const App = () => (
                   <Route path="/register/owner" element={<Navigate to="/owner/register" replace />} />
                   <Route path="/driver/signup" element={<Navigate to="/driver/register" replace />} />
                   <Route path="/owner/signup" element={<Navigate to="/owner/register" replace />} />
+                  {/* Aliases cited in the A2P 10DLC submission packet */}
+                  <Route path="/driver-registration" element={<Navigate to="/driver/register" replace />} />
+                  <Route path="/owner-registration" element={<Navigate to="/owner/register" replace />} />
+
                   <Route 
                     path="/driver/registration" 
                     element={
@@ -553,6 +557,8 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route path="/profile-settings" element={<Navigate to="/settings/profile" replace />} />
+
                   <Route
                     path="/settings/notifications"
                     element={
