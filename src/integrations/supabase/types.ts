@@ -7727,6 +7727,48 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_consent_records: {
+        Row: {
+          consent_type: string
+          created_at: string
+          disclosure_text: string
+          disclosure_version: string
+          granted: boolean
+          id: string
+          ip_address: string | null
+          phone_number: string | null
+          source: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          consent_type: string
+          created_at?: string
+          disclosure_text: string
+          disclosure_version: string
+          granted: boolean
+          id?: string
+          ip_address?: string | null
+          phone_number?: string | null
+          source: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          consent_type?: string
+          created_at?: string
+          disclosure_text?: string
+          disclosure_version?: string
+          granted?: boolean
+          id?: string
+          ip_address?: string | null
+          phone_number?: string | null
+          source?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       social_media_campaigns: {
         Row: {
           budget: number | null
