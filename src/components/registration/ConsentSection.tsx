@@ -2,6 +2,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Link } from "react-router-dom";
 import { MessageSquare, ShieldCheck } from "lucide-react";
+import SmsConsentCheckboxes from "@/components/registration/SmsConsentCheckboxes";
 
 export type MessagingChannel = "none" | "sms" | "whatsapp";
 
