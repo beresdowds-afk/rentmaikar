@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Smartphone, Info } from 'lucide-react';
+import { Loader2, Smartphone, Info, ExternalLink, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,8 +12,11 @@ import { toast } from '@/hooks/use-toast';
 import {
   fetchSmsConsentState,
   recordSmsConsent,
+  smsConsentRecordsToCsv,
+  downloadTextFile,
   type SmsConsentRecord,
 } from '@/lib/sms-consent';
+
 
 /**
  * SMS Consent & Preferences.
