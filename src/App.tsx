@@ -445,6 +445,15 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/admin/sms-consent-audit"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminSmsConsentAuditPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
 
                   <Route
                     path="/admin/uuid-assignments"
