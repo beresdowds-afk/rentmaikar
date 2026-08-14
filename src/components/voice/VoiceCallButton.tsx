@@ -33,6 +33,8 @@ export const VoiceCallButton = ({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isInAppOpen, setIsInAppOpen] = useState(false);
+
 
   const activePending = pendingRequests.find(
     (r) => r.target_role === targetRole && r.status === 'pending'
