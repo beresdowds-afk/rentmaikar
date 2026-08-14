@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import ConsentSection, { type MessagingChannel } from "@/components/registration/ConsentSection";
+import { recordSmsConsentPair } from "@/lib/sms-consent";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import Header from "@/components/layout/Header";
@@ -88,6 +89,9 @@ const createOwnerSchema = (country: "usa" | "nigeria") => z.object({
   messagingConsent: z.boolean().refine(val => val, "You must consent to receive service messages"),
   messagingChannel: z.string().refine((val) => ["sms", "whatsapp"].includes(val), "Select SMS or WhatsApp as your second channel"),
   dataSharingConsent: z.boolean().refine(val => val, "You must consent to third-party data sharing"),
+  // Optional A2P 10DLC SMS opt-ins — never required.
+  smsServiceConsent: z.boolean().optional().default(false),
+  smsMarketingConsent: z.boolean().optional().default(false),
 });
 
 const ownerSchema = createOwnerSchema("usa");
@@ -139,6 +143,8 @@ const OwnerRegistration = () => {
       messagingConsent: false,
       messagingChannel: "none",
       dataSharingConsent: false,
+      smsServiceConsent: false,
+      smsMarketingConsent: false,
     },
   });
 
@@ -249,6 +255,14 @@ const OwnerRegistration = () => {
       });
 
       if (error) throw error;
+
+      // A2P 10DLC: persist the exact SMS opt-in decisions with disclosure text.
+      void recordSmsConsentPair({
+        phoneNumber: data.phoneNumber,
+        serviceConsent: !!data.smsServiceConsent,
+        marketingConsent: !!data.smsMarketingConsent,
+        source: "owner-registration",
+      });
 
       // Audit: registration data reached the database.
       void logRegistrationEvent("registration_upsert_succeeded", {
@@ -917,6 +931,10 @@ const OwnerRegistration = () => {
                   messagingError={errors.messagingConsent?.message as string | undefined}
                   channelError={errors.messagingChannel?.message as string | undefined}
                   dataSharingError={errors.dataSharingConsent?.message as string | undefined}
+                  smsServiceConsent={!!watch("smsServiceConsent")}
+                  smsMarketingConsent={!!watch("smsMarketingConsent")}
+                  onSmsServiceConsentChange={(v) => setValue("smsServiceConsent", v)}
+                  onSmsMarketingConsentChange={(v) => setValue("smsMarketingConsent", v)}
                 />
               </div>
 

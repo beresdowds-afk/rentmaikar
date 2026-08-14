@@ -26,6 +26,7 @@ import { ROLE_HOME, ROLE_ONBOARDING, isStaffRole, type AppRole } from '@/lib/rol
 import { resolvePostLoginDestination } from '@/lib/post-login-destination';
 import { isRestorablePath, readReturnTo, clearReturnTo } from '@/lib/return-to';
 import { logRegistrationEvent } from '@/lib/registration-audit';
+import { recordSmsConsentPair } from '@/lib/sms-consent';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -42,6 +43,9 @@ const signupSchema = z.object({
   messagingConsent: z.boolean().refine(val => val, 'You must consent to receive service messages'),
   messagingChannel: z.string().refine((val) => ['sms', 'whatsapp'].includes(val), 'Select SMS or WhatsApp as your second channel'),
   dataSharingConsent: z.boolean().refine(val => val, 'You must consent to third-party data sharing'),
+  // Optional A2P 10DLC SMS opt-ins — never required.
+  smsServiceConsent: z.boolean().optional().default(false),
+  smsMarketingConsent: z.boolean().optional().default(false),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
@@ -199,6 +203,8 @@ const Auth = () => {
       messagingConsent: false,
       messagingChannel: 'none',
       dataSharingConsent: false,
+      smsServiceConsent: false,
+      smsMarketingConsent: false,
     },
   });
 
@@ -310,6 +316,14 @@ const Auth = () => {
               data_sharing_consent_at: data.dataSharingConsent ? new Date().toISOString() : null,
             })
             .eq('user_id', uid);
+
+          // A2P 10DLC: auditable SMS opt-in record with the disclosure shown.
+          await recordSmsConsentPair({
+            userId: uid,
+            serviceConsent: !!data.smsServiceConsent,
+            marketingConsent: !!data.smsMarketingConsent,
+            source: 'signup',
+          });
         }
       } catch (e) {
         console.warn('Could not persist consent preferences:', e);
@@ -712,6 +726,10 @@ const Auth = () => {
                   messagingError={signupForm.formState.errors.messagingConsent?.message as string | undefined}
                   channelError={signupForm.formState.errors.messagingChannel?.message as string | undefined}
                   dataSharingError={signupForm.formState.errors.dataSharingConsent?.message as string | undefined}
+                  smsServiceConsent={!!signupForm.watch('smsServiceConsent')}
+                  smsMarketingConsent={!!signupForm.watch('smsMarketingConsent')}
+                  onSmsServiceConsentChange={(v) => signupForm.setValue('smsServiceConsent', v)}
+                  onSmsMarketingConsentChange={(v) => signupForm.setValue('smsMarketingConsent', v)}
                 />
 
                 <AlternativeAuthOptions defaultRole="driver" showPhone={loginMethod === 'email'} />

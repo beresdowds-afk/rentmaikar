@@ -208,7 +208,31 @@ const Privacy = () => {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">12. Contact Us</h2>
+        <h2 className="text-2xl font-semibold">12. SMS / Text Message Program</h2>
+        <p className="text-muted-foreground">
+          Rentmaikar offers optional SMS (text message) communications. You may opt in during
+          registration or at any time from your account communication preferences. SMS consent is
+          optional, is collected with a separate unchecked checkbox, and is never a condition of
+          creating an account, submitting an application, renting a vehicle or using any Rentmaikar service.
+        </p>
+        <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+          <li><strong>Message types:</strong> account notifications, account verification, onboarding and application updates, rental and reservation notifications, payment notifications, customer support replies and service reminders. Promotional messages are a separate, additional opt-in.</li>
+          <li><strong>Message frequency:</strong> message frequency varies based on your account and rental activity.</li>
+          <li><strong>Rates:</strong> message and data rates may apply.</li>
+          <li><strong>Opt out:</strong> reply STOP to any message to stop receiving texts, or turn the setting off in your account preferences.</li>
+          <li><strong>Help:</strong> reply HELP for help, or contact Rentmaikar customer support.</li>
+          <li><strong>Records:</strong> we record each opt-in and opt-out with the mobile number, the exact disclosure shown, the page it was given on and the date and time.</li>
+        </ul>
+        <p className="text-muted-foreground">
+          <strong>Rentmaikar does not sell, rent, or share mobile phone numbers or SMS consent information
+          with third parties or affiliates for their own marketing or promotional purposes.</strong> Mobile
+          numbers are shared only with our messaging service providers strictly for the purpose of
+          delivering the messages you requested.
+        </p>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">13. Contact Us</h2>
         <p className="text-muted-foreground">
           For privacy-related inquiries or to exercise your rights:<br />
           Email: {EMAIL_CONFIG.privacy}<br />
@@ -454,7 +478,31 @@ const Privacy = () => {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">14. Contact Us</h2>
+        <h2 className="text-2xl font-semibold">14. SMS / Text Message Program</h2>
+        <p className="text-muted-foreground">
+          Rentmaikar offers optional SMS (text message) communications. You may opt in during
+          registration or at any time from your account communication preferences. SMS consent is
+          optional, is collected with a separate unchecked checkbox, and is never a condition of
+          creating an account, submitting an application, renting a vehicle or using any Rentmaikar service.
+        </p>
+        <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+          <li><strong>Message types:</strong> account notifications, account verification, onboarding and application updates, rental and reservation notifications, payment notifications, customer support replies and service reminders. Promotional messages are a separate, additional opt-in.</li>
+          <li><strong>Message frequency:</strong> message frequency varies based on your account and rental activity.</li>
+          <li><strong>Rates:</strong> message and data rates may apply.</li>
+          <li><strong>Opt out:</strong> reply STOP to any message to stop receiving texts, or turn the setting off in your account preferences.</li>
+          <li><strong>Help:</strong> reply HELP for help, or contact Rentmaikar customer support.</li>
+          <li><strong>Records:</strong> we record each opt-in and opt-out with the mobile number, the exact disclosure shown, the page it was given on and the date and time.</li>
+        </ul>
+        <p className="text-muted-foreground">
+          <strong>Rentmaikar does not sell, rent, or share mobile phone numbers or SMS consent information
+          with third parties or affiliates for their own marketing or promotional purposes.</strong> Mobile
+          numbers are shared only with our messaging service providers strictly for the purpose of
+          delivering the messages you requested.
+        </p>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">15. Contact Us</h2>
         <p className="text-muted-foreground">
           For privacy-related enquiries or to exercise your rights:<br />
           Email: {EMAIL_CONFIG.privacy}<br />

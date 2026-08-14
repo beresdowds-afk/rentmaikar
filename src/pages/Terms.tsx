@@ -203,7 +203,24 @@ const Terms = () => {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">14. Contact Information</h2>
+        <h2 className="text-2xl font-semibold">14. SMS / Text Message Program</h2>
+        <p className="text-muted-foreground">
+          By opting in to Rentmaikar SMS communications you agree to receive text messages from
+          Rentmaikar about your account, vehicle rentals, applications, reservations, payments,
+          customer support and service updates. Promotional text messages require a separate opt-in.
+        </p>
+        <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+          <li>SMS consent is optional and is not a condition of purchasing or using Rentmaikar services.</li>
+          <li>Message frequency varies. Message and data rates may apply.</li>
+          <li>Reply STOP to opt out of further messages. Reply HELP for help.</li>
+          <li>Messages may contain links to your Rentmaikar account, application or rental details.</li>
+          <li>You may review or withdraw your consent at any time in your account communication preferences.</li>
+          <li>Rentmaikar does not sell, rent or share mobile phone numbers or SMS consent information with third parties or affiliates for their own marketing or promotional purposes.</li>
+        </ul>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">15. Contact Information</h2>
         <p className="text-muted-foreground">
           For questions about these Terms of Use:<br />
           Email: {EMAIL_CONFIG.legal}<br />
@@ -410,7 +427,24 @@ const Terms = () => {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">14. Contact Information</h2>
+        <h2 className="text-2xl font-semibold">14. SMS / Text Message Program</h2>
+        <p className="text-muted-foreground">
+          By opting in to Rentmaikar SMS communications you agree to receive text messages from
+          Rentmaikar about your account, vehicle rentals, applications, reservations, payments,
+          customer support and service updates. Promotional text messages require a separate opt-in.
+        </p>
+        <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+          <li>SMS consent is optional and is not a condition of purchasing or using Rentmaikar services.</li>
+          <li>Message frequency varies. Message and data rates may apply.</li>
+          <li>Reply STOP to opt out of further messages. Reply HELP for help.</li>
+          <li>Messages may contain links to your Rentmaikar account, application or rental details.</li>
+          <li>You may review or withdraw your consent at any time in your account communication preferences.</li>
+          <li>Rentmaikar does not sell, rent or share mobile phone numbers or SMS consent information with third parties or affiliates for their own marketing or promotional purposes.</li>
+        </ul>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">15. Contact Information</h2>
         <p className="text-muted-foreground">
           For questions about these Terms of Use:<br />
           Email: {EMAIL_CONFIG.legal}<br />

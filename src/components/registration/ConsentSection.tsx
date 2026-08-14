@@ -2,6 +2,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Link } from "react-router-dom";
 import { MessageSquare, ShieldCheck } from "lucide-react";
+import SmsConsentCheckboxes from "@/components/registration/SmsConsentCheckboxes";
 
 export type MessagingChannel = "none" | "sms" | "whatsapp";
 
@@ -15,6 +16,11 @@ interface ConsentSectionProps {
   messagingError?: string;
   channelError?: string;
   dataSharingError?: string;
+  /** Optional A2P 10DLC SMS opt-in (rendered only when handlers are supplied). */
+  smsServiceConsent?: boolean;
+  smsMarketingConsent?: boolean;
+  onSmsServiceConsentChange?: (value: boolean) => void;
+  onSmsMarketingConsentChange?: (value: boolean) => void;
 }
 
 /**
@@ -32,9 +38,23 @@ export function ConsentSection({
   messagingError,
   channelError,
   dataSharingError,
+  smsServiceConsent,
+  smsMarketingConsent,
+  onSmsServiceConsentChange,
+  onSmsMarketingConsentChange,
 }: ConsentSectionProps) {
+  const showSmsConsent = !!onSmsServiceConsentChange && !!onSmsMarketingConsentChange;
+
   return (
     <div className="space-y-6">
+      {showSmsConsent && (
+        <SmsConsentCheckboxes
+          smsServiceConsent={!!smsServiceConsent}
+          smsMarketingConsent={!!smsMarketingConsent}
+          onSmsServiceConsentChange={onSmsServiceConsentChange!}
+          onSmsMarketingConsentChange={onSmsMarketingConsentChange!}
+        />
+      )}
       {/* Messaging notifications consent */}
       <div className="p-4 bg-muted/50 rounded-lg space-y-4">
         <div className="flex items-start gap-3">
