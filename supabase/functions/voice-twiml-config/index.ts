@@ -60,17 +60,28 @@ serve(async (req) => {
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twimlAppSid = Deno.env.get("TWILIO_TWIML_APP_SID");
+    const apiKeySid = Deno.env.get("TWILIO_API_KEY_SID") || Deno.env.get("TWILIO_API_KEY");
+    const apiKeySecret = Deno.env.get("TWILIO_API_SECRET") || Deno.env.get("TWILIO_API_KEY_SECRET");
 
     const secrets = {
       TWILIO_ACCOUNT_SID: !!accountSid,
       TWILIO_AUTH_TOKEN: !!authToken,
       TWILIO_TWIML_APP_SID: !!twimlAppSid,
-      TWILIO_API_KEY_SID: !!(Deno.env.get("TWILIO_API_KEY_SID") || Deno.env.get("TWILIO_API_KEY")),
-      TWILIO_API_SECRET: !!(Deno.env.get("TWILIO_API_SECRET") || Deno.env.get("TWILIO_API_KEY_SECRET")),
+      TWILIO_API_KEY_SID: !!apiKeySid,
+      TWILIO_API_SECRET: !!apiKeySecret,
       TWILIO_PHONE_NUMBER: !!Deno.env.get("TWILIO_PHONE_NUMBER"),
     };
 
-    if (!accountSid || !authToken || !twimlAppSid) {
+    // Twilio REST accepts either AccountSid:AuthToken or ApiKeySid:ApiSecret.
+    const credentials: Array<{ label: string; header: string }> = [];
+    if (accountSid && authToken) {
+      credentials.push({ label: "TWILIO_AUTH_TOKEN", header: "Basic " + btoa(`${accountSid}:${authToken}`) });
+    }
+    if (apiKeySid && apiKeySecret) {
+      credentials.push({ label: "TWILIO_API_KEY_SID", header: "Basic " + btoa(`${apiKeySid}:${apiKeySecret}`) });
+    }
+
+    if (!accountSid || !twimlAppSid || credentials.length === 0) {
       return json(200, {
         expected,
         secrets,
@@ -81,10 +92,41 @@ serve(async (req) => {
     }
 
     const base = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Applications/${twimlAppSid}.json`;
-    const basicAuth = "Basic " + btoa(`${accountSid}:${authToken}`);
+
+    // Pick the first credential set Twilio actually accepts.
+    let basicAuth = "";
+    let lastStatus = 0;
+    let lastDetails = "";
+    for (const cred of credentials) {
+      const probe = await fetch(base, { headers: { Authorization: cred.header } });
+      const probeText = await probe.text();
+      if (probe.ok) {
+        basicAuth = cred.header;
+        break;
+      }
+      lastStatus = probe.status;
+      lastDetails = probeText;
+      console.error(`Twilio auth check failed with ${cred.label} [${probe.status}]: ${probeText}`);
+    }
+
+    if (!basicAuth) {
+      // Return 200 so the admin panel can render actionable guidance instead of crashing.
+      return json(200, {
+        expected,
+        secrets,
+        twimlApp: null,
+        matches: false,
+        error:
+          lastStatus === 401
+            ? "Twilio rejected the stored credentials (error 20003). Verify TWILIO_ACCOUNT_SID matches the account that owns the TwiML App, and that TWILIO_AUTH_TOKEN (or the API key/secret pair) is current."
+            : `Twilio request failed with status ${lastStatus}.`,
+        details: lastDetails,
+        status: lastStatus,
+      });
+    }
 
     if (action === "apply") {
-      const res = await fetch(base, {
+      const applyRes = await fetch(base, {
         method: "POST",
         headers: { Authorization: basicAuth, "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -94,10 +136,18 @@ serve(async (req) => {
           StatusCallbackMethod: "POST",
         }),
       });
-      const text = await res.text();
-      if (!res.ok) {
-        console.error(`Twilio update failed [${res.status}]: ${text}`);
-        return json(res.status, { error: "Failed to update TwiML App", status: res.status, details: text });
+      const applyText = await applyRes.text();
+      if (!applyRes.ok) {
+        console.error(`Twilio update failed [${applyRes.status}]: ${applyText}`);
+        return json(200, {
+          expected,
+          secrets,
+          twimlApp: null,
+          matches: false,
+          error: "Failed to update TwiML App",
+          status: applyRes.status,
+          details: applyText,
+        });
       }
     }
 
@@ -105,7 +155,15 @@ serve(async (req) => {
     const text = await res.text();
     if (!res.ok) {
       console.error(`Twilio fetch failed [${res.status}]: ${text}`);
-      return json(res.status, { error: "Failed to read TwiML App", status: res.status, details: text });
+      return json(200, {
+        expected,
+        secrets,
+        twimlApp: null,
+        matches: false,
+        error: "Failed to read TwiML App",
+        status: res.status,
+        details: text,
+      });
     }
 
     const app = JSON.parse(text);
