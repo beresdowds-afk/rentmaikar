@@ -12,6 +12,7 @@ import CookieConsent from "@/components/CookieConsent";
 import MessageConsent from "@/components/MessageConsent";
 import PageSkeleton from "@/components/PageSkeleton";
 import ErrorBoundary from "@/components/errors/ErrorBoundary";
+import CanonicalRedirects, { VehicleAliasRedirect as VehicleRedirect } from "@/components/seo/CanonicalRedirects";
 import SkipToContent from "@/components/SkipToContent";
 import LiveAnnouncer from "@/components/LiveAnnouncer";
 import MetaPixelRouteTracker from "@/components/MetaPixelRouteTracker";
@@ -152,11 +153,14 @@ const App = () => (
                     landmark, so this wrapper must NOT be a <main> — nested /
                     duplicate main landmarks break screen-reader navigation. */}
                 <div id="main-content" tabIndex={-1} className="outline-none">
+                  <CanonicalRedirects />
                   <Routes>
 
                     <Route path="/" element={<Index />} />
                     <Route path="/index" element={<Navigate to="/" replace />} />
                     <Route path="/home" element={<Navigate to="/" replace />} />
+                    <Route path="/catalogue" element={<Navigate to="/catalogue/budget" replace />} />
+                    <Route path="/vehicles/:id" element={<VehicleRedirect />} />
                     <Route path="/auth" element={<Auth />} />
                 
                   <Route path="/reset-password" element={<ResetPassword />} />

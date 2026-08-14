@@ -1,3 +1,4 @@
+import Seo from "@/components/seo/Seo";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
@@ -290,6 +291,11 @@ const OwnerRegistration = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="List Your Car — Rentmaikar Vehicle Owner Signup"
+        description="Register your vehicle with Rentmaikar to earn passive income from vetted rideshare drivers in the USA and Nigeria."
+        path="/owner/register"
+      />
       <Header />
       <PricingHintBanner />
       <main className="pt-8 pb-16">

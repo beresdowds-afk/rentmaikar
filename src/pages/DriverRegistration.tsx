@@ -1,3 +1,4 @@
+import Seo from "@/components/seo/Seo";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
@@ -338,6 +339,11 @@ const DriverRegistration = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="Become a Rideshare Driver — Rentmaikar Driver Signup"
+        description="Register as a Rentmaikar driver to rent a rideshare-ready vehicle for Uber, Lyft or Bolt in the USA and Nigeria."
+        path="/driver/register"
+      />
       <Header />
       <PricingHintBanner />
       <main className="pt-8 pb-16">
