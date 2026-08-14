@@ -1,9 +1,19 @@
 // Runs before `vite dev` and `vite build` (predev/prebuild hooks); writes public/sitemap.xml.
 
-import { writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 
 const BASE_URL = "https://rentmaikar.com";
+
+// Node doesn't read .env the way Vite does — load the publishable keys manually.
+if (existsSync(resolve(".env"))) {
+  for (const line of readFileSync(resolve(".env"), "utf8").split("\n")) {
+    const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (match && !process.env[match[1]]) {
+      process.env[match[1]] = match[2].replace(/^["']|["']$/g, "");
+    }
+  }
+}
 
 interface SitemapEntry {
   path: string;
