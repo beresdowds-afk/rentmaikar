@@ -28,11 +28,32 @@ const TRACKING_PARAMS = [
   "mc_eid",
 ];
 
+/**
+ * Public marketing routes that are safe to lower-case. Case is preserved
+ * everywhere else because some paths carry case-sensitive tokens/ids.
+ */
+const LOWERCASEABLE = [
+  "/",
+  "/how-it-works",
+  "/faq",
+  "/terms",
+  "/privacy",
+  "/guides/renting-vs-owning-for-rideshare",
+  "/catalogue",
+  "/driver/register",
+  "/owner/register",
+];
+
 export function normalisePath(pathname: string): string {
   const collapsed = pathname.replace(/\/{2,}/g, "/");
   const trimmed =
     collapsed.length > 1 ? collapsed.replace(/\/+$/, "") : collapsed;
-  return (trimmed || "/").toLowerCase();
+  const path = trimmed || "/";
+  const lower = path.toLowerCase();
+  const lowercaseable = LOWERCASEABLE.some(
+    (route) => lower === route || lower.startsWith(`${route}/`),
+  );
+  return lowercaseable ? lower : path;
 }
 
 export default function CanonicalRedirects() {
