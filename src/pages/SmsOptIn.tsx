@@ -84,7 +84,7 @@ const SmsOptIn = () => {
       <Seo
         title="SMS Opt-In & Text Message Program | Rentmaikar"
         description="Optionally opt in to Rentmaikar text messages. See our SMS program keywords (START, STOP, HELP), message frequency and when messages are sent. Consent is never required to use Rentmaikar."
-        canonical="https://www.rentmaikar.com/sms-opt-in"
+        path="/sms-opt-in"
       />
       <Header />
 
