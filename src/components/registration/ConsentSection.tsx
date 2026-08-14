@@ -38,9 +38,23 @@ export function ConsentSection({
   messagingError,
   channelError,
   dataSharingError,
+  smsServiceConsent,
+  smsMarketingConsent,
+  onSmsServiceConsentChange,
+  onSmsMarketingConsentChange,
 }: ConsentSectionProps) {
+  const showSmsConsent = !!onSmsServiceConsentChange && !!onSmsMarketingConsentChange;
+
   return (
     <div className="space-y-6">
+      {showSmsConsent && (
+        <SmsConsentCheckboxes
+          smsServiceConsent={!!smsServiceConsent}
+          smsMarketingConsent={!!smsMarketingConsent}
+          onSmsServiceConsentChange={onSmsServiceConsentChange!}
+          onSmsMarketingConsentChange={onSmsMarketingConsentChange!}
+        />
+      )}
       {/* Messaging notifications consent */}
       <div className="p-4 bg-muted/50 rounded-lg space-y-4">
         <div className="flex items-start gap-3">
