@@ -28,6 +28,37 @@ const entries: SitemapEntry[] = [
   { path: "/privacy", changefreq: "yearly", priority: "0.3" },
 ];
 
+/**
+ * Dynamic routes: one /vehicle/:id entry per publicly visible listing.
+ * Mirrors the Catalogue/VehicleDetails data source (public_vehicle_listings),
+ * which already filters to published listings with photos.
+ * Network failures are non-fatal — the static routes still ship.
+ */
+async function fetchVehicleEntries(): Promise<SitemapEntry[]> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) return [];
+
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/public_vehicle_listings?select=id&limit=5000`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rows = (await res.json()) as { id: string }[];
+    return rows
+      .filter((r) => r?.id)
+      .map((r) => ({
+        path: `/vehicle/${r.id}`,
+        changefreq: "weekly" as const,
+        priority: "0.6",
+      }));
+  } catch (err) {
+    console.warn("sitemap: skipped vehicle listings —", (err as Error).message);
+    return [];
+  }
+}
+
 function generateSitemap(entries: SitemapEntry[]) {
   const urls = entries.map((e) =>
     [
@@ -50,5 +81,6 @@ function generateSitemap(entries: SitemapEntry[]) {
   ].join("\n");
 }
 
-writeFileSync(resolve("public/sitemap.xml"), generateSitemap(entries));
-console.log(`sitemap.xml written (${entries.length} entries)`);
+const all = [...entries, ...(await fetchVehicleEntries())];
+writeFileSync(resolve("public/sitemap.xml"), generateSitemap(all));
+console.log(`sitemap.xml written (${all.length} entries)`);
