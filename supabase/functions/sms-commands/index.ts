@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { preloadTemplates, templateFromCache } from "../_shared/message-templates.ts";
 import { isOptedOut, setOptOut, isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
+import { recordKeywordConsent } from "../_shared/sms-consent-audit.ts";
+
 import {
   smsConfig,
   getRegionConfig,
@@ -433,6 +435,13 @@ const handleOptOut = async (
     keyword,
     supabase: supabase as never,
   });
+  await recordKeywordConsent(supabase as never, {
+    event: "stop",
+    phone,
+    userId,
+    keyword,
+    channel: "sms",
+  });
   console.log(`[SMS Opt-Out] user=${userId ?? "unregistered"} phone=${phone}`);
   return SMS_TEMPLATES.optOutConfirm();
 };
@@ -450,8 +459,16 @@ const handleOptIn = async (
     keyword,
     supabase: supabase as never,
   });
+  await recordKeywordConsent(supabase as never, {
+    event: "start",
+    phone,
+    userId,
+    keyword,
+    channel: "sms",
+  });
   return SMS_TEMPLATES.optIn();
 };
+
 
 
 // ═══════════════════════════════════════════════════════════
@@ -767,8 +784,16 @@ const handler = async (req: Request): Promise<Response> => {
       case "HELP": {
         const supportPhone = getRegionConfig(from).support;
         responseMessage = SMS_TEMPLATES.help(supportPhone);
+        await recordKeywordConsent(supabase as never, {
+          event: "help",
+          phone: from,
+          userId: profile.user_id ?? null,
+          keyword: command,
+          channel: "sms",
+        });
         break;
       }
+
 
       case "LOCATION": {
         responseMessage = SMS_TEMPLATES.locationReceived();
