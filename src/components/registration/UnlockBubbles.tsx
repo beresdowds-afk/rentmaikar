@@ -7,7 +7,7 @@ import type { RegistrationStage } from '@/hooks/useRegistrationProgress';
 type Tile = { title: string; desc: string; href?: string };
 
 /** Tiles that must never appear on a driver's dashboard. */
-const DRIVER_HIDDEN_TILES = ['Earnings & payouts', 'Live fleet map'];
+const DRIVER_HIDDEN_TILES = ['Earnings & payouts', 'Live fleet map', 'Rideshare uploads', 'Vehicle tracking'];
 
 const STAGE_ORDER: RegistrationStage[] = [
   'auth',
