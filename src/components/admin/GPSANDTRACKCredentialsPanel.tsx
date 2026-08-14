@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, KeyRound, ShieldCheck, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
+import { friendlySecretError, secretErrorDescription } from "@/lib/secret-errors";
 
 /**
  * GPSANDTRACK credentials screen. The user ID / password are written through
@@ -110,7 +111,8 @@ export default function GPSANDTRACKCredentialsPanel({ onStatusChange }: { onStat
       if (res.authenticated) toast.success(`GPSANDTRACK session created (${res.latency_ms ?? 0}ms)`);
       else toast.error(res.diagnosis?.title ?? "GPSANDTRACK rejected the credentials");
     } catch (e) {
-      toast.error((e as Error).message);
+      const friendly = friendlySecretError(e, "GPSANDTRACK");
+      toast.error(friendly.title, { description: secretErrorDescription(friendly), duration: 10000 });
     } finally {
       setSaving(false);
     }

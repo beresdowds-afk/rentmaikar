@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { KeyRound, RefreshCw, ShieldCheck, Undo2, CheckCircle2, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { friendlySecretError, secretErrorDescription } from "@/lib/secret-errors";
 
 interface CredentialVersion {
   id: string;
@@ -103,7 +104,8 @@ export function EmqxSecretRotationPanel() {
         variant: verified.success ? 'default' : 'destructive',
       });
     } catch (e) {
-      toast({ title: 'Staging failed', description: (e as Error).message, variant: 'destructive' });
+      const friendly = friendlySecretError(e, 'EMQX');
+      toast({ title: friendly.title, description: secretErrorDescription(friendly), variant: 'destructive' });
     } finally { setBusy(null); }
   };
 
@@ -115,7 +117,8 @@ export function EmqxSecretRotationPanel() {
       toast({ title: 'New EMQX credentials active', description: 'The previous version is kept for one-click rollback.' });
       await runProbe();
     } catch (e) {
-      toast({ title: 'Activation failed', description: (e as Error).message, variant: 'destructive' });
+      const friendly = friendlySecretError(e, 'EMQX');
+      toast({ title: friendly.title, description: secretErrorDescription(friendly), variant: 'destructive' });
     } finally { setBusy(null); }
   };
 
@@ -127,7 +130,8 @@ export function EmqxSecretRotationPanel() {
       toast({ title: 'Rolled back', description: 'The previous EMQX credentials are active again.' });
       await runProbe();
     } catch (e) {
-      toast({ title: 'Rollback failed', description: (e as Error).message, variant: 'destructive' });
+      const friendly = friendlySecretError(e, 'EMQX');
+      toast({ title: friendly.title, description: secretErrorDescription(friendly), variant: 'destructive' });
     } finally { setBusy(null); }
   };
 

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, KeyRound, PlugZap, CheckCircle2, XCircle, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
+import { friendlySecretError, secretErrorDescription } from "@/lib/secret-errors";
 
 export interface TraccarDiagnosis {
   code: string;
@@ -112,7 +113,8 @@ export function TraccarCredentialsPanel() {
       // Backend caches credentials for up to a minute — give it a moment.
       setTimeout(() => { test(); }, 1500);
     } catch (e) {
-      toast.error("Could not save credentials", { description: (e as Error).message });
+      const friendly = friendlySecretError(e, "Traccar");
+      toast.error(friendly.title, { description: secretErrorDescription(friendly), duration: 10000 });
     } finally {
       setSaving(false);
     }
