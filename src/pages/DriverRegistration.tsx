@@ -1,3 +1,4 @@
+import Seo from "@/components/seo/Seo";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
