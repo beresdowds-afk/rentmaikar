@@ -88,6 +88,8 @@ const TourAnalyticsPage = lazy(() => import("./pages/admin/TourAnalyticsPage"));
 const AdminVehicleCataloguePage = lazy(() => import("./pages/admin/AdminVehicleCataloguePage"));
 const AdminVehicleImportsPage = lazy(() => import("./pages/admin/AdminVehicleImportsPage"));
 const AdminNotificationRetryPage = lazy(() => import("./pages/admin/AdminNotificationRetryPage"));
+const AdminSmsConsentAuditPage = lazy(() => import("./pages/admin/AdminSmsConsentAuditPage"));
+
 const AdminVehicleQueuePage = lazy(() => import("./pages/admin/AdminVehicleQueuePage"));
 const UserUuidAssignmentsPage = lazy(() => import("./pages/admin/UserUuidAssignmentsPage"));
 const TraccarCommandAuditPage = lazy(() => import("./pages/admin/TraccarCommandAuditPage"));
