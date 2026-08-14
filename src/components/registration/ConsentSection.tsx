@@ -16,6 +16,11 @@ interface ConsentSectionProps {
   messagingError?: string;
   channelError?: string;
   dataSharingError?: string;
+  /** Optional A2P 10DLC SMS opt-in (rendered only when handlers are supplied). */
+  smsServiceConsent?: boolean;
+  smsMarketingConsent?: boolean;
+  onSmsServiceConsentChange?: (value: boolean) => void;
+  onSmsMarketingConsentChange?: (value: boolean) => void;
 }
 
 /**
