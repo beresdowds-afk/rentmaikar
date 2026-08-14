@@ -258,7 +258,7 @@ const OwnerRegistration = () => {
 
       // A2P 10DLC: persist the exact SMS opt-in decisions with disclosure text.
       void recordSmsConsentPair({
-        phoneNumber: toE164(data.phone),
+        phoneNumber: data.phoneNumber,
         serviceConsent: !!data.smsServiceConsent,
         marketingConsent: !!data.smsMarketingConsent,
         source: "owner-registration",
