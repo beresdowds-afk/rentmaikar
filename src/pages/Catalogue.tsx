@@ -251,20 +251,26 @@ const Catalogue = () => {
 
   const categoryLabel = (category || "vehicles").replace(/-/g, " ");
   const catalogueTitle = `${categoryLabel.charAt(0).toUpperCase()}${categoryLabel.slice(1)} Vehicles — Rentmaikar Catalogue`;
+  // Unknown categories fall back to the budget listing, so they must not
+  // self-canonicalise — point them at the real page and keep them out of the index.
+  const isKnownCategory = Boolean(categoryInfo[category]);
+  const canonicalCategory = isKnownCategory ? category : "budget";
 
   return (
     <div className="min-h-screen bg-background">
       <Seo
         title={catalogueTitle.slice(0, 60)}
         description={`Browse ${categoryLabel} rideshare-ready vehicles available to rent on Rentmaikar, with pricing, location and availability for the USA and Nigeria.`}
-        path={`/catalogue/${category ?? ""}`}
+        path={`/catalogue/${canonicalCategory}`}
+        noindex={!isKnownCategory}
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: catalogueTitle,
-          url: `https://rentmaikar.com/catalogue/${category ?? ""}`,
+          url: `https://rentmaikar.com/catalogue/${canonicalCategory}`,
         }}
       />
+
       <Header />
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
