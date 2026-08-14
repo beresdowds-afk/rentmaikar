@@ -1,7 +1,8 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
-import { Smartphone } from "lucide-react";
+import { Smartphone, ExternalLink } from "lucide-react";
 import SmsProgramDetails from "@/components/registration/SmsProgramDetails";
+
 
 interface SmsConsentCheckboxesProps {
   smsServiceConsent: boolean;
@@ -27,14 +28,25 @@ export function SmsConsentCheckboxes({
     <div className="p-4 bg-muted/50 rounded-lg space-y-4" data-testid="sms-consent-block">
       <div className="flex items-start gap-3">
         <Smartphone className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-        <div className="space-y-1">
+        <div className="space-y-2">
           <p className="font-medium text-foreground">Text message (SMS) consent — optional</p>
           <p className="text-sm text-muted-foreground">
             SMS consent is optional and is not required to create an account, rent a
             vehicle, submit an application or use Rentmaikar services.
           </p>
+          <Link
+            to="/sms-opt-in"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="sms-program-link"
+            className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+          >
+            Review SMS keywords &amp; message timing
+            <ExternalLink className="w-4 h-4" />
+          </Link>
         </div>
       </div>
+
 
       <div className="flex items-start space-x-3 pl-8">
         <Checkbox

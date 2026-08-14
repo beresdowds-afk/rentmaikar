@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Smartphone, Info } from 'lucide-react';
+import { Loader2, Smartphone, Info, ExternalLink, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,8 +12,11 @@ import { toast } from '@/hooks/use-toast';
 import {
   fetchSmsConsentState,
   recordSmsConsent,
+  smsConsentRecordsToCsv,
+  downloadTextFile,
   type SmsConsentRecord,
 } from '@/lib/sms-consent';
+
 
 /**
  * SMS Consent & Preferences.
@@ -103,6 +107,19 @@ export function SmsConsentPanel() {
               </AlertDescription>
             </Alert>
 
+            <Link
+              to="/sms-opt-in"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="sms-program-link"
+              className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+            >
+              Review SMS keywords &amp; message timing
+              <ExternalLink className="w-4 h-4" />
+            </Link>
+
+
+
             <div className="flex items-start gap-3">
               <Checkbox
                 id="panelSmsService"
@@ -138,8 +155,23 @@ export function SmsConsentPanel() {
 
             {history.length > 0 && (
               <div className="space-y-2 pt-2 border-t">
-                <p className="text-sm font-medium text-foreground">Consent history</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-foreground">Consent history</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      downloadTextFile(
+                        `my-sms-consent-history-${new Date().toISOString().slice(0, 10)}.csv`,
+                        smsConsentRecordsToCsv(history),
+                      )
+                    }
+                  >
+                    <Download className="w-4 h-4 mr-2" /> Export CSV
+                  </Button>
+                </div>
                 <ul className="space-y-1">
+
                   {history.slice(0, 8).map((h) => (
                     <li key={h.id} className="flex items-center justify-between text-xs text-muted-foreground">
                       <span className="capitalize">{h.consent_type} · {h.source}</span>

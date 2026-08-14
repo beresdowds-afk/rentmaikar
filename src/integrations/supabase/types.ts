@@ -7736,8 +7736,12 @@ export type Database = {
           granted: boolean
           id: string
           ip_address: string | null
+          keywords_shown: Json
+          page_url: string | null
           phone_number: string | null
+          program_version: string | null
           source: string
+          timing_shown: Json
           user_agent: string | null
           user_id: string | null
         }
@@ -7749,8 +7753,12 @@ export type Database = {
           granted: boolean
           id?: string
           ip_address?: string | null
+          keywords_shown?: Json
+          page_url?: string | null
           phone_number?: string | null
+          program_version?: string | null
           source: string
+          timing_shown?: Json
           user_agent?: string | null
           user_id?: string | null
         }
@@ -7762,8 +7770,12 @@ export type Database = {
           granted?: boolean
           id?: string
           ip_address?: string | null
+          keywords_shown?: Json
+          page_url?: string | null
           phone_number?: string | null
+          program_version?: string | null
           source?: string
+          timing_shown?: Json
           user_agent?: string | null
           user_id?: string | null
         }
