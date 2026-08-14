@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Phone, Users, History, Settings, PhoneCall, Globe, Search, Radio, UserPlus } from 'lucide-react';
+import { Phone, Users, History, Settings, PhoneCall, Globe, Search, Radio, UserPlus, Volume2, Link2 } from 'lucide-react';
 import { useVoIPCalls } from '@/hooks/useVoIPCalls';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { CallDialer } from './CallDialer';
@@ -12,6 +12,8 @@ import { VoIPFeatureSettings } from './VoIPFeatureSettings';
 import { UserCallSearch } from './UserCallSearch';
 import { OutreachContactsPanel } from './OutreachContactsPanel';
 import { ConferenceRoomPanel } from './ConferenceRoomPanel';
+import { CallRecordingsPanel } from './CallRecordingsPanel';
+import { TwiMLAppConfigPanel } from './TwiMLAppConfigPanel';
 import { IncomingCallAlerts } from '@/components/voice/IncomingCallAlerts';
 import { Badge } from '@/components/ui/badge';
 
@@ -87,7 +89,7 @@ export const CallCenterPage = () => {
 
       {/* Main Content */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 lg:w-auto lg:inline-grid lg:grid-cols-9">
           <TabsTrigger value="dialer" className="flex items-center gap-2">
             <Phone className="h-4 w-4" />
             <span className="hidden sm:inline">Make Call</span>
@@ -111,6 +113,14 @@ export const CallCenterPage = () => {
           <TabsTrigger value="history" className="flex items-center gap-2">
             <History className="h-4 w-4" />
             <span className="hidden sm:inline">History</span>
+          </TabsTrigger>
+          <TabsTrigger value="recordings" className="flex items-center gap-2">
+            <Volume2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Recordings</span>
+          </TabsTrigger>
+          <TabsTrigger value="twiml" className="flex items-center gap-2">
+            <Link2 className="h-4 w-4" />
+            <span className="hidden sm:inline">In-app Setup</span>
           </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
@@ -159,6 +169,14 @@ export const CallCenterPage = () => {
             onRefresh={refreshCalls}
             isLoading={isLoading}
           />
+        </TabsContent>
+
+        <TabsContent value="recordings">
+          <CallRecordingsPanel calls={calls} onRefresh={refreshCalls} isLoading={isLoading} />
+        </TabsContent>
+
+        <TabsContent value="twiml">
+          <TwiMLAppConfigPanel />
         </TabsContent>
 
         <TabsContent value="settings">
