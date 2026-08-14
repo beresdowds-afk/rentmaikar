@@ -109,7 +109,16 @@ export interface SmsConsentRecord {
   disclosure_text: string;
   source: string;
   created_at: string;
+  program_version?: string | null;
+  page_url?: string | null;
+  keywords_shown?: Json | null;
+  timing_shown?: Json | null;
+  user_id?: string | null;
+  user_agent?: string | null;
 }
+
+const AUDIT_COLUMNS =
+  "id, user_id, phone_number, consent_type, granted, disclosure_version, disclosure_text, source, created_at, program_version, page_url, keywords_shown, timing_shown, user_agent";
 
 /** Latest decision per consent type for the signed-in user. */
 export async function fetchSmsConsentState(userId: string): Promise<{
@@ -119,10 +128,11 @@ export async function fetchSmsConsentState(userId: string): Promise<{
 }> {
   const { data, error } = await supabase
     .from("sms_consent_records")
-    .select("id, phone_number, consent_type, granted, disclosure_version, disclosure_text, source, created_at")
+    .select(AUDIT_COLUMNS)
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(50);
+
 
   if (error || !data) return { service: null, marketing: null, history: [] };
 
