@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { friendlySecretError, secretErrorDescription } from "@/lib/secret-errors";
 import { KeyRound, ShieldCheck } from "lucide-react";
 
 /**
@@ -59,7 +60,10 @@ function ProviderForm({ provider }: { provider: "hologram" | "traccar" }) {
       setValues({});
       qc.invalidateQueries({ queryKey: ["provider-credential-versions"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      const friendly = friendlySecretError(e, provider);
+      toast.error(friendly.title, { description: secretErrorDescription(friendly), duration: 10000 });
+    },
   });
 
   return (
