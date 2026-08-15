@@ -9,9 +9,10 @@ import { toast } from "sonner";
 import { Download, RefreshCw, Search, ShieldCheck, Link2 } from "lucide-react";
 
 interface Props {
-  scope: "driver" | "admin";
+  scope: "driver" | "owner" | "admin";
   userId?: string;
 }
+
 
 interface InvoiceRow {
   id: string;
