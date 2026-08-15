@@ -323,7 +323,14 @@ Deno.serve(async (req) => {
     }
 
     if (action === "command_parameters") {
-      const r = await sarekon.commandParameters();
+      // device_ids[] + message_type_id are required by the SareKon API.
+      const messageTypeId = typeof command === "string"
+        ? SAREKON_COMMAND_MAP[command] ?? Number(command)
+        : undefined;
+      const r = await sarekon.commandParameters(
+        dvd_id ? [dvd_id] : [],
+        Number.isFinite(messageTypeId as number) ? (messageTypeId as number) : undefined,
+      );
       return json({ ok: r.ok, parameters: r.ok ? r.body : [], diagnosis: diagnose(r) });
     }
 
