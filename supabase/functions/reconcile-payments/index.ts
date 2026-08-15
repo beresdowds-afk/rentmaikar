@@ -15,6 +15,8 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHmac } from "node:crypto";
 import { resolvePaymentContext } from "../_shared/resolve-payment-context.ts";
+import { syncPaymentStatus } from "../_shared/payment-status-sync.ts";
+
 
 const LOOKBACK_HOURS = 24 * 7;
 const MAX_PER_PSP = 200;
@@ -170,10 +172,10 @@ async function reconcilePaystack(supa: Supa, sinceIso: string): Promise<PspResul
       }).eq("id", tx.id);
 
       if (ensured.paymentId) {
-        await supa.from("payments").update({
-          status, failure_reason: failure,
-          processed_at: status === "completed" ? new Date().toISOString() : null,
-        }).eq("id", ensured.paymentId);
+        await syncPaymentStatus(supa, {
+          paymentId: ensured.paymentId, status, failureReason: failure,
+        });
+
       }
       out.updated++;
     } catch (e) {
@@ -242,10 +244,10 @@ async function reconcileOpay(supa: Supa, sinceIso: string): Promise<PspResult> {
       }).eq("id", tx.id);
 
       if (ensured.paymentId) {
-        await supa.from("payments").update({
-          status, failure_reason: failure,
-          processed_at: status === "completed" ? new Date().toISOString() : null,
-        }).eq("id", ensured.paymentId);
+        await syncPaymentStatus(supa, {
+          paymentId: ensured.paymentId, status, failureReason: failure,
+        });
+
       }
       out.updated++;
     } catch (e) {
@@ -345,11 +347,12 @@ async function reconcilePaypal(supa: Supa, sinceIso: string): Promise<PspResult>
       }).eq("id", tx.id);
 
       if (ensured.paymentId) {
-        await supa.from("payments").update({
-          status,
-          processed_at: status === "completed" ? new Date().toISOString() : null,
-        }).eq("id", ensured.paymentId);
+        await syncPaymentStatus(supa, {
+          paymentId: ensured.paymentId, status,
+          failureReason: status === "failed" ? captureStatus : null,
+        });
       }
+
       out.updated++;
     } catch (e) {
       out.errors.push({ order_id: tx.order_id, error: String(e) });

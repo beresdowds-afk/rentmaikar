@@ -9,9 +9,10 @@ import { toast } from "sonner";
 import { Download, RefreshCw, Search, ShieldCheck, Link2 } from "lucide-react";
 
 interface Props {
-  scope: "driver" | "admin";
+  scope: "driver" | "owner" | "admin";
   userId?: string;
 }
+
 
 interface InvoiceRow {
   id: string;
@@ -111,6 +112,8 @@ export function InvoiceStatusPanel({ scope, userId }: Props) {
     setLoading(true);
     let query = supabase.from("invoices").select("*").order("created_at", { ascending: false });
     if (scope === "driver" && userId) query = query.eq("driver_id", userId);
+    if (scope === "owner" && userId) query = query.eq("owner_id", userId);
+
     if (scope === "admin") query = query.limit(500);
     const { data: inv, error } = await query;
     if (error) { toast.error("Failed to load invoices"); setLoading(false); return; }

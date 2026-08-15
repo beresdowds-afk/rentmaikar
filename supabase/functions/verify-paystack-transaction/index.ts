@@ -3,6 +3,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { requireAuthenticatedUser } from "../_shared/auth-guards.ts";
+import { syncPaymentStatus } from "../_shared/payment-status-sync.ts";
 
 const BodySchema = z.object({ reference: z.string().min(6).max(128) });
 
@@ -58,11 +59,10 @@ Deno.serve(async (req) => {
       .select("payment_id").eq("reference", reference).maybeSingle();
 
     if (tx?.payment_id) {
-      await supabase.from("payments").update({
-        status,
-        failure_reason: failureReason,
-        processed_at: success ? new Date().toISOString() : null,
-      }).eq("id", tx.payment_id);
+      await syncPaymentStatus(supabase, {
+        paymentId: tx.payment_id, status, failureReason: failureReason,
+      });
+
     }
 
     return json({ status, reference, payment_id: tx?.payment_id ?? null });

@@ -4,6 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHmac } from "node:crypto";
 import { z } from "npm:zod@3";
 import { requireAuthenticatedUser } from "../_shared/auth-guards.ts";
+import { syncPaymentStatus } from "../_shared/payment-status-sync.ts";
 
 const BodySchema = z.object({ reference: z.string().min(6).max(128) });
 
@@ -72,10 +73,10 @@ Deno.serve(async (req) => {
     const { data: tx } = await supabase.from("opay_transactions")
       .select("payment_id").eq("reference", reference).maybeSingle();
     if (tx?.payment_id) {
-      await supabase.from("payments").update({
-        status, failure_reason: failure,
-        processed_at: status === "completed" ? new Date().toISOString() : null,
-      }).eq("id", tx.payment_id);
+      await syncPaymentStatus(supabase, {
+        paymentId: tx.payment_id, status, failureReason: failure,
+      });
+
     }
 
     return json({ status, reference, payment_id: tx?.payment_id ?? null });

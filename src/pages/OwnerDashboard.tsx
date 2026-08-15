@@ -36,6 +36,8 @@ import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import { VehicleDocumentUpload } from '@/components/documents/VehicleDocumentUpload';
 import { OwnerInsuranceSupport } from '@/components/owner/OwnerInsuranceSupport';
 import { UnifiedBillingPanel } from '@/components/payments/UnifiedBillingPanel';
+import { InvoiceStatusPanel } from '@/components/payments/InvoiceStatusPanel';
+
 import { OwnerOverviewTab } from '@/components/dashboard/OwnerOverviewTab';
 import SupportChatWidget from '@/components/support/SupportChatWidget';
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
@@ -512,6 +514,8 @@ export default function OwnerDashboard() {
                 <div className="space-y-6">
                   
                   <UnifiedBillingPanel userId={user?.id} role="owner" country={country} />
+                  <InvoiceStatusPanel scope="owner" userId={user?.id} />
+
                 </div>
               </PortalGate>
             </TabsContent>
