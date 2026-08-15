@@ -296,25 +296,40 @@ export function normaliseDevice(row: Record<string, unknown>): GPSANDTRACKDevice
   const asset = (row.asset ?? {}) as Record<string, unknown>;
   const loc = (row.location ?? row.last_location ?? device.location ?? row.position ?? row) as Record<string, unknown>;
   const id = pick(device, ["device_id", "deviceId", "id"]) ?? pick(row, ["device_id", "dvd_id", "id"]);
-  const serial = pick(device, ["serial", "serial_number", "esn", "imei", "meid"]) ??
+  // `device_description` carries the physical device serial (e.g. V24346052939583);
+  // the VIN lives on the asset and is only a fallback label.
+  const serial = pick(device, ["device_description", "serial", "serial_number", "esn", "imei", "meid"]) ??
     pick(asset, ["asset_vin", "vin", "external_ref"]) ?? id;
+  // `status` on /dvd/show.json is an array of data-type readings; the human
+  // status string is the account mode ("Active", "Suspended"…).
+  const modeStatus = pick(row, ["mode_description", "service_description"]) ??
+    pick(device, ["status", "state", "connection_status"]);
   return {
     id: String(id ?? serial ?? ""),
     serial: String(serial ?? id ?? ""),
     // /dvd/enumerate.json returns a flat row with `description`; /dvd/show.json
     // nests the label under `asset`.
     name: (pick(asset, ["asset_description", "description", "name"]) ??
-      pick(row, ["description", "name", "label"]) ??
+      pick(row, ["dvd_description", "description", "name", "label"]) ??
       pick(device, ["device_description", "name", "label"])) as string ?? null,
-    model: (pick(device, ["model", "device_model", "product", "hardware"]) as string) ?? null,
-    status: (pick(device, ["status", "state", "connection_status"]) as string) ??
-      (pick(row, ["status"]) as string) ?? null,
-    lastUpdate: (pick(loc, ["dt", "dt_local", "timestamp", "time", "gps_time", "reported_at"]) as string) ??
+    model: (pick(asset, ["model_description"]) ??
+      pick(device, ["hardware_series_description", "model", "device_model", "product"])) as string ?? null,
+    status: typeof modeStatus === "string" ? modeStatus : null,
+    lastUpdate: (pick(loc, [
+      "triggered_on_local",
+      "location_valid_on_local",
+      "dt",
+      "dt_local",
+      "timestamp",
+      "time",
+      "gps_time",
+      "reported_at",
+    ]) as string) ??
       (pick(device, ["last_update", "updated_at", "last_seen"]) as string) ?? null,
     latitude: num(pick(loc, ["latitude", "lat"])),
     longitude: num(pick(loc, ["longitude", "lon", "lng", "long"])),
     speedKmh: num(pick(loc, ["speed_kph", "speed_kmh", "speed", "velocity"])),
-    course: num(pick(loc, ["heading", "course", "bearing", "direction"])),
+    course: num(pick(loc, ["bearing_deg", "heading", "course", "bearing", "direction"])),
     ignition: bool(pick(loc, ["ignition", "ign", "engine_on"]) ?? pick(device, ["ignition"])),
     address: (pick(loc, ["address", "location_name", "street"]) as string) ?? null,
     raw: row,
