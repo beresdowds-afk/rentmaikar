@@ -172,10 +172,10 @@ async function reconcilePaystack(supa: Supa, sinceIso: string): Promise<PspResul
       }).eq("id", tx.id);
 
       if (ensured.paymentId) {
-        await supa.from("payments").update({
-          status, failure_reason: failure,
-          processed_at: status === "completed" ? new Date().toISOString() : null,
-        }).eq("id", ensured.paymentId);
+        await syncPaymentStatus(supa, {
+          paymentId: ensured.paymentId, status, failureReason: failure,
+        });
+
       }
       out.updated++;
     } catch (e) {
