@@ -53,6 +53,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useOwnerDashboard } from '@/hooks/useOwnerDashboard';
 import { RecallApprovalPanel } from '@/components/recall/RecallApprovalPanel';
+import { OwnerWithdrawalPanel } from "@/components/owner/OwnerWithdrawalPanel";
 import { PortalGate } from '@/components/onboarding/PortalGate';
 import { OnboardingReconciliationBanner } from '@/components/onboarding/OnboardingReconciliationBanner';
 import { OnboardingChecklist } from '@/components/onboarding/OnboardingChecklist';
@@ -704,82 +705,9 @@ export default function OwnerDashboard() {
 
             {/* Withdrawals Tab */}
             <TabsContent value="withdrawals" className="space-y-6">
-              <PortalGate portal="Withdrawals" require="approved" hint="complete approval before withdrawing to your bank or PayPal."><div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Withdrawal History</CardTitle>
-                  <CardDescription>
-                    Self-service withdrawals from your vehicle earnings only
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {([] as any[]).map(withdrawal => (
-                      <div 
-                        key={withdrawal.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                            withdrawal.status === 'completed' 
-                              ? 'bg-green-100' 
-                              : 'bg-yellow-100'
-                          }`}>
-                            {withdrawal.status === 'completed' 
-                              ? <CheckCircle className="h-5 w-5 text-green-600" />
-                              : <Clock className="h-5 w-5 text-yellow-600" />
-                            }
-                          </div>
-                          <div>
-                            <p className="font-medium">Withdrawal Request</p>
-                            <p className="text-sm text-muted-foreground">{withdrawal.date}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold">{formatCurrency(withdrawal.amount * multiplier, currency)}</p>
-                          <Badge variant={withdrawal.status === 'completed' ? 'default' : 'secondary'}>
-                            {withdrawal.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <Alert className="mt-6">
-                    <Building2 className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Payout Schedule:</strong> Withdrawals are processed every Friday. 
-                      {isUSA 
-                        ? ' Funds are sent via ACH to your registered bank account.'
-                        : ' Funds are transferred to your registered Nigerian bank account.'
-                      }
-                    </AlertDescription>
-                  </Alert>
-                </CardContent>
-              </Card>
-
-              {/* Payout Settings */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Payout Settings</CardTitle>
-                  <CardDescription>Configure your withdrawal preferences</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Bank Name</Label>
-                      <Input value={isUSA ? 'Chase Bank' : 'GTBank'} disabled />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Account Number</Label>
-                      <Input value="****1234" disabled />
-                    </div>
-                  </div>
-                  <Button variant="outline">Update Bank Details</Button>
-                </CardContent>
-              </Card>
-              </div></PortalGate>
-
+              <PortalGate portal="Withdrawals" require="approved" hint="complete approval before withdrawing to your bank or PayPal.">
+                <OwnerWithdrawalPanel />
+              </PortalGate>
             </TabsContent>
 
             {/* Settings Tab */}
