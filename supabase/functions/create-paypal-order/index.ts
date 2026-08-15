@@ -180,19 +180,14 @@ Deno.serve(async (req) => {
     const successBody = {
       order_id: order.id,
       payment_id: payment?.id ?? null,
-      // deno-lint-ignore no-explicit-any
-      approve_url: order.links?.find((l: any) => l.rel === "approve")?.href ?? null,
+      approve_url: order.links?.find((l) => l.rel === "approve")?.href ?? null,
     };
     await completeIdempotencyKey(supa, idemKey, "succeeded", successBody);
 
-    return new Response(
-      JSON.stringify({
-        order_id: order.id,
-        payment_id: payment?.id ?? null,
-        approve_url: order.links?.find((l: any) => l.rel === "approve")?.href ?? null,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify(successBody), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
   } catch (e) {
     console.error("[create-paypal-order] error:", e);
     return new Response(JSON.stringify({ error: String(e) }), {
