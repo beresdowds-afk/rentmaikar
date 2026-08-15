@@ -14,9 +14,11 @@ import { WalletLedgerPanel } from "@/components/payments/WalletLedgerPanel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { downloadDocumentPdf } from "@/lib/document-pdf";
+import { downloadDocumentPdf, downloadHtmlAsPdf } from "@/lib/document-pdf";
+import { buildReversalHtml, reversalFileName, reversalTitle, type ReversalDocument } from "@/lib/credit-note";
 import { toast } from "sonner";
-import { CreditCard, Download, ExternalLink, FileText, Loader2, Receipt, RefreshCw, Search, Send, ShieldCheck } from "lucide-react";
+import { CreditCard, Download, ExternalLink, FileText, Loader2, Receipt, RefreshCw, RotateCcw, Search, Send, ShieldCheck } from "lucide-react";
+
 
 interface PaymentRow {
   id: string; amount: number; currency: string; status: string; purpose: string | null;
@@ -33,6 +35,15 @@ interface DocRow {
   invoice_number?: string; receipt_number?: string; total_amount?: number; amount?: number;
   due_date?: string | null; invoice_type?: string | null; payment_method?: string | null;
 }
+interface DisputeRow {
+  id: string; payment_id: string; provider: string; provider_reference: string | null;
+  amount: number | null; currency: string | null; status: string; reason: string | null;
+  resolution_notes: string | null; opened_at: string; resolved_at: string | null;
+}
+
+/** Payment statuses that represent a reversal, refund or dispute. */
+const REVERSAL_STATUSES = ["refunded", "partially_refunded", "reversed", "chargeback", "disputed"];
+
 
 const money = (amount: number, currency: string) => {
   try {
@@ -69,6 +80,7 @@ export default function BillingHistoryPage() {
   const [subs, setSubs] = useState<SubRow[]>([]);
   const [invoices, setInvoices] = useState<DocRow[]>([]);
   const [receipts, setReceipts] = useState<DocRow[]>([]);
+  const [disputes, setDisputes] = useState<DisputeRow[]>([]);
   const [downloading, setDownloading] = useState<string | null>(null);
 
   // Search & advanced filters (shared across payments, invoices and receipts).
@@ -82,7 +94,7 @@ export default function BillingHistoryPage() {
   const load = async () => {
     if (!user?.id) return;
     setLoading(true);
-    const [pay, sub, inv, rcp] = await Promise.all([
+    const [pay, sub, inv, rcp, dsp] = await Promise.all([
       supabase.from("payments")
         .select("id, amount, currency, status, purpose, payment_method, transaction_id, created_at, settled_at, driver_id, owner_id")
         .or(`driver_id.eq.${user.id},owner_id.eq.${user.id}`)
@@ -98,13 +110,18 @@ export default function BillingHistoryPage() {
         .select("id, receipt_number, status, amount, currency, payment_method, created_at")
         .or(`driver_id.eq.${user.id},owner_id.eq.${user.id}`)
         .order("created_at", { ascending: false }).limit(100),
+      supabase.from("payment_disputes")
+        .select("id, payment_id, provider, provider_reference, amount, currency, status, reason, resolution_notes, opened_at, resolved_at")
+        .order("opened_at", { ascending: false }).limit(100),
     ]);
     setPayments((pay.data as PaymentRow[]) ?? []);
     setSubs((sub.data as unknown as SubRow[]) ?? []);
     setInvoices((inv.data as DocRow[]) ?? []);
     setReceipts((rcp.data as DocRow[]) ?? []);
+    setDisputes((dsp.data as DisputeRow[]) ?? []);
     setLoading(false);
   };
+
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user?.id]);
 
@@ -184,6 +201,83 @@ export default function BillingHistoryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [receipts, query, fromDate, toDate, providerFilter, activePeriod],
   );
+
+  /**
+   * Credit notes and refund receipts derived from reversed / refunded payments
+   * and from recorded payment disputes.
+   */
+  const reversalDocs = useMemo<ReversalDocument[]>(() => {
+    const short = (id: string) => id.slice(0, 8).toUpperCase();
+    const paymentById = new Map(payments.map((p) => [p.id, p]));
+
+    const disputedPaymentIds = new Set(disputes.map((d) => d.payment_id));
+
+    // Disputes take precedence over the plain reversed/disputed payment row.
+    const fromPayments: ReversalDocument[] = payments
+      .filter((p) => REVERSAL_STATUSES.includes(p.status) && !disputedPaymentIds.has(p.id))
+      .map((p) => {
+        const isCredit = p.status === "disputed" || p.status === "chargeback";
+        return {
+          kind: (isCredit ? "credit_note" : "refund_receipt") as ReversalDocument["kind"],
+          reference: `${isCredit ? "CN" : "RR"}-${short(p.id)}`,
+          amount: Number(p.amount ?? 0),
+          currency: p.currency,
+          issuedAt: p.settled_at ?? p.created_at,
+          originalPaidAt: p.created_at,
+          originalReference: p.transaction_id,
+          provider: p.payment_method,
+          purpose: PURPOSE_LABELS[p.purpose ?? "rental"] ?? (p.purpose ?? "Payment").replace(/_/g, " "),
+          status: p.status.replace(/_/g, " "),
+          reason: null,
+          recipientName: user?.email ?? null,
+        };
+      });
+
+    const fromDisputes: ReversalDocument[] = disputes.map((d) => {
+      const p = paymentById.get(d.payment_id);
+      return {
+        kind: "credit_note" as const,
+        reference: `CN-${short(d.id)}`,
+        amount: Number(d.amount ?? p?.amount ?? 0),
+        currency: d.currency ?? p?.currency ?? "USD",
+        issuedAt: d.resolved_at ?? d.opened_at,
+        originalPaidAt: p?.created_at ?? null,
+        originalReference: d.provider_reference ?? p?.transaction_id ?? null,
+        provider: d.provider ?? p?.payment_method ?? null,
+        purpose: p ? (PURPOSE_LABELS[p.purpose ?? "rental"] ?? (p.purpose ?? "Payment").replace(/_/g, " ")) : "Disputed payment",
+        status: d.status.replace(/_/g, " "),
+        reason: d.reason,
+        notes: d.resolution_notes,
+        recipientName: user?.email ?? null,
+      };
+    });
+
+    return [...fromDisputes, ...fromPayments]
+      .sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime());
+
+  }, [payments, disputes, user?.email]);
+
+  const filteredReversals = useMemo(
+    () => reversalDocs.filter((d) =>
+      inWindow(d.issuedAt) &&
+      (providerFilter === "all" || d.provider === providerFilter) &&
+      matches(d.reference, d.originalReference, d.provider, d.amount, d.currency, d.status, d.reason)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reversalDocs, query, fromDate, toDate, providerFilter, activePeriod],
+  );
+
+  const downloadReversal = async (doc: ReversalDocument) => {
+    setDownloading(doc.reference);
+    try {
+      await downloadHtmlAsPdf(buildReversalHtml(doc), reversalFileName(doc));
+      toast.success(`${reversalTitle(doc.kind)} downloaded`);
+    } catch {
+      toast.error("Could not generate the PDF");
+    } finally {
+      setDownloading(null);
+    }
+  };
+
 
   const filtersActive = Boolean(q || fromDate || toDate || statusFilter !== "all" ||
     providerFilter !== "all" || periodFilter !== "all");
@@ -366,7 +460,9 @@ export default function BillingHistoryPage() {
             <TabsTrigger value="periods">Subscription periods ({subs.length})</TabsTrigger>
             <TabsTrigger value="invoices">Invoices ({filteredInvoices.length})</TabsTrigger>
             <TabsTrigger value="receipts">Receipts ({filteredReceipts.length})</TabsTrigger>
+            <TabsTrigger value="reversals">Credit notes &amp; refunds ({filteredReversals.length})</TabsTrigger>
             <TabsTrigger value="wallet">Wallet</TabsTrigger>
+
           </TabsList>
 
           <TabsContent value="payments" className="mt-4 space-y-2">
@@ -491,6 +587,50 @@ export default function BillingHistoryPage() {
               </div>
             ))}
           </TabsContent>
+
+          <TabsContent value="reversals" className="mt-4 space-y-2">
+            {loading && <Skeleton className="h-16 w-full" />}
+            {!loading && filteredReversals.length === 0 && (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                {filtersActive
+                  ? "No credit notes or refund receipts match these filters."
+                  : "No reversed, refunded or disputed payments."}
+              </p>
+            )}
+            {filteredReversals.map((d) => (
+              <div key={`${d.kind}-${d.reference}`} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-xs flex items-center gap-1">
+                    <RotateCcw className="h-3 w-3" /> {d.reference}
+                  </p>
+                  <p className="text-sm flex flex-wrap items-center gap-1">
+                    <span className="font-semibold">{money(Number(d.amount), d.currency)}</span>
+                    <Badge variant={d.kind === "credit_note" ? "secondary" : "default"} className="text-[10px]">
+                      {reversalTitle(d.kind)}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">{d.status}</Badge>
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    Issued {new Date(d.issuedAt).toLocaleString()}
+                    {d.originalPaidAt ? ` · original payment ${new Date(d.originalPaidAt).toLocaleDateString()}` : ""}
+                    {d.provider ? ` · ${d.provider}` : ""}
+                    {d.reason ? ` · ${d.reason}` : ""}
+                  </p>
+                </div>
+                <div className="shrink-0">
+                  <Button size="sm" variant="outline" disabled={downloading === d.reference}
+                    onClick={() => downloadReversal(d)}
+                    aria-label={`Download ${reversalTitle(d.kind)} ${d.reference} as PDF`}>
+                    {downloading === d.reference
+                      ? <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      : <Download className="h-4 w-4 mr-1" />}
+                    Download
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </TabsContent>
+
 
           <TabsContent value="wallet" className="mt-4">
             <WalletLedgerPanel />
