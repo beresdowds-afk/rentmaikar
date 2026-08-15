@@ -198,7 +198,7 @@ Deno.serve(async (req) => {
     // A freshly saved credential version must beat the 60s config cache.
     if (refresh_credentials) {
       invalidateProviderConfig("sarekon");
-      sarekon.resetSession();
+      await sarekon.resetSession();
     }
 
     const audit = async (row: {
