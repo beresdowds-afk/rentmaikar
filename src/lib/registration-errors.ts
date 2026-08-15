@@ -149,9 +149,14 @@ export function classifyRegistrationError(
     return {
       ...base,
       title: 'Phone number already in use',
-      message:
-        'That phone number is already linked to another account. Use a different number, or contact support if it belongs to you.',
-      field: 'phone',
+      description:
+        'That phone number is already linked to another account, so we can’t attach it here.',
+      fixSteps: [
+        'Enter a different phone number you can receive SMS on.',
+        'If this number is yours, sign in to that account instead.',
+        'Contact support if you believe the number was linked by mistake.',
+      ],
+      fields: ['Phone number'],
       isDuplicate: true,
       isFixableByUser: true,
     };
