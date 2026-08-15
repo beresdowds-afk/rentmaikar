@@ -294,6 +294,15 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/admin/credential-health"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <CredentialHealthPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
                     path="/admin/billing-reconciliation"
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
