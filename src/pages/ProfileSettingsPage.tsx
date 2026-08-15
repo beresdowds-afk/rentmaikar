@@ -34,6 +34,7 @@ import { useRegion } from '@/contexts/RegionContext';
 import { z } from 'zod';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { normalizeToE164, PhoneValidationError } from '@/lib/phone-normalize';
+import { friendlyPhoneError } from '@/lib/phone-errors';
 import AddPhoneNumberCard from '@/components/auth/AddPhoneNumberCard';
 import { regionToDefaultCountry } from '@/hooks/useDefaultPhoneCountry';
 
