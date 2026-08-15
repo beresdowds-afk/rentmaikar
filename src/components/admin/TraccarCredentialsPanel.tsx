@@ -50,6 +50,7 @@ const FIELDS: Array<{ key: string; label: string; secret: boolean; placeholder: 
  */
 export function TraccarCredentialsPanel() {
   const [values, setValues] = useState<Record<string, string>>({});
+  const { verifyAfterSave } = useCredentialVerification();
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
