@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, KeyRound, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Loader2, KeyRound, ShieldCheck, ShieldAlert, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { friendlySecretError, secretErrorDescription } from "@/lib/secret-errors";
 
