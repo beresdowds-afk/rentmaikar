@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Wrench, UserCheck, ArrowRightLeft, FileSignature, PlugZap, Undo2, Search } from "lucide-react";
+import { Loader2, Wrench, UserCheck, ArrowRightLeft, FileSignature, PlugZap, Undo2, Search, ShieldCheck, History as HistoryIcon } from "lucide-react";
 import { toast } from "sonner";
 
 interface Diagnosis {
@@ -20,6 +20,42 @@ interface Diagnosis {
   detail?: string;
   hints?: string[];
 }
+
+interface PermissionResult {
+  scope: string;
+  label: string;
+  unlocks: string;
+  state: "granted" | "missing";
+  missing_scope?: string;
+  note: string;
+}
+
+interface AuditEntry {
+  id: string;
+  created_at: string;
+  operation: string;
+  actor_name: string;
+  actor_email: string | null;
+  status: "succeeded" | "failed";
+  status_code: string;
+  status_title: string;
+  status_detail: string | null;
+  payload: Record<string, unknown>;
+}
+
+const AUDIT_OPERATIONS = [
+  "install_device",
+  "uninstall_device",
+  "update_asset",
+  "install_test_start",
+  "assign_driver",
+  "unassign_driver",
+  "update_driver",
+  "transfer_trackers",
+  "deal_create",
+  "deal_unwind",
+];
+
 
 const DEAL_TYPES = [
   { id: 1, label: "Device Dropship" },
