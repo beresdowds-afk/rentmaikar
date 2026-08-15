@@ -52,6 +52,9 @@ const Body = z.object({
     "deal_list",
     "deal_show",
     "deal_unwind",
+    "fleet_audit_log",
+    "fleet_permissions",
+
   ]),
   dvd_id: z.string().min(1).max(128).optional(),
   device_row_id: z.string().uuid().optional(),
