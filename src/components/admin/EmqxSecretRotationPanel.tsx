@@ -44,6 +44,7 @@ type PendingAction =
 
 export function EmqxSecretRotationPanel() {
   const [loading, setLoading] = useState(false);
+  const { verifyAfterSave } = useCredentialVerification();
   const [busy, setBusy] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
