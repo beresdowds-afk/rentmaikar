@@ -72,10 +72,10 @@ Deno.serve(async (req) => {
     const { data: tx } = await supabase.from("opay_transactions")
       .select("payment_id").eq("reference", reference).maybeSingle();
     if (tx?.payment_id) {
-      await supabase.from("payments").update({
-        status, failure_reason: failure,
-        processed_at: status === "completed" ? new Date().toISOString() : null,
-      }).eq("id", tx.payment_id);
+      await syncPaymentStatus(supabase, {
+        paymentId: tx.payment_id, status, failureReason: failure,
+      });
+
     }
 
     return json({ status, reference, payment_id: tx?.payment_id ?? null });
