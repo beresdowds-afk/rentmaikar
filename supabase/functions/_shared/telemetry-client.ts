@@ -82,39 +82,31 @@ const emqxAdapter: TelemetryAdapter = {
 
 // -------- Traccar adapter (REST). Uses TRACCAR_API_TOKEN/TRACCAR_TOKEN when set,
 // otherwise falls back to basic auth with TRACCAR_EMAIL + TRACCAR_PASSWORD.
-function traccarAuth(): string | null {
-  const token = Deno.env.get("TRACCAR_API_TOKEN") || Deno.env.get("TRACCAR_TOKEN");
-  if (token) return `Bearer ${token}`;
-  const email = Deno.env.get("TRACCAR_EMAIL");
-  const password = Deno.env.get("TRACCAR_PASSWORD");
-  if (email && password) return "Basic " + btoa(`${email}:${password}`);
-  return null;
-}
-
+// The Traccar adapter delegates to the shared, spec-compliant client so it
+// picks up admin-managed credentials, session fallback, retries and the
+// documented 200/202 command semantics instead of raw fetch calls.
 const traccarAdapter: TelemetryAdapter = {
   name: "traccar",
   async getDeviceState(deviceId) {
-    const base = Deno.env.get("TRACCAR_BASE_URL");
-    const auth = traccarAuth();
-    if (!base || !auth) return { online: false, lastSeen: null };
-
+    await traccar.ensureReady();
+    if (!traccar.isConfigured()) return { online: false, lastSeen: null };
     try {
-      const headers = { Authorization: auth, Accept: "application/json" };
-      const devRes = await fetch(`${base}/api/devices?uniqueId=${encodeURIComponent(deviceId)}`, { headers });
+      const devRes = await traccar.devicesByUniqueId([deviceId]);
       if (!devRes.ok) return { online: false, lastSeen: null };
-      const devs = await devRes.json();
-      const dev = Array.isArray(devs) ? devs[0] : null;
+      const dev = Array.isArray(devRes.body) ? devRes.body[0] : null;
       if (!dev) return { online: false, lastSeen: null };
-      const posRes = await fetch(`${base}/api/positions?deviceId=${dev.id}`, { headers });
-      const positions = posRes.ok ? await posRes.json() : [];
-      const p = Array.isArray(positions) ? positions[0] : null;
+      // /positions without params returns the last known position per device.
+      const posRes = await traccar.latestPositions();
+      const p = posRes.ok
+        ? (posRes.body || []).find((pos) => pos.deviceId === dev.id) ?? null
+        : null;
       return {
         online: dev.status === "online",
         lastSeen: dev.lastUpdate ?? null,
         latitude: p?.latitude ?? null,
         longitude: p?.longitude ?? null,
         speed: p?.speed ?? null,
-        ignition: p?.attributes?.ignition ?? null,
+        ignition: (p?.attributes?.ignition as boolean | undefined) ?? null,
         raw: { device: dev, position: p },
       };
     } catch {
@@ -122,28 +114,27 @@ const traccarAdapter: TelemetryAdapter = {
     }
   },
   async sendCommand(deviceId, command, payload = {}) {
-    const base = Deno.env.get("TRACCAR_BASE_URL");
-    const auth = traccarAuth();
-    if (!base || !auth) return { ok: false, error: "Traccar not configured" };
+    await traccar.ensureReady();
+    if (!traccar.isConfigured()) return { ok: false, error: "Traccar not configured" };
     try {
-      const headers = { Authorization: auth, "Content-Type": "application/json" };
-
-      const devRes = await fetch(`${base}/api/devices?uniqueId=${encodeURIComponent(deviceId)}`, { headers });
-      const devs = devRes.ok ? await devRes.json() : [];
-      const dev = Array.isArray(devs) ? devs[0] : null;
+      const devRes = await traccar.devicesByUniqueId([deviceId]);
+      if (!devRes.ok) return { ok: false, error: "Traccar device lookup failed" };
+      const dev = Array.isArray(devRes.body) ? devRes.body[0] : null;
       if (!dev) return { ok: false, error: "device not found" };
       const map: Record<string, string> = { immobilize: "engineStop", mobilize: "engineResume" };
       const type = map[command] ?? "custom";
-      const res = await fetch(`${base}/api/commands/send`, {
-        method: "POST", headers,
-        body: JSON.stringify({ deviceId: dev.id, type, attributes: payload }),
-      });
-      return { ok: res.ok, error: res.ok ? undefined : `Traccar ${res.status}` };
+      const res = await traccar.sendCommand(dev.id, type, payload);
+      if (res.ok) return { ok: true, queued: res.queued === true };
+      return {
+        ok: false,
+        error: res.reason === "provider_error" ? `Traccar ${res.status}` : res.reason,
+      };
     } catch (e) {
       return { ok: false, error: String(e) };
     }
   },
 };
+
 
 /** Traccar is the platform default; EMQX is the automatic fallback. */
 export const DEFAULT_PROVIDER: TelemetryProviderName = "traccar";
