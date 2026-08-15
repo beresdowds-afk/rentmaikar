@@ -201,13 +201,28 @@ async function request<T = unknown>(
   return { ok: true, body: body as T };
 }
 
-/** Authenticate and cache the `sid` session token. */
+/**
+ * Authenticate and cache the `sid` session token — first in memory, then in
+ * the encrypted `provider_api_sessions` store so the session survives isolate
+ * restarts and is shared by web, mobile and cron callers.
+ */
 async function login(force = false): Promise<GPSANDTRACKResult<string>> {
   const c = creds();
   if (!c) return { ok: false, reason: "not_configured", missing: missingCredentials() };
-  if (!force && session && Date.now() - session.issuedAt < SESSION_TTL_MS) {
+  const fingerprint = await credentialFingerprint(c.base, c.userId, c.password);
+
+  if (!force && session && session.fingerprint === fingerprint && Date.now() - session.issuedAt < SESSION_TTL_MS) {
     return { ok: true, body: session.sid };
   }
+
+  if (!force) {
+    const stored = await loadSession(SESSION_PROVIDER, fingerprint);
+    if (stored) {
+      session = { sid: stored.token, issuedAt: stored.issuedAt, fingerprint };
+      return { ok: true, body: stored.token };
+    }
+  }
+
   // units[]=utc,metric so timestamps come back in UTC and speeds in km/h
   // regardless of the dealer account's saved preferences.
   const r = await request("/session/create.json", {
@@ -215,13 +230,21 @@ async function login(force = false): Promise<GPSANDTRACKResult<string>> {
     password: c.password,
     "units[]": ["utc", "metric"],
   });
-  if (!r.ok) return r;
+  if (!r.ok) {
+    if (r.reason === "auth_error") {
+      session = null;
+      await clearSession(SESSION_PROVIDER);
+    }
+    return r;
+  }
   const body = r.body as Record<string, unknown>;
   const sid = pick(body, ["sid"]) ?? pick((body?.session ?? {}) as Record<string, unknown>, ["sid", "id", "token"]);
   if (!sid) return { ok: false, reason: "auth_error", status: 200, body };
-  session = { sid: String(sid), issuedAt: Date.now() };
+  session = { sid: String(sid), issuedAt: Date.now(), fingerprint };
+  await saveSession(SESSION_PROVIDER, fingerprint, session.sid, SESSION_TTL_MS);
   return { ok: true, body: session.sid };
 }
+
 
 /** Authenticated call; transparently re-authenticates once on session expiry. */
 async function call<T = unknown>(
