@@ -121,16 +121,28 @@ export function VehiclePickupManagement() {
 
   const handleSave = async () => {
     if (!editingVehicle) return;
-    
+
+    const address = formData.pickup_address.trim();
+    const city = formData.pickup_city.trim();
+    const location = formData.pickup_location.trim();
+    if (!address || !city || !location) {
+      toast.error('Location name, city and full street address are all required.');
+      return;
+    }
+    if (location.toLowerCase() === city.toLowerCase()) {
+      toast.error('Location name must be a landmark or spot — not just the city name.');
+      return;
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase
         .from('vehicles')
         .update({
-          pickup_location: formData.pickup_location || null,
-          pickup_address: formData.pickup_address || null,
-          pickup_city: formData.pickup_city || null,
-          pickup_instructions: formData.pickup_instructions || null,
+          pickup_location: location,
+          pickup_address: address,
+          pickup_city: city,
+          pickup_instructions: formData.pickup_instructions.trim() || null,
         })
         .eq('id', editingVehicle.id);
 
@@ -147,10 +159,6 @@ export function VehiclePickupManagement() {
     }
   };
 
-  const hasPickupDetails = (vehicle: Vehicle) => {
-    return vehicle.pickup_location || vehicle.pickup_address || vehicle.pickup_city;
-  };
-
   const filteredVehicles = vehicles.filter(vehicle => {
     const matchesSearch = 
       vehicle.make.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -159,16 +167,20 @@ export function VehiclePickupManagement() {
       vehicle.owner_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       vehicle.pickup_city?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesFilter = 
+    const state = completenessOf(vehicle);
+    const matchesFilter =
       filterStatus === 'all' ||
-      (filterStatus === 'configured' && hasPickupDetails(vehicle)) ||
-      (filterStatus === 'not-configured' && !hasPickupDetails(vehicle));
+      (filterStatus === 'configured' && state === 'complete') ||
+      (filterStatus === 'partial' && state === 'partial') ||
+      (filterStatus === 'not-configured' && state === 'empty');
 
     return matchesSearch && matchesFilter;
   });
 
-  const configuredCount = vehicles.filter(hasPickupDetails).length;
-  const notConfiguredCount = vehicles.length - configuredCount;
+  const configuredCount = vehicles.filter((v) => completenessOf(v) === 'complete').length;
+  const partialCount = vehicles.filter((v) => completenessOf(v) === 'partial').length;
+  const notConfiguredCount = vehicles.filter((v) => completenessOf(v) === 'empty').length;
+
 
   if (loading) {
     return (
