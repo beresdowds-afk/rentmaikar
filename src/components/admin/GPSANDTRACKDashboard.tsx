@@ -312,6 +312,9 @@ export default function GPSANDTRACKDashboard() {
         <TabsList>
           <TabsTrigger value="devices">Devices</TabsTrigger>
           <TabsTrigger value="commands">Commands</TabsTrigger>
+          <TabsTrigger value="fleet" className="flex items-center gap-2">
+            <Wrench className="h-4 w-4" /> Fleet admin
+          </TabsTrigger>
           <TabsTrigger value="status" className="flex items-center gap-2">
             <Activity className="h-4 w-4" /> Status
           </TabsTrigger>
@@ -322,6 +325,10 @@ export default function GPSANDTRACKDashboard() {
 
         <TabsContent value="status">
           <GPSANDTRACKStatusPanel refreshKey={statusRefresh} />
+        </TabsContent>
+
+        <TabsContent value="fleet">
+          <GPSANDTRACKFleetAdminPanel onChanged={() => { loadDevices(); loadLocal(); }} />
         </TabsContent>
 
         <TabsContent value="credentials">
