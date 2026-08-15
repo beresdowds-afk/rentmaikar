@@ -25,6 +25,12 @@ export async function downloadDocumentPdf(
   fileName: string,
 ): Promise<void> {
   const html = await fetchDocumentHtml(kind, id);
+  await downloadHtmlAsPdf(html, fileName);
+}
+
+/** Rasterise arbitrary document HTML into a paginated A4 PDF download. */
+export async function downloadHtmlAsPdf(html: string, fileName: string): Promise<void> {
+
 
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
