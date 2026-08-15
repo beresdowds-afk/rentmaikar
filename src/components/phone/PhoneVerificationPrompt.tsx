@@ -25,6 +25,9 @@ const EXCLUDED_PREFIXES = [
   '/owner/register',
   '/verification',
   '/profile/settings',
+  '/profile-settings',
+  '/settings',
+  '/profile',
 ];
 
 const SNOOZE_MS = 24 * 60 * 60 * 1000;
