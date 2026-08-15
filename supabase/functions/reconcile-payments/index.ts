@@ -15,6 +15,8 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHmac } from "node:crypto";
 import { resolvePaymentContext } from "../_shared/resolve-payment-context.ts";
+import { syncPaymentStatus } from "../_shared/payment-status-sync.ts";
+
 
 const LOOKBACK_HOURS = 24 * 7;
 const MAX_PER_PSP = 200;
