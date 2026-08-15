@@ -359,20 +359,20 @@ export function VehiclePickupManagement() {
             
             <div className="space-y-2">
               <Label>City</Label>
-              <Select 
-                value={formData.pickup_city} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, pickup_city: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select city" />
-                </SelectTrigger>
-                <SelectContent>
-                  {allCities.map(city => (
-                    <SelectItem key={city} value={city}>{city}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                list="pickup-city-suggestions"
+                placeholder="Start typing a city"
+                value={formData.pickup_city}
+                onChange={(e) => setFormData(prev => ({ ...prev, pickup_city: e.target.value }))}
+              />
+              <datalist id="pickup-city-suggestions">
+                {citySuggestions.map(city => (
+                  <option key={city} value={city} />
+                ))}
+              </datalist>
+              <p className="text-xs text-muted-foreground">Free text — suggestions are only a shortcut.</p>
             </div>
+
             
             <div className="space-y-2">
               <Label>Full Address</Label>
