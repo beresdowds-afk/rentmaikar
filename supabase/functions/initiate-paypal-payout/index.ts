@@ -4,11 +4,13 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { claimIdempotencyKey, completeIdempotencyKey, duplicateResponse, resolveIdempotencyKey } from "../_shared/payment-idempotency.ts";
 import { postLedgerEntry } from "../_shared/wallet-ledger.ts";
+import { describeError, getPayPalConfig, PayPalError, payPalRequest } from "../_shared/paypal-client.ts";
 import {
   consumeWithdrawalAuthorization,
   requireWithdrawalAuthorization,
   transitionState,
 } from "../_shared/withdrawal-authorization.ts";
+
 
 const BodySchema = z.object({
   amount: z.number().positive(),
