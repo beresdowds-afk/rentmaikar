@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { friendlySecretError, secretErrorDescription } from "@/lib/secret-errors";
 import { KeyRound, ShieldCheck } from "lucide-react";
+import { useCredentialVerification } from "@/hooks/useCredentialVerification";
 
 /**
  * Vault-backed credential rotation for providers that previously required an
@@ -41,6 +42,7 @@ const FIELDS: Record<"hologram" | "traccar", Array<{ key: string; label: string;
 function ProviderForm({ provider }: { provider: "hologram" | "traccar" }) {
   const qc = useQueryClient();
   const [values, setValues] = useState<Record<string, string>>({});
+  const { verifyAfterSave, running } = useCredentialVerification();
 
   const save = useMutation({
     mutationFn: async () => {
@@ -55,10 +57,12 @@ function ProviderForm({ provider }: { provider: "hologram" | "traccar" }) {
       } as never);
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success(`${provider} credentials rotated`);
+    onSuccess: async () => {
+      toast.success(`${provider} credentials rotated — verifying…`);
       setValues({});
       qc.invalidateQueries({ queryKey: ["provider-credential-versions"] });
+      // Immediately confirm the new credentials actually authenticate.
+      await verifyAfterSave(provider);
     },
     onError: (e: Error) => {
       const friendly = friendlySecretError(e, provider);
@@ -87,8 +91,8 @@ function ProviderForm({ provider }: { provider: "hologram" | "traccar" }) {
           </div>
         ))}
       </div>
-      <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
-        Save &amp; activate
+      <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending || running.includes(provider)}>
+        {save.isPending || running.includes(provider) ? "Saving & verifying…" : "Save & verify"}
       </Button>
     </div>
   );

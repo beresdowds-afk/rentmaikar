@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, KeyRound, PlugZap, CheckCircle2, XCircle, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { friendlySecretError, secretErrorDescription } from "@/lib/secret-errors";
+import { useCredentialVerification } from "@/hooks/useCredentialVerification";
 
 export interface TraccarDiagnosis {
   code: string;
@@ -49,6 +50,7 @@ const FIELDS: Array<{ key: string; label: string; secret: boolean; placeholder: 
  */
 export function TraccarCredentialsPanel() {
   const [values, setValues] = useState<Record<string, string>>({});
+  const { verifyAfterSave } = useCredentialVerification();
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
@@ -107,11 +109,12 @@ export function TraccarCredentialsPanel() {
         _notes: "Updated from Traccar credentials settings",
       } as never);
       if (error) throw error;
-      toast.success("Traccar credentials saved securely");
+      toast.success("Traccar credentials saved securely — verifying…");
       setValues({});
       await loadVersions();
-      // Backend caches credentials for up to a minute — give it a moment.
-      setTimeout(() => { test(); }, 1500);
+      // Verify the new credentials immediately and toast the real outcome.
+      await verifyAfterSave("traccar");
+      await test();
     } catch (e) {
       const friendly = friendlySecretError(e, "Traccar");
       toast.error(friendly.title, { description: secretErrorDescription(friendly), duration: 10000 });

@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { KeyRound, RefreshCw, ShieldCheck, Undo2, CheckCircle2, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useCredentialVerification } from '@/hooks/useCredentialVerification';
 import { friendlySecretError, secretErrorDescription } from "@/lib/secret-errors";
 
 interface CredentialVersion {
@@ -43,6 +44,7 @@ type PendingAction =
 
 export function EmqxSecretRotationPanel() {
   const [loading, setLoading] = useState(false);
+  const { verifyAfterSave } = useCredentialVerification();
   const [busy, setBusy] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
@@ -114,8 +116,9 @@ export function EmqxSecretRotationPanel() {
     try {
       const data = await call({ action: 'activate', versionId });
       setHistory(data.history ?? []);
-      toast({ title: 'New EMQX credentials active', description: 'The previous version is kept for one-click rollback.' });
+      toast({ title: 'New EMQX credentials active', description: 'Verifying the broker connection…' });
       await runProbe();
+      await verifyAfterSave('emqx');
     } catch (e) {
       const friendly = friendlySecretError(e, 'EMQX');
       toast({ title: friendly.title, description: secretErrorDescription(friendly), variant: 'destructive' });
@@ -129,6 +132,7 @@ export function EmqxSecretRotationPanel() {
       setHistory(data.history ?? []);
       toast({ title: 'Rolled back', description: 'The previous EMQX credentials are active again.' });
       await runProbe();
+      await verifyAfterSave('emqx');
     } catch (e) {
       const friendly = friendlySecretError(e, 'EMQX');
       toast({ title: friendly.title, description: secretErrorDescription(friendly), variant: 'destructive' });
