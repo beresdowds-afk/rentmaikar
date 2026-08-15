@@ -70,6 +70,7 @@ const MobileCallIn = lazy(() => import("./pages/MobileCallIn"));
 const MobileNotificationPreferences = lazy(() => import("./pages/MobileNotificationPreferences"));
 const PaymentReceipt = lazy(() => import("./pages/PaymentReceipt"));
 const ReconciliationLogsPage = lazy(() => import("./pages/admin/ReconciliationLogsPage"));
+const AdminSettlementRunsPage = lazy(() => import("./pages/admin/AdminSettlementRunsPage"));
 const CredentialHealthPage = lazy(() => import("./pages/admin/CredentialHealthPage"));
 const BillingReconciliationPage = lazy(() => import("./pages/admin/BillingReconciliationPage"));
 const AdminOwnerWithdrawalsPage = lazy(() => import("./pages/admin/AdminOwnerWithdrawalsPage"));
@@ -284,6 +285,14 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['driver', 'admin']}>
                         <PaymentReceipt />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/settlement-reconciliation"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminSettlementRunsPage />
                       </ProtectedRoute>
                     }
                   />

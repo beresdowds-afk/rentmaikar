@@ -2231,6 +2231,7 @@ export type Database = {
           push: boolean
           slack: boolean
           slack_webhook_url: string | null
+          sms: boolean
           updated_at: string
           user_id: string
           webhook: boolean
@@ -2246,6 +2247,7 @@ export type Database = {
           push?: boolean
           slack?: boolean
           slack_webhook_url?: string | null
+          sms?: boolean
           updated_at?: string
           user_id: string
           webhook?: boolean
@@ -2261,6 +2263,7 @@ export type Database = {
           push?: boolean
           slack?: boolean
           slack_webhook_url?: string | null
+          sms?: boolean
           updated_at?: string
           user_id?: string
           webhook?: boolean
@@ -7724,6 +7727,128 @@ export type Database = {
           region?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      settlement_reconciliation_results: {
+        Row: {
+          amount: number | null
+          created_at: string
+          currency: string | null
+          id: string
+          issues: Json
+          ok: boolean
+          payment_id: string
+          provider: string | null
+          provider_reference: string | null
+          purpose: string | null
+          repaired: Json
+          run_id: string
+          user_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          issues?: Json
+          ok?: boolean
+          payment_id: string
+          provider?: string | null
+          provider_reference?: string | null
+          purpose?: string | null
+          repaired?: Json
+          run_id: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          issues?: Json
+          ok?: boolean
+          payment_id?: string
+          provider?: string | null
+          provider_reference?: string | null
+          purpose?: string | null
+          repaired?: Json
+          run_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settlement_reconciliation_results_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "settlement_reconciliation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settlement_reconciliation_runs: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          fatal_error: string | null
+          finished_at: string | null
+          id: string
+          payment_id: string | null
+          per_provider: Json
+          since_hours: number | null
+          started_at: string
+          status: string
+          total_checked: number
+          total_failed: number
+          total_ok: number
+          total_repaired: number
+          triggered_by: string
+          triggered_by_user_id: string | null
+          updated_at: string
+          window_end: string | null
+          window_start: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          fatal_error?: string | null
+          finished_at?: string | null
+          id?: string
+          payment_id?: string | null
+          per_provider?: Json
+          since_hours?: number | null
+          started_at?: string
+          status?: string
+          total_checked?: number
+          total_failed?: number
+          total_ok?: number
+          total_repaired?: number
+          triggered_by?: string
+          triggered_by_user_id?: string | null
+          updated_at?: string
+          window_end?: string | null
+          window_start?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          fatal_error?: string | null
+          finished_at?: string | null
+          id?: string
+          payment_id?: string | null
+          per_provider?: Json
+          since_hours?: number | null
+          started_at?: string
+          status?: string
+          total_checked?: number
+          total_failed?: number
+          total_ok?: number
+          total_repaired?: number
+          triggered_by?: string
+          triggered_by_user_id?: string | null
+          updated_at?: string
+          window_end?: string | null
+          window_start?: string | null
         }
         Relationships: []
       }

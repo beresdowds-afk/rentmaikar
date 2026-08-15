@@ -11,8 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WalletLedgerPanel } from "@/components/payments/WalletLedgerPanel";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { downloadDocumentPdf } from "@/lib/document-pdf";
 import { toast } from "sonner";
-import { CreditCard, Download, FileText, Receipt, RefreshCw, Send, ShieldCheck } from "lucide-react";
+import { CreditCard, Download, ExternalLink, FileText, Loader2, Receipt, RefreshCw, Search, Send, ShieldCheck } from "lucide-react";
 
 interface PaymentRow {
   id: string; amount: number; currency: string; status: string; purpose: string | null;
@@ -65,6 +69,15 @@ export default function BillingHistoryPage() {
   const [subs, setSubs] = useState<SubRow[]>([]);
   const [invoices, setInvoices] = useState<DocRow[]>([]);
   const [receipts, setReceipts] = useState<DocRow[]>([]);
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  // Search & advanced filters (shared across payments, invoices and receipts).
+  const [query, setQuery] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [providerFilter, setProviderFilter] = useState("all");
+  const [periodFilter, setPeriodFilter] = useState("all");
 
   const load = async () => {
     if (!user?.id) return;
@@ -107,6 +120,90 @@ export default function BillingHistoryPage() {
       }, {}),
     [payments],
   );
+
+  const providers = useMemo(
+    () => Array.from(new Set([
+      ...payments.map((p) => p.payment_method),
+      ...receipts.map((r) => r.payment_method),
+    ].filter(Boolean) as string[])).sort(),
+    [payments, receipts],
+  );
+
+  const periodOptions = useMemo(
+    () => subs.map((s) => ({
+      id: s.id,
+      label: `${s.subscription_plans?.name ?? "Plan"} · ${new Date(s.started_at).toLocaleDateString()} – ${s.expires_at ? new Date(s.expires_at).toLocaleDateString() : "ongoing"}`,
+      start: new Date(s.started_at).getTime(),
+      end: s.expires_at ? new Date(s.expires_at).getTime() : Date.now() + 3.15e10,
+    })),
+    [subs],
+  );
+
+  const activePeriod = useMemo(
+    () => periodOptions.find((p) => p.id === periodFilter) ?? null,
+    [periodOptions, periodFilter],
+  );
+
+  const inWindow = (iso: string) => {
+    const t = new Date(iso).getTime();
+    if (fromDate && t < new Date(fromDate).getTime()) return false;
+    if (toDate && t > new Date(toDate).getTime() + 86_400_000 - 1) return false;
+    if (activePeriod && (t < activePeriod.start || t > activePeriod.end)) return false;
+    return true;
+  };
+
+  const q = query.trim().toLowerCase();
+  const matches = (...values: Array<string | number | null | undefined>) =>
+    !q || values.filter((v) => v !== null && v !== undefined)
+      .some((v) => String(v).toLowerCase().includes(q));
+
+  const filteredPayments = useMemo(
+    () => payments.filter((p) =>
+      inWindow(p.created_at) &&
+      (statusFilter === "all" || p.status === statusFilter) &&
+      (providerFilter === "all" || p.payment_method === providerFilter) &&
+      matches(p.transaction_id, p.purpose, p.payment_method, p.amount, p.currency, p.status)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [payments, query, fromDate, toDate, statusFilter, providerFilter, activePeriod],
+  );
+
+  const filteredInvoices = useMemo(
+    () => invoices.filter((i) =>
+      inWindow(i.created_at) &&
+      (statusFilter === "all" || i.status === statusFilter) &&
+      matches(i.invoice_number, i.invoice_type, i.total_amount, i.currency, i.status)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [invoices, query, fromDate, toDate, statusFilter, activePeriod],
+  );
+
+  const filteredReceipts = useMemo(
+    () => receipts.filter((r) =>
+      inWindow(r.created_at) &&
+      (providerFilter === "all" || r.payment_method === providerFilter) &&
+      matches(r.receipt_number, r.payment_method, r.amount, r.currency)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [receipts, query, fromDate, toDate, providerFilter, activePeriod],
+  );
+
+  const filtersActive = Boolean(q || fromDate || toDate || statusFilter !== "all" ||
+    providerFilter !== "all" || periodFilter !== "all");
+
+  const resetFilters = () => {
+    setQuery(""); setFromDate(""); setToDate("");
+    setStatusFilter("all"); setProviderFilter("all"); setPeriodFilter("all");
+  };
+
+  const downloadPdf = async (kind: "invoice" | "receipt", id: string, reference?: string) => {
+    setDownloading(id);
+    try {
+      await downloadDocumentPdf(kind, id, `${reference ?? kind}-rentmaikar.pdf`);
+      toast.success(`${kind === "invoice" ? "Invoice" : "Receipt"} downloaded`);
+    } catch {
+      toast.error("Could not generate the PDF");
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   const viewDoc = async (kind: "invoice" | "receipt", id: string) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -200,21 +297,86 @@ export default function BillingHistoryPage() {
           </CardContent>
         </Card>
 
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base"><Search className="h-4 w-4" /> Search &amp; filters</CardTitle>
+            <CardDescription>Narrow payments, invoices and receipts by date, subscription period, status or provider reference.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-1 lg:col-span-3">
+              <Label htmlFor="billing-search" className="text-xs">Search</Label>
+              <Input id="billing-search" value={query} onChange={(e) => setQuery(e.target.value)}
+                placeholder="Invoice or receipt number, provider reference, amount, purpose" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="billing-from" className="text-xs">From date</Label>
+              <Input id="billing-from" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="billing-to" className="text-xs">To date</Label>
+              <Input id="billing-to" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Subscription period</Label>
+              <Select value={periodFilter} onValueChange={setPeriodFilter}>
+                <SelectTrigger><SelectValue placeholder="Any period" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any period</SelectItem>
+                  {periodOptions.map((p) => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger><SelectValue placeholder="Any status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any status</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="paid">Invoice paid</SelectItem>
+                  <SelectItem value="unpaid">Invoice unpaid</SelectItem>
+                  <SelectItem value="overdue">Invoice overdue</SelectItem>
+                  <SelectItem value="void">Invoice void</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Provider</Label>
+              <Select value={providerFilter} onValueChange={setProviderFilter}>
+                <SelectTrigger><SelectValue placeholder="Any provider" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any provider</SelectItem>
+                  {providers.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end">
+              <Button variant="outline" size="sm" onClick={resetFilters} disabled={!filtersActive}>
+                Clear filters
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <Tabs defaultValue="payments">
           <TabsList className="flex-wrap">
-            <TabsTrigger value="payments">Payments ({payments.length})</TabsTrigger>
+            <TabsTrigger value="payments">Payments ({filteredPayments.length})</TabsTrigger>
             <TabsTrigger value="periods">Subscription periods ({subs.length})</TabsTrigger>
-            <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
-            <TabsTrigger value="receipts">Receipts ({receipts.length})</TabsTrigger>
+            <TabsTrigger value="invoices">Invoices ({filteredInvoices.length})</TabsTrigger>
+            <TabsTrigger value="receipts">Receipts ({filteredReceipts.length})</TabsTrigger>
             <TabsTrigger value="wallet">Wallet</TabsTrigger>
           </TabsList>
 
           <TabsContent value="payments" className="mt-4 space-y-2">
             {loading && <Skeleton className="h-16 w-full" />}
-            {!loading && payments.length === 0 && (
-              <p className="text-sm text-muted-foreground py-6 text-center">No payments yet.</p>
+            {!loading && filteredPayments.length === 0 && (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                {filtersActive ? "No payments match these filters." : "No payments yet."}
+              </p>
             )}
-            {payments.map((p) => (
+            {filteredPayments.map((p) => (
               <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium flex items-center gap-2">
@@ -225,6 +387,7 @@ export default function BillingHistoryPage() {
                     {new Date(p.created_at).toLocaleString()}
                     {p.payment_method ? ` · ${p.payment_method}` : ""}
                     {p.settled_at ? " · settled" : ""}
+                    {p.transaction_id ? ` · ref ${p.transaction_id}` : ""}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
@@ -255,10 +418,12 @@ export default function BillingHistoryPage() {
           </TabsContent>
 
           <TabsContent value="invoices" className="mt-4 space-y-2">
-            {!loading && invoices.length === 0 && (
-              <p className="text-sm text-muted-foreground py-6 text-center">No invoices yet.</p>
+            {!loading && filteredInvoices.length === 0 && (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                {filtersActive ? "No invoices match these filters." : "No invoices yet."}
+              </p>
             )}
-            {invoices.map((i) => (
+            {filteredInvoices.map((i) => (
               <div key={i.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
                 <div className="min-w-0">
                   <p className="font-mono text-xs flex items-center gap-1"><FileText className="h-3 w-3" /> {i.invoice_number}</p>
@@ -271,9 +436,17 @@ export default function BillingHistoryPage() {
                     {i.due_date ? ` · due ${new Date(i.due_date).toLocaleDateString()}` : ""}
                   </p>
                 </div>
-                <div className="flex gap-1 shrink-0">
+                <div className="flex flex-wrap gap-1 shrink-0">
+                  <Button size="sm" variant="outline" disabled={downloading === i.id}
+                    onClick={() => downloadPdf("invoice", i.id, i.invoice_number)}
+                    aria-label={`Download invoice ${i.invoice_number ?? ""} as PDF`}>
+                    {downloading === i.id
+                      ? <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      : <Download className="h-4 w-4 mr-1" />}
+                    Download
+                  </Button>
                   <Button size="sm" variant="ghost" onClick={() => viewDoc("invoice", i.id)} aria-label="Open invoice">
-                    <Download className="h-4 w-4" />
+                    <ExternalLink className="h-4 w-4" />
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => emailDoc("invoice", i.id)} aria-label="Email invoice">
                     <Send className="h-4 w-4" />
@@ -284,10 +457,12 @@ export default function BillingHistoryPage() {
           </TabsContent>
 
           <TabsContent value="receipts" className="mt-4 space-y-2">
-            {!loading && receipts.length === 0 && (
-              <p className="text-sm text-muted-foreground py-6 text-center">No receipts yet.</p>
+            {!loading && filteredReceipts.length === 0 && (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                {filtersActive ? "No receipts match these filters." : "No receipts yet."}
+              </p>
             )}
-            {receipts.map((r) => (
+            {filteredReceipts.map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
                 <div className="min-w-0">
                   <p className="font-mono text-xs flex items-center gap-1"><Receipt className="h-3 w-3" /> {r.receipt_number}</p>
@@ -297,9 +472,17 @@ export default function BillingHistoryPage() {
                   </p>
                   <p className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</p>
                 </div>
-                <div className="flex gap-1 shrink-0">
+                <div className="flex flex-wrap gap-1 shrink-0">
+                  <Button size="sm" variant="outline" disabled={downloading === r.id}
+                    onClick={() => downloadPdf("receipt", r.id, r.receipt_number)}
+                    aria-label={`Download receipt ${r.receipt_number ?? ""} as PDF`}>
+                    {downloading === r.id
+                      ? <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      : <Download className="h-4 w-4 mr-1" />}
+                    Download
+                  </Button>
                   <Button size="sm" variant="ghost" onClick={() => viewDoc("receipt", r.id)} aria-label="Open receipt">
-                    <Download className="h-4 w-4" />
+                    <ExternalLink className="h-4 w-4" />
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => emailDoc("receipt", r.id)} aria-label="Email receipt">
                     <Send className="h-4 w-4" />
