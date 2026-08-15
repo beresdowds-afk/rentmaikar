@@ -13,6 +13,7 @@ export default function CredentialHealthPage() {
       <Seo
         title="Credential health | Rentmaikar admin"
         description="Verify every third-party provider credential with a live API check."
+        path="/admin/credential-health"
         noindex
       />
       <header className="space-y-1">
