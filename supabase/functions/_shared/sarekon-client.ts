@@ -301,8 +301,11 @@ export function normaliseDevice(row: Record<string, unknown>): GPSANDTRACKDevice
   return {
     id: String(id ?? serial ?? ""),
     serial: String(serial ?? id ?? ""),
+    // /dvd/enumerate.json returns a flat row with `description`; /dvd/show.json
+    // nests the label under `asset`.
     name: (pick(asset, ["asset_description", "description", "name"]) ??
-      pick(device, ["name", "label"])) as string ?? null,
+      pick(row, ["description", "name", "label"]) ??
+      pick(device, ["device_description", "name", "label"])) as string ?? null,
     model: (pick(device, ["model", "device_model", "product", "hardware"]) as string) ?? null,
     status: (pick(device, ["status", "state", "connection_status"]) as string) ??
       (pick(row, ["status"]) as string) ?? null,
