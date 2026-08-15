@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { idempotencyHeaders } from "@/lib/idempotency";
 
 interface OpayCheckoutProps {
   amount: number;
@@ -40,6 +41,10 @@ export function OpayCheckout({
           amount, rentalId, vehicleId, driverId, paymentFrequency, description,
           returnUrl,
         },
+        // Collapses double-clicks and network retries onto one Opay order.
+        headers: idempotencyHeaders("opay_order", {
+          amount, rentalId, vehicleId, driverId, paymentFrequency,
+        }),
       });
       if (error || !data?.cashier_url) throw new Error(error?.message ?? data?.error ?? "Opay init failed");
 
@@ -60,8 +65,9 @@ export function OpayCheckout({
           setLoading(false);
         } else if (v?.status === "failed") {
           window.clearInterval(pollRef.current!);
-          toast.error("Payment failed");
-          onError?.("failed");
+          const reason = v?.failure_reason ?? "Payment failed";
+          toast.error(reason);
+          onError?.(reason);
           setLoading(false);
         } else if (attempts >= 75) {
           window.clearInterval(pollRef.current!);

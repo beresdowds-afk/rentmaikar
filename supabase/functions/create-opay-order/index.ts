@@ -1,12 +1,12 @@
 // deno-lint-ignore-file no-explicit-any
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { createHmac } from "node:crypto";
 import { z } from "npm:zod@3";
 import { resolvePaymentContext } from "../_shared/resolve-payment-context.ts";
+import { createCashierOrder, getOpayConfig, toMinorUnits } from "../_shared/opay-client.ts";
 
 const BodySchema = z.object({
-  amount: z.number().positive(),
+  amount: z.number().positive().max(50_000_000),
   rentalId: z.string().uuid().optional(),
   vehicleId: z.string().uuid().optional(),
   driverId: z.string().uuid().optional(),
@@ -19,11 +19,8 @@ const BodySchema = z.object({
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const merchantId = Deno.env.get("OPAY_MERCHANT_ID");
-    const secretKey = Deno.env.get("OPAY_SECRET_KEY");
-    const publicKey = Deno.env.get("OPAY_PUBLIC_KEY");
-    const env = (Deno.env.get("OPAY_ENVIRONMENT") ?? "sandbox").toLowerCase();
-    if (!merchantId || !secretKey || !publicKey) return json({ error: "Opay not configured" }, 503);
+    const cfg = getOpayConfig();
+    if (!cfg) return json({ error: "Opay not configured" }, 503);
 
     const parsed = BodySchema.safeParse(await req.json());
     if (!parsed.success) return json({ error: parsed.error.flatten() }, 400);
@@ -48,11 +45,25 @@ Deno.serve(async (req) => {
     });
     if ("error" in ctx) return json({ error: ctx.error }, 400);
 
-    const reference = `rmk_${crypto.randomUUID().replace(/-/g, "")}`;
-    const amountMinor = Math.round(b.amount * 100);
-    const baseUrl = env === "live" ? "https://liveapi.opaycheckout.com" : "https://sandboxapi.opaycheckout.com";
+    // Client-supplied Idempotency-Key collapses double clicks / retries onto a
+    // single OPay order (OPay rejects a duplicate reference with code 00005).
+    const idemKey = req.headers.get("Idempotency-Key");
+    if (idemKey) {
+      const { data: existing } = await supabase.from("opay_transactions")
+        .select("reference, order_no, cashier_url, payment_id, status")
+        .eq("idempotency_key", idemKey).eq("driver_id", driverId).maybeSingle();
+      if (existing?.cashier_url) {
+        return json({
+          reference: existing.reference, order_no: existing.order_no,
+          cashier_url: existing.cashier_url, payment_id: existing.payment_id, reused: true,
+        });
+      }
+    }
 
-    const payload = {
+    const reference = `rmk_${crypto.randomUUID().replace(/-/g, "")}`;
+    const amountMinor = toMinorUnits(b.amount);
+
+    const result = await createCashierOrder({
       country: "NG",
       reference,
       amount: { total: amountMinor, currency: "NGN" },
@@ -66,25 +77,12 @@ Deno.serve(async (req) => {
         description: b.description ?? "Rental payment",
         price: amountMinor, quantity: 1, currency: "NGN",
       }],
-      userInfo: { userId: driverId },
-    };
+      userInfo: { userId: driverId, userEmail: u.user.email ?? undefined },
+    }, cfg);
 
-    const bodyStr = JSON.stringify(payload);
-    const sig = createHmac("sha512", secretKey).update(bodyStr).digest("hex");
-
-    const resp = await fetch(`${baseUrl}/api/v1/international/cashier/create`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${publicKey}`,
-        MerchantId: merchantId,
-        Signature: sig,
-      },
-      body: bodyStr,
-    });
-    const pay = await resp.json();
-    if (!resp.ok || pay?.code !== "00000") {
-      return json({ error: pay?.message ?? "Opay create failed", raw: pay }, 502);
+    if (!result.ok || !result.data?.cashierUrl) {
+      console.error("[create-opay-order] init failed", result.code, result.message);
+      return json({ error: result.message, code: result.code, retryable: result.retryable }, 502);
     }
 
     const { data: payment, error: paymentError } = await supabase.from("payments").insert({
@@ -101,14 +99,15 @@ Deno.serve(async (req) => {
     }
 
     await supabase.from("opay_transactions").insert({
-      reference, order_no: pay.data?.orderNo, cashier_url: pay.data?.cashierUrl,
+      reference, order_no: result.data?.orderNo, cashier_url: result.data?.cashierUrl,
       currency: "NGN", amount: b.amount, status: "pending",
       rental_id: ctx.rentalId, driver_id: driverId, vehicle_id: ctx.vehicleId,
-      payment_id: payment.id, raw_payload: pay.data,
+      payment_id: payment.id, raw_payload: result.data,
+      idempotency_key: idemKey ?? null,
     });
 
     return json({
-      reference, order_no: pay.data?.orderNo, cashier_url: pay.data?.cashierUrl,
+      reference, order_no: result.data?.orderNo, cashier_url: result.data?.cashierUrl,
       payment_id: payment.id,
     });
   } catch (err) {
