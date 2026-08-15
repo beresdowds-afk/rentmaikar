@@ -40,15 +40,8 @@ const isEmergency = (message: string): boolean => {
 };
 
 // ═══════════════════════════════════════════════════════════
-// Opt-out Keywords (expanded)
+// Opt-out handling is centralized in ../_shared/opt-out.ts via isStopKeyword.
 // ═══════════════════════════════════════════════════════════
-
-const OPT_OUT_KEYWORDS = ["STOP", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"];
-
-const isOptOut = (message: string): boolean => {
-  const upper = message.toUpperCase().trim();
-  return OPT_OUT_KEYWORDS.some(kw => upper === kw || upper.includes(kw));
-};
 
 // ═══════════════════════════════════════════════════════════
 // Country Detection (from recipient "To" number)
