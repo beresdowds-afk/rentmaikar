@@ -23,10 +23,9 @@ const BodySchema = z.object({
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const clientId = Deno.env.get("PAYPAL_CLIENT_ID");
-    const clientSecret = Deno.env.get("PAYPAL_CLIENT_SECRET");
-    const mode = (Deno.env.get("PAYPAL_MODE") ?? "sandbox").toLowerCase();
-    if (!clientId || !clientSecret) return json({ error: "PayPal not configured" }, 503);
+    const cfg = getPayPalConfig();
+    if (!cfg) return json({ error: "PayPal not configured" }, 503);
+
 
     const auth = req.headers.get("Authorization") ?? "";
     if (!auth.startsWith("Bearer ")) return json({ error: "Unauthenticated" }, 401);
