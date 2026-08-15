@@ -210,22 +210,28 @@ export default function BillingHistoryPage() {
     const short = (id: string) => id.slice(0, 8).toUpperCase();
     const paymentById = new Map(payments.map((p) => [p.id, p]));
 
+    const disputedPaymentIds = new Set(disputes.map((d) => d.payment_id));
+
+    // Disputes take precedence over the plain reversed/disputed payment row.
     const fromPayments: ReversalDocument[] = payments
-      .filter((p) => REVERSAL_STATUSES.includes(p.status))
-      .map((p) => ({
-        kind: p.status === "disputed" || p.status === "chargeback" ? "credit_note" : "refund_receipt",
-        reference: `${p.status === "disputed" || p.status === "chargeback" ? "CN" : "RR"}-${short(p.id)}`,
-        amount: Number(p.amount ?? 0),
-        currency: p.currency,
-        issuedAt: p.settled_at ?? p.created_at,
-        originalPaidAt: p.created_at,
-        originalReference: p.transaction_id,
-        provider: p.payment_method,
-        purpose: PURPOSE_LABELS[p.purpose ?? "rental"] ?? (p.purpose ?? "Payment").replace(/_/g, " "),
-        status: p.status.replace(/_/g, " "),
-        reason: null,
-        recipientName: user?.email ?? null,
-      }));
+      .filter((p) => REVERSAL_STATUSES.includes(p.status) && !disputedPaymentIds.has(p.id))
+      .map((p) => {
+        const isCredit = p.status === "disputed" || p.status === "chargeback";
+        return {
+          kind: (isCredit ? "credit_note" : "refund_receipt") as ReversalDocument["kind"],
+          reference: `${isCredit ? "CN" : "RR"}-${short(p.id)}`,
+          amount: Number(p.amount ?? 0),
+          currency: p.currency,
+          issuedAt: p.settled_at ?? p.created_at,
+          originalPaidAt: p.created_at,
+          originalReference: p.transaction_id,
+          provider: p.payment_method,
+          purpose: PURPOSE_LABELS[p.purpose ?? "rental"] ?? (p.purpose ?? "Payment").replace(/_/g, " "),
+          status: p.status.replace(/_/g, " "),
+          reason: null,
+          recipientName: user?.email ?? null,
+        };
+      });
 
     const fromDisputes: ReversalDocument[] = disputes.map((d) => {
       const p = paymentById.get(d.payment_id);
@@ -246,12 +252,9 @@ export default function BillingHistoryPage() {
       };
     });
 
-    // Disputes take precedence over a plain "disputed" payment row.
-    const disputedPaymentIds = new Set(disputes.map((d) => d.payment_id));
-    return [...fromDisputes, ...fromPayments.filter((doc, idx) => {
-      const p = payments.filter((x) => REVERSAL_STATUSES.includes(x.status))[idx];
-      return !p || !disputedPaymentIds.has(p.id);
-    })].sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime());
+    return [...fromDisputes, ...fromPayments]
+      .sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime());
+
   }, [payments, disputes, user?.email]);
 
   const filteredReversals = useMemo(
