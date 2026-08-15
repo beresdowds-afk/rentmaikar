@@ -21,6 +21,7 @@ interface ProfileEditorProps {
 }
 
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
+import { friendlyPhoneError } from '@/lib/phone-errors';
 
 /**
  * Normalise phone to E.164 using libphonenumber-js. Returns '' if the input
