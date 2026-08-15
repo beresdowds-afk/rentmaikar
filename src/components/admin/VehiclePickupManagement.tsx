@@ -63,7 +63,7 @@ export function VehiclePickupManagement() {
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'configured' | 'not-configured'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'configured' | 'partial' | 'not-configured'>('all');
   const [formData, setFormData] = useState({
     pickup_location: '',
     pickup_address: '',
