@@ -93,6 +93,15 @@ function diagnose(r: GPSANDTRACKResult): Diagnosis {
       status: r.status,
     };
   }
+  if (r.reason === "rate_limited") {
+    return {
+      code: "rate_limited",
+      title: "GPSANDTRACK rate limit exceeded",
+      detail: "The API returned a rate-limit error (-2200 / HTTP 429).",
+      hints: ["Wait a moment and retry; reduce sync frequency if this repeats."],
+      status: r.status,
+    };
+  }
   return {
     code: "provider_error",
     title: `GPSANDTRACK returned HTTP ${r.status}`,
@@ -314,7 +323,14 @@ Deno.serve(async (req) => {
     }
 
     if (action === "command_parameters") {
-      const r = await sarekon.commandParameters();
+      // device_ids[] + message_type_id are required by the SareKon API.
+      const messageTypeId = typeof command === "string"
+        ? SAREKON_COMMAND_MAP[command] ?? Number(command)
+        : undefined;
+      const r = await sarekon.commandParameters(
+        dvd_id ? [dvd_id] : [],
+        Number.isFinite(messageTypeId as number) ? (messageTypeId as number) : undefined,
+      );
       return json({ ok: r.ok, parameters: r.ok ? r.body : [], diagnosis: diagnose(r) });
     }
 
