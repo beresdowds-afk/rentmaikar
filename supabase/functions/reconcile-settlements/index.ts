@@ -79,12 +79,12 @@ async function notifyAdmins(supa: any, payment: any, issues: string[]) {
 async function payerEmail(supa: any, userId: string): Promise<{ email?: string; name?: string; region?: string }> {
   const { data: p } = await supa
     .from("profiles")
-    .select("email, full_name, region, country")
+    .select("email, full_name")
     .eq("user_id", userId)
     .maybeSingle();
-  if (p?.email) return { email: p.email, name: p.full_name ?? undefined, region: p.region ?? p.country ?? undefined };
+  if (p?.email) return { email: p.email, name: p.full_name ?? undefined };
   const { data: u } = await supa.auth.admin.getUserById(userId);
-  return { email: u?.user?.email ?? undefined, name: p?.full_name ?? undefined, region: p?.region ?? undefined };
+  return { email: u?.user?.email ?? undefined, name: p?.full_name ?? undefined };
 }
 
 /** One-shot guard so retries never re-send the same confirmation. */

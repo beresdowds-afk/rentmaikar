@@ -131,6 +131,16 @@ Deno.serve(async (req) => {
         await transitionState(supabase, "payment", tx.payment_id, "settled", "paypal capture settled", {}, logger);
         const { alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id);
         await settlePaymentFinancials(supabase, tx.payment_id, "paypal", orderId);
+      // Verify the whole downstream chain (subscription, ledger, invoice,
+      // receipt, audit row) and repair/alert on anything missing.
+      try {
+        await supabase.functions.invoke("reconcile-settlements", {
+          headers: { "x-internal-secret": Deno.env.get("CRON_SECRET") ?? "" },
+          body: { payment_id: tx.payment_id },
+        });
+      } catch (e) {
+        console.error("[paypal-webhook] settlement reconciliation failed", tx.payment_id, e);
+      }
         if (!alreadyCompleted) {
           await withRetry("paypal.receipt.email", async () => {
             const { error } = await supabase.functions.invoke("billing-portal", {

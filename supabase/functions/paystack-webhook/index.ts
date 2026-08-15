@@ -101,6 +101,16 @@ Deno.serve(async (req) => {
       await transitionState(supabase, "payment", tx.payment_id, "settled", "paystack settlement", {}, logger);
       const { alreadyCompleted } = await markPaymentCompletedIdempotent(supabase, tx.payment_id);
       await settlePaymentFinancials(supabase, tx.payment_id, "paystack", reference);
+      // Verify the whole downstream chain (subscription, ledger, invoice,
+      // receipt, audit row) and repair/alert on anything missing.
+      try {
+        await supabase.functions.invoke("reconcile-settlements", {
+          headers: { "x-internal-secret": Deno.env.get("CRON_SECRET") ?? "" },
+          body: { payment_id: tx.payment_id },
+        });
+      } catch (e) {
+        console.error("[paystack-webhook] settlement reconciliation failed", tx.payment_id, e);
+      }
       await notifyPush(tx.payment_id, tx.rental_id ?? null, "completed", tx.amount ? Number(tx.amount) / 100 : undefined, tx.currency ?? undefined, reference);
       if (!alreadyCompleted) {
         await withRetry("paystack.receipt.email", async () => {

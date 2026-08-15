@@ -100,6 +100,16 @@ Deno.serve(async (req) => {
       // Full financial fan-out: tax, commission split, ledger, earnings,
       // subscription activation, invoice and audit trail.
       await settlePaymentFinancials(supabase, tx.payment_id, "opay", reference);
+      // Verify the whole downstream chain (subscription, ledger, invoice,
+      // receipt, audit row) and repair/alert on anything missing.
+      try {
+        await supabase.functions.invoke("reconcile-settlements", {
+          headers: { "x-internal-secret": Deno.env.get("CRON_SECRET") ?? "" },
+          body: { payment_id: tx.payment_id },
+        });
+      } catch (e) {
+        console.error("[opay-webhook] settlement reconciliation failed", tx.payment_id, e);
+      }
     } else if (status === "refunded") {
       // Shared handler: state transition + ledger reversal.
       await applyRefund(supabase, {
