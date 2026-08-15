@@ -11,7 +11,7 @@ import { isCallerAdmin } from "../_shared/admin-auth.ts";
 import { hologram } from "../_shared/hologram-client.ts";
 import { traccar } from "../_shared/traccar-client.ts";
 import { sarekon } from "../_shared/sarekon-client.ts";
-import { getEmqxManagementConfig } from "../_shared/emqx-config.ts";
+import { resolveEmqxClient } from "../_shared/emqx-client.ts";
 
 type Status = "ok" | "failed" | "not_configured";
 
