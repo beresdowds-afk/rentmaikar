@@ -81,7 +81,7 @@ export const SubscriptionPlansPanel = ({ planTypes, compact = false, title }: Pr
   const hasActive = (planType: string) => active.some((s) => s.plan_type === planType);
   const hasTrainingActive = () => hasActive("training");
 
-  const subscribe = async (plan: Plan) => {
+  const subscribe = async (plan: Plan, provider?: "paystack" | "opay") => {
     if (!user) {
       toast.error("Sign in first");
       return;
@@ -94,16 +94,16 @@ export const SubscriptionPlansPanel = ({ planTypes, compact = false, title }: Pr
     try {
       const callback_url = `${window.location.origin}/subscriptions/success?plan_id=${plan.id}`;
       const { data, error } = await supabase.functions.invoke("subscribe-to-plan", {
-        body: { plan_id: plan.id, callback_url },
+        body: { plan_id: plan.id, callback_url, provider },
       });
       if (error) throw error;
-      const url = (data as { checkout_url?: string; reference?: string; provider?: string })?.checkout_url;
+      const url = (data as { checkout_url?: string })?.checkout_url;
       const reference = (data as { reference?: string })?.reference;
-      const provider = (data as { provider?: string })?.provider;
-      if (!url || !reference || !provider) throw new Error("Missing checkout details");
+      const usedProvider = (data as { provider?: string })?.provider ?? provider;
+      if (!url || !reference || !usedProvider) throw new Error("Missing checkout details");
       sessionStorage.setItem(
         `sub_pending_${reference}`,
-        JSON.stringify({ plan_id: plan.id, provider, reference })
+        JSON.stringify({ plan_id: plan.id, provider: usedProvider, reference })
       );
       window.location.href = url;
     } catch (e) {
@@ -164,21 +164,43 @@ export const SubscriptionPlansPanel = ({ planTypes, compact = false, title }: Pr
                   Subscribe to Driver Training first to unlock Insurance.
                 </p>
               ) : null}
-              <Button
-                className="mt-auto"
-                disabled={isActive || insuranceBlocked || busyPlan === p.id}
-                onClick={() => subscribe(p)}
-              >
-                {busyPlan === p.id ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Redirecting…
-                  </>
-                ) : isActive ? (
-                  "Subscribed"
-                ) : (
-                  `Subscribe for ${fmtPrice(p)}`
-                )}
-              </Button>
+              {p.currency === "NGN" && !isActive ? (
+                <div className="mt-auto space-y-2">
+                  <p className="text-xs text-muted-foreground">Pay with</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      disabled={insuranceBlocked || busyPlan === p.id}
+                      onClick={() => subscribe(p, "paystack")}
+                    >
+                      {busyPlan === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Paystack"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={insuranceBlocked || busyPlan === p.id}
+                      onClick={() => subscribe(p, "opay")}
+                    >
+                      {busyPlan === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "OPay"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{fmtPrice(p)} / {p.billing_interval}</p>
+                </div>
+              ) : (
+                <Button
+                  className="mt-auto"
+                  disabled={isActive || insuranceBlocked || busyPlan === p.id}
+                  onClick={() => subscribe(p)}
+                >
+                  {busyPlan === p.id ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" /> Redirecting…
+                    </>
+                  ) : isActive ? (
+                    "Subscribed"
+                  ) : (
+                    `Subscribe for ${fmtPrice(p)}`
+                  )}
+                </Button>
+              )}
             </Card>
           );
         })}

@@ -11588,6 +11588,34 @@ export type Database = {
         Args: { _limit?: number; _status?: string }
         Returns: Json
       }
+      admin_list_owner_withdrawals: {
+        Args: { _limit?: number; _status?: string }
+        Returns: {
+          amount: number
+          authorization_status: string
+          created_at: string
+          currency: string
+          failure_reason: string
+          gross_earnings: number
+          initiated_by: string
+          ledger_amount: number
+          ledger_entries: number
+          ledger_posted_amount: number
+          owner_balance: number
+          owner_email: string
+          owner_id: string
+          owner_name: string
+          payout_id: string
+          processed_at: string
+          provider: string
+          reconciliation: Json
+          requires_dual_auth: boolean
+          risk_flags: string[]
+          risk_score: number
+          status: string
+          transfer_reference: string
+        }[]
+      }
       admin_list_pending_training_completions: {
         Args: { _status?: string }
         Returns: {
@@ -12424,6 +12452,7 @@ export type Database = {
         }[]
       }
       rebuild_all_device_identities: { Args: never; Returns: number }
+      reconcile_owner_payout: { Args: { _payout_id: string }; Returns: Json }
       record_onboarding_rpc_event: {
         Args: {
           _details?: Json

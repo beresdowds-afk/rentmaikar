@@ -72,6 +72,7 @@ const PaymentReceipt = lazy(() => import("./pages/PaymentReceipt"));
 const ReconciliationLogsPage = lazy(() => import("./pages/admin/ReconciliationLogsPage"));
 const CredentialHealthPage = lazy(() => import("./pages/admin/CredentialHealthPage"));
 const BillingReconciliationPage = lazy(() => import("./pages/admin/BillingReconciliationPage"));
+const AdminOwnerWithdrawalsPage = lazy(() => import("./pages/admin/AdminOwnerWithdrawalsPage"));
 const AdminInvoiceStatusPage = lazy(() => import("./pages/admin/AdminInvoiceStatusPage"));
 const AdminRentalReconciliationPage = lazy(() => import("./pages/admin/AdminRentalReconciliationPage"));
 const AdminLedgerReconciliationPage = lazy(() => import("./pages/admin/AdminLedgerReconciliationPage"));
@@ -303,6 +304,14 @@ const App = () => (
                     }
                   />
 
+                  <Route
+                    path="/admin/owner-withdrawals"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminOwnerWithdrawalsPage />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route
                     path="/admin/billing-reconciliation"
                     element={
