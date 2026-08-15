@@ -585,6 +585,50 @@ export default function BillingHistoryPage() {
             ))}
           </TabsContent>
 
+          <TabsContent value="reversals" className="mt-4 space-y-2">
+            {loading && <Skeleton className="h-16 w-full" />}
+            {!loading && filteredReversals.length === 0 && (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                {filtersActive
+                  ? "No credit notes or refund receipts match these filters."
+                  : "No reversed, refunded or disputed payments."}
+              </p>
+            )}
+            {filteredReversals.map((d) => (
+              <div key={`${d.kind}-${d.reference}`} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-xs flex items-center gap-1">
+                    <RotateCcw className="h-3 w-3" /> {d.reference}
+                  </p>
+                  <p className="text-sm flex flex-wrap items-center gap-1">
+                    <span className="font-semibold">{money(Number(d.amount), d.currency)}</span>
+                    <Badge variant={d.kind === "credit_note" ? "secondary" : "default"} className="text-[10px]">
+                      {reversalTitle(d.kind)}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">{d.status}</Badge>
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    Issued {new Date(d.issuedAt).toLocaleString()}
+                    {d.originalPaidAt ? ` · original payment ${new Date(d.originalPaidAt).toLocaleDateString()}` : ""}
+                    {d.provider ? ` · ${d.provider}` : ""}
+                    {d.reason ? ` · ${d.reason}` : ""}
+                  </p>
+                </div>
+                <div className="shrink-0">
+                  <Button size="sm" variant="outline" disabled={downloading === d.reference}
+                    onClick={() => downloadReversal(d)}
+                    aria-label={`Download ${reversalTitle(d.kind)} ${d.reference} as PDF`}>
+                    {downloading === d.reference
+                      ? <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      : <Download className="h-4 w-4 mr-1" />}
+                    Download
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </TabsContent>
+
+
           <TabsContent value="wallet" className="mt-4">
             <WalletLedgerPanel />
           </TabsContent>
