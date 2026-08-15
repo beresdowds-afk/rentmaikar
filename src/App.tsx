@@ -70,6 +70,7 @@ const MobileCallIn = lazy(() => import("./pages/MobileCallIn"));
 const MobileNotificationPreferences = lazy(() => import("./pages/MobileNotificationPreferences"));
 const PaymentReceipt = lazy(() => import("./pages/PaymentReceipt"));
 const ReconciliationLogsPage = lazy(() => import("./pages/admin/ReconciliationLogsPage"));
+const CredentialHealthPage = lazy(() => import("./pages/admin/CredentialHealthPage"));
 const BillingReconciliationPage = lazy(() => import("./pages/admin/BillingReconciliationPage"));
 const AdminInvoiceStatusPage = lazy(() => import("./pages/admin/AdminInvoiceStatusPage"));
 const AdminRentalReconciliationPage = lazy(() => import("./pages/admin/AdminRentalReconciliationPage"));
