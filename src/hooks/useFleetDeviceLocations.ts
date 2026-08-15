@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdge } from "@/lib/edge-invoke";
 
 export interface FleetDevice {
   deviceRowId: string;
@@ -108,7 +109,7 @@ export function useFleetDeviceLocations() {
       const providers = ["traccar-admin", "sarekon-admin"] as const;
       const results = await Promise.all(
         providers.map(async (fn) => {
-          const { data, error: err } = await supabase.functions.invoke(fn, { body: { action: "sync" } });
+          const { data, error: err } = await invokeEdge(fn, { action: "sync" });
           return { fn, data: data as SyncRes | null, err };
         }),
       );

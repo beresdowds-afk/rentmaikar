@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdge } from "@/lib/edge-invoke";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,9 +61,7 @@ export default function GPSANDTRACKCredentialsPanel({ onStatusChange }: { onStat
   const runTest = useCallback(async (refreshCredentials = false) => {
     setTesting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("sarekon-admin", {
-        body: { action: "test_connection", refresh_credentials: refreshCredentials },
-      });
+      const { data, error } = await invokeEdge("sarekon-admin", { action: "test_connection", refresh_credentials: refreshCredentials });
       if (error) throw new Error(error.message);
       const d = data as Record<string, unknown>;
       const next: ConnStatus = {

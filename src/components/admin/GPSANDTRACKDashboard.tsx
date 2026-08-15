@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdge } from "@/lib/edge-invoke";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -71,7 +72,7 @@ export default function GPSANDTRACKDashboard() {
   const [history, setHistory] = useState<Record<string, unknown>[]>([]);
 
   const call = useCallback(async (body: Record<string, unknown>) => {
-    const { data, error } = await supabase.functions.invoke("sarekon-admin", { body });
+    const { data, error } = await invokeEdge("sarekon-admin", body);
     if (error) throw new Error(error.message);
     return data as Record<string, unknown>;
   }, []);

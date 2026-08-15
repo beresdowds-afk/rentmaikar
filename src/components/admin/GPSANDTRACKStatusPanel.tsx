@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdge } from "@/lib/edge-invoke";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,9 +61,7 @@ export default function GPSANDTRACKStatusPanel({ refreshKey = 0 }: { refreshKey?
     setLoading(true);
     setError(null);
     try {
-      const { data: res, error: err } = await supabase.functions.invoke("sarekon-admin", {
-        body: { action: "sync_status", limit: 25 },
-      });
+      const { data: res, error: err } = await invokeEdge("sarekon-admin", { action: "sync_status", limit: 25 });
       if (err) throw new Error(err.message);
       setData(res as StatusPayload);
     } catch (e) {
