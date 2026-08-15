@@ -5,6 +5,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { createHmac } from "node:crypto";
 
+import { createCashierOrder, getOpayConfig, toMinorUnits } from "../_shared/opay-client.ts";
+
 const Body = z.object({
   plan_id: z.string().uuid(),
   callback_url: z.string().url().optional(),
@@ -111,25 +113,19 @@ Deno.serve(async (req) => {
 
     // Route by currency. NGN supports Paystack (default) and OPay.
     if (plan.currency === "NGN" && requestedProvider === "opay") {
-      const merchantId = Deno.env.get("OPAY_MERCHANT_ID");
-      const opaySecret = Deno.env.get("OPAY_SECRET_KEY");
-      const opayPublic = Deno.env.get("OPAY_PUBLIC_KEY");
-      const opayEnv = (Deno.env.get("OPAY_ENVIRONMENT") ?? "sandbox").toLowerCase();
-      if (!merchantId || !opaySecret || !opayPublic) return json({ error: "Opay not configured" }, 503);
+      const cfg = getOpayConfig();
+      if (!cfg) return json({ error: "Opay not configured" }, 503);
 
       const reference = `sub_${crypto.randomUUID().replace(/-/g, "")}`;
-      const amountMinor = Math.round(Number(plan.price) * 100);
+      const amountMinor = toMinorUnits(Number(plan.price));
       const appUrl = Deno.env.get("APP_URL") ?? "https://rentmaikar.com";
       const returnUrl = callback_url ?? `${appUrl}/subscriptions/success`;
-      const baseUrl = opayEnv === "live"
-        ? "https://liveapi.opaycheckout.com"
-        : "https://sandboxapi.opaycheckout.com";
 
       const paymentId = await createSubscriptionPayment(supa, {
         userId, plan, reference, method: "opay",
       });
 
-      const payload = {
+      const result = await createCashierOrder({
         country: "NG",
         reference,
         amount: { total: amountMinor, currency: "NGN" },
@@ -146,28 +142,16 @@ Deno.serve(async (req) => {
           currency: "NGN",
         }],
         userInfo: { userId, userEmail: email },
-      };
-      const bodyStr = JSON.stringify(payload);
-      const sig = createHmac("sha512", opaySecret).update(bodyStr).digest("hex");
+      }, cfg);
 
-      const resp = await fetch(`${baseUrl}/api/v1/international/cashier/create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${opayPublic}`,
-          MerchantId: merchantId,
-          Signature: sig,
-        },
-        body: bodyStr,
-      });
-      const pay = await resp.json();
-      if (!resp.ok || pay?.code !== "00000") {
-        console.error("[subscribe-to-plan] opay init failed:", pay);
+      if (!result.ok || !result.data?.cashierUrl) {
+        console.error("[subscribe-to-plan] opay init failed:", result.code, result.message);
         await supa.from("payments")
-          .update({ status: "failed", failure_reason: pay?.message ?? "Opay create failed" })
+          .update({ status: "failed", failure_reason: result.message })
           .eq("id", paymentId);
-        return json({ error: pay?.message ?? "Opay checkout failed", details: pay }, 502);
+        return json({ error: result.message, code: result.code, retryable: result.retryable }, 502);
       }
+      const pay = { data: result.data };
 
       // Link the provider transaction so opay-webhook / verify-opay-order settle it.
       await supa.from("opay_transactions").insert({
