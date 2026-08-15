@@ -4,6 +4,7 @@ import { z } from "https://esm.sh/zod@3.23.8";
 import { requireAuthenticatedUser } from "../_shared/auth-guards.ts";
 import { resolvePaymentContext } from "../_shared/resolve-payment-context.ts";
 import { claimIdempotencyKey, completeIdempotencyKey, duplicateResponse, resolveIdempotencyKey } from "../_shared/payment-idempotency.ts";
+import { describeError, getPayPalConfig, PayPalError, payPalRequest } from "../_shared/paypal-client.ts";
 
 const Body = z.object({
   amount: z.number().positive().max(1_000_000),
@@ -16,9 +17,12 @@ const Body = z.object({
   description: z.string().max(200).optional(),
 });
 
-function getPayPalBase(mode: string): string {
-  return mode === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
+interface PayPalOrder {
+  id: string;
+  status?: string;
+  links?: Array<{ rel: string; href: string }>;
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
