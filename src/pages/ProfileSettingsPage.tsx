@@ -193,9 +193,10 @@ export default function ProfileSettingsPage() {
     const outcome = await conflictSave.resolve(choices);
     if (!outcome) return;
     if (outcome.status === 'error') {
+      const duplicate = friendlyPhoneError(outcome.error);
       toast({
-        title: 'Save failed',
-        description: outcome.error?.message ?? 'Please try again.',
+        title: duplicate ? 'Phone number unavailable' : 'Save failed',
+        description: duplicate ?? outcome.error?.message ?? 'Please try again.',
         variant: 'destructive',
       });
       return;
