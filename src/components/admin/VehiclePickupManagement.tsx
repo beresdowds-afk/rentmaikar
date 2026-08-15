@@ -28,10 +28,34 @@ interface Vehicle {
   owner_email?: string;
 }
 
-const allCities = [
+const citySuggestions = [
   'Baltimore', 'Washington DC', 'Arlington', 'Alexandria', 'Bethesda', 'Silver Spring', 'Rockville',
   'Lagos', 'Abuja', 'Port Harcourt', 'Ibadan', 'Kano', 'Enugu'
 ];
+
+const val = (v?: string | null) => (v ?? '').trim();
+
+/** A pickup point is only usable by a driver when there is a real street address AND a city. */
+const missingFields = (vehicle: Vehicle) => {
+  const missing: string[] = [];
+  if (!val(vehicle.pickup_address)) missing.push('street address');
+  if (!val(vehicle.pickup_city)) missing.push('city');
+  if (!val(vehicle.pickup_location)) missing.push('location name');
+  // A location name that merely repeats the city carries no routing information.
+  else if (val(vehicle.pickup_location).toLowerCase() === val(vehicle.pickup_city).toLowerCase())
+    missing.push('location name (currently duplicates the city)');
+  return missing;
+};
+
+type Completeness = 'complete' | 'partial' | 'empty';
+
+const completenessOf = (vehicle: Vehicle): Completeness => {
+  const missing = missingFields(vehicle);
+  if (missing.length === 0) return 'complete';
+  const hasAny = val(vehicle.pickup_location) || val(vehicle.pickup_address) || val(vehicle.pickup_city);
+  return hasAny ? 'partial' : 'empty';
+};
+
 
 export function VehiclePickupManagement() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -39,7 +63,7 @@ export function VehiclePickupManagement() {
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'configured' | 'not-configured'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'configured' | 'partial' | 'not-configured'>('all');
   const [formData, setFormData] = useState({
     pickup_location: '',
     pickup_address: '',
@@ -97,16 +121,28 @@ export function VehiclePickupManagement() {
 
   const handleSave = async () => {
     if (!editingVehicle) return;
-    
+
+    const address = formData.pickup_address.trim();
+    const city = formData.pickup_city.trim();
+    const location = formData.pickup_location.trim();
+    if (!address || !city || !location) {
+      toast.error('Location name, city and full street address are all required.');
+      return;
+    }
+    if (location.toLowerCase() === city.toLowerCase()) {
+      toast.error('Location name must be a landmark or spot — not just the city name.');
+      return;
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase
         .from('vehicles')
         .update({
-          pickup_location: formData.pickup_location || null,
-          pickup_address: formData.pickup_address || null,
-          pickup_city: formData.pickup_city || null,
-          pickup_instructions: formData.pickup_instructions || null,
+          pickup_location: location,
+          pickup_address: address,
+          pickup_city: city,
+          pickup_instructions: formData.pickup_instructions.trim() || null,
         })
         .eq('id', editingVehicle.id);
 
@@ -123,10 +159,6 @@ export function VehiclePickupManagement() {
     }
   };
 
-  const hasPickupDetails = (vehicle: Vehicle) => {
-    return vehicle.pickup_location || vehicle.pickup_address || vehicle.pickup_city;
-  };
-
   const filteredVehicles = vehicles.filter(vehicle => {
     const matchesSearch = 
       vehicle.make.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -135,16 +167,20 @@ export function VehiclePickupManagement() {
       vehicle.owner_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       vehicle.pickup_city?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesFilter = 
+    const state = completenessOf(vehicle);
+    const matchesFilter =
       filterStatus === 'all' ||
-      (filterStatus === 'configured' && hasPickupDetails(vehicle)) ||
-      (filterStatus === 'not-configured' && !hasPickupDetails(vehicle));
+      (filterStatus === 'configured' && state === 'complete') ||
+      (filterStatus === 'partial' && state === 'partial') ||
+      (filterStatus === 'not-configured' && state === 'empty');
 
     return matchesSearch && matchesFilter;
   });
 
-  const configuredCount = vehicles.filter(hasPickupDetails).length;
-  const notConfiguredCount = vehicles.length - configuredCount;
+  const configuredCount = vehicles.filter((v) => completenessOf(v) === 'complete').length;
+  const partialCount = vehicles.filter((v) => completenessOf(v) === 'partial').length;
+  const notConfiguredCount = vehicles.filter((v) => completenessOf(v) === 'empty').length;
+
 
   if (loading) {
     return (
@@ -172,20 +208,29 @@ export function VehiclePickupManagement() {
         </CardHeader>
         <CardContent>
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="p-4 bg-muted rounded-lg text-center">
               <p className="text-2xl font-bold">{vehicles.length}</p>
               <p className="text-sm text-muted-foreground">Total Vehicles</p>
             </div>
             <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
               <p className="text-2xl font-bold text-green-600">{configuredCount}</p>
-              <p className="text-sm text-muted-foreground">Pickup Configured</p>
+              <p className="text-sm text-muted-foreground">Fully Configured</p>
+            </div>
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-center">
+              <p className="text-2xl font-bold text-amber-600">{partialCount}</p>
+              <p className="text-sm text-muted-foreground">Incomplete</p>
             </div>
             <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-center">
               <p className="text-2xl font-bold text-orange-600">{notConfiguredCount}</p>
-              <p className="text-sm text-muted-foreground">Needs Configuration</p>
+              <p className="text-sm text-muted-foreground">Nothing Set</p>
             </div>
           </div>
+
+          <p className="text-xs text-muted-foreground mb-6">
+            A vehicle counts as configured only when it has a distinct location name, a city and a full street address.
+            A city on its own is not enough to route a driver.
+          </p>
 
           {/* Filters */}
           <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -198,18 +243,20 @@ export function VehiclePickupManagement() {
                 className="pl-10"
               />
             </div>
-            <Select value={filterStatus} onValueChange={(value: 'all' | 'configured' | 'not-configured') => setFilterStatus(value)}>
+            <Select value={filterStatus} onValueChange={(value: 'all' | 'configured' | 'partial' | 'not-configured') => setFilterStatus(value)}>
               <SelectTrigger className="w-full md:w-[200px]">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Vehicles</SelectItem>
-                <SelectItem value="configured">Pickup Configured</SelectItem>
-                <SelectItem value="not-configured">Needs Configuration</SelectItem>
+                <SelectItem value="configured">Fully Configured</SelectItem>
+                <SelectItem value="partial">Incomplete</SelectItem>
+                <SelectItem value="not-configured">Nothing Set</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
 
           {/* Table */}
           <div className="border rounded-lg overflow-hidden">
@@ -252,12 +299,12 @@ export function VehiclePickupManagement() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {vehicle.pickup_location ? (
+                        {val(vehicle.pickup_address) || val(vehicle.pickup_location) ? (
                           <div>
-                            <p className="font-medium">{vehicle.pickup_location}</p>
-                            {vehicle.pickup_address && (
-                              <p className="text-sm text-muted-foreground truncate max-w-[200px]">{vehicle.pickup_address}</p>
-                            )}
+                            <p className="font-medium">{val(vehicle.pickup_location) || '—'}</p>
+                            <p className="text-sm text-muted-foreground truncate max-w-[200px]">
+                              {val(vehicle.pickup_address) || 'No street address'}
+                            </p>
                           </div>
                         ) : (
                           <span className="text-muted-foreground">Not set</span>
@@ -267,11 +314,21 @@ export function VehiclePickupManagement() {
                         {vehicle.pickup_city || <span className="text-muted-foreground">-</span>}
                       </TableCell>
                       <TableCell>
-                        {hasPickupDetails(vehicle) ? (
+                        {completenessOf(vehicle) === 'complete' ? (
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                             <CheckCircle className="h-3 w-3 mr-1" />
                             Configured
                           </Badge>
+                        ) : completenessOf(vehicle) === 'partial' ? (
+                          <div className="space-y-1">
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              Incomplete
+                            </Badge>
+                            <p className="text-xs text-muted-foreground max-w-[180px]">
+                              Missing {missingFields(vehicle).join(', ')}
+                            </p>
+                          </div>
                         ) : (
                           <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
                             <AlertCircle className="h-3 w-3 mr-1" />
@@ -279,6 +336,7 @@ export function VehiclePickupManagement() {
                           </Badge>
                         )}
                       </TableCell>
+
                       <TableCell className="text-right">
                         <Button variant="outline" size="sm" onClick={() => handleEdit(vehicle)}>
                           <Edit className="h-4 w-4 mr-1" />
@@ -323,20 +381,20 @@ export function VehiclePickupManagement() {
             
             <div className="space-y-2">
               <Label>City</Label>
-              <Select 
-                value={formData.pickup_city} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, pickup_city: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select city" />
-                </SelectTrigger>
-                <SelectContent>
-                  {allCities.map(city => (
-                    <SelectItem key={city} value={city}>{city}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                list="pickup-city-suggestions"
+                placeholder="Start typing a city"
+                value={formData.pickup_city}
+                onChange={(e) => setFormData(prev => ({ ...prev, pickup_city: e.target.value }))}
+              />
+              <datalist id="pickup-city-suggestions">
+                {citySuggestions.map(city => (
+                  <option key={city} value={city} />
+                ))}
+              </datalist>
+              <p className="text-xs text-muted-foreground">Free text — suggestions are only a shortcut.</p>
             </div>
+
             
             <div className="space-y-2">
               <Label>Full Address</Label>
