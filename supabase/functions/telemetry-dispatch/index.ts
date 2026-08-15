@@ -36,8 +36,13 @@ Deno.serve(async (req) => {
     const { data: u, error: uErr } = await supa.auth.getUser(auth.replace("Bearer ", ""));
     if (uErr || !u?.user) return json({ error: "Unauthenticated" }, 401);
     const actor = u.user.id;
-    const { data: isAdmin } = await supa.rpc("has_role", { _user_id: actor, _role: "admin" });
-    if (!isAdmin) return json({ error: "Admin only" }, 403);
+    const { data: roleRow } = await supa
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", actor)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleRow) return json({ error: "Admin only" }, 403);
 
     const parsed = Body.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
