@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, KeyRound, PlugZap, CheckCircle2, XCircle, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { friendlySecretError, secretErrorDescription } from "@/lib/secret-errors";
+import { useCredentialVerification } from "@/hooks/useCredentialVerification";
 
 export interface TraccarDiagnosis {
   code: string;
