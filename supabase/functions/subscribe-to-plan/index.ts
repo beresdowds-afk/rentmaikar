@@ -3,10 +3,13 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
+import { createHmac } from "node:crypto";
 
 const Body = z.object({
   plan_id: z.string().uuid(),
   callback_url: z.string().url().optional(),
+  /** NGN plans can settle through Paystack (default) or OPay. */
+  provider: z.enum(["paystack", "opay", "paypal"]).optional(),
 });
 
 /**
@@ -72,7 +75,7 @@ Deno.serve(async (req) => {
 
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
-    const { plan_id, callback_url } = parsed.data;
+    const { plan_id, callback_url, provider: requestedProvider } = parsed.data;
 
     // Load plan
     const { data: plan, error: planErr } = await supa
@@ -106,7 +109,88 @@ Deno.serve(async (req) => {
     const email = profile?.email;
     if (!email) return json({ error: "Profile email not found" }, 400);
 
-    // Route by currency
+    // Route by currency. NGN supports Paystack (default) and OPay.
+    if (plan.currency === "NGN" && requestedProvider === "opay") {
+      const merchantId = Deno.env.get("OPAY_MERCHANT_ID");
+      const opaySecret = Deno.env.get("OPAY_SECRET_KEY");
+      const opayPublic = Deno.env.get("OPAY_PUBLIC_KEY");
+      const opayEnv = (Deno.env.get("OPAY_ENVIRONMENT") ?? "sandbox").toLowerCase();
+      if (!merchantId || !opaySecret || !opayPublic) return json({ error: "Opay not configured" }, 503);
+
+      const reference = `sub_${crypto.randomUUID().replace(/-/g, "")}`;
+      const amountMinor = Math.round(Number(plan.price) * 100);
+      const appUrl = Deno.env.get("APP_URL") ?? "https://rentmaikar.com";
+      const returnUrl = callback_url ?? `${appUrl}/subscriptions/success`;
+      const baseUrl = opayEnv === "live"
+        ? "https://liveapi.opaycheckout.com"
+        : "https://sandboxapi.opaycheckout.com";
+
+      const paymentId = await createSubscriptionPayment(supa, {
+        userId, plan, reference, method: "opay",
+      });
+
+      const payload = {
+        country: "NG",
+        reference,
+        amount: { total: amountMinor, currency: "NGN" },
+        returnUrl,
+        callbackUrl: returnUrl,
+        cancelUrl: `${appUrl}/subscriptions`,
+        expireAt: 30,
+        productList: [{
+          productId: plan.id,
+          name: plan.name,
+          description: `${plan.name} (${plan.billing_interval}) subscription`,
+          price: amountMinor,
+          quantity: 1,
+          currency: "NGN",
+        }],
+        userInfo: { userId, userEmail: email },
+      };
+      const bodyStr = JSON.stringify(payload);
+      const sig = createHmac("sha512", opaySecret).update(bodyStr).digest("hex");
+
+      const resp = await fetch(`${baseUrl}/api/v1/international/cashier/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${opayPublic}`,
+          MerchantId: merchantId,
+          Signature: sig,
+        },
+        body: bodyStr,
+      });
+      const pay = await resp.json();
+      if (!resp.ok || pay?.code !== "00000") {
+        console.error("[subscribe-to-plan] opay init failed:", pay);
+        await supa.from("payments")
+          .update({ status: "failed", failure_reason: pay?.message ?? "Opay create failed" })
+          .eq("id", paymentId);
+        return json({ error: pay?.message ?? "Opay checkout failed", details: pay }, 502);
+      }
+
+      // Link the provider transaction so opay-webhook / verify-opay-order settle it.
+      await supa.from("opay_transactions").insert({
+        reference,
+        order_no: pay.data?.orderNo,
+        cashier_url: pay.data?.cashierUrl,
+        currency: "NGN",
+        amount: Number(plan.price),
+        status: "pending",
+        driver_id: userId,
+        payment_id: paymentId,
+        raw_payload: pay.data,
+      });
+
+      return json({
+        provider: "opay",
+        reference,
+        checkout_url: pay.data?.cashierUrl,
+        order_no: pay.data?.orderNo,
+        plan,
+      });
+    }
+
     if (plan.currency === "NGN") {
       const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
       if (!secret) return json({ error: "Paystack not configured" }, 503);
