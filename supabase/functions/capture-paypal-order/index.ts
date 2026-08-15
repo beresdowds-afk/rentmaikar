@@ -85,19 +85,17 @@ Deno.serve(async (req) => {
     const paymentId = existingTx?.payment_id;
 
     if (paymentId) {
-      const { error: paymentError } = await supa
-        .from("payments")
-        .update({
-          status: captureStatus === "COMPLETED" ? "completed" : "processing",
-          processed_at: new Date().toISOString(),
-          transaction_id: order_id,
-        })
-        .eq("id", paymentId);
-
-      if (paymentError) {
-        console.error("[capture-paypal-order] payment update error:", paymentError);
-      }
+      // Keep the provider reference on the row, then let the shared writer
+      // handle the status transition (never downgrades a completed payment)
+      // and issue the receipt when this capture is what completed it.
+      await supa.from("payments")
+        .update({ transaction_id: order_id }).eq("id", paymentId);
+      await syncPaymentStatus(supa, {
+        paymentId,
+        status: captureStatus === "COMPLETED" ? "completed" : "processing",
+      });
     }
+
 
     const { error: txError } = await supa
       .from("paypal_transactions")
