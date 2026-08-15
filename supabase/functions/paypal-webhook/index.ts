@@ -18,50 +18,21 @@ import {
   correlationHeaders,
 } from "../_shared/webhook-logger.ts";
 import { settlePaymentFinancials } from "../_shared/wallet-ledger.ts";
+import { getPayPalConfig, verifyWebhookSignature } from "../_shared/paypal-client.ts";
 
-
-const PP_ENV = (Deno.env.get("PAYPAL_ENV") || "sandbox").toLowerCase();
-const PP_BASE = PP_ENV === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
-const PP_ID = Deno.env.get("PAYPAL_CLIENT_ID") ?? "";
-const PP_SECRET = Deno.env.get("PAYPAL_CLIENT_SECRET") ?? "";
 const PP_WH_ID = Deno.env.get("PAYPAL_WEBHOOK_ID") ?? "";
 
-async function getAccessToken(): Promise<string | null> {
-  if (!PP_ID || !PP_SECRET) return null;
-  const r = await fetch(`${PP_BASE}/v1/oauth2/token`, {
-    method: "POST",
-    headers: {
-      Authorization: "Basic " + btoa(`${PP_ID}:${PP_SECRET}`),
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials",
-  });
-  if (!r.ok) return null;
-  const j = await r.json();
-  return j.access_token ?? null;
+/**
+ * Verify with PayPal. The environment resolution is shared with every other
+ * PayPal function, so the verifier can no longer end up pointed at sandbox
+ * while checkout runs against live (which silently failed every signature).
+ */
+async function verifySignature(headers: Headers, rawBody: string): Promise<boolean> {
+  const cfg = getPayPalConfig();
+  if (!cfg || !PP_WH_ID) return false;
+  return verifyWebhookSignature(cfg, PP_WH_ID, headers, rawBody);
 }
 
-async function verifySignature(headers: Headers, rawBody: string): Promise<boolean> {
-  if (!PP_WH_ID) return false;
-  const token = await getAccessToken();
-  if (!token) return false;
-  const r = await fetch(`${PP_BASE}/v1/notifications/verify-webhook-signature`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      auth_algo: headers.get("paypal-auth-algo"),
-      cert_url: headers.get("paypal-cert-url"),
-      transmission_id: headers.get("paypal-transmission-id"),
-      transmission_sig: headers.get("paypal-transmission-sig"),
-      transmission_time: headers.get("paypal-transmission-time"),
-      webhook_id: PP_WH_ID,
-      webhook_event: JSON.parse(rawBody),
-    }),
-  });
-  if (!r.ok) return false;
-  const j = await r.json();
-  return j.verification_status === "SUCCESS";
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
