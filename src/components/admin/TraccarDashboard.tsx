@@ -91,10 +91,23 @@ export function TraccarDashboard() {
         devices_synced?: number;
         positions_received?: number;
         configured?: boolean;
+        queued?: boolean;
+        delivery?: string;
+        error?: string;
+        message?: string;
+        supported_commands?: string[];
         ping?: { ok?: boolean };
         diagnosis?: { title?: string; detail?: string; code?: string };
       };
       if (res?.ok === false) {
+        if (res.error === "unsupported_command") {
+          toast.error(res.message ?? "Command not supported by this device", {
+            description: res.supported_commands?.length
+              ? `Supported: ${res.supported_commands.join(", ")}`
+              : undefined,
+          });
+          return;
+        }
         throw new Error(
           res.diagnosis ? `${res.diagnosis.title} — ${res.diagnosis.detail}` : JSON.stringify(res),
         );
@@ -107,8 +120,17 @@ export function TraccarDashboard() {
         return;
       }
       if (action === "sync") toast.success(`Synced ${res?.devices_synced ?? 0} devices (${res?.positions_received ?? 0} positions)`);
-      else if (action === "send_command") toast.success("Command dispatched to Traccar");
+      else if (action === "send_command") {
+        if (res?.queued) {
+          toast.success("Command queued", {
+            description: "Device is offline — Traccar will deliver it on the next connection.",
+          });
+        } else {
+          toast.success("Command delivered to device");
+        }
+      }
       else if (action === "test_connection") toast.success("Traccar reachable");
+
 
       else if (action === "link_device") toast.success("Device linked");
       else if (action === "unlink_device") toast.success("Device unlinked");
