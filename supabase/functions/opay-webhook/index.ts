@@ -2,8 +2,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { settlePaymentFinancials } from "../_shared/wallet-ledger.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { createHmac } from "node:crypto";
-import { timingSafeEqualHex } from "../_shared/timing-safe.ts";
+import { mapOpayStatus, opayFailureReason, verifyOpayWebhook } from "../_shared/opay-client.ts";
 import {
   recordWebhookEvent,
   markPaymentCompletedIdempotent,
@@ -87,14 +86,13 @@ Deno.serve(async (req) => {
     });
   }
 
-  const status = opayStatus === "SUCCESS" ? "completed"
-    : (opayStatus === "FAIL" || opayStatus === "CLOSE") ? "failed"
-    : (opayStatus === "REFUND" || opayStatus === "REFUNDED") ? "refunded"
-    : "pending";
-  const failure = status === "failed" ? evt?.payload?.failureReason ?? opayStatus : null;
+  const status = mapOpayStatus(opayStatus);
+  const failure = status === "failed"
+    ? opayFailureReason(opayStatus, p?.failureReason ?? p?.errorMsg ?? null)
+    : null;
 
   await supabase.from("opay_transactions").update({
-    status, failure_reason: failure, raw_payload: evt.payload ?? evt,
+    status, failure_reason: failure, raw_payload: p,
   }).eq("reference", reference);
 
   const { data: tx } = await supabase.from("opay_transactions")
@@ -126,7 +124,7 @@ Deno.serve(async (req) => {
         provider: "opay",
         providerReference: reference,
         amount: tx.amount ? Number(tx.amount) : null,
-        reason: evt?.payload?.refundReason ?? "opay refund",
+        reason: p?.refundReason ?? "opay refund",
       });
     } else {
       if (status === "failed") {
