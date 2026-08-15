@@ -3,7 +3,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
-import { createHmac } from "node:crypto";
 
 import { createCashierOrder, getOpayConfig, toMinorUnits } from "../_shared/opay-client.ts";
 
