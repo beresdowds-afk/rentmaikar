@@ -24,6 +24,8 @@ const Body = z.object({
     "unlink_device",
     "get_sync_state",
     "validate_link",
+    "command_types",
+
   ]),
   device_id: z.number().int().positive().optional(),
   device_row_id: z.string().uuid().optional(),
