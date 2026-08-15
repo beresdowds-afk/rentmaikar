@@ -28,10 +28,34 @@ interface Vehicle {
   owner_email?: string;
 }
 
-const allCities = [
+const citySuggestions = [
   'Baltimore', 'Washington DC', 'Arlington', 'Alexandria', 'Bethesda', 'Silver Spring', 'Rockville',
   'Lagos', 'Abuja', 'Port Harcourt', 'Ibadan', 'Kano', 'Enugu'
 ];
+
+const val = (v?: string | null) => (v ?? '').trim();
+
+/** A pickup point is only usable by a driver when there is a real street address AND a city. */
+const missingFields = (vehicle: Vehicle) => {
+  const missing: string[] = [];
+  if (!val(vehicle.pickup_address)) missing.push('street address');
+  if (!val(vehicle.pickup_city)) missing.push('city');
+  if (!val(vehicle.pickup_location)) missing.push('location name');
+  // A location name that merely repeats the city carries no routing information.
+  else if (val(vehicle.pickup_location).toLowerCase() === val(vehicle.pickup_city).toLowerCase())
+    missing.push('location name (currently duplicates the city)');
+  return missing;
+};
+
+type Completeness = 'complete' | 'partial' | 'empty';
+
+const completenessOf = (vehicle: Vehicle): Completeness => {
+  const missing = missingFields(vehicle);
+  if (missing.length === 0) return 'complete';
+  const hasAny = val(vehicle.pickup_location) || val(vehicle.pickup_address) || val(vehicle.pickup_city);
+  return hasAny ? 'partial' : 'empty';
+};
+
 
 export function VehiclePickupManagement() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
