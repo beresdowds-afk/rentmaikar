@@ -208,20 +208,29 @@ export function VehiclePickupManagement() {
         </CardHeader>
         <CardContent>
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="p-4 bg-muted rounded-lg text-center">
               <p className="text-2xl font-bold">{vehicles.length}</p>
               <p className="text-sm text-muted-foreground">Total Vehicles</p>
             </div>
             <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
               <p className="text-2xl font-bold text-green-600">{configuredCount}</p>
-              <p className="text-sm text-muted-foreground">Pickup Configured</p>
+              <p className="text-sm text-muted-foreground">Fully Configured</p>
+            </div>
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-center">
+              <p className="text-2xl font-bold text-amber-600">{partialCount}</p>
+              <p className="text-sm text-muted-foreground">Incomplete</p>
             </div>
             <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-center">
               <p className="text-2xl font-bold text-orange-600">{notConfiguredCount}</p>
-              <p className="text-sm text-muted-foreground">Needs Configuration</p>
+              <p className="text-sm text-muted-foreground">Nothing Set</p>
             </div>
           </div>
+
+          <p className="text-xs text-muted-foreground mb-6">
+            A vehicle counts as configured only when it has a distinct location name, a city and a full street address.
+            A city on its own is not enough to route a driver.
+          </p>
 
           {/* Filters */}
           <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -234,18 +243,20 @@ export function VehiclePickupManagement() {
                 className="pl-10"
               />
             </div>
-            <Select value={filterStatus} onValueChange={(value: 'all' | 'configured' | 'not-configured') => setFilterStatus(value)}>
+            <Select value={filterStatus} onValueChange={(value: 'all' | 'configured' | 'partial' | 'not-configured') => setFilterStatus(value)}>
               <SelectTrigger className="w-full md:w-[200px]">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Vehicles</SelectItem>
-                <SelectItem value="configured">Pickup Configured</SelectItem>
-                <SelectItem value="not-configured">Needs Configuration</SelectItem>
+                <SelectItem value="configured">Fully Configured</SelectItem>
+                <SelectItem value="partial">Incomplete</SelectItem>
+                <SelectItem value="not-configured">Nothing Set</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
 
           {/* Table */}
           <div className="border rounded-lg overflow-hidden">
