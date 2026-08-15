@@ -24,6 +24,8 @@ const Body = z.object({
     "unlink_device",
     "get_sync_state",
     "validate_link",
+    "command_types",
+
   ]),
   device_id: z.number().int().positive().optional(),
   device_row_id: z.string().uuid().optional(),
@@ -266,18 +268,30 @@ Deno.serve(async (req) => {
 
     if (action === "status" || action === "test_connection") {
       const started = Date.now();
+      // /health is unauthenticated (per the API reference) so it separates
+      // "server unreachable" from "credentials rejected".
+      const health = await traccar.health();
       const ping = await traccar.ping();
       const latency_ms = Date.now() - started;
       const diagnosis = diagnose(ping, latency_ms);
+      const session = ping.ok ? await traccar.sessionUser() : null;
+      const account = session?.ok
+        ? {
+          id: (session.body as { id?: number }).id ?? null,
+          name: (session.body as { name?: string }).name ?? null,
+          email: (session.body as { email?: string }).email ?? null,
+          administrator: (session.body as { administrator?: boolean }).administrator ?? false,
+        }
+        : null;
       if (action === "test_connection") {
-        await audit({ action: "traccar_connection_tested", details: { ok: ping.ok, diagnosis } });
+        await audit({ action: "traccar_connection_tested", details: { ok: ping.ok, diagnosis, account } });
         await activity(
           ping.ok ? "test_connection_ok" : "test_connection_failed",
           ping.ok ? "info" : "error",
           ping.ok
             ? `Connected to ${(ping.body as { name?: string } | undefined)?.name ?? "Traccar"} in ${latency_ms}ms`
             : `${diagnosis.title} — ${diagnosis.detail}`,
-          { diagnosis, auth_mode: authMode(), base_url: traccar.baseUrl() },
+          { diagnosis, auth_mode: authMode(), base_url: traccar.baseUrl(), reachable: health.ok, account },
         );
       }
       return json({
@@ -286,15 +300,30 @@ Deno.serve(async (req) => {
         base_url: traccar.baseUrl(),
         auth_mode: authMode(),
         latency_ms,
+        reachable: health.ok,
+        server_version: ping.ok ? (ping.body as { version?: string }).version ?? null : null,
+        account,
         ping,
         diagnosis,
       });
     }
 
     if (action === "list_devices") {
-      const r = await traccar.listDevices();
-      return json({ ok: r.ok, base_url: traccar.baseUrl(), diagnosis: diagnose(r), ...r });
+      const r = await traccar.listAllDevices();
+      return json({
+        ok: r.ok,
+        base_url: traccar.baseUrl(),
+        diagnosis: diagnose(r),
+        count: r.ok ? (r.body as TraccarDevice[]).length : 0,
+        ...r,
+      });
     }
+
+    if (action === "command_types") {
+      const r = await traccar.commandTypes(device_id);
+      return json({ ok: r.ok, diagnosis: diagnose(r), ...r });
+    }
+
 
 
     if (action === "sync") {
@@ -305,7 +334,7 @@ Deno.serve(async (req) => {
         vehicle_scoped: !!(vehicle_ids && vehicle_ids.length),
       });
       const deviceErrors: Array<{ device: string; error: string }> = [];
-      const dr = await traccar.listDevices();
+      const dr = await traccar.listAllDevices();
       if (!dr.ok) {
         const dg = diagnose(dr);
         await setSyncState({
@@ -480,7 +509,26 @@ Deno.serve(async (req) => {
         }
       }
       const attrs = attributes ?? {};
+      // Pre-flight: the API reference rejects command types the device's
+      // protocol does not support with a bare 400 — check first for a clear error.
+      const types = await traccar.commandTypes(device_id);
+      if (types.ok && Array.isArray(types.body) && types.body.length > 0) {
+        const supported = types.body.map((t) => t.type);
+        if (!supported.includes(command)) {
+          await audit({
+            action: `traccar_command_${command}_unsupported`,
+            details: { traccar_device_id: device_id, supported },
+          });
+          return json({
+            ok: false,
+            error: "unsupported_command",
+            message: `Device does not support "${command}" on its current protocol.`,
+            supported_commands: supported,
+          }, 400);
+        }
+      }
       const r = await traccar.sendCommand(device_id, command, attrs);
+
       // Try to resolve the local iot_devices row/vehicle from health_details.traccar_device_id
       const { data: match } = await supa
         .from("iot_devices")
@@ -488,12 +536,14 @@ Deno.serve(async (req) => {
         .eq("provider", "traccar")
         .contains("health_details", { traccar_device_id: device_id } as never)
         .maybeSingle();
+      const queued = r.ok && r.queued === true;
       await audit({
         action: `traccar_command_${command}`,
         device_id: match?.id ?? null,
         vehicle_id: match?.vehicle_id ?? null,
         details: {
           ok: r.ok,
+          queued,
           traccar_device_id: device_id,
           command,
           attributes: attrs,
@@ -507,7 +557,16 @@ Deno.serve(async (req) => {
           replayed_from: (attributes as Record<string, unknown>)?.__replay_of ?? null,
         },
       });
-      return json({ ok: r.ok, ...r });
+      return json({
+        ok: r.ok,
+        queued,
+        // HTTP 202 means Traccar stored the command for an offline device and
+        // will deliver it on the next connection.
+        delivery: r.ok ? (queued ? "queued_offline" : "sent") : "failed",
+        diagnosis: diagnose(r),
+        ...r,
+      });
+
     }
 
     if (action === "link_device" || action === "unlink_device") {
