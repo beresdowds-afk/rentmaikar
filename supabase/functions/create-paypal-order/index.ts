@@ -32,11 +32,8 @@ Deno.serve(async (req) => {
   const userId = authRes.userId;
 
   try {
-    const clientId = Deno.env.get("PAYPAL_CLIENT_ID");
-    const clientSecret = Deno.env.get("PAYPAL_CLIENT_SECRET");
-    const mode = (Deno.env.get("PAYPAL_MODE") ?? "sandbox").toLowerCase();
-
-    if (!clientId || !clientSecret) {
+    const cfg = getPayPalConfig();
+    if (!cfg) {
       return new Response(JSON.stringify({ error: "PayPal not configured" }), {
         status: 503,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -60,64 +57,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Service client used for idempotency bookkeeping and persistence.
-    const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-
-    // Duplicate submissions must never create two PayPal orders.
-    const idemKey = resolveIdempotencyKey(req, rawBody ?? {});
-    const claim = await claimIdempotencyKey(supa, idemKey, "charge.paypal", userId, {
-      amount: data.amount, currency: data.currency, rental_id: data.rental_id, vehicle_id: data.vehicle_id,
-    });
-    if (!claim.claimed) return duplicateResponse(claim, corsHeaders);
-
-    const base = getPayPalBase(mode);
-    const tokenRes = await fetch(`${base}/v1/oauth2/token`, {
-      method: "POST",
-      headers: {
-        Authorization: "Basic " + btoa(`${clientId}:${clientSecret}`),
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: "grant_type=client_credentials",
-    });
-    if (!tokenRes.ok) {
-      const err = await tokenRes.text();
-      throw new Error(`PayPal token error ${tokenRes.status}: ${err}`);
-    }
-    const { access_token } = await tokenRes.json();
-
-    const orderRes = await fetch(`${base}/v2/checkout/orders`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-        "Content-Type": "application/json",
-        "Prefer": "return=representation",
-      },
-      body: JSON.stringify({
-        intent: "CAPTURE",
-        purchase_units: [{
-          amount: {
-            currency_code: data.currency.toUpperCase(),
-            value: data.amount.toFixed(2),
-          },
-          description: data.description ?? "Rentmaikar payment",
-          custom_id: data.rental_id ?? undefined,
-        }],
-        application_context: {
-          brand_name: "Rentmaikar",
-          landing_page: "NO_PREFERENCE",
-          user_action: "PAY_NOW",
-          return_url: `${Deno.env.get("APP_URL") ?? ""}/payment/success`,
-          cancel_url: `${Deno.env.get("APP_URL") ?? ""}/payment/cancel`,
-        },
-      }),
-    });
-
-    const order = await orderRes.json();
-    if (!orderRes.ok) {
-      throw new Error(`PayPal order error ${orderRes.status}: ${JSON.stringify(order)}`);
-    }
-
-    // Driver identity ALWAYS from JWT — reject spoofed values.
+    // Driver identity ALWAYS from JWT — reject spoofed values. Checked BEFORE
+    // touching PayPal so a rejected request never leaves an orphan order.
     if (data.driver_id && data.driver_id !== userId) {
       return new Response(JSON.stringify({ error: "driver_id does not match authenticated user" }), {
         status: 403,
@@ -126,6 +67,10 @@ Deno.serve(async (req) => {
     }
     const driverId = userId;
 
+    // Service client used for idempotency bookkeeping and persistence.
+    const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Rental/vehicle/owner must resolve before we create anything at PayPal.
     const ctx = await resolvePaymentContext({
       supabase: supa,
       rentalId: data.rental_id,
@@ -138,6 +83,53 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Duplicate submissions must never create two PayPal orders.
+    const idemKey = resolveIdempotencyKey(req, rawBody ?? {});
+    const claim = await claimIdempotencyKey(supa, idemKey, "charge.paypal", userId, {
+      amount: data.amount, currency: data.currency, rental_id: data.rental_id, vehicle_id: data.vehicle_id,
+    });
+    if (!claim.claimed) return duplicateResponse(claim, corsHeaders);
+
+    let order: PayPalOrder;
+    try {
+      order = await payPalRequest<PayPalOrder>(cfg, "/v2/checkout/orders", {
+        method: "POST",
+        representation: true,
+        // Same key PayPal sees => a retried create returns the original order
+        // instead of opening a second one.
+        requestId: `order:${idemKey}`,
+        body: {
+          intent: "CAPTURE",
+          purchase_units: [{
+            amount: {
+              currency_code: data.currency.toUpperCase(),
+              value: data.amount.toFixed(2),
+            },
+            description: data.description ?? "Rentmaikar payment",
+            custom_id: data.rental_id ?? undefined,
+          }],
+          application_context: {
+            brand_name: "Rentmaikar",
+            landing_page: "NO_PREFERENCE",
+            user_action: "PAY_NOW",
+            return_url: `${Deno.env.get("APP_URL") ?? ""}/payment/success`,
+            cancel_url: `${Deno.env.get("APP_URL") ?? ""}/payment/cancel`,
+          },
+        },
+      });
+    } catch (e) {
+      const message = e instanceof PayPalError
+        ? (describeError(e.body) ?? e.message)
+        : "Could not reach PayPal. Please try again.";
+      console.error("[create-paypal-order] paypal error:", e);
+      await completeIdempotencyKey(supa, idemKey, "failed", { error: message });
+      return new Response(JSON.stringify({ error: message }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
 
     const paymentInsert: Record<string, unknown> = {
       driver_id: driverId,
