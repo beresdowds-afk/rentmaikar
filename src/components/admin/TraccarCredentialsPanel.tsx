@@ -108,11 +108,12 @@ export function TraccarCredentialsPanel() {
         _notes: "Updated from Traccar credentials settings",
       } as never);
       if (error) throw error;
-      toast.success("Traccar credentials saved securely");
+      toast.success("Traccar credentials saved securely — verifying…");
       setValues({});
       await loadVersions();
-      // Backend caches credentials for up to a minute — give it a moment.
-      setTimeout(() => { test(); }, 1500);
+      // Verify the new credentials immediately and toast the real outcome.
+      await verifyAfterSave("traccar");
+      await test();
     } catch (e) {
       const friendly = friendlySecretError(e, "Traccar");
       toast.error(friendly.title, { description: secretErrorDescription(friendly), duration: 10000 });
