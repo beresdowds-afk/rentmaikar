@@ -3,6 +3,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { requireAuthenticatedUser } from "../_shared/auth-guards.ts";
+import { syncPaymentStatus } from "../_shared/payment-status-sync.ts";
 
 const BodySchema = z.object({ reference: z.string().min(6).max(128) });
 
