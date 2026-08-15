@@ -24,7 +24,7 @@ export interface DeviceState {
 export interface TelemetryAdapter {
   name: TelemetryProviderName;
   getDeviceState(deviceId: string): Promise<DeviceState>;
-  sendCommand(deviceId: string, command: string, payload?: Record<string, unknown>): Promise<{ ok: boolean; error?: string }>;
+  sendCommand(deviceId: string, command: string, payload?: Record<string, unknown>): Promise<{ ok: boolean; error?: string; queued?: boolean }>;
 }
 
 function supa() {
