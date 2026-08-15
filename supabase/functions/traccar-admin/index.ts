@@ -266,18 +266,30 @@ Deno.serve(async (req) => {
 
     if (action === "status" || action === "test_connection") {
       const started = Date.now();
+      // /health is unauthenticated (per the API reference) so it separates
+      // "server unreachable" from "credentials rejected".
+      const health = await traccar.health();
       const ping = await traccar.ping();
       const latency_ms = Date.now() - started;
       const diagnosis = diagnose(ping, latency_ms);
+      const session = ping.ok ? await traccar.sessionUser() : null;
+      const account = session?.ok
+        ? {
+          id: (session.body as { id?: number }).id ?? null,
+          name: (session.body as { name?: string }).name ?? null,
+          email: (session.body as { email?: string }).email ?? null,
+          administrator: (session.body as { administrator?: boolean }).administrator ?? false,
+        }
+        : null;
       if (action === "test_connection") {
-        await audit({ action: "traccar_connection_tested", details: { ok: ping.ok, diagnosis } });
+        await audit({ action: "traccar_connection_tested", details: { ok: ping.ok, diagnosis, account } });
         await activity(
           ping.ok ? "test_connection_ok" : "test_connection_failed",
           ping.ok ? "info" : "error",
           ping.ok
             ? `Connected to ${(ping.body as { name?: string } | undefined)?.name ?? "Traccar"} in ${latency_ms}ms`
             : `${diagnosis.title} — ${diagnosis.detail}`,
-          { diagnosis, auth_mode: authMode(), base_url: traccar.baseUrl() },
+          { diagnosis, auth_mode: authMode(), base_url: traccar.baseUrl(), reachable: health.ok, account },
         );
       }
       return json({
@@ -286,15 +298,30 @@ Deno.serve(async (req) => {
         base_url: traccar.baseUrl(),
         auth_mode: authMode(),
         latency_ms,
+        reachable: health.ok,
+        server_version: ping.ok ? (ping.body as { version?: string }).version ?? null : null,
+        account,
         ping,
         diagnosis,
       });
     }
 
     if (action === "list_devices") {
-      const r = await traccar.listDevices();
-      return json({ ok: r.ok, base_url: traccar.baseUrl(), diagnosis: diagnose(r), ...r });
+      const r = await traccar.listAllDevices();
+      return json({
+        ok: r.ok,
+        base_url: traccar.baseUrl(),
+        diagnosis: diagnose(r),
+        count: r.ok ? (r.body as TraccarDevice[]).length : 0,
+        ...r,
+      });
     }
+
+    if (action === "command_types") {
+      const r = await traccar.commandTypes(device_id);
+      return json({ ok: r.ok, diagnosis: diagnose(r), ...r });
+    }
+
 
 
     if (action === "sync") {
