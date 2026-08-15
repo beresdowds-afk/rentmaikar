@@ -240,22 +240,19 @@ export async function testProvider(
     }
 
     // EMQX: admin-configured management endpoint + vault/env credentials.
-    const cfg = await getEmqxManagementConfig();
-    const creds = await getEmqxCredentials();
-    if (!creds) return { ok: false, configured: false, error: "EMQX credentials missing" };
-    if (!cfg.managementEnabled) {
-      return { ok: false, configured: true, error: "EMQX management API disabled for this deployment" };
+    const { client, unavailable } = await resolveEmqxClient();
+    if (!client) {
+      return {
+        ok: false,
+        configured: unavailable?.reason !== "management_api_no_credentials",
+        error: unavailable?.hint ?? "EMQX not configured",
+      };
     }
-    const apiUrl = cfg.apiUrl.replace(/\/$/, "");
-    const auth = "Basic " + btoa(`${creds.key}:${creds.secret}`);
-    // `/clients` is allowed on every plan (serverless forbids `/nodes` and `/stats`).
-    const res = await fetch(`${apiUrl}/clients?limit=1`, {
-      headers: { Authorization: auth, Accept: "application/json" },
-    });
-    if (res.ok) return { ok: true, configured: true, status: res.status };
-    const detail = (await res.text().catch(() => "")).slice(0, 200);
-    const { reason } = classifyManagementFailure(res.status, detail);
-    return { ok: false, configured: true, status: res.status, error: `${reason}${detail ? `: ${detail}` : ""}` };
+    const probe = await client.ping();
+    return probe.ok
+      ? { ok: true, configured: true, status: probe.status ?? 200 }
+      : { ok: false, configured: true, status: probe.status, error: probe.detail };
+
   } catch (e) {
 
     return { ok: false, configured: true, error: String(e) };
