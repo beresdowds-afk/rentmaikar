@@ -10,11 +10,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCw, Satellite, ShieldAlert, ShieldCheck, Search, Send, Eye, Power, Cpu, ListRestart, Activity, KeyRound } from "lucide-react";
+import { Loader2, RefreshCw, Satellite, ShieldAlert, ShieldCheck, Search, Send, Eye, Power, Cpu, ListRestart, Activity, KeyRound, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { VehiclePicker } from "./VehiclePicker";
 import GPSANDTRACKStatusPanel from "./GPSANDTRACKStatusPanel";
 import GPSANDTRACKCredentialsPanel from "./GPSANDTRACKCredentialsPanel";
+import GPSANDTRACKFleetAdminPanel from "./GPSANDTRACKFleetAdminPanel";
 
 
 interface GPSANDTRACKDevice {
@@ -312,6 +313,9 @@ export default function GPSANDTRACKDashboard() {
         <TabsList>
           <TabsTrigger value="devices">Devices</TabsTrigger>
           <TabsTrigger value="commands">Commands</TabsTrigger>
+          <TabsTrigger value="fleet" className="flex items-center gap-2">
+            <Wrench className="h-4 w-4" /> Fleet admin
+          </TabsTrigger>
           <TabsTrigger value="status" className="flex items-center gap-2">
             <Activity className="h-4 w-4" /> Status
           </TabsTrigger>
@@ -322,6 +326,10 @@ export default function GPSANDTRACKDashboard() {
 
         <TabsContent value="status">
           <GPSANDTRACKStatusPanel refreshKey={statusRefresh} />
+        </TabsContent>
+
+        <TabsContent value="fleet">
+          <GPSANDTRACKFleetAdminPanel onChanged={() => { loadDevices(); loadLocal(); }} />
         </TabsContent>
 
         <TabsContent value="credentials">

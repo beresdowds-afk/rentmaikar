@@ -18,6 +18,9 @@ import { invalidateProviderConfig } from "../_shared/provider-config.ts";
 
 const PROVIDER = "sarekon";
 
+const id = z.string().min(1).max(128);
+const short = z.string().max(200);
+
 const Body = z.object({
   action: z.enum([
     "status",
@@ -35,6 +38,20 @@ const Body = z.object({
     "link_device",
     "unlink_device",
     "get_sync_state",
+    // dealer / fleet-admin operations
+    "install_device",
+    "uninstall_device",
+    "update_asset",
+    "install_test_start",
+    "install_test_result",
+    "assign_driver",
+    "unassign_driver",
+    "update_driver",
+    "transfer_trackers",
+    "deal_create",
+    "deal_list",
+    "deal_show",
+    "deal_unwind",
   ]),
   dvd_id: z.string().min(1).max(128).optional(),
   device_row_id: z.string().uuid().optional(),
@@ -44,6 +61,30 @@ const Body = z.object({
   parameters: z.record(z.unknown()).optional(),
   limit: z.number().int().positive().max(200).optional(),
   refresh_credentials: z.boolean().optional(),
+
+  // fleet-admin payloads
+  asset_vin: short.optional(),
+  asset_id: id.optional(),
+  asset_ids: z.array(id).max(100).optional(),
+  device_serial: short.optional(),
+  device_ids: z.array(id).max(100).optional(),
+  driver_id: id.optional(),
+  driver_ids: z.array(id).max(100).optional(),
+  account_id: id.optional(),
+  deal_id: id.optional(),
+  deal_ids: z.array(id).max(100).optional(),
+  deal_type_id: z.number().int().min(1).max(99).optional(),
+  account_template_id: id.optional(),
+  product_code: short.optional(),
+  deal_price: z.union([z.number(), z.string().max(32)]).optional(),
+  deal_external_ref: short.optional(),
+  deal_date: z.string().max(32).optional(),
+  relationship_type_id: z.number().int().min(1).max(4).optional(),
+  conflict_action_id: z.number().int().min(-1).max(3).optional(),
+  vin_not_decodable: z.boolean().optional(),
+  installed_odometer: z.number().int().min(0).max(9_999_999).optional(),
+  test_dt: z.string().max(40).optional(),
+  fields: z.record(z.union([z.string().max(300), z.number(), z.array(z.string().max(64)).max(50)])).optional(),
 });
 
 /** Scoped sync-state rows so telemetry, devices and commands report separately. */
@@ -126,6 +167,7 @@ Deno.serve(async (req) => {
     const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     let actor: string | null = null;
+    let isFullAdmin = isCron;
     if (!isCron) {
       if (!auth.startsWith("Bearer ")) return json({ error: "Unauthenticated" }, 401);
       const { data: u, error: uErr } = await supa.auth.getUser(auth.replace("Bearer ", ""));
@@ -138,12 +180,20 @@ Deno.serve(async (req) => {
         .in("role", ["admin", "iot_support"]);
       if (roleErr) return json({ error: "Role check failed" }, 500);
       if (!roleRows || roleRows.length === 0) return json({ error: "Admin only" }, 403);
+      isFullAdmin = roleRows.some((r: { role: string }) => r.role === "admin");
     }
 
     const parsed = Body.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
-    const { action, dvd_id, device_row_id, vehicle_id, vehicle_ids, command, parameters, limit, refresh_credentials } =
-      parsed.data;
+    const p = parsed.data;
+    const { action, dvd_id, device_row_id, vehicle_id, vehicle_ids, command, parameters, limit, refresh_credentials } = p;
+
+    // Ownership-changing operations (account transfers and deals) stay with
+    // full admins; iot_support keeps install/assign/maintenance actions.
+    const ADMIN_ONLY = new Set(["transfer_trackers", "deal_create", "deal_unwind"]);
+    if (ADMIN_ONLY.has(action) && !isFullAdmin) {
+      return json({ error: "This operation requires a full admin role." }, 403);
+    }
 
     // A freshly saved credential version must beat the 60s config cache.
     if (refresh_credentials) {
@@ -538,6 +588,182 @@ Deno.serve(async (req) => {
         device_errors: deviceErrors.slice(0, 25),
       });
 
+    }
+
+    // ---- Dealer / fleet-admin operations ---------------------------------
+    // Every write is rate-limited per admin, audited in iot_audit_log and
+    // mirrored to the IoT activity feed so the provider stays reconcilable.
+    const FLEET_ACTIONS = new Set([
+      "install_device",
+      "uninstall_device",
+      "update_asset",
+      "install_test_start",
+      "install_test_result",
+      "assign_driver",
+      "unassign_driver",
+      "update_driver",
+      "transfer_trackers",
+      "deal_create",
+      "deal_list",
+      "deal_show",
+      "deal_unwind",
+    ]);
+
+    if (FLEET_ACTIONS.has(action)) {
+      const isRead = action === "deal_list" || action === "deal_show" || action === "install_test_result";
+      if (actor && !isRead) {
+        const rl = await checkRateLimit(actor, `sarekon-admin:${action}`, 30);
+        if (!rl.allowed) {
+          return json({ ok: false, error: "rate_limited", retry_after_seconds: rl.retry_after_seconds }, 429);
+        }
+      }
+
+      const finish = async (
+        r: GPSANDTRACKResult,
+        details: Record<string, unknown>,
+        extra: Record<string, unknown> = {},
+      ) => {
+        const dg = diagnose(r);
+        if (!isRead) {
+          await audit({
+            action: `sarekon_${action}`,
+            vehicle_id: vehicle_id ?? null,
+            details: { ...details, ok: r.ok, diagnosis: r.ok ? undefined : dg },
+          });
+          await activity(
+            r.ok ? `${action}_ok` : `${action}_failed`,
+            r.ok ? "info" : "error",
+            r.ok ? `${action.replace(/_/g, " ")} succeeded` : `${dg.title} — ${dg.detail}`,
+            { ...details, diagnosis: dg },
+          );
+        }
+        return json({ ok: r.ok, diagnosis: dg, response: r.ok ? r.body : undefined, ...extra });
+      };
+
+      switch (action) {
+        case "install_device": {
+          if (!p.asset_vin || !p.device_serial) {
+            return json({ error: "asset_vin and device_serial are required" }, 400);
+          }
+          const r = await sarekon.installDevice({
+            assetVin: p.asset_vin,
+            deviceSerial: p.device_serial,
+            vinNotDecodable: p.vin_not_decodable,
+            installedOdometer: p.installed_odometer,
+            conflictActionId: p.conflict_action_id,
+          });
+          return await finish(r, { asset_vin: p.asset_vin, device_serial: p.device_serial });
+        }
+        case "uninstall_device": {
+          if (!dvd_id) return json({ error: "dvd_id required" }, 400);
+          return await finish(await sarekon.uninstallDevice(dvd_id), { dvd_id });
+        }
+        case "update_asset": {
+          if (!p.asset_id) return json({ error: "asset_id required" }, 400);
+          return await finish(await sarekon.updateAsset(p.asset_id, p.fields ?? {}), {
+            asset_id: p.asset_id,
+            fields: p.fields ?? {},
+          });
+        }
+        case "install_test_start": {
+          if (!dvd_id) return json({ error: "dvd_id required" }, 400);
+          const r = await sarekon.startInstallTest(dvd_id);
+          return await finish(r, { dvd_id }, { test_dt: r.ok ? r.body.dt : null });
+        }
+        case "install_test_result": {
+          if (!dvd_id || !p.test_dt) return json({ error: "dvd_id and test_dt are required" }, 400);
+          return await finish(await sarekon.installTestResult(dvd_id, p.test_dt), { dvd_id });
+        }
+        case "assign_driver": {
+          if (!p.asset_vin || !p.relationship_type_id) {
+            return json({ error: "asset_vin and relationship_type_id are required" }, 400);
+          }
+          const f = (p.fields ?? {}) as Record<string, string>;
+          const r = await sarekon.assignDriver({
+            assetVin: p.asset_vin,
+            relationshipTypeId: p.relationship_type_id,
+            driverId: p.driver_id,
+            firstName: f.first_name,
+            lastName: f.last_name,
+            externalRef: f.external_ref,
+            email: f.email,
+            phone: f.phone,
+            conflictActionId: p.conflict_action_id,
+          });
+          return await finish(r, { asset_vin: p.asset_vin, driver_id: p.driver_id ?? null });
+        }
+        case "unassign_driver": {
+          if (!p.driver_id && !p.asset_vin && !p.asset_id) {
+            return json({ error: "driver_id, asset_vin or asset_id is required" }, 400);
+          }
+          return await finish(
+            await sarekon.unassignDriver({ driverId: p.driver_id, assetVin: p.asset_vin, assetId: p.asset_id }),
+            { driver_id: p.driver_id ?? null, asset_vin: p.asset_vin ?? null },
+          );
+        }
+        case "update_driver": {
+          if (!p.driver_id) return json({ error: "driver_id required" }, 400);
+          return await finish(await sarekon.updateDriver(p.driver_id, p.fields ?? {}), {
+            driver_id: p.driver_id,
+            fields: p.fields ?? {},
+          });
+        }
+        case "transfer_trackers": {
+          if (!p.account_id) return json({ error: "account_id required" }, 400);
+          if (!p.device_ids?.length && !p.asset_ids?.length && !p.driver_ids?.length) {
+            return json({ error: "Pass at least one of device_ids, asset_ids or driver_ids" }, 400);
+          }
+          return await finish(
+            await sarekon.transferTrackers({
+              accountId: p.account_id,
+              deviceIds: p.device_ids,
+              assetIds: p.asset_ids,
+              driverIds: p.driver_ids,
+            }),
+            {
+              account_id: p.account_id,
+              device_ids: p.device_ids ?? [],
+              asset_ids: p.asset_ids ?? [],
+              driver_ids: p.driver_ids ?? [],
+            },
+          );
+        }
+        case "deal_create": {
+          if (!p.account_id || !p.deal_type_id) {
+            return json({ error: "account_id and deal_type_id are required" }, 400);
+          }
+          const r = await sarekon.createDeal({
+            accountId: p.account_id,
+            dealTypeId: p.deal_type_id,
+            accountTemplateId: p.account_template_id,
+            productCode: p.product_code,
+            dealPrice: p.deal_price,
+            dealExternalRef: p.deal_external_ref,
+            dealDate: p.deal_date,
+            deviceSerial: p.device_serial,
+            assetVin: p.asset_vin,
+          });
+          const dealId = r.ok ? (r.body as Record<string, unknown>)?.deal_id ?? null : null;
+          return await finish(
+            r,
+            { account_id: p.account_id, deal_type_id: p.deal_type_id, deal_id: dealId },
+            { deal_id: dealId },
+          );
+        }
+        case "deal_list": {
+          const r = await sarekon.listDeals(p.deal_ids ?? [], limit ?? 100);
+          return json({ ok: r.ok, diagnosis: diagnose(r), deals: r.ok ? r.body : [] });
+        }
+        case "deal_show": {
+          if (!p.deal_id) return json({ error: "deal_id required" }, 400);
+          const r = await sarekon.showDeal(p.deal_id);
+          return json({ ok: r.ok, diagnosis: diagnose(r), deal: r.ok ? r.body : null });
+        }
+        case "deal_unwind": {
+          if (!p.deal_id) return json({ error: "deal_id required" }, 400);
+          return await finish(await sarekon.unwindDeal(p.deal_id), { deal_id: p.deal_id });
+        }
+      }
     }
 
     return json({ error: "Unsupported action" }, 400);
