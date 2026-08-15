@@ -621,7 +621,7 @@ const handler = async (req: Request): Promise<Response> => {
     // ════════════════════════════════════════════════
     // Priority 2: Opt-out (before profile check to ensure compliance)
     // ════════════════════════════════════════════════
-    if (isOptOut(rawBody) || isStopKeyword(rawBody)) {
+    if (isStopKeyword(rawBody)) {
       const { data: profile } = await supabase
         .from("profiles").select("user_id").eq("phone", from).maybeSingle();
 
