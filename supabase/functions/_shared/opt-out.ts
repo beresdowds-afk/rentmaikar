@@ -12,6 +12,7 @@ export type OptOutChannel = "sms" | "whatsapp" | "all";
 /** Keywords that stop all messaging (Twilio/CTIA standard set + local variants). */
 export const STOP_KEYWORDS = [
   "STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "OPTOUT", "OPT-OUT",
+  "REVOKE",
   "REMOVE", "NO MORE", "STOP MESSAGES", "DUROO", // Yoruba "stop"
 ];
 
