@@ -509,7 +509,26 @@ Deno.serve(async (req) => {
         }
       }
       const attrs = attributes ?? {};
+      // Pre-flight: the API reference rejects command types the device's
+      // protocol does not support with a bare 400 — check first for a clear error.
+      const types = await traccar.commandTypes(device_id);
+      if (types.ok && Array.isArray(types.body) && types.body.length > 0) {
+        const supported = types.body.map((t) => t.type);
+        if (!supported.includes(command)) {
+          await audit({
+            action: `traccar_command_${command}_unsupported`,
+            details: { traccar_device_id: device_id, supported },
+          });
+          return json({
+            ok: false,
+            error: "unsupported_command",
+            message: `Device does not support "${command}" on its current protocol.`,
+            supported_commands: supported,
+          }, 400);
+        }
+      }
       const r = await traccar.sendCommand(device_id, command, attrs);
+
       // Try to resolve the local iot_devices row/vehicle from health_details.traccar_device_id
       const { data: match } = await supa
         .from("iot_devices")
