@@ -159,7 +159,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       const code = generateVerificationCode();
-      const hashedCode = await bcrypt.hash(code);
+      const hashedCode = bcrypt.hashSync(code);
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
       const { error: updateError } = await supabase
@@ -277,7 +277,7 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
 
-      const isValid = await bcrypt.compare(body.code, profile.phone_verification_code);
+      const isValid = bcrypt.compareSync(body.code, profile.phone_verification_code);
       if (!isValid) {
         return new Response(
           JSON.stringify({ success: false, error: "Invalid verification code" }),
