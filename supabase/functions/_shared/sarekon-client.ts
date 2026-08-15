@@ -480,7 +480,233 @@ export const sarekon = {
     if (!r.ok) return r;
     return { ok: true, body: r.body };
   },
+
+  // ---- Installation ------------------------------------------------------
+
+  /**
+   * Install a device into an asset (associates a device serial with an asset
+   * VIN/HIN/serial). `conflict_action_id` defaults to 3 = REPLACE per the spec.
+   */
+  installDevice(input: {
+    assetVin: string;
+    deviceSerial: string;
+    vinNotDecodable?: boolean;
+    installedOdometer?: number;
+    conflictActionId?: number;
+  }): Promise<GPSANDTRACKResult> {
+    return call("/dvd/install_create.json", {
+      asset_vin: input.assetVin,
+      device_serial: input.deviceSerial,
+      asset_vin_not_decodable: input.vinNotDecodable ? 1 : 0,
+      installed_odometer_local: input.installedOdometer,
+      conflict_action_id: input.conflictActionId,
+    });
+  },
+
+  /** Uninstall a device from its asset (system-assigned device_id). */
+  uninstallDevice(deviceId: string): Promise<GPSANDTRACKResult> {
+    return call("/dvd/install_destroy.json", { device_id: deviceId });
+  },
+
+  /** Update asset (vehicle) metadata. `allow_group_changes` guards group clears. */
+  updateAsset(assetId: string, fields: Record<string, unknown>): Promise<GPSANDTRACKResult> {
+    const allowed = [
+      "description",
+      "external_ref",
+      "make_description",
+      "model_description",
+      "year",
+      "color",
+      "license_issuer",
+      "license_number",
+      "group_ids[]",
+      "allow_group_changes",
+    ];
+    const params: Record<string, Param> = { asset_id: assetId };
+    for (const key of allowed) {
+      const v = fields[key] ?? fields[key.replace("[]", "")];
+      if (v === undefined || v === null || v === "") continue;
+      params[key] = Array.isArray(v) ? (v as Array<string | number>) : String(v);
+    }
+    return call("/asset/update.json", params);
+  },
+
+  /** Start the basic (GPS + cellular) installation test. Returns the start `dt`. */
+  async startInstallTest(deviceId: string): Promise<GPSANDTRACKResult<{ dt: string | null }>> {
+    const r = await call("/dvd/test_create.json", { device_id: deviceId });
+    if (!r.ok) return r;
+    const dt = pick(r.body as Record<string, unknown>, ["dt", "datetime", "started_on"]);
+    return { ok: true, body: { dt: dt ? String(dt) : null } };
+  },
+
+  /** Poll the installation test result (min 5s, recommended 10s between calls). */
+  installTestResult(deviceId: string, dt: string): Promise<GPSANDTRACKResult> {
+    return call("/dvd/test_show.json", { device_id: deviceId, dt });
+  },
+
+  // ---- Drivers -----------------------------------------------------------
+
+  /**
+   * Assign a driver to an asset (sold / financed / leased). The driver is
+   * matched by `driver_id`, or created/matched from name + email/phone/ref.
+   */
+  assignDriver(input: {
+    assetVin: string;
+    relationshipTypeId: number;
+    driverId?: string;
+    firstName?: string;
+    lastName?: string;
+    externalRef?: string;
+    email?: string;
+    phone?: string;
+    conflictActionId?: number;
+  }): Promise<GPSANDTRACKResult> {
+    return call("/dvd/assign_create.json", {
+      asset_vin: input.assetVin,
+      driver_relationship_type_id: input.relationshipTypeId,
+      driver_id: input.driverId,
+      driver_first_name: input.firstName,
+      driver_last_name: input.lastName,
+      driver_external_ref: input.externalRef,
+      driver_email: input.email,
+      driver_phone: input.phone,
+      conflict_action_id: input.conflictActionId,
+    });
+  },
+
+  /** Unassign a driver from an asset. */
+  unassignDriver(input: { driverId?: string; assetVin?: string; assetId?: string }): Promise<GPSANDTRACKResult> {
+    return call("/dvd/assign_destroy.json", {
+      driver_id: input.driverId,
+      asset_vin: input.assetVin,
+      asset_id: input.assetId,
+    });
+  },
+
+  /** Update a driver's contact / address / licence details. */
+  updateDriver(driverId: string, fields: Record<string, unknown>): Promise<GPSANDTRACKResult> {
+    const allowed = [
+      "first_name",
+      "last_name",
+      "external_ref",
+      "email",
+      "phone",
+      "street_line1",
+      "street_line2",
+      "city",
+      "state_code",
+      "country_code",
+      "postal_code",
+      "license_issuer",
+      "license_number",
+    ];
+    const params: Record<string, Param> = { driver_id: driverId };
+    for (const key of allowed) {
+      const v = fields[key];
+      if (v === undefined || v === null || v === "") continue;
+      params[key] = String(v);
+    }
+    return call("/driver/update.json", params);
+  },
+
+  // ---- Account management ------------------------------------------------
+
+  /**
+   * Transfer trackers to another account. ALL device/asset/driver ids that are
+   * installed or assigned to each other must be passed together.
+   */
+  transferTrackers(input: {
+    accountId: string;
+    deviceIds?: string[];
+    assetIds?: string[];
+    driverIds?: string[];
+  }): Promise<GPSANDTRACKResult> {
+    return call("/dvd/transfer_create.json", {
+      account_id: input.accountId,
+      "device_ids[]": input.deviceIds?.length ? input.deviceIds : undefined,
+      "asset_ids[]": input.assetIds?.length ? input.assetIds : undefined,
+      "driver_ids[]": input.driverIds?.length ? input.driverIds : undefined,
+    });
+  },
+
+  // ---- Deals -------------------------------------------------------------
+
+  /** Create a deal (sale / loan / lease / dropship / transfer). */
+  createDeal(input: {
+    accountId: string;
+    dealTypeId: number;
+    accountTemplateId?: string;
+    productCode?: string;
+    dealPrice?: string | number;
+    dealExternalRef?: string;
+    dealDate?: string;
+    deviceSerial?: string;
+    assetVin?: string;
+  }): Promise<GPSANDTRACKResult> {
+    return call("/deal/create.json", {
+      account_id: input.accountId,
+      deal_type_id: input.dealTypeId,
+      account_template_id: input.accountTemplateId,
+      product_code: input.productCode,
+      deal_price: input.dealPrice,
+      deal_external_ref: input.dealExternalRef,
+      deal_date: input.dealDate,
+      device_serial: input.deviceSerial,
+      asset_vin: input.assetVin,
+    });
+  },
+
+  async listDeals(dealIds: string[] = [], limit = 100): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
+    const r = await callPaged(
+      "/deal/list.json",
+      dealIds.length ? { "deal_ids[]": dealIds } : {},
+      ["deals", "results", "data", "items"],
+      Math.max(1, Math.ceil(limit / 100)),
+    );
+    if (!r.ok) return r;
+    return { ok: true, body: r.body.slice(0, limit) };
+  },
+
+  showDeal(dealId: string): Promise<GPSANDTRACKResult> {
+    return call("/deal/show.json", { deal_id: dealId });
+  },
+
+  /** Unwind (reverse) a deal — only allowed for a limited window after creation. */
+  unwindDeal(dealId: string): Promise<GPSANDTRACKResult> {
+    return call("/deal/unwind_update.json", { deal_id: dealId });
+  },
 };
+
+/** Documented deal_type_id values for /deal/create.json. */
+export const SAREKON_DEAL_TYPES: Array<{ id: number; label: string }> = [
+  { id: 1, label: "Device Dropship" },
+  { id: 2, label: "Device Handover" },
+  { id: 3, label: "Vehicle Sale Protected" },
+  { id: 4, label: "Vehicle Sale Unprotected" },
+  { id: 5, label: "Vehicle Loan Standard" },
+  { id: 6, label: "Vehicle Lease Standard" },
+  { id: 7, label: "Vehicle Loan Captive" },
+  { id: 8, label: "Vehicle Lease Captive" },
+  { id: 9, label: "Vehicle Sale Drive-Off" },
+  { id: 10, label: "Vehicle Dealer Transfer" },
+  { id: 11, label: "Vehicle NCA" },
+];
+
+/** driver_relationship_type_id values for /dvd/assign_create.json. */
+export const SAREKON_DRIVER_RELATIONSHIPS: Array<{ id: number; label: string }> = [
+  { id: 1, label: "Borrower (financed)" },
+  { id: 2, label: "Leasee (leased)" },
+  { id: 3, label: "Owner (sold)" },
+  { id: 4, label: "Other / operator" },
+];
+
+/** conflict_action_id values shared by install_create and assign_create. */
+export const SAREKON_CONFLICT_ACTIONS: Array<{ id: number; label: string }> = [
+  { id: -1, label: "Error if a conflict exists" },
+  { id: 1, label: "Add as backup" },
+  { id: 2, label: "Make primary (demote others)" },
+  { id: 3, label: "Replace (default)" },
+];
 
 /** Documented SareKon message_type_id values (each needs its own ota_ permission). */
 export const SAREKON_MESSAGE_TYPES = {
