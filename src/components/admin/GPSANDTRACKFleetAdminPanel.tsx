@@ -172,6 +172,21 @@ export default function GPSANDTRACKFleetAdminPanel({ onChanged }: { onChanged?: 
   const [dealId, setDealId] = useState("");
   const [dealDetail, setDealDetail] = useState<Record<string, unknown> | null>(null);
 
+  // permissions probe
+  const [perms, setPerms] = useState<{
+    results: PermissionResult[];
+    missing: string[];
+    summary: string;
+    checkedAt: string;
+  } | null>(null);
+
+  // audit log viewer
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
+  const [auditAction, setAuditAction] = useState("all");
+  const [auditOutcome, setAuditOutcome] = useState("all");
+  const [auditDays, setAuditDays] = useState("30");
+
+
   const run = useCallback(
     async (key: string, body: Record<string, unknown>, successMessage: string) => {
       setBusy(key);
