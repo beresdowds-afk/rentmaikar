@@ -11,7 +11,7 @@ import { isCallerAdmin } from "../_shared/admin-auth.ts";
 import { hologram } from "../_shared/hologram-client.ts";
 import { traccar } from "../_shared/traccar-client.ts";
 import { sarekon } from "../_shared/sarekon-client.ts";
-import { getEmqxManagementConfig } from "../_shared/emqx-config.ts";
+import { resolveEmqxClient } from "../_shared/emqx-client.ts";
 
 type Status = "ok" | "failed" | "not_configured";
 
@@ -250,25 +250,29 @@ const CHECKS: Check[] = [
     label: "EMQX (MQTT broker)",
     secrets: ["EMQX_API_KEY", "EMQX_API_SECRET", "EMQX_API_URL"],
     run: async () => {
-      const key = env("EMQX_API_KEY");
-      const secret = env("EMQX_API_SECRET");
-      if (!key || !secret) return { status: "not_configured", message: "EMQX API key/secret are not set." };
-      const cfg = await getEmqxManagementConfig();
-      if (!cfg.managementEnabled) {
-        return { status: "not_configured", message: "The EMQX management API is disabled in endpoint settings." };
+      // Uses the vault-backed rotation credential when present, env secrets otherwise,
+      // and probes /clients (allowed on every plan) rather than the cluster-only /nodes.
+      const { client, config, unavailable } = await resolveEmqxClient();
+      if (!client) {
+        return { status: "not_configured", message: unavailable!.hint, detail: String(config.api_url) };
       }
-      const res = await fetchWithTimeout(`${cfg.apiUrl}/nodes`, {
-        headers: { Authorization: `Basic ${btoa(`${key}:${secret}`)}` },
-      });
-      if (!res.ok) {
+      const probe = await client.ping();
+      if (!probe.ok) {
         return {
           status: "failed",
-          message: "EMQX rejected the management credentials.",
-          detail: `${cfg.apiUrl} → ${await shortBody(res)}`,
+          message: probe.status === 401 || probe.status === 403
+            ? "EMQX rejected the management credentials."
+            : "The EMQX management API could not be reached.",
+          detail: `${client.apiUrl} → ${probe.detail}`,
         };
       }
-      return { status: "ok", message: "Management API authenticated.", detail: cfg.apiUrl };
+      return {
+        status: "ok",
+        message: "Management API authenticated.",
+        detail: `${client.apiUrl} (via /${probe.via}, credentials: ${config.credentials_source}).`,
+      };
     },
+
   },
   {
     provider: "meta",

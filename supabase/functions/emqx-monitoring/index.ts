@@ -1,7 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireCronSecret } from "../_shared/cron-auth.ts";
-import { getEmqxManagementConfig, classifyManagementFailure } from "../_shared/emqx-config.ts";
-import { getEmqxCredentials } from "../_shared/emqx-credentials.ts";
+import { EmqxApiError, resolveEmqxClient } from "../_shared/emqx-client.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,19 +9,34 @@ const corsHeaders = {
 
 /**
  * EMQX Monitoring Edge Function
- * 
- * Proxies the EMQX HTTP Management API (v5) for admin dashboard use.
- * Endpoints:
- *   GET  /stats     — Cluster stats (connections, subscriptions, messages)
- *   GET  /nodes     — Node health & resource usage
- *   GET  /clients   — Connected client list with optional filters
- *   GET  /subscriptions — Active subscription list
- *   GET  /metrics   — Detailed message & byte metrics
- *   GET  /rules     — Rule engine rules list
- *   GET  /bridges   — Data bridge status (PostgreSQL, Webhook)
- *   GET  /alarms    — Active & historical alarms
- *   POST /publish   — Publish test message via EMQX API
- *   POST /kickout   — Disconnect a specific client
+ *
+ * Proxies the EMQX v5 HTTP Management API for admin dashboard use.
+ * Spec: https://docs.emqx.com/en/emqx/latest/admin/api.html
+ *
+ * Actions:
+ *   config            — effective endpoint/credential configuration (no broker call)
+ *   health            — unauthenticated GET /status + authenticated reachability probe
+ *   stats             — cluster stats + metrics, with serverless-safe derived fallback
+ *   nodes             — node health & resource usage
+ *   monitor           — dashboard time-series (GET /monitor)
+ *   monitor_current   — instantaneous dashboard counters
+ *   clients           — paginated client list (full spec filter surface)
+ *   client            — single client detail
+ *   client_subscriptions — subscriptions for one client
+ *   subscriptions     — paginated subscription list
+ *   topics            — paginated topic list
+ *   metrics           — detailed message & byte metrics
+ *   topic_metrics     — per-topic metrics
+ *   rules             — rule engine rules
+ *   integrations      — /actions + /sources + /connectors (legacy /bridges fallback)
+ *   bridges           — alias of integrations (backwards compatible)
+ *   alarms            — active & historical alarms
+ *   banned            — banned clients/users
+ *   retained          — retained message for a topic
+ *   publish           — publish a message (202 Accepted is success)
+ *   publish_bulk      — publish many messages
+ *   kickout           — disconnect a client (204 No Content is success)
+ *   kickout_bulk      — disconnect many clients
  */
 
 Deno.serve(async (req) => {
@@ -33,10 +47,8 @@ Deno.serve(async (req) => {
   // authenticate with their JWT below. Only reject when neither is present.
   const hasCronSecret = requireCronSecret(req) === null;
 
-
   try {
     if (!hasCronSecret) {
-      // Verify admin auth
       const authHeader = req.headers.get('Authorization');
       if (!authHeader?.startsWith('Bearer ')) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -59,7 +71,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Verify admin role or active IoT support staff
       const adminClient = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -94,22 +105,13 @@ Deno.serve(async (req) => {
 
     const { action, params } = await req.json();
 
-    const cfg = await getEmqxManagementConfig();
-    const creds = await getEmqxCredentials();
+    const { client, config: configSummary, unavailable } = await resolveEmqxClient();
 
-    const configSummary = {
-      api_url: cfg.apiUrl,
-      management_host: cfg.managementHost,
-      management_port: cfg.managementPort,
-      api_base_path: cfg.apiBasePath,
-      mqtt_host: cfg.mqttHost,
-      mqtt_port: cfg.mqttPort,
-      management_enabled: cfg.managementEnabled,
-      deployment_type: cfg.deploymentType,
-      config_source: cfg.source,
-      credentials_source: creds?.source ?? null,
-      has_credentials: !!creds,
-    };
+    const degraded = (reason: string, hint: string, status: number | null = null, code: string | null = null) =>
+      new Response(
+        JSON.stringify({ success: false, unavailable: true, reason, hint, status, code, config: configSummary }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
 
     // Report the effective configuration without touching the broker.
     if (action === 'config') {
@@ -118,216 +120,195 @@ Deno.serve(async (req) => {
       });
     }
 
-    const degraded = (reason: string, hint: string, status: number | null = null) =>
-      new Response(
-        JSON.stringify({
-          success: false,
-          unavailable: true,
-          reason,
-          hint,
-          status,
-          config: configSummary,
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-
-    if (!cfg.managementEnabled) {
-      return degraded(
-        'management_api_disabled',
-        'Management API polling is switched off in EMQX endpoint settings. Live broker metrics are unavailable; device telemetry is unaffected.',
-      );
+    if (!client) {
+      return degraded(unavailable!.reason, unavailable!.hint);
     }
 
-    if (!creds) {
-      return degraded(
-        'management_api_no_credentials',
-        'No active EMQX management API key is configured. Add and activate one in the EMQX credential rotation panel.',
-      );
-    }
+    const bad = (message: string) =>
+      new Response(JSON.stringify({ error: message }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
 
-    const authB64 = btoa(`${creds.key}:${creds.secret}`);
-    const emqxApiUrl = cfg.apiUrl.replace(/\/$/, '');
-
-    class EmqxUnavailable extends Error {
-      constructor(public httpStatus: number | null, public detail: string) {
-        super(detail);
-      }
-    }
-
-    const emqxFetch = async (path: string, method = 'GET', body?: any) => {
-      const opts: RequestInit = {
-        method,
-        headers: {
-          'Authorization': `Basic ${authB64}`,
-          'Content-Type': 'application/json',
-        },
-      };
-      if (body) opts.body = JSON.stringify(body);
-
-      let resp: Response;
-      try {
-        resp = await fetch(`${emqxApiUrl}${path}`, opts);
-      } catch (e) {
-        throw new EmqxUnavailable(null, String(e));
-      }
-      if (!resp.ok) {
-        throw new EmqxUnavailable(resp.status, await resp.text());
-      }
-      return resp.json();
-    };
-
-    let result: any;
+    let result: unknown;
 
     try {
-
-    switch (action) {
-      case 'stats': {
-        // Serverless deployments forbid cluster-wide endpoints (/stats, /metrics -> 403).
-        // Fall back to per-resource listings and derive the same headline counters.
-        try {
-          const [stats, metrics] = await Promise.all([
-            emqxFetch('/stats'),
-            emqxFetch('/metrics'),
-          ]);
-          result = { stats, metrics, derived: false };
-        } catch (e) {
-          if (!(e instanceof EmqxUnavailable) || (e.httpStatus !== 403 && e.httpStatus !== 404)) throw e;
-          const countOf = async (path: string) => {
-            try {
-              const r = await emqxFetch(`${path}?limit=1`);
-              const meta = r?.meta ?? {};
-              return Number(meta.count ?? (Array.isArray(r?.data) ? r.data.length : 0)) || 0;
-            } catch {
-              return 0;
-            }
-          };
-          const [connections, subscriptions, topics] = await Promise.all([
-            countOf('/clients'),
-            countOf('/subscriptions'),
-            countOf('/topics'),
-          ]);
-          result = {
-            derived: true,
-            derivedNote:
-              'Serverless plan: cluster metrics endpoints are restricted, counts derived from client/subscription/topic listings.',
-            stats: {
-              'connections.count': connections,
-              'live_connections.count': connections,
-              'sessions.count': connections,
-              'subscriptions.count': subscriptions,
-              'topics.count': topics,
-            },
-            metrics: null,
-          };
+      switch (action) {
+        case 'health': {
+          const [health, ping] = await Promise.all([client.health(), client.ping()]);
+          result = { health, management: ping };
+          break;
         }
-        break;
-      }
 
+        case 'stats': {
+          // Serverless deployments forbid cluster-wide endpoints (/stats, /metrics -> 403).
+          // Fall back to per-resource listings and derive the same headline counters.
+          try {
+            const [stats, metrics] = await Promise.all([
+              client.request('/stats'),
+              client.request('/metrics'),
+            ]);
+            result = { stats, metrics, derived: false };
+          } catch (e) {
+            const err = e as EmqxApiError;
+            if (!(e instanceof EmqxApiError) || (err.httpStatus !== 403 && err.httpStatus !== 404)) throw e;
+            const [connections, subscriptions, topics] = await Promise.all([
+              client.count('/clients', { conn_state: 'connected' }),
+              client.count('/subscriptions'),
+              client.count('/topics'),
+            ]);
+            result = {
+              derived: true,
+              derivedNote:
+                'Serverless plan: cluster metrics endpoints are restricted, counts derived from client/subscription/topic listings.',
+              stats: {
+                'connections.count': connections,
+                'live_connections.count': connections,
+                'sessions.count': connections,
+                'subscriptions.count': subscriptions,
+                'topics.count': topics,
+              },
+              metrics: null,
+            };
+          }
+          break;
+        }
 
-      case 'nodes': {
-        result = await emqxFetch('/nodes');
-        break;
-      }
+        case 'nodes':
+          result = await client.request('/nodes');
+          break;
 
-      case 'clients': {
-        const queryParams = new URLSearchParams();
-        if (params?.page) queryParams.set('page', params.page);
-        if (params?.limit) queryParams.set('limit', params.limit || '50');
-        if (params?.clientid) queryParams.set('clientid', params.clientid);
-        if (params?.username) queryParams.set('username', params.username);
-        if (params?.connected !== undefined) queryParams.set('conn_state', params.connected ? 'connected' : 'disconnected');
-        const qs = queryParams.toString();
-        result = await emqxFetch(`/clients${qs ? '?' + qs : ''}`);
-        break;
-      }
-
-      case 'subscriptions': {
-        const queryParams = new URLSearchParams();
-        if (params?.clientid) queryParams.set('clientid', params.clientid);
-        if (params?.topic) queryParams.set('topic', params.topic);
-        if (params?.limit) queryParams.set('limit', params.limit || '100');
-        const qs = queryParams.toString();
-        result = await emqxFetch(`/subscriptions${qs ? '?' + qs : ''}`);
-        break;
-      }
-
-      case 'metrics': {
-        result = await emqxFetch('/metrics');
-        break;
-      }
-
-      case 'rules': {
-        result = await emqxFetch('/rules');
-        break;
-      }
-
-      case 'bridges': {
-        result = await emqxFetch('/bridges');
-        break;
-      }
-
-      case 'alarms': {
-        const [active, historical] = await Promise.all([
-          emqxFetch('/alarms?activated=true'),
-          emqxFetch('/alarms?activated=false&limit=20'),
-        ]);
-        result = { active, historical };
-        break;
-      }
-
-      case 'topic_metrics': {
-        result = await emqxFetch('/topic_metrics');
-        break;
-      }
-
-      case 'publish': {
-        if (!params?.topic || !params?.payload) {
-          return new Response(JSON.stringify({ error: 'topic and payload required' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        case 'monitor':
+          result = await client.request('/monitor', {
+            query: { latest: params?.latest ?? 3600, node: params?.node },
           });
-        }
-        result = await emqxFetch('/publish', 'POST', {
-          topic: params.topic,
-          payload: typeof params.payload === 'string' ? params.payload : JSON.stringify(params.payload),
-          qos: params.qos || 1,
-          retain: params.retain || false,
-        });
-        break;
-      }
+          break;
 
-      case 'kickout': {
-        if (!params?.clientid) {
-          return new Response(JSON.stringify({ error: 'clientid required' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        case 'monitor_current':
+          result = await client.request('/monitor_current');
+          break;
+
+        case 'clients':
+          result = await client.clients(params ?? {});
+          break;
+
+        case 'client':
+          if (!params?.clientid) return bad('clientid required');
+          result = await client.client(params.clientid);
+          break;
+
+        case 'client_subscriptions':
+          if (!params?.clientid) return bad('clientid required');
+          result = await client.clientSubscriptions(params.clientid);
+          break;
+
+        case 'subscriptions':
+          result = await client.page('/subscriptions', {
+            page: params?.page,
+            limit: params?.limit ?? 100,
+            clientid: params?.clientid,
+            topic: params?.topic,
+            node: params?.node,
+            qos: params?.qos,
+            match_topic: params?.match_topic,
           });
+          break;
+
+        case 'topics':
+          result = await client.page('/topics', {
+            page: params?.page,
+            limit: params?.limit ?? 100,
+            topic: params?.topic,
+            node: params?.node,
+          });
+          break;
+
+        case 'metrics':
+          result = await client.request('/metrics', { query: { aggregate: params?.aggregate } });
+          break;
+
+        case 'topic_metrics':
+          result = await client.request('/topic_metrics');
+          break;
+
+        case 'rules':
+          result = await client.page('/rules', { page: params?.page, limit: params?.limit ?? 100 });
+          break;
+
+        case 'bridges':
+        case 'integrations':
+          result = await client.integrations();
+          break;
+
+        case 'alarms': {
+          const [active, historical] = await Promise.all([
+            client.page('/alarms', { activated: true, limit: params?.limit ?? 100 }),
+            client.page('/alarms', { activated: false, limit: 20 }),
+          ]);
+          result = { active, historical };
+          break;
         }
-        result = await emqxFetch(`/clients/${encodeURIComponent(params.clientid)}`, 'DELETE');
-        break;
+
+        case 'banned':
+          result = await client.page('/banned', { page: params?.page, limit: params?.limit ?? 100 });
+          break;
+
+        case 'retained':
+          if (!params?.topic) return bad('topic required');
+          result = { topic: params.topic, message: await client.retained(params.topic) };
+          break;
+
+        case 'publish': {
+          if (!params?.topic || params?.payload === undefined) return bad('topic and payload required');
+          const qos = Number(params.qos ?? 1);
+          if (![0, 1, 2].includes(qos)) return bad('qos must be 0, 1 or 2');
+          result = await client.publish({
+            topic: params.topic,
+            payload: params.payload,
+            qos,
+            retain: !!params.retain,
+          });
+          break;
+        }
+
+        case 'publish_bulk': {
+          if (!Array.isArray(params?.messages) || params.messages.length === 0) {
+            return bad('messages array required');
+          }
+          result = await client.publishBulk(params.messages);
+          break;
+        }
+
+        case 'kickout':
+          if (!params?.clientid) return bad('clientid required');
+          result = await client.kickout(params.clientid);
+          break;
+
+        case 'kickout_bulk':
+          if (!Array.isArray(params?.clientids) || params.clientids.length === 0) {
+            return bad('clientids array required');
+          }
+          result = await client.kickoutBulk(params.clientids);
+          break;
+
+        default:
+          return bad(`Unknown action: ${action}`);
       }
 
-      default:
-        return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-    }
-
-    return new Response(JSON.stringify({ success: true, data: result, config: configSummary }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+      return new Response(JSON.stringify({ success: true, data: result, config: configSummary }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     } catch (e) {
-      if (e instanceof EmqxUnavailable) {
-        const { reason, hint } = classifyManagementFailure(e.httpStatus, e.detail);
-        console.warn('[emqx-monitoring] management API unavailable:', reason, e.httpStatus);
-        return degraded(reason, hint, e.httpStatus);
+      if (e instanceof EmqxApiError) {
+        const { reason, hint } = e.classified;
+        console.warn('[emqx-monitoring] management API unavailable:', reason, e.httpStatus, e.code);
+        return degraded(reason, hint, e.httpStatus, e.code);
       }
       throw e;
     }
   } catch (err) {
     console.error('[emqx-monitoring]', err);
-    return new Response(JSON.stringify({ error: err.message || 'Internal server error' }), {
+    return new Response(JSON.stringify({ error: (err as Error).message || 'Internal server error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

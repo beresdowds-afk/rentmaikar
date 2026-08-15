@@ -52,22 +52,52 @@ export async function getEmqxCredentials(): Promise<EmqxCredentials | null> {
   return { url, key, secret, source: "env", versionId: null };
 }
 
-/** Live probe against the EMQX management API. */
+/**
+ * Live probe against the EMQX management API.
+ * Serverless plans forbid /stats (403), so fall back to /clients?limit=1, which
+ * the spec exposes on every deployment type. 401/403 on /clients is authoritative.
+ */
 export async function probeEmqx(
   url: string,
   key: string,
   secret: string,
 ): Promise<{ ok: boolean; status: number | null; detail: string; stats?: unknown }> {
-  try {
-    const res = await fetch(`${url.replace(/\/$/, "")}/stats`, {
-      headers: { Authorization: "Basic " + btoa(`${key}:${secret}`) },
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      return { ok: false, status: res.status, detail: text.slice(0, 300) };
+  const base = url.replace(/\/$/, "");
+  const auth = "Basic " + btoa(`${key}:${secret}`);
+  const call = async (path: string) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    try {
+      return await fetch(`${base}${path}`, {
+        headers: { Authorization: auth, Accept: "application/json" },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
     }
-    return { ok: true, status: res.status, detail: "EMQX management API reachable", stats: await res.json() };
+  };
+
+  try {
+    const stats = await call("/stats");
+    if (stats.ok) {
+      return { ok: true, status: stats.status, detail: "EMQX management API reachable", stats: await stats.json() };
+    }
+    if (stats.status === 401) {
+      return { ok: false, status: 401, detail: (await stats.text()).slice(0, 300) || "Unauthorized" };
+    }
+    // 403/404 => plan-restricted cluster endpoint, not a bad credential.
+    const clients = await call("/clients?limit=1");
+    if (clients.ok) {
+      return {
+        ok: true,
+        status: clients.status,
+        detail: "EMQX management API reachable (cluster metrics restricted on this plan)",
+        stats: await clients.json(),
+      };
+    }
+    return { ok: false, status: clients.status, detail: (await clients.text()).slice(0, 300) };
   } catch (e) {
     return { ok: false, status: null, detail: String(e).slice(0, 300) };
   }
 }
+

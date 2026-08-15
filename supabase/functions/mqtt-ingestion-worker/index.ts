@@ -1,7 +1,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireCronSecretAsync } from "../_shared/cron-auth.ts";
-import { getEmqxManagementConfig, classifyManagementFailure } from "../_shared/emqx-config.ts";
-import { getEmqxCredentials } from "../_shared/emqx-credentials.ts";
+import { EmqxApiError, resolveEmqxClient } from "../_shared/emqx-client.ts";
 import { ingestRecords, logIngestRun, serviceClient } from "../_shared/telemetry-ingest-core.ts";
 
 /**
@@ -38,33 +37,16 @@ Deno.serve(async (req) => {
   };
 
   try {
-    const cfg = await getEmqxManagementConfig();
-    const creds = await getEmqxCredentials();
+    const { client, config, unavailable } = await resolveEmqxClient();
 
-    if (!cfg.managementEnabled || !creds) {
+    if (!client) {
       return await finish({
         source: "mqtt_worker",
         provider: "emqx",
         broker_reachable: false,
-        degraded_reason: !cfg.managementEnabled
-          ? "management_api_disabled"
-          : "management_api_no_credentials",
+        degraded_reason: unavailable!.reason,
       });
     }
-
-    const apiUrl = cfg.apiUrl.replace(/\/$/, "");
-    const authB64 = btoa(`${creds.key}:${creds.secret}`);
-    const emqxFetch = async (path: string) => {
-      const resp = await fetch(`${apiUrl}${path}`, {
-        headers: { Authorization: `Basic ${authB64}`, "Content-Type": "application/json" },
-      });
-      if (!resp.ok) {
-        const detail = await resp.text();
-        const { reason } = classifyManagementFailure(resp.status, detail);
-        throw Object.assign(new Error(reason), { reason, detail, status: resp.status });
-      }
-      return resp.json();
-    };
 
     // Vehicles we care about: linked, telemetry-enabled IoT devices.
     const { data: devices } = await admin
@@ -80,24 +62,15 @@ Deno.serve(async (req) => {
 
     if (!vehicleIds.length) {
       // Nothing to pull: still probe the broker so the dashboard shows real health.
-      let probeOk = false;
-      let probeReason: string | null = null;
-      let probeError: string | null = null;
-      try {
-        // Serverless forbids /stats; /clients is permitted on every plan.
-        await emqxFetch("/clients?limit=1");
-        probeOk = true;
-      } catch (e) {
-        const err = e as { reason?: string; detail?: string; status?: number | null };
-        probeReason = err.reason ?? "request_failed";
-        probeError = `credential_source=${creds.source} status=${err.status ?? "n/a"} url=${apiUrl} detail=${(err.detail ?? "").slice(0, 200)}`;
-      }
+      const probe = await client.ping();
       return await finish({
         source: "mqtt_worker",
         provider: "emqx",
-        broker_reachable: probeOk,
-        degraded_reason: probeReason,
-        error: probeError,
+        broker_reachable: probe.ok,
+        degraded_reason: probe.ok ? null : "management_api_unreachable",
+        error: probe.ok
+          ? null
+          : `credential_source=${config.credentials_source} status=${probe.status ?? "n/a"} url=${client.apiUrl} detail=${probe.detail.slice(0, 200)}`,
         devices_seen: 0,
         events_processed: 0,
       });
@@ -111,11 +84,10 @@ Deno.serve(async (req) => {
       for (const suffix of TOPIC_SUFFIXES) {
         const topic = `rentmaikar/vehicle/${vehicleId}/${suffix}`;
         try {
-          const msg = await emqxFetch(
-            `/mqtt/retainer/message/${encodeURIComponent(topic)}`,
-          );
+          // `retained()` returns null for 404 ("no retained message on that topic").
+          const msg = await client.retained(topic);
           reachable = true;
-          const payloadRaw = (msg as Record<string, unknown>)?.payload;
+          const payloadRaw = msg?.payload;
           if (payloadRaw == null) continue;
           let payload: Record<string, unknown>;
           try {
@@ -128,18 +100,18 @@ Deno.serve(async (req) => {
             topic,
             vehicleId,
             eventType: suffix,
-            timestamp: (msg as Record<string, unknown>)?.publish_at
-              ? new Date(Number((msg as Record<string, unknown>).publish_at)).toISOString()
+            timestamp: msg?.publish_at
+              ? new Date(Number(msg.publish_at)).toISOString()
               : new Date().toISOString(),
             payload,
           });
         } catch (e) {
-          const reason = (e as { reason?: string }).reason;
-          // 404 simply means "no retained message on that topic".
-          if (reason && reason !== "not_found") degradedReason = reason;
+          if (e instanceof EmqxApiError) degradedReason = e.classified.reason;
+          else degradedReason = "request_failed";
         }
       }
     }
+
 
     if (!reachable && degradedReason) {
       return await finish({
