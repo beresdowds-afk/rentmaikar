@@ -115,10 +115,10 @@ async function login(force = false): Promise<GPSANDTRACKResult<string>> {
   if (!force && session && Date.now() - session.issuedAt < SESSION_TTL_MS) {
     return { ok: true, body: session.token };
   }
+  // GPSANDTRACK expects exactly { username, password } — sending extra aliases
+  // (user_id / login) alongside them is rejected by the session endpoint.
   const r = await rawPost("/session/create.json", {
-    user_id: c.userId,
     username: c.userId,
-    login: c.userId,
     password: c.password,
   });
   if (!r.ok) return r;
