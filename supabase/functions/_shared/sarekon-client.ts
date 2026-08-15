@@ -378,8 +378,16 @@ export const sarekon = {
   baseUrl: () => creds()?.base ?? DEFAULT_BASE,
   resetSession: async () => { session = null; await clearSession(SESSION_PROVIDER); },
 
+  /**
+   * Low-level authenticated call — used by the permission prober so it can hit
+   * an endpoint with no payload purely to learn whether the dealer account
+   * holds the scope (SareKon evaluates permissions before argument checks).
+   */
+  raw: <T = unknown>(path: string, params: Record<string, Param> = {}) => call<T>(path, params),
+
   /** Verify credentials by creating a fresh session. */
   ping: () => login(true),
+
 
   /**
    * Search trackers. `q` is required by the API and matches a device serial or
