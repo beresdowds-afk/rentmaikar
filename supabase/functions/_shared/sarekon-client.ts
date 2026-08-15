@@ -21,6 +21,7 @@
 // the rest of the platform degrades gracefully.
 
 import { ensureProviderConfig, providerConfigSource, providerOverride } from "./provider-config.ts";
+import { clearSession, credentialFingerprint, loadSession, saveSession } from "./provider-session-store.ts";
 
 type OkResult<T = unknown> = { ok: true; body: T };
 type ErrResult =
@@ -88,7 +89,7 @@ export function missingCredentials(): string[] {
 // mobile app hitting a different instance) reuses the same live `sid` instead
 // of re-authenticating. Sessions are bound to a credential fingerprint, so
 // rotating the username/password invalidates them automatically.
-let session: { sid: string; issuedAt: number } | null = null;
+let session: { sid: string; issuedAt: number; fingerprint: string } | null = null;
 const SESSION_TTL_MS = 20 * 60_000;
 const SESSION_PROVIDER = "sarekon";
 
@@ -255,6 +256,10 @@ async function call<T = unknown>(
   if (!auth.ok) return auth;
   let r = await request<T>(path, { sid: auth.body, ...params });
   if (!r.ok && r.reason === "auth_error") {
+    // The stored session was rejected (expired/revoked) — drop it everywhere
+    // so other instances don't keep retrying the same dead token.
+    session = null;
+    await clearSession(SESSION_PROVIDER);
     const retryAuth = await login(true);
     if (!retryAuth.ok) return retryAuth;
     r = await request<T>(path, { sid: retryAuth.body, ...params });
@@ -371,7 +376,7 @@ export const sarekon = {
   configSource: () => providerConfigSource("sarekon"),
   isConfigured: () => !!creds(),
   baseUrl: () => creds()?.base ?? DEFAULT_BASE,
-  resetSession: () => { session = null; },
+  resetSession: async () => { session = null; await clearSession(SESSION_PROVIDER); },
 
   /** Verify credentials by creating a fresh session. */
   ping: () => login(true),
