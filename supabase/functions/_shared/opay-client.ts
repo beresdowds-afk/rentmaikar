@@ -14,6 +14,12 @@
  * (`00005`) instead of creating a second order.
  */
 
+import {
+  ensureProviderConfig,
+  providerOverride,
+  invalidateProviderConfig,
+} from "./provider-config.ts";
+
 export type OpayEnv = "sandbox" | "live";
 
 export interface OpayConfig {
@@ -46,8 +52,22 @@ const CODE_MESSAGES: Record<string, string> = {
   A_1001: "Request expired — check the server clock",
 };
 
+/**
+ * Warm the admin-managed override cache. Call this once per request before any
+ * of the sync getters below so an admin-saved credential / mode takes effect
+ * without a redeploy.
+ */
+export async function ensureOpayConfig(): Promise<void> {
+  await ensureProviderConfig("opay");
+}
+
+export function invalidateOpayConfig(): void {
+  invalidateProviderConfig("opay");
+}
+
 export function resolveOpayEnv(): OpayEnv {
-  const raw = (Deno.env.get("OPAY_ENVIRONMENT") ?? Deno.env.get("OPAY_ENV") ?? "sandbox")
+  const raw = (providerOverride("opay", "environment") ??
+    Deno.env.get("OPAY_ENVIRONMENT") ?? Deno.env.get("OPAY_ENV") ?? "sandbox")
     .trim()
     .toLowerCase();
   return raw === "live" || raw === "production" || raw === "prod" ? "live" : "sandbox";
@@ -61,9 +81,9 @@ export function opayBaseUrl(env: OpayEnv = resolveOpayEnv()): string {
 
 /** Returns the config, or null when any required secret is missing. */
 export function getOpayConfig(): OpayConfig | null {
-  const merchantId = Deno.env.get("OPAY_MERCHANT_ID");
-  const publicKey = Deno.env.get("OPAY_PUBLIC_KEY");
-  const secretKey = Deno.env.get("OPAY_SECRET_KEY");
+  const merchantId = providerOverride("opay", "merchant_id") ?? Deno.env.get("OPAY_MERCHANT_ID");
+  const publicKey = providerOverride("opay", "public_key") ?? Deno.env.get("OPAY_PUBLIC_KEY");
+  const secretKey = providerOverride("opay", "secret_key") ?? Deno.env.get("OPAY_SECRET_KEY");
   if (!merchantId || !publicKey || !secretKey) return null;
   const env = resolveOpayEnv();
   return { merchantId, publicKey, secretKey, env, baseUrl: opayBaseUrl(env) };
@@ -71,6 +91,12 @@ export function getOpayConfig(): OpayConfig | null {
 
 export function isOpayConfigured(): boolean {
   return getOpayConfig() !== null;
+}
+
+/** Where the resolved Opay credentials came from — shown in the admin panel. */
+export function opayConfigSource(): "admin" | "env" | "none" {
+  if (providerOverride("opay", "merchant_id") || providerOverride("opay", "secret_key")) return "admin";
+  return Deno.env.get("OPAY_MERCHANT_ID") ? "env" : "none";
 }
 
 /** HMAC-SHA512 hex signature of a raw body string, per OPay cashier auth. */
