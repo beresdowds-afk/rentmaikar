@@ -334,7 +334,7 @@ Deno.serve(async (req) => {
         vehicle_scoped: !!(vehicle_ids && vehicle_ids.length),
       });
       const deviceErrors: Array<{ device: string; error: string }> = [];
-      const dr = await traccar.listDevices();
+      const dr = await traccar.listAllDevices();
       if (!dr.ok) {
         const dg = diagnose(dr);
         await setSyncState({
