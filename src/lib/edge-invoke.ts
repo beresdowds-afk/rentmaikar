@@ -6,20 +6,25 @@ import { supabase } from "@/integrations/supabase/client";
  * functions at once; without coalescing the burst of concurrent invocations can
  * make one worker fail to boot.
  */
-const inflight = new Map<string, Promise<{ data: unknown; error: unknown }>>();
+const inflight = new Map<string, Promise<EdgeResult<unknown>>>();
 
 const isBootError = (error: unknown) => {
   const msg = String((error as { message?: string } | null)?.message ?? "");
   return /BOOT_ERROR|failed to start|503/i.test(msg);
 };
 
+export interface EdgeResult<T> {
+  data: T | null;
+  error: { message: string } | null;
+}
+
 export async function invokeEdge<T = unknown>(
   fn: string,
   body?: Record<string, unknown>,
-): Promise<{ data: T | null; error: unknown }> {
+): Promise<EdgeResult<T>> {
   const key = `${fn}:${JSON.stringify(body ?? {})}`;
   const existing = inflight.get(key);
-  if (existing) return existing as Promise<{ data: T | null; error: unknown }>;
+  if (existing) return existing as Promise<EdgeResult<T>>;
 
   const run = (async () => {
     let res = await supabase.functions.invoke(fn, { body });
@@ -27,9 +32,9 @@ export async function invokeEdge<T = unknown>(
       await new Promise((r) => setTimeout(r, 1500));
       res = await supabase.functions.invoke(fn, { body });
     }
-    return res as { data: unknown; error: unknown };
+    return res as EdgeResult<unknown>;
   })().finally(() => inflight.delete(key));
 
   inflight.set(key, run);
-  return run as Promise<{ data: T | null; error: unknown }>;
+  return run as Promise<EdgeResult<T>>;
 }
