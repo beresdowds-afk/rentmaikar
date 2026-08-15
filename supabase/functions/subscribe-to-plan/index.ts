@@ -4,7 +4,9 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 
-import { createCashierOrder, getOpayConfig, toMinorUnits } from "../_shared/opay-client.ts";
+import { createCashierOrder, getOpayConfig, toMinorUnits,
+  ensureOpayConfig,
+} from "../_shared/opay-client.ts";
 
 const Body = z.object({
   plan_id: z.string().uuid(),
@@ -112,6 +114,7 @@ Deno.serve(async (req) => {
 
     // Route by currency. NGN supports Paystack (default) and OPay.
     if (plan.currency === "NGN" && requestedProvider === "opay") {
+      await ensureOpayConfig();
       const cfg = getOpayConfig();
       if (!cfg) return json({ error: "Opay not configured" }, 503);
 

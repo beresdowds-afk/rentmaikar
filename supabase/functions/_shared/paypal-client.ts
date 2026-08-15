@@ -13,6 +13,12 @@
 //   * bounded retry with jittered backoff on 429/5xx and network faults
 //   * PayPal-Request-Id on every mutating call => PayPal-side idempotency
 
+import {
+  ensureProviderConfig,
+  providerOverride,
+  invalidateProviderConfig,
+} from "./provider-config.ts";
+
 export type PayPalMode = "live" | "sandbox";
 
 export interface PayPalConfig {
@@ -30,8 +36,18 @@ const SANDBOX_BASE = "https://api-m.sandbox.paypal.com";
  * accepted as a legacy alias so an older deployment that only ever set that
  * one keeps pointing at the same host as the rest of the stack.
  */
+/** Warm the admin-managed override cache (sandbox/live switch + credentials). */
+export async function ensurePayPalConfig(): Promise<void> {
+  await ensureProviderConfig("paypal");
+}
+
+export function invalidatePayPalConfig(): void {
+  invalidateProviderConfig("paypal");
+}
+
 export function resolvePayPalMode(): PayPalMode {
-  const raw = (Deno.env.get("PAYPAL_MODE") ?? Deno.env.get("PAYPAL_ENV") ?? "sandbox")
+  const raw = (providerOverride("paypal", "mode") ??
+    Deno.env.get("PAYPAL_MODE") ?? Deno.env.get("PAYPAL_ENV") ?? "sandbox")
     .trim()
     .toLowerCase();
   return raw === "live" || raw === "production" ? "live" : "sandbox";
@@ -43,8 +59,8 @@ export function payPalBase(mode: PayPalMode = resolvePayPalMode()): string {
 
 /** Read credentials; returns null when PayPal is not configured. */
 export function getPayPalConfig(): PayPalConfig | null {
-  const clientId = Deno.env.get("PAYPAL_CLIENT_ID");
-  const clientSecret = Deno.env.get("PAYPAL_CLIENT_SECRET");
+  const clientId = providerOverride("paypal", "client_id") ?? Deno.env.get("PAYPAL_CLIENT_ID");
+  const clientSecret = providerOverride("paypal", "client_secret") ?? Deno.env.get("PAYPAL_CLIENT_SECRET");
   if (!clientId || !clientSecret) return null;
   const mode = resolvePayPalMode();
   return { clientId, clientSecret, mode, base: payPalBase(mode) };

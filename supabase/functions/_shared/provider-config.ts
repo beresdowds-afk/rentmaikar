@@ -11,7 +11,7 @@
 // Nothing here throws: a failed lookup silently falls back to the env layer so
 // an unreachable database can never take the integrations offline.
 
-export type ManagedProvider = "hologram" | "traccar" | "sarekon";
+export type ManagedProvider = "hologram" | "traccar" | "sarekon" | "opay" | "paypal";
 
 type Bag = Record<string, string>;
 
@@ -29,6 +29,8 @@ const KV_KEY: Record<ManagedProvider, string> = {
   hologram: "hologram_config",
   traccar: "traccar_config",
   sarekon: "sarekon_config",
+  opay: "opay_config",
+  paypal: "paypal_config",
 };
 
 /** Non-secret keys that may live in platform_kv_settings. */
@@ -36,6 +38,10 @@ const PUBLIC_KEYS: Record<ManagedProvider, string[]> = {
   hologram: ["org_id", "base_url"],
   traccar: ["base_url", "email"],
   sarekon: ["base_url", "username", "user_id"],
+  // Opay/PayPal: the non-secret half of the config, including the sandbox vs
+  // live switch the admin settings page writes.
+  opay: ["merchant_id", "public_key", "environment"],
+  paypal: ["client_id", "mode", "webhook_id"],
 };
 
 function restHeaders() {

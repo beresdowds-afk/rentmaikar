@@ -4,7 +4,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { claimIdempotencyKey, completeIdempotencyKey, duplicateResponse, resolveIdempotencyKey } from "../_shared/payment-idempotency.ts";
 import { postLedgerEntry } from "../_shared/wallet-ledger.ts";
-import { describeError, getPayPalConfig, PayPalError, payPalRequest } from "../_shared/paypal-client.ts";
+import { describeError, getPayPalConfig, PayPalError, payPalRequest,
+  ensurePayPalConfig,
+} from "../_shared/paypal-client.ts";
 import {
   consumeWithdrawalAuthorization,
   requireWithdrawalAuthorization,
@@ -23,6 +25,7 @@ const BodySchema = z.object({
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
+    await ensurePayPalConfig();
     const cfg = getPayPalConfig();
     if (!cfg) return json({ error: "PayPal not configured" }, 503);
 

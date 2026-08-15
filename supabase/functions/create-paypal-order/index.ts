@@ -4,7 +4,9 @@ import { z } from "https://esm.sh/zod@3.23.8";
 import { requireAuthenticatedUser } from "../_shared/auth-guards.ts";
 import { resolvePaymentContext } from "../_shared/resolve-payment-context.ts";
 import { claimIdempotencyKey, completeIdempotencyKey, duplicateResponse, resolveIdempotencyKey } from "../_shared/payment-idempotency.ts";
-import { describeError, getPayPalConfig, PayPalError, payPalRequest } from "../_shared/paypal-client.ts";
+import { describeError, getPayPalConfig, PayPalError, payPalRequest,
+  ensurePayPalConfig,
+} from "../_shared/paypal-client.ts";
 
 const Body = z.object({
   amount: z.number().positive().max(1_000_000),
@@ -32,6 +34,7 @@ Deno.serve(async (req) => {
   const userId = authRes.userId;
 
   try {
+    await ensurePayPalConfig();
     const cfg = getPayPalConfig();
     if (!cfg) {
       return new Response(JSON.stringify({ error: "PayPal not configured" }), {

@@ -3,7 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { requireAuthenticatedUser } from "../_shared/auth-guards.ts";
 import { syncPaymentStatus } from "../_shared/payment-status-sync.ts";
-import { describeError, getPayPalConfig, PayPalError, payPalRequest } from "../_shared/paypal-client.ts";
+import { describeError, getPayPalConfig, PayPalError, payPalRequest,
+  ensurePayPalConfig,
+} from "../_shared/paypal-client.ts";
 
 const Body = z.object({
   order_id: z.string().min(1).max(128),
@@ -32,6 +34,7 @@ Deno.serve(async (req) => {
   const userId = authRes.userId;
 
   try {
+    await ensurePayPalConfig();
     const cfg = getPayPalConfig();
     if (!cfg) return json({ error: "PayPal not configured" }, 503);
 
