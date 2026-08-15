@@ -1,7 +1,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireCronSecretAsync } from "../_shared/cron-auth.ts";
-import { getEmqxManagementConfig, classifyManagementFailure } from "../_shared/emqx-config.ts";
-import { getEmqxCredentials } from "../_shared/emqx-credentials.ts";
+import { EmqxApiError, resolveEmqxClient } from "../_shared/emqx-client.ts";
 import { ingestRecords, logIngestRun, serviceClient } from "../_shared/telemetry-ingest-core.ts";
 
 /**
