@@ -26,6 +26,7 @@ export interface EventNotificationPreference {
   in_app: boolean;
   email: boolean;
   push: boolean;
+  sms: boolean;
   slack: boolean;
   webhook: boolean;
   slack_webhook_url: string | null;
@@ -38,6 +39,7 @@ const defaults = (category: string): EventNotificationPreference => ({
   in_app: true,
   email: true,
   push: true,
+  sms: false,
   slack: false,
   webhook: false,
   slack_webhook_url: null,
@@ -71,6 +73,7 @@ export function useEventNotificationPreferences() {
           in_app: row.in_app,
           email: row.email,
           push: (row as { push?: boolean }).push ?? true,
+          sms: (row as { sms?: boolean }).sms ?? false,
           slack: row.slack,
           webhook: row.webhook,
           slack_webhook_url: row.slack_webhook_url,
@@ -100,6 +103,7 @@ export function useEventNotificationPreferences() {
           in_app: next.in_app,
           email: next.email,
           push: next.push,
+          sms: next.sms,
           slack: next.slack,
           webhook: next.webhook,
           slack_webhook_url: next.slack_webhook_url || null,

@@ -433,6 +433,9 @@ const AdminDashboard = () => {
                 <a href="/admin/reconciliation">Reconciliation logs</a>
               </Button>
               <Button asChild variant="outline" size="sm" className="justify-start">
+                <a href="/admin/settlement-reconciliation">Settlement reconciliation</a>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="justify-start">
                 <a href="/admin/export-audit">Document export audit</a>
               </Button>
               <Button asChild variant="outline" size="sm" className="justify-start">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, BellRing, Mail, Hash, Webhook, Smartphone, Copy } from 'lucide-react';
+import { Loader2, BellRing, Mail, Hash, Webhook, Smartphone, MessageSquare, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -28,7 +28,7 @@ export function EventNotificationPreferencesPanel() {
         </CardTitle>
         <CardDescription>
           Pick how you want to hear about each type of activity. In-app alerts show in the
-          notification bell; Slack and webhook alerts need a destination URL.
+          notification bell; SMS is optional and only sent to a verified mobile number; Slack and webhook alerts need a destination URL.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -70,6 +70,14 @@ export function EventNotificationPreferencesPanel() {
                         checked={p.push}
                         onCheckedChange={(v) => savePreference(cat.value, { push: v })}
                         aria-label={`Push alerts for ${cat.label}`}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <MessageSquare className="h-3.5 w-3.5" /> SMS
+                      <Switch
+                        checked={p.sms}
+                        onCheckedChange={(v) => savePreference(cat.value, { sms: v })}
+                        aria-label={`SMS alerts for ${cat.label}`}
                       />
                     </label>
                     <label className="flex items-center gap-2 text-xs text-muted-foreground">
