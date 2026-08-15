@@ -9,6 +9,21 @@ const Body = z.object({
   callback_url: z.string().url().optional(),
 });
 
+/**
+ * Map a plan_type to the payment purpose accepted by `payments_purpose_check`.
+ * `roadside_support` must become `subscription_roadside`, otherwise the
+ * payment row insert fails and the checkout can never be settled.
+ */
+function purposeForPlanType(planType: string): string {
+  const map: Record<string, string> = {
+    training: "subscription_training",
+    insurance: "subscription_insurance",
+    roadside_support: "subscription_roadside",
+    roadside: "subscription_roadside",
+  };
+  return map[planType] ?? "other";
+}
+
 function getPayPalBase(mode: string) {
   return mode === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
 }
@@ -31,12 +46,12 @@ async function createSubscriptionPayment(
     payment_method: args.method,
     transaction_id: args.reference,
     status: "pending",
-    purpose: `subscription_${args.plan.plan_type}`,
+    purpose: purposeForPlanType(args.plan.plan_type),
     subscription_plan_id: args.plan.id,
   }).select("id").single();
   if (error) {
     console.error("[subscribe-to-plan] payment row failed:", error.message);
-    return null;
+    throw new Error(`Could not start checkout: ${error.message}`);
   }
   return data.id as string;
 }
