@@ -288,12 +288,12 @@ export function VehiclePickupManagement() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {vehicle.pickup_location ? (
+                        {val(vehicle.pickup_address) || val(vehicle.pickup_location) ? (
                           <div>
-                            <p className="font-medium">{vehicle.pickup_location}</p>
-                            {vehicle.pickup_address && (
-                              <p className="text-sm text-muted-foreground truncate max-w-[200px]">{vehicle.pickup_address}</p>
-                            )}
+                            <p className="font-medium">{val(vehicle.pickup_location) || '—'}</p>
+                            <p className="text-sm text-muted-foreground truncate max-w-[200px]">
+                              {val(vehicle.pickup_address) || 'No street address'}
+                            </p>
                           </div>
                         ) : (
                           <span className="text-muted-foreground">Not set</span>
@@ -303,11 +303,21 @@ export function VehiclePickupManagement() {
                         {vehicle.pickup_city || <span className="text-muted-foreground">-</span>}
                       </TableCell>
                       <TableCell>
-                        {hasPickupDetails(vehicle) ? (
+                        {completenessOf(vehicle) === 'complete' ? (
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                             <CheckCircle className="h-3 w-3 mr-1" />
                             Configured
                           </Badge>
+                        ) : completenessOf(vehicle) === 'partial' ? (
+                          <div className="space-y-1">
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              Incomplete
+                            </Badge>
+                            <p className="text-xs text-muted-foreground max-w-[180px]">
+                              Missing {missingFields(vehicle).join(', ')}
+                            </p>
+                          </div>
                         ) : (
                           <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
                             <AlertCircle className="h-3 w-3 mr-1" />
@@ -315,6 +325,7 @@ export function VehiclePickupManagement() {
                           </Badge>
                         )}
                       </TableCell>
+
                       <TableCell className="text-right">
                         <Button variant="outline" size="sm" onClick={() => handleEdit(vehicle)}>
                           <Edit className="h-4 w-4 mr-1" />
