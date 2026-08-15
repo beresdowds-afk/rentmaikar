@@ -326,5 +326,3 @@ export async function applyDispute(
   });
   logger?.warn("dispute.opened", { payment_id: paymentId, provider_reference: providerReference ?? null });
 }
-
-}
