@@ -18,6 +18,9 @@ import { invalidateProviderConfig } from "../_shared/provider-config.ts";
 
 const PROVIDER = "sarekon";
 
+const id = z.string().min(1).max(128);
+const short = z.string().max(200);
+
 const Body = z.object({
   action: z.enum([
     "status",
@@ -35,6 +38,20 @@ const Body = z.object({
     "link_device",
     "unlink_device",
     "get_sync_state",
+    // dealer / fleet-admin operations
+    "install_device",
+    "uninstall_device",
+    "update_asset",
+    "install_test_start",
+    "install_test_result",
+    "assign_driver",
+    "unassign_driver",
+    "update_driver",
+    "transfer_trackers",
+    "deal_create",
+    "deal_list",
+    "deal_show",
+    "deal_unwind",
   ]),
   dvd_id: z.string().min(1).max(128).optional(),
   device_row_id: z.string().uuid().optional(),
@@ -44,6 +61,30 @@ const Body = z.object({
   parameters: z.record(z.unknown()).optional(),
   limit: z.number().int().positive().max(200).optional(),
   refresh_credentials: z.boolean().optional(),
+
+  // fleet-admin payloads
+  asset_vin: short.optional(),
+  asset_id: id.optional(),
+  asset_ids: z.array(id).max(100).optional(),
+  device_serial: short.optional(),
+  device_ids: z.array(id).max(100).optional(),
+  driver_id: id.optional(),
+  driver_ids: z.array(id).max(100).optional(),
+  account_id: id.optional(),
+  deal_id: id.optional(),
+  deal_ids: z.array(id).max(100).optional(),
+  deal_type_id: z.number().int().min(1).max(99).optional(),
+  account_template_id: id.optional(),
+  product_code: short.optional(),
+  deal_price: z.union([z.number(), z.string().max(32)]).optional(),
+  deal_external_ref: short.optional(),
+  deal_date: z.string().max(32).optional(),
+  relationship_type_id: z.number().int().min(1).max(4).optional(),
+  conflict_action_id: z.number().int().min(-1).max(3).optional(),
+  vin_not_decodable: z.boolean().optional(),
+  installed_odometer: z.number().int().min(0).max(9_999_999).optional(),
+  test_dt: z.string().max(40).optional(),
+  fields: z.record(z.union([z.string().max(300), z.number(), z.array(z.string().max(64)).max(50)])).optional(),
 });
 
 /** Scoped sync-state rows so telemetry, devices and commands report separately. */
