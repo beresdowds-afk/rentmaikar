@@ -40,7 +40,7 @@ interface ConnStatus {
 }
 
 export default function GPSANDTRACKCredentialsPanel({ onStatusChange }: { onStatusChange?: () => void }) {
-  const [userId, setUserId] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [saving, setSaving] = useState(false);
@@ -89,13 +89,13 @@ export default function GPSANDTRACKCredentialsPanel({ onStatusChange }: { onStat
   }, [loadVersions, runTest]);
 
   const save = async () => {
-    if (!userId.trim() || !password.trim()) {
-      toast.error("Enter both the GPSANDTRACK user ID and password");
+    if (!username.trim() || !password.trim()) {
+      toast.error("Enter both the GPSANDTRACK username and password");
       return;
     }
     setSaving(true);
     try {
-      const values: Record<string, string> = { user_id: userId.trim(), password: password.trim() };
+      const values: Record<string, string> = { username: username.trim(), password: password.trim() };
       if (baseUrl.trim()) values.base_url = baseUrl.trim().replace(/\/$/, "");
       const { error } = await supabase.rpc("provider_write_credentials" as never, {
         _provider: "sarekon",
@@ -126,7 +126,7 @@ export default function GPSANDTRACKCredentialsPanel({ onStatusChange }: { onStat
         _notes: "GPSANDTRACK credentials reset from the admin panel",
       } as never);
       if (error) throw error;
-      setUserId("");
+      setUsername("");
       setPassword("");
       setBaseUrl("");
       toast.success("GPSANDTRACK credentials reset — enter new ones to reconnect");
@@ -155,13 +155,13 @@ export default function GPSANDTRACKCredentialsPanel({ onStatusChange }: { onStat
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <Label htmlFor="sarekon-user">User ID</Label>
+              <Label htmlFor="sarekon-user">Username</Label>
               <Input
                 id="sarekon-user"
                 autoComplete="off"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                placeholder="GPSANDTRACK account user ID"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="GPSANDTRACK account username"
               />
             </div>
             <div>

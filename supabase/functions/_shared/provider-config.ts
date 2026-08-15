@@ -35,7 +35,7 @@ const KV_KEY: Record<ManagedProvider, string> = {
 const PUBLIC_KEYS: Record<ManagedProvider, string[]> = {
   hologram: ["org_id", "base_url"],
   traccar: ["base_url", "email"],
-  sarekon: ["base_url", "user_id"],
+  sarekon: ["base_url", "username", "user_id"],
 };
 
 function restHeaders() {

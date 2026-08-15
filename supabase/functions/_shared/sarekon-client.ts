@@ -7,7 +7,7 @@
 // Credentials resolve admin-managed values first (provider_write_credentials
 // vault entries / platform_kv_settings), then env secrets:
 //   SAREKON_BASE_URL (optional, defaults to https://api.sarekon.com/v1)
-//   SAREKON_USER_ID
+//   SAREKON_USERNAME (legacy: SAREKON_USER_ID)
 //   SAREKON_PASSWORD
 //
 // Nothing throws: unconfigured or failing calls return a structured result so
@@ -28,7 +28,10 @@ const DEFAULT_BASE = "https://api.sarekon.com/v1";
 function creds() {
   const base = (providerOverride("sarekon", "base_url") || Deno.env.get("SAREKON_BASE_URL") || DEFAULT_BASE)
     .replace(/\/$/, "");
-  const userId = providerOverride("sarekon", "user_id") || Deno.env.get("SAREKON_USER_ID") || "";
+  // GPSANDTRACK authenticates with a USERNAME + password. `user_id` is kept as a
+  // legacy alias so previously stored credentials keep working.
+  const userId = providerOverride("sarekon", "username") || providerOverride("sarekon", "user_id") ||
+    Deno.env.get("SAREKON_USERNAME") || Deno.env.get("SAREKON_USER_ID") || "";
   const password = providerOverride("sarekon", "password") || Deno.env.get("SAREKON_PASSWORD") || "";
   if (!userId || !password) return null;
   return { base, userId, password };
@@ -36,7 +39,10 @@ function creds() {
 
 export function missingCredentials(): string[] {
   const missing: string[] = [];
-  if (!(providerOverride("sarekon", "user_id") || Deno.env.get("SAREKON_USER_ID"))) missing.push("user_id");
+  if (
+    !(providerOverride("sarekon", "username") || providerOverride("sarekon", "user_id") ||
+      Deno.env.get("SAREKON_USERNAME") || Deno.env.get("SAREKON_USER_ID"))
+  ) missing.push("username");
   if (!(providerOverride("sarekon", "password") || Deno.env.get("SAREKON_PASSWORD"))) missing.push("password");
   return missing;
 }
@@ -109,10 +115,10 @@ async function login(force = false): Promise<GPSANDTRACKResult<string>> {
   if (!force && session && Date.now() - session.issuedAt < SESSION_TTL_MS) {
     return { ok: true, body: session.token };
   }
+  // GPSANDTRACK expects exactly { username, password } — sending extra aliases
+  // (user_id / login) alongside them is rejected by the session endpoint.
   const r = await rawPost("/session/create.json", {
-    user_id: c.userId,
     username: c.userId,
-    login: c.userId,
     password: c.password,
   });
   if (!r.ok) return r;
