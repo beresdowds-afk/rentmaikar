@@ -289,7 +289,14 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
       }
 
     } catch (e: any) {
-      toast.error(e.message ?? 'Failed to save changes');
+      const duplicate = friendlyPhoneError(e);
+      if (duplicate) {
+        setErrors((prev) => ({
+          ...prev,
+          ...(/email/i.test(duplicate) ? { email: duplicate } : { phone: duplicate }),
+        }));
+      }
+      toast.error(duplicate ?? e.message ?? 'Failed to save changes');
     } finally {
       setSaving(false);
     }
