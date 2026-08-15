@@ -457,7 +457,9 @@ export default function BillingHistoryPage() {
             <TabsTrigger value="periods">Subscription periods ({subs.length})</TabsTrigger>
             <TabsTrigger value="invoices">Invoices ({filteredInvoices.length})</TabsTrigger>
             <TabsTrigger value="receipts">Receipts ({filteredReceipts.length})</TabsTrigger>
+            <TabsTrigger value="reversals">Credit notes &amp; refunds ({filteredReversals.length})</TabsTrigger>
             <TabsTrigger value="wallet">Wallet</TabsTrigger>
+
           </TabsList>
 
           <TabsContent value="payments" className="mt-4 space-y-2">
