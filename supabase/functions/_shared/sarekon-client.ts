@@ -83,8 +83,15 @@ export function missingCredentials(): string[] {
 }
 
 // ---- session cache -------------------------------------------------------
+// Two layers: a per-isolate memory cache, plus an encrypted row in
+// `provider_api_sessions` so a cold start (or another edge function, or the
+// mobile app hitting a different instance) reuses the same live `sid` instead
+// of re-authenticating. Sessions are bound to a credential fingerprint, so
+// rotating the username/password invalidates them automatically.
 let session: { sid: string; issuedAt: number } | null = null;
 const SESSION_TTL_MS = 20 * 60_000;
+const SESSION_PROVIDER = "sarekon";
+
 
 function pick(obj: unknown, keys: string[]): unknown {
   if (!obj || typeof obj !== "object") return undefined;
