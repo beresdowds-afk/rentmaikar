@@ -14,9 +14,11 @@ import { WalletLedgerPanel } from "@/components/payments/WalletLedgerPanel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { downloadDocumentPdf } from "@/lib/document-pdf";
+import { downloadDocumentPdf, downloadHtmlAsPdf } from "@/lib/document-pdf";
+import { buildReversalHtml, reversalFileName, reversalTitle, type ReversalDocument } from "@/lib/credit-note";
 import { toast } from "sonner";
-import { CreditCard, Download, ExternalLink, FileText, Loader2, Receipt, RefreshCw, Search, Send, ShieldCheck } from "lucide-react";
+import { CreditCard, Download, ExternalLink, FileText, Loader2, Receipt, RefreshCw, RotateCcw, Search, Send, ShieldCheck } from "lucide-react";
+
 
 interface PaymentRow {
   id: string; amount: number; currency: string; status: string; purpose: string | null;
