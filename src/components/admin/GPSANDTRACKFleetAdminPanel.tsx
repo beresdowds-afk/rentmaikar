@@ -799,7 +799,7 @@ export default function GPSANDTRACKFleetAdminPanel({ onChanged }: { onChanged?: 
         {/* ---------------- Audit log ---------------- */}
         <AccordionItem value="audit" className="rounded-lg border px-4">
           <AccordionTrigger className="text-base">
-            <span className="flex items-center gap-2"><History className="h-4 w-4" /> Fleet action audit log</span>
+            <span className="flex items-center gap-2"><HistoryIcon className="h-4 w-4" /> Fleet action audit log</span>
           </AccordionTrigger>
           <AccordionContent className="space-y-4 pb-4">
             <div className="flex flex-wrap items-end gap-2">
