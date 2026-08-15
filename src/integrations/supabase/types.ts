@@ -6281,6 +6281,33 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_api_sessions: {
+        Row: {
+          credential_fingerprint: string
+          expires_at: string
+          issued_at: string
+          provider: string
+          session_ciphertext: string
+          updated_at: string
+        }
+        Insert: {
+          credential_fingerprint: string
+          expires_at: string
+          issued_at?: string
+          provider: string
+          session_ciphertext: string
+          updated_at?: string
+        }
+        Update: {
+          credential_fingerprint?: string
+          expires_at?: string
+          issued_at?: string
+          provider?: string
+          session_ciphertext?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       provider_billing_accounts: {
         Row: {
           billing_currency: string

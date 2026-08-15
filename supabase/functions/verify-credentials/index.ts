@@ -232,7 +232,7 @@ const CHECKS: Check[] = [
     run: async () => {
       await sarekon.ensureReady();
       if (!sarekon.isConfigured()) return { status: "not_configured", message: "GPSANDTRACK credentials are not set." };
-      sarekon.resetSession();
+      await sarekon.resetSession();
       const r = await sarekon.ping() as { ok: boolean; status?: number; error?: string };
       if (!r.ok) {
         return { status: "failed", message: "GPSANDTRACK rejected the credentials.", detail: r.error ?? `HTTP ${r.status ?? "?"}` };
