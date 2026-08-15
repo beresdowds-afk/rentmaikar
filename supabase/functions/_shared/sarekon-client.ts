@@ -28,7 +28,10 @@ const DEFAULT_BASE = "https://api.sarekon.com/v1";
 function creds() {
   const base = (providerOverride("sarekon", "base_url") || Deno.env.get("SAREKON_BASE_URL") || DEFAULT_BASE)
     .replace(/\/$/, "");
-  const userId = providerOverride("sarekon", "user_id") || Deno.env.get("SAREKON_USER_ID") || "";
+  // GPSANDTRACK authenticates with a USERNAME + password. `user_id` is kept as a
+  // legacy alias so previously stored credentials keep working.
+  const userId = providerOverride("sarekon", "username") || providerOverride("sarekon", "user_id") ||
+    Deno.env.get("SAREKON_USERNAME") || Deno.env.get("SAREKON_USER_ID") || "";
   const password = providerOverride("sarekon", "password") || Deno.env.get("SAREKON_PASSWORD") || "";
   if (!userId || !password) return null;
   return { base, userId, password };
@@ -36,7 +39,10 @@ function creds() {
 
 export function missingCredentials(): string[] {
   const missing: string[] = [];
-  if (!(providerOverride("sarekon", "user_id") || Deno.env.get("SAREKON_USER_ID"))) missing.push("user_id");
+  if (
+    !(providerOverride("sarekon", "username") || providerOverride("sarekon", "user_id") ||
+      Deno.env.get("SAREKON_USERNAME") || Deno.env.get("SAREKON_USER_ID"))
+  ) missing.push("username");
   if (!(providerOverride("sarekon", "password") || Deno.env.get("SAREKON_PASSWORD"))) missing.push("password");
   return missing;
 }
