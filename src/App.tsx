@@ -567,6 +567,16 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/billing"
+                    element={
+                      <ProtectedRoute>
+                        <BillingHistoryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+
 
                   <Route path="/driver/portal/:portalKey" element={<PortalRouteGuard role="driver" />} />
                   <Route path="/owner/portal/:portalKey" element={<PortalRouteGuard role="owner" />} />
