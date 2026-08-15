@@ -250,7 +250,7 @@ export async function testProvider(
     const probe = await client.ping();
     return probe.ok
       ? { ok: true, configured: true, status: probe.status ?? 200 }
-      : { ok: false, configured: true, status: probe.status, error: probe.detail };
+      : { ok: false, configured: true, status: probe.status ?? undefined, error: probe.detail };
 
   } catch (e) {
 
