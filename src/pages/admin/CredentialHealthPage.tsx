@@ -1,6 +1,6 @@
 import CredentialVerificationPanel from "@/components/admin/CredentialVerificationPanel";
 import ProviderCredentialSettings from "@/components/admin/ProviderCredentialSettings";
-import { Seo } from "@/components/Seo";
+import Seo from "@/components/seo/Seo";
 
 /**
  * Admin screen that verifies every stored provider credential live and lets
