@@ -347,11 +347,12 @@ async function reconcilePaypal(supa: Supa, sinceIso: string): Promise<PspResult>
       }).eq("id", tx.id);
 
       if (ensured.paymentId) {
-        await supa.from("payments").update({
-          status,
-          processed_at: status === "completed" ? new Date().toISOString() : null,
-        }).eq("id", ensured.paymentId);
+        await syncPaymentStatus(supa, {
+          paymentId: ensured.paymentId, status,
+          failureReason: status === "failed" ? captureStatus : null,
+        });
       }
+
       out.updated++;
     } catch (e) {
       out.errors.push({ order_id: tx.order_id, error: String(e) });
