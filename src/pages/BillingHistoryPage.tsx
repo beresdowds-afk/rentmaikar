@@ -137,6 +137,7 @@ export default function BillingHistoryPage() {
       <Seo
         title="Billing History | Rentmaikar"
         description="View your Rentmaikar payments, subscription periods, invoices and receipts in one place."
+        path="/billing"
       />
       <Header />
       <main className="pt-24 pb-16 max-w-6xl mx-auto px-4">
