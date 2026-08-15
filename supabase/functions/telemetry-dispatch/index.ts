@@ -51,6 +51,12 @@ Deno.serve(async (req) => {
     const active = await getActiveProviderName();
 
     if (action === "get_active_provider") {
+      // Warm admin-managed credentials so "configured" reflects vault/settings too.
+      await Promise.all([
+        adapters.traccar.getDeviceState ? Promise.resolve() : Promise.resolve(),
+        (async () => { try { await (await import("../_shared/traccar-client.ts")).traccar.ensureReady(); } catch { /* ignore */ } })(),
+        (async () => { try { await (await import("../_shared/sarekon-client.ts")).sarekon.ensureReady(); } catch { /* ignore */ } })(),
+      ]);
       const status: Record<string, unknown> = {};
       for (const name of ["emqx", "traccar", "sarekon"] as TelemetryProviderName[]) {
         status[name] = { configured: isProviderConfigured(name) };
