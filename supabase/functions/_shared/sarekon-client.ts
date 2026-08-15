@@ -1,8 +1,15 @@
-// GPSANDTRACK telemetry API client.
+// GPSANDTRACK (SareKon JSON API v0.7.0) telemetry client.
 //
-// Server address + path prefix: https://api.sarekon.com/v1
-// Authentication: POST /session/create.json with a user id + password, which
-// returns a session token reused by every later call.
+// Reference: SareKon JSON API for Dealer Applications.
+//   * Base: https://api.sarekon.com/v1, every method is `<path>.json`
+//   * Calls take URL query parameters (GET or POST) — not a JSON body
+//   * Authenticate at /session/create.json → returns a session token `sid`
+//     which must be passed as the `sid` query parameter on every other call
+//   * Devices are addressed by the system-assigned `device_id` (NOT serial/IMEI)
+//   * Errors come back with an HTTP status plus a negative numeric code in
+//     `error`: -1400 one-time token expired, -1600 session expired,
+//     -2200 rate limit, -1000/-1050 bad credentials
+//   * List methods paginate through `pagekey` / `nextkey` / `prevkey`
 //
 // Credentials resolve admin-managed values first (provider_write_credentials
 // vault entries / platform_kv_settings), then env secrets:
@@ -20,10 +27,14 @@ type ErrResult =
   | { ok: false; reason: "not_configured"; missing?: string[] }
   | { ok: false; reason: "network_error"; message: string }
   | { ok: false; reason: "auth_error"; status: number; body: unknown }
+  | { ok: false; reason: "rate_limited"; status: number; body: unknown }
   | { ok: false; reason: "provider_error"; status: number; body: unknown };
 export type GPSANDTRACKResult<T = unknown> = OkResult<T> | ErrResult;
 
 const DEFAULT_BASE = "https://api.sarekon.com/v1";
+
+/** Query parameter values: scalars, or arrays for the `name[]` style params. */
+type Param = string | number | boolean | null | undefined | Array<string | number>;
 
 function creds() {
   const base = (providerOverride("sarekon", "base_url") || Deno.env.get("SAREKON_BASE_URL") || DEFAULT_BASE)
@@ -48,7 +59,7 @@ export function missingCredentials(): string[] {
 }
 
 // ---- session cache -------------------------------------------------------
-let session: { token: string; issuedAt: number } | null = null;
+let session: { sid: string; issuedAt: number } | null = null;
 const SESSION_TTL_MS = 20 * 60_000;
 
 function pick(obj: unknown, keys: string[]): unknown {
@@ -60,7 +71,7 @@ function pick(obj: unknown, keys: string[]): unknown {
   return undefined;
 }
 
-/** GPSANDTRACK nests payloads inconsistently — dig out the first array we find. */
+/** Dig out the first array we find under the documented list keys. */
 function extractList(body: unknown, keys: string[]): Record<string, unknown>[] {
   if (Array.isArray(body)) return body as Record<string, unknown>[];
   if (!body || typeof body !== "object") return [];
@@ -75,18 +86,65 @@ function extractList(body: unknown, keys: string[]): Record<string, unknown>[] {
   return [];
 }
 
-async function rawPost<T = unknown>(
+function buildQuery(params: Record<string, Param>): string {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === "") continue;
+    if (Array.isArray(v)) {
+      // Bracketed names are a mandatory part of the parameter name.
+      const name = k.endsWith("[]") ? k : `${k}[]`;
+      for (const item of v) qs.append(name, String(item));
+    } else {
+      qs.append(k, String(v));
+    }
+  }
+  return qs.toString();
+}
+
+/** Numeric error code returned in the JSON envelope, when present. */
+function errorCode(body: unknown): number | null {
+  if (!body || typeof body !== "object") return null;
+  const err = (body as Record<string, unknown>).error;
+  if (err === null || err === undefined) return null;
+  if (typeof err === "number") return err;
+  if (typeof err === "string") {
+    const n = Number(err);
+    return Number.isFinite(n) ? n : null;
+  }
+  if (typeof err === "object") {
+    const n = Number(pick(err, ["code", "id", "error_code"]));
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function errorPayload(body: unknown): unknown {
+  if (body && typeof body === "object") {
+    const err = (body as Record<string, unknown>).error;
+    if (err !== null && err !== undefined && err !== "") return err;
+  }
+  return body;
+}
+
+/** Raw unauthenticated request (query parameters, JSON response). */
+async function request<T = unknown>(
   path: string,
-  payload: Record<string, unknown>,
+  params: Record<string, Param>,
 ): Promise<GPSANDTRACKResult<T>> {
   const c = creds();
   if (!c) return { ok: false, reason: "not_configured", missing: missingCredentials() };
+  const query = buildQuery(params);
   let res: Response;
   try {
+    // The API accepts the same query parameters over POST, which keeps
+    // credentials and session tokens out of URLs and proxy logs.
     res = await fetch(`${c.base}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(payload),
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      body: query,
       signal: AbortSignal.timeout(20_000),
     });
   } catch (e) {
@@ -95,58 +153,82 @@ async function rawPost<T = unknown>(
   const raw = await res.text().catch(() => "");
   let body: unknown = {};
   try { body = raw ? JSON.parse(raw) : {}; } catch { body = raw.slice(0, 400); }
-  // GPSANDTRACK reports failures in-band: { error: { id, description } } — often
-  // with HTTP 400 rather than 401 — so inspect the envelope too.
-  const envelope = (body && typeof body === "object" ? (body as Record<string, unknown>).error : null) as
-    | Record<string, unknown>
-    | null;
-  const isAuthFailure = res.status === 401 || res.status === 403 ||
-    (envelope ? /username|password|session|login|authenticat/i.test(String(envelope.description ?? envelope.id_description ?? "")) : false);
-  if (isAuthFailure) return { ok: false, reason: "auth_error", status: res.status, body: envelope ?? body };
-  if (envelope) return { ok: false, reason: "provider_error", status: res.status, body: envelope };
+
+  const code = errorCode(body);
+  const payload = errorPayload(body);
+
+  if (res.status === 429 || code === -2200) {
+    return { ok: false, reason: "rate_limited", status: res.status, body: payload };
+  }
+  // -1000..-1999 are authentication and session errors (expired session, bad
+  // credentials, disabled account) — the caller re-authenticates on these.
+  if (res.status === 401 || res.status === 403 || (code !== null && code <= -1000 && code >= -1999)) {
+    return { ok: false, reason: "auth_error", status: res.status, body: payload };
+  }
+  if (code !== null) return { ok: false, reason: "provider_error", status: res.status, body: payload };
   if (!res.ok) return { ok: false, reason: "provider_error", status: res.status, body };
   return { ok: true, body: body as T };
 }
 
-/** Authenticate and cache the session token. */
+/** Authenticate and cache the `sid` session token. */
 async function login(force = false): Promise<GPSANDTRACKResult<string>> {
   const c = creds();
   if (!c) return { ok: false, reason: "not_configured", missing: missingCredentials() };
   if (!force && session && Date.now() - session.issuedAt < SESSION_TTL_MS) {
-    return { ok: true, body: session.token };
+    return { ok: true, body: session.sid };
   }
-  // GPSANDTRACK expects exactly { username, password } — sending extra aliases
-  // (user_id / login) alongside them is rejected by the session endpoint.
-  const r = await rawPost("/session/create.json", {
+  // units[]=utc,metric so timestamps come back in UTC and speeds in km/h
+  // regardless of the dealer account's saved preferences.
+  const r = await request("/session/create.json", {
     username: c.userId,
     password: c.password,
+    "units[]": ["utc", "metric"],
   });
   if (!r.ok) return r;
   const body = r.body as Record<string, unknown>;
-  const inner = (body?.session ?? body?.data ?? body) as Record<string, unknown>;
-  const token = pick(inner, ["session_id", "sessionId", "id", "token", "session_token", "key"]) ??
-    pick(body, ["session_id", "sessionId", "token"]);
-  if (!token) {
-    return { ok: false, reason: "auth_error", status: 200, body };
-  }
-  session = { token: String(token), issuedAt: Date.now() };
-  return { ok: true, body: session.token };
+  const sid = pick(body, ["sid"]) ?? pick((body?.session ?? {}) as Record<string, unknown>, ["sid", "id", "token"]);
+  if (!sid) return { ok: false, reason: "auth_error", status: 200, body };
+  session = { sid: String(sid), issuedAt: Date.now() };
+  return { ok: true, body: session.sid };
 }
 
 /** Authenticated call; transparently re-authenticates once on session expiry. */
 async function call<T = unknown>(
   path: string,
-  payload: Record<string, unknown> = {},
+  params: Record<string, Param> = {},
 ): Promise<GPSANDTRACKResult<T>> {
   const auth = await login();
   if (!auth.ok) return auth;
-  let r = await rawPost<T>(path, { session_id: auth.body, ...payload });
+  let r = await request<T>(path, { sid: auth.body, ...params });
   if (!r.ok && r.reason === "auth_error") {
     const retryAuth = await login(true);
     if (!retryAuth.ok) return retryAuth;
-    r = await rawPost<T>(path, { session_id: retryAuth.body, ...payload });
+    r = await request<T>(path, { sid: retryAuth.body, ...params });
   }
   return r;
+}
+
+/**
+ * Walk the `nextkey` pagination chain and concatenate every page (bounded so a
+ * huge dealer account can never hang a sync run).
+ */
+async function callPaged(
+  path: string,
+  params: Record<string, Param>,
+  listKeys: string[],
+  maxPages = 10,
+): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
+  const rows: Record<string, unknown>[] = [];
+  let pagekey: string | undefined;
+  for (let page = 0; page < maxPages; page++) {
+    const r = await call(path, { ...params, pagekey });
+    if (!r.ok) return rows.length ? { ok: true, body: rows } : r;
+    rows.push(...extractList(r.body, listKeys));
+    const next = (r.body as Record<string, unknown>)?.nextkey;
+    if (!next) break;
+    pagekey = String(next);
+  }
+  return { ok: true, body: rows };
 }
 
 // ---- normalised shapes ---------------------------------------------------
@@ -181,23 +263,32 @@ const bool = (v: unknown): boolean | null => {
   return null;
 };
 
+/**
+ * A "DVD" row bundles device + asset (vehicle) + driver. The device_id is the
+ * stable primary identifier; serials/VINs live on the nested objects.
+ */
 export function normaliseDevice(row: Record<string, unknown>): GPSANDTRACKDevice {
-  const loc = (row.location ?? row.last_location ?? row.position ?? row) as Record<string, unknown>;
-  const id = pick(row, ["dvd_id", "dvdId", "device_id", "id", "uid"]);
-  const serial = pick(row, ["serial", "serial_number", "imei", "esn", "unique_id", "dvd_id", "id"]);
+  const device = (row.device ?? row) as Record<string, unknown>;
+  const asset = (row.asset ?? {}) as Record<string, unknown>;
+  const loc = (row.location ?? row.last_location ?? device.location ?? row.position ?? row) as Record<string, unknown>;
+  const id = pick(device, ["device_id", "deviceId", "id"]) ?? pick(row, ["device_id", "dvd_id", "id"]);
+  const serial = pick(device, ["serial", "serial_number", "esn", "imei", "meid"]) ??
+    pick(asset, ["asset_vin", "vin", "external_ref"]) ?? id;
   return {
     id: String(id ?? serial ?? ""),
     serial: String(serial ?? id ?? ""),
-    name: (pick(row, ["name", "label", "asset_name", "description"]) as string) ?? null,
-    model: (pick(row, ["model", "device_model", "product", "hardware"]) as string) ?? null,
-    status: (pick(row, ["status", "state", "connection_status"]) as string) ?? null,
-    lastUpdate: (pick(row, ["last_update", "updated_at", "last_seen", "timestamp", "reported_at"]) as string) ??
-      (pick(loc, ["timestamp", "time", "gps_time", "reported_at"]) as string) ?? null,
+    name: (pick(asset, ["asset_description", "description", "name"]) ??
+      pick(device, ["name", "label"])) as string ?? null,
+    model: (pick(device, ["model", "device_model", "product", "hardware"]) as string) ?? null,
+    status: (pick(device, ["status", "state", "connection_status"]) as string) ??
+      (pick(row, ["status"]) as string) ?? null,
+    lastUpdate: (pick(loc, ["dt", "dt_local", "timestamp", "time", "gps_time", "reported_at"]) as string) ??
+      (pick(device, ["last_update", "updated_at", "last_seen"]) as string) ?? null,
     latitude: num(pick(loc, ["latitude", "lat"])),
     longitude: num(pick(loc, ["longitude", "lon", "lng", "long"])),
-    speedKmh: num(pick(loc, ["speed_kmh", "speed", "velocity"])),
-    course: num(pick(loc, ["course", "heading", "bearing", "direction"])),
-    ignition: bool(pick(loc, ["ignition", "ign", "engine_on"]) ?? pick(row, ["ignition"])),
+    speedKmh: num(pick(loc, ["speed_kph", "speed_kmh", "speed", "velocity"])),
+    course: num(pick(loc, ["heading", "course", "bearing", "direction"])),
+    ignition: bool(pick(loc, ["ignition", "ign", "engine_on"]) ?? pick(device, ["ignition"])),
     address: (pick(loc, ["address", "location_name", "street"]) as string) ?? null,
     raw: row,
   };
@@ -213,73 +304,161 @@ export const sarekon = {
   /** Verify credentials by creating a fresh session. */
   ping: () => login(true),
 
-  async listDevices(): Promise<GPSANDTRACKResult<GPSANDTRACKDevice[]>> {
-    const r = await call("/dvd/enumerate.json", {});
+  /**
+   * Search trackers. `q` is required by the API and matches a device serial or
+   * an asset VIN/HIN/serial; an empty search returns the account's trackers.
+   */
+  async listDevices(q = ""): Promise<GPSANDTRACKResult<GPSANDTRACKDevice[]>> {
+    const r = await callPaged("/dvd/enumerate.json", { q }, ["dvds", "results", "data", "items"]);
     if (!r.ok) return r;
-    const rows = extractList(r.body, ["dvds", "devices", "results", "data", "items"]);
-    return { ok: true, body: rows.map(normaliseDevice) };
+    return { ok: true, body: r.body.map(normaliseDevice) };
   },
 
-  async showDevice(dvdId: string): Promise<GPSANDTRACKResult<GPSANDTRACKDevice | null>> {
-    const r = await call("/dvd/show.json", { dvd_id: dvdId });
+  /** Tracker detail (device + asset + driver), including available commands. */
+  async showDevice(deviceId: string): Promise<GPSANDTRACKResult<GPSANDTRACKDevice | null>> {
+    const r = await call("/dvd/show.json", { device_id: deviceId, include_commands: 1 });
     if (!r.ok) return r;
     const body = r.body as Record<string, unknown>;
     const row = (body?.dvd ?? body?.data ?? body) as Record<string, unknown>;
     return { ok: true, body: row ? normaliseDevice(row) : null };
   },
 
-  async locations(dvdId: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
-    const r = await call("/location/list.json", { dvd_id: dvdId, limit });
+  async locations(deviceId: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
+    const r = await callPaged("/location/list.json", { "device_ids[]": [deviceId] }, [
+      "locations",
+      "results",
+      "data",
+      "items",
+    ], Math.max(1, Math.ceil(limit / 100)));
     if (!r.ok) return r;
-    return { ok: true, body: extractList(r.body, ["locations", "results", "data", "items"]) };
+    return { ok: true, body: r.body.slice(0, limit) };
   },
 
-  async messages(dvdId: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
-    const r = await call("/message/list.json", { dvd_id: dvdId, limit });
+  /** Event history (also carries command result detail via message_id). */
+  async messages(deviceId: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
+    const r = await callPaged("/message/list.json", { "device_ids[]": [deviceId] }, [
+      "messages",
+      "results",
+      "data",
+      "items",
+    ], Math.max(1, Math.ceil(limit / 100)));
     if (!r.ok) return r;
-    return { ok: true, body: extractList(r.body, ["messages", "results", "data", "items"]) };
+    return { ok: true, body: r.body.slice(0, limit) };
   },
 
-  async trips(dvdId: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
-    const r = await call("/trip/list.json", { dvd_id: dvdId, limit });
+  async trips(deviceId: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
+    const r = await callPaged("/trip/list.json", { device_id: deviceId }, ["trips", "results", "data", "items"],
+      Math.max(1, Math.ceil(limit / 100)));
     if (!r.ok) return r;
-    return { ok: true, body: extractList(r.body, ["trips", "results", "data", "items"]) };
+    return { ok: true, body: r.body.slice(0, limit) };
   },
 
-  async stops(dvdId: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
-    const r = await call("/stop/list.json", { dvd_id: dvdId, limit });
+  async stops(deviceId: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
+    const r = await callPaged("/stop/list.json", { device_id: deviceId }, ["stops", "results", "data", "items"],
+      Math.max(1, Math.ceil(limit / 100)));
     if (!r.ok) return r;
-    return { ok: true, body: extractList(r.body, ["stops", "results", "data", "items"]) };
+    return { ok: true, body: r.body.slice(0, limit) };
   },
 
-  async commandParameters(): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
-    const r = await call("/command_queue/parameters_enumerate.json", {});
+  /**
+   * Allowed/required data-type parameters for a command on given devices.
+   * Both `device_ids[]` and `message_type_id` are required by the API.
+   */
+  async commandParameters(
+    deviceIds: string[] = [],
+    messageTypeId: number = SAREKON_MESSAGE_TYPES.locate,
+  ): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
+    if (deviceIds.length === 0) return { ok: true, body: [] };
+    const r = await call("/command_queue/parameters_enumerate.json", {
+      "device_ids[]": deviceIds,
+      message_type_id: messageTypeId,
+    });
     if (!r.ok) return r;
-    return { ok: true, body: extractList(r.body, ["parameters", "commands", "results", "data", "items"]) };
+    return { ok: true, body: extractList(r.body, ["parameters", "results", "data", "items"]) };
   },
 
-  sendCommand: (dvdId: string, command: string, parameters: Record<string, unknown> = {}) =>
-    call("/command_queue/create.json", { dvd_id: dvdId, command, parameters }),
+  /**
+   * Queue a command. `command` is either a platform name (immobilize, locate…)
+   * or a raw numeric message_type_id. Extra fields are sent as the documented
+   * `data_type_xxx` parameters.
+   */
+  sendCommand(
+    deviceId: string,
+    command: string | number,
+    parameters: Record<string, unknown> = {},
+  ): Promise<GPSANDTRACKResult> {
+    const messageTypeId = typeof command === "number"
+      ? command
+      : SAREKON_MESSAGE_TYPES[command as keyof typeof SAREKON_MESSAGE_TYPES] ?? Number(command);
+    if (!Number.isFinite(messageTypeId)) {
+      return Promise.resolve({
+        ok: false,
+        reason: "provider_error",
+        status: 400,
+        body: { description: `Unsupported GPSANDTRACK command "${command}"` },
+      } as ErrResult);
+    }
+    const data: Record<string, Param> = {};
+    for (const [k, v] of Object.entries(parameters)) {
+      if (v === undefined || v === null) continue;
+      data[/^data_type_\d+$/.test(k) ? k : `data_type_${k}`] = String(v);
+    }
+    return call("/command_queue/create.json", {
+      "device_ids[]": [deviceId],
+      message_type_id: messageTypeId,
+      ...data,
+    });
+  },
 
-  async commandHistory(dvdId?: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
-    const r = await call("/command_queue/list.json", dvdId ? { dvd_id: dvdId, limit } : { limit });
+  /** Poll queued command status (recommended every 10-20s until complete). */
+  async commandStatus(commandQueueIds: string[]): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
+    if (commandQueueIds.length === 0) return { ok: true, body: [] };
+    const r = await call("/command_queue/list.json", { "command_queue_ids[]": commandQueueIds });
     if (!r.ok) return r;
-    return { ok: true, body: extractList(r.body, ["commands", "command_queue", "results", "data", "items"]) };
+    return { ok: true, body: extractList(r.body, ["commands", "results", "data", "items"]) };
+  },
+
+  /**
+   * Recent command activity for a device. Queued command results land in the
+   * event history, so this reads /message/list.json for the device.
+   */
+  async commandHistory(deviceId?: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
+    const r = await callPaged("/message/list.json", deviceId ? { "device_ids[]": [deviceId] } : {}, [
+      "messages",
+      "results",
+      "data",
+      "items",
+    ], Math.max(1, Math.ceil(limit / 100)));
+    if (!r.ok) return r;
+    return { ok: true, body: r.body.slice(0, limit) };
   },
 
   async subscriptions(): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
-    const r = await call("/subscription/list.json", {});
+    const r = await callPaged("/subscription/list.json", {}, ["subscriptions", "results", "data", "items"]);
     if (!r.ok) return r;
-    return { ok: true, body: extractList(r.body, ["subscriptions", "results", "data", "items"]) };
+    return { ok: true, body: r.body };
   },
 };
 
-/** Platform command name -> GPSANDTRACK command name. */
-export const SAREKON_COMMAND_MAP: Record<string, string> = {
-  immobilize: "engine_disable",
-  engineStop: "engine_disable",
-  mobilize: "engine_enable",
-  engineResume: "engine_enable",
-  locate: "locate_now",
-  ping: "locate_now",
+/** Documented SareKon message_type_id values (each needs its own ota_ permission). */
+export const SAREKON_MESSAGE_TYPES = {
+  locate: 6000,
+  starterAutoEnable: 1252,
+  starterAutoDisable: 1253,
+  audioMinderEnable: 1262,
+  audioMinderDisable: 1263,
+  repoModeEnable: 61000,
+  repoModeDisable: 62000,
+} as const;
+
+/** Platform command name -> GPSANDTRACK message_type_id. */
+export const SAREKON_COMMAND_MAP: Record<string, number> = {
+  immobilize: SAREKON_MESSAGE_TYPES.starterAutoDisable,
+  engineStop: SAREKON_MESSAGE_TYPES.starterAutoDisable,
+  mobilize: SAREKON_MESSAGE_TYPES.starterAutoEnable,
+  engineResume: SAREKON_MESSAGE_TYPES.starterAutoEnable,
+  locate: SAREKON_MESSAGE_TYPES.locate,
+  ping: SAREKON_MESSAGE_TYPES.locate,
+  repoModeEnable: SAREKON_MESSAGE_TYPES.repoModeEnable,
+  repoModeDisable: SAREKON_MESSAGE_TYPES.repoModeDisable,
 };
