@@ -8,7 +8,7 @@ import {
   getOpayConfig,
   mapOpayStatus,
   opayFailureReason,
-  queryCashierStatus,,
+  queryCashierStatus,
   ensureOpayConfig,
 } from "../_shared/opay-client.ts";
 
