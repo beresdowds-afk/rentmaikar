@@ -3950,6 +3950,7 @@ export type Database = {
           driver_id: string | null
           failure_reason: string | null
           id: string
+          idempotency_key: string | null
           order_no: string | null
           payment_id: string | null
           raw_payload: Json | null
@@ -3967,6 +3968,7 @@ export type Database = {
           driver_id?: string | null
           failure_reason?: string | null
           id?: string
+          idempotency_key?: string | null
           order_no?: string | null
           payment_id?: string | null
           raw_payload?: Json | null
@@ -3984,6 +3986,7 @@ export type Database = {
           driver_id?: string | null
           failure_reason?: string | null
           id?: string
+          idempotency_key?: string | null
           order_no?: string | null
           payment_id?: string | null
           raw_payload?: Json | null
