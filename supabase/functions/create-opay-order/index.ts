@@ -3,7 +3,9 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { resolvePaymentContext } from "../_shared/resolve-payment-context.ts";
-import { createCashierOrder, getOpayConfig, toMinorUnits } from "../_shared/opay-client.ts";
+import { createCashierOrder, getOpayConfig, toMinorUnits,
+  ensureOpayConfig,
+} from "../_shared/opay-client.ts";
 
 const BodySchema = z.object({
   amount: z.number().positive().max(50_000_000),
@@ -19,6 +21,7 @@ const BodySchema = z.object({
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
+    await ensureOpayConfig();
     const cfg = getOpayConfig();
     if (!cfg) return json({ error: "Opay not configured" }, 503);
 

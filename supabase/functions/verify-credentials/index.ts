@@ -6,7 +6,9 @@
 // Nothing sensitive is ever returned — only the provider id, a status, a short
 // human message and (optionally) a masked hint such as the account name.
 import { corsHeaders } from "../_shared/cors.ts";
-import { payPalBase, resolvePayPalMode } from "../_shared/paypal-client.ts";
+import { payPalBase, resolvePayPalMode,
+  ensurePayPalConfig,
+} from "../_shared/paypal-client.ts";
 import { isCallerAdmin } from "../_shared/admin-auth.ts";
 import { hologram } from "../_shared/hologram-client.ts";
 import { traccar } from "../_shared/traccar-client.ts";
@@ -154,6 +156,7 @@ const CHECKS: Check[] = [
       if (!id || !secret) return { status: "not_configured", message: "PayPal client ID/secret are not set." };
       // Same resolution the runtime PayPal functions use, so a green check
       // here always means the environment checkout actually talks to.
+      await ensurePayPalConfig();
       const mode = resolvePayPalMode();
       const live = mode === "live";
       const base = payPalBase(mode);

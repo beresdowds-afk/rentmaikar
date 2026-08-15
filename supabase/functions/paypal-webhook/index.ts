@@ -18,7 +18,9 @@ import {
   correlationHeaders,
 } from "../_shared/webhook-logger.ts";
 import { settlePaymentFinancials } from "../_shared/wallet-ledger.ts";
-import { getPayPalConfig, verifyWebhookSignature } from "../_shared/paypal-client.ts";
+import { getPayPalConfig, verifyWebhookSignature,
+  ensurePayPalConfig,
+} from "../_shared/paypal-client.ts";
 
 const PP_WH_ID = Deno.env.get("PAYPAL_WEBHOOK_ID") ?? "";
 
@@ -28,6 +30,7 @@ const PP_WH_ID = Deno.env.get("PAYPAL_WEBHOOK_ID") ?? "";
  * while checkout runs against live (which silently failed every signature).
  */
 async function verifySignature(headers: Headers, rawBody: string): Promise<boolean> {
+  await ensurePayPalConfig();
   const cfg = getPayPalConfig();
   if (!cfg || !PP_WH_ID) return false;
   return verifyWebhookSignature(cfg, PP_WH_ID, headers, rawBody);

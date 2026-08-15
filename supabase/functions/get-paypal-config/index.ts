@@ -1,6 +1,8 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireAuthenticatedUser } from "../_shared/auth-guards.ts";
-import { resolvePayPalMode } from "../_shared/paypal-client.ts";
+import { resolvePayPalMode,
+  ensurePayPalConfig,
+} from "../_shared/paypal-client.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -9,6 +11,7 @@ Deno.serve(async (req) => {
   if (authRes instanceof Response) return authRes;
 
   const clientId = Deno.env.get("PAYPAL_CLIENT_ID");
+  await ensurePayPalConfig();
   const mode = resolvePayPalMode();
 
   if (!clientId) {

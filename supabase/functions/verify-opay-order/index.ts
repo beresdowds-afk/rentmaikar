@@ -8,7 +8,8 @@ import {
   getOpayConfig,
   mapOpayStatus,
   opayFailureReason,
-  queryCashierStatus,
+  queryCashierStatus,,
+  ensureOpayConfig,
 } from "../_shared/opay-client.ts";
 
 const BodySchema = z.object({ reference: z.string().min(6).max(128) });
@@ -24,6 +25,7 @@ Deno.serve(async (req) => {
   const userId = authRes.userId;
 
   try {
+    await ensureOpayConfig();
     const cfg = getOpayConfig();
     if (!cfg) return json({ error: "Opay not configured" }, 503);
 
