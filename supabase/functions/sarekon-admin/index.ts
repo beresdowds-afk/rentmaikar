@@ -266,7 +266,7 @@ Deno.serve(async (req) => {
           code: "not_configured",
           title: "GPSANDTRACK credentials are missing",
           detail: `Missing: ${missing.join(", ") || "credentials"}.`,
-          hints: ["Add SAREKON_USER_ID and SAREKON_PASSWORD in platform secrets."],
+          hints: ["Enter the GPSANDTRACK username and password in the credentials panel (or set SAREKON_USERNAME / SAREKON_PASSWORD secrets)."],
           missing,
         },
       });

@@ -7,7 +7,7 @@
 // Credentials resolve admin-managed values first (provider_write_credentials
 // vault entries / platform_kv_settings), then env secrets:
 //   SAREKON_BASE_URL (optional, defaults to https://api.sarekon.com/v1)
-//   SAREKON_USER_ID
+//   SAREKON_USERNAME (legacy: SAREKON_USER_ID)
 //   SAREKON_PASSWORD
 //
 // Nothing throws: unconfigured or failing calls return a structured result so
