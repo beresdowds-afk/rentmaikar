@@ -202,6 +202,80 @@ export default function BillingHistoryPage() {
     [receipts, query, fromDate, toDate, providerFilter, activePeriod],
   );
 
+  /**
+   * Credit notes and refund receipts derived from reversed / refunded payments
+   * and from recorded payment disputes.
+   */
+  const reversalDocs = useMemo<ReversalDocument[]>(() => {
+    const short = (id: string) => id.slice(0, 8).toUpperCase();
+    const paymentById = new Map(payments.map((p) => [p.id, p]));
+
+    const fromPayments: ReversalDocument[] = payments
+      .filter((p) => REVERSAL_STATUSES.includes(p.status))
+      .map((p) => ({
+        kind: p.status === "disputed" || p.status === "chargeback" ? "credit_note" : "refund_receipt",
+        reference: `${p.status === "disputed" || p.status === "chargeback" ? "CN" : "RR"}-${short(p.id)}`,
+        amount: Number(p.amount ?? 0),
+        currency: p.currency,
+        issuedAt: p.settled_at ?? p.created_at,
+        originalPaidAt: p.created_at,
+        originalReference: p.transaction_id,
+        provider: p.payment_method,
+        purpose: PURPOSE_LABELS[p.purpose ?? "rental"] ?? (p.purpose ?? "Payment").replace(/_/g, " "),
+        status: p.status.replace(/_/g, " "),
+        reason: null,
+        recipientName: user?.email ?? null,
+      }));
+
+    const fromDisputes: ReversalDocument[] = disputes.map((d) => {
+      const p = paymentById.get(d.payment_id);
+      return {
+        kind: "credit_note" as const,
+        reference: `CN-${short(d.id)}`,
+        amount: Number(d.amount ?? p?.amount ?? 0),
+        currency: d.currency ?? p?.currency ?? "USD",
+        issuedAt: d.resolved_at ?? d.opened_at,
+        originalPaidAt: p?.created_at ?? null,
+        originalReference: d.provider_reference ?? p?.transaction_id ?? null,
+        provider: d.provider ?? p?.payment_method ?? null,
+        purpose: p ? (PURPOSE_LABELS[p.purpose ?? "rental"] ?? (p.purpose ?? "Payment").replace(/_/g, " ")) : "Disputed payment",
+        status: d.status.replace(/_/g, " "),
+        reason: d.reason,
+        notes: d.resolution_notes,
+        recipientName: user?.email ?? null,
+      };
+    });
+
+    // Disputes take precedence over a plain "disputed" payment row.
+    const disputedPaymentIds = new Set(disputes.map((d) => d.payment_id));
+    return [...fromDisputes, ...fromPayments.filter((doc, idx) => {
+      const p = payments.filter((x) => REVERSAL_STATUSES.includes(x.status))[idx];
+      return !p || !disputedPaymentIds.has(p.id);
+    })].sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime());
+  }, [payments, disputes, user?.email]);
+
+  const filteredReversals = useMemo(
+    () => reversalDocs.filter((d) =>
+      inWindow(d.issuedAt) &&
+      (providerFilter === "all" || d.provider === providerFilter) &&
+      matches(d.reference, d.originalReference, d.provider, d.amount, d.currency, d.status, d.reason)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reversalDocs, query, fromDate, toDate, providerFilter, activePeriod],
+  );
+
+  const downloadReversal = async (doc: ReversalDocument) => {
+    setDownloading(doc.reference);
+    try {
+      await downloadHtmlAsPdf(buildReversalHtml(doc), reversalFileName(doc));
+      toast.success(`${reversalTitle(doc.kind)} downloaded`);
+    } catch {
+      toast.error("Could not generate the PDF");
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+
   const filtersActive = Boolean(q || fromDate || toDate || statusFilter !== "all" ||
     providerFilter !== "all" || periodFilter !== "all");
 
