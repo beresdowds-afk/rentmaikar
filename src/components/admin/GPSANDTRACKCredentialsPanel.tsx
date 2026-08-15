@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, KeyRound, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Loader2, KeyRound, ShieldCheck, ShieldAlert, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { friendlySecretError, secretErrorDescription } from "@/lib/secret-errors";
 
@@ -118,6 +118,29 @@ export default function GPSANDTRACKCredentialsPanel({ onStatusChange }: { onStat
     }
   };
 
+  const reset = async () => {
+    if (!window.confirm("Reset GPSANDTRACK credentials? All stored values are deleted and the integration falls back to deployed secrets until you save new ones.")) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.rpc("provider_revoke_credentials" as never, {
+        _provider: "sarekon",
+        _notes: "GPSANDTRACK credentials reset from the admin panel",
+      } as never);
+      if (error) throw error;
+      setUserId("");
+      setPassword("");
+      setBaseUrl("");
+      toast.success("GPSANDTRACK credentials reset — enter new ones to reconnect");
+      await loadVersions();
+      await runTest(true);
+    } catch (e) {
+      const friendly = friendlySecretError(e, "GPSANDTRACK");
+      toast.error(friendly.title, { description: secretErrorDescription(friendly), duration: 10000 });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -172,6 +195,10 @@ export default function GPSANDTRACKCredentialsPanel({ onStatusChange }: { onStat
             <Button variant="outline" onClick={() => runTest(true)} disabled={testing}>
               {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
               <span className="ml-2">Test connection</span>
+            </Button>
+            <Button variant="destructive" onClick={reset} disabled={saving || testing}>
+              <Trash2 className="h-4 w-4" />
+              <span className="ml-2">Reset credentials</span>
             </Button>
           </div>
 
