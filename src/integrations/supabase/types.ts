@@ -12548,6 +12548,10 @@ export type Database = {
         Returns: boolean
       }
       provider_read_credentials: { Args: { _provider: string }; Returns: Json }
+      provider_revoke_credentials: {
+        Args: { _notes?: string; _provider: string }
+        Returns: number
+      }
       provider_write_credentials: {
         Args: { _notes?: string; _provider: string; _values: Json }
         Returns: string
