@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { corsHeaders } from "../_shared/cors.ts";
+import { isOpayConfigured, resolveOpayEnv } from "../_shared/opay-client.ts";
 
 Deno.serve((req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -7,7 +8,7 @@ Deno.serve((req) => {
   const paystackPublic = Deno.env.get("PAYSTACK_PUBLIC_KEY") ?? "";
   const opayMerchant = Deno.env.get("OPAY_MERCHANT_ID") ?? "";
   const opayPublic = Deno.env.get("OPAY_PUBLIC_KEY") ?? "";
-  const opayEnv = Deno.env.get("OPAY_ENVIRONMENT") ?? "sandbox";
+  const opayEnv = resolveOpayEnv();
 
   return new Response(
     JSON.stringify({
@@ -16,7 +17,7 @@ Deno.serve((req) => {
         publicKey: paystackPublic,
       },
       opay: {
-        configured: Boolean(opayMerchant && Deno.env.get("OPAY_SECRET_KEY")),
+        configured: isOpayConfigured(),
         merchantId: opayMerchant,
         publicKey: opayPublic,
         environment: opayEnv,
