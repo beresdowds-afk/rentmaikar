@@ -118,6 +118,29 @@ export default function GPSANDTRACKCredentialsPanel({ onStatusChange }: { onStat
     }
   };
 
+  const reset = async () => {
+    if (!window.confirm("Reset GPSANDTRACK credentials? All stored values are deleted and the integration falls back to deployed secrets until you save new ones.")) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.rpc("provider_revoke_credentials" as never, {
+        _provider: "sarekon",
+        _notes: "GPSANDTRACK credentials reset from the admin panel",
+      } as never);
+      if (error) throw error;
+      setUserId("");
+      setPassword("");
+      setBaseUrl("");
+      toast.success("GPSANDTRACK credentials reset — enter new ones to reconnect");
+      await loadVersions();
+      await runTest(true);
+    } catch (e) {
+      const friendly = friendlySecretError(e, "GPSANDTRACK");
+      toast.error(friendly.title, { description: secretErrorDescription(friendly), duration: 10000 });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
