@@ -4,11 +4,13 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { claimIdempotencyKey, completeIdempotencyKey, duplicateResponse, resolveIdempotencyKey } from "../_shared/payment-idempotency.ts";
 import { postLedgerEntry } from "../_shared/wallet-ledger.ts";
+import { describeError, getPayPalConfig, PayPalError, payPalRequest } from "../_shared/paypal-client.ts";
 import {
   consumeWithdrawalAuthorization,
   requireWithdrawalAuthorization,
   transitionState,
 } from "../_shared/withdrawal-authorization.ts";
+
 
 const BodySchema = z.object({
   amount: z.number().positive(),
@@ -21,10 +23,9 @@ const BodySchema = z.object({
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const clientId = Deno.env.get("PAYPAL_CLIENT_ID");
-    const clientSecret = Deno.env.get("PAYPAL_CLIENT_SECRET");
-    const mode = (Deno.env.get("PAYPAL_MODE") ?? "sandbox").toLowerCase();
-    if (!clientId || !clientSecret) return json({ error: "PayPal not configured" }, 503);
+    const cfg = getPayPalConfig();
+    if (!cfg) return json({ error: "PayPal not configured" }, 503);
+
 
     const auth = req.headers.get("Authorization") ?? "";
     if (!auth.startsWith("Bearer ")) return json({ error: "Unauthenticated" }, 401);
@@ -110,48 +111,48 @@ Deno.serve(async (req) => {
     });
     await consumeWithdrawalAuthorization(supabase, authz.authorizationId!, payout.id);
 
-    const base = mode === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
-    const tokenResp = await fetch(`${base}/v1/oauth2/token`, {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: "grant_type=client_credentials",
-    });
-    const token = await tokenResp.json();
-    if (!tokenResp.ok) {
-      await transitionState(supabase, "payout", payout.id, "failed", "PayPal auth failed");
-      await completeIdempotencyKey(supabase, idemKey, "failed");
-      return json({ error: "PayPal auth failed" }, 502);
-    }
-
-    const payoutResp = await fetch(`${base}/v1/payments/payouts`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token.access_token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sender_batch_header: {
-          sender_batch_id: reference, email_subject: "RentMaikar payout",
-          email_message: b.note ?? "Your RentMaikar owner earnings",
+    // `sender_batch_id` plus `PayPal-Request-Id` both carry the same unique
+    // reference, so a retried request can never disburse the money twice.
+    let payoutBody: any;
+    try {
+      payoutBody = await payPalRequest<any>(cfg, "/v1/payments/payouts", {
+        method: "POST",
+        requestId: `payout:${reference}`,
+        retries: 1,
+        body: {
+          sender_batch_header: {
+            sender_batch_id: reference,
+            email_subject: "RentMaikar payout",
+            email_message: b.note ?? "Your RentMaikar owner earnings",
+          },
+          items: [{
+            recipient_type: "EMAIL",
+            amount: { value: b.amount.toFixed(2), currency: "USD" },
+            receiver: acc.paypal_email,
+            note: b.note ?? "RentMaikar owner payout",
+            sender_item_id: reference,
+          }],
         },
-        items: [{
-          recipient_type: "EMAIL",
-          amount: { value: b.amount.toFixed(2), currency: "USD" },
-          receiver: acc.paypal_email,
-          note: b.note ?? "RentMaikar owner payout",
-          sender_item_id: reference,
-        }],
-      }),
-    });
-    const payoutBody = await payoutResp.json();
-    if (!payoutResp.ok) {
-      await transitionState(supabase, "payout", payout.id, "failed", payoutBody?.message ?? "payout failed");
+      });
+    } catch (e) {
+      const isAuth = e instanceof PayPalError && (e.status === 401 || e.status === 403);
+      const message = e instanceof PayPalError
+        ? (describeError(e.body) ?? e.message)
+        : "Could not reach PayPal";
+      await transitionState(
+        supabase, "payout", payout.id, "failed",
+        isAuth ? "PayPal auth failed" : message,
+      );
       await supabase.from("owner_payouts")
-        .update({ failure_reason: payoutBody?.message ?? "payout failed", raw_payload: payoutBody })
+        .update({
+          failure_reason: message,
+          raw_payload: e instanceof PayPalError ? e.body : { error: message },
+        })
         .eq("id", payout.id);
       await completeIdempotencyKey(supabase, idemKey, "failed");
-      return json({ error: payoutBody?.message ?? "payout failed", raw: payoutBody }, 502);
+      return json({ error: message }, 502);
     }
+
 
     const batchStatus = payoutBody?.batch_header?.batch_status ?? "PENDING";
 
