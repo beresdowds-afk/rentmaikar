@@ -487,8 +487,20 @@ export const SAREKON_MESSAGE_TYPES = {
   locate: 6000,
   starterAutoEnable: 1252,
   starterAutoDisable: 1253,
+  // 1262/1263 are documented as Audio-minder and surface on live dealer
+  // accounts as "Payment Reminder" enable/disable — same message ids.
+  paymentReminderEnable: 1262,
+  paymentReminderDisable: 1263,
   audioMinderEnable: 1262,
   audioMinderDisable: 1263,
+  setOverspeed: 3100,
+  setDeviceGeofence: 3400,
+  setPowerSteady: 3350,
+  instaFenceEnable: 6450,
+  instaFenceDisable: 6451,
+  repoOpenTicket: 6100,
+  repoCloseTicket: 6200,
+  repoSetZone: 6110,
   repoModeEnable: 61000,
   repoModeDisable: 62000,
 } as const;
