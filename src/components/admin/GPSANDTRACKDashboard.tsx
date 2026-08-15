@@ -72,7 +72,7 @@ export default function GPSANDTRACKDashboard() {
   const [history, setHistory] = useState<Record<string, unknown>[]>([]);
 
   const call = useCallback(async (body: Record<string, unknown>) => {
-    const { data, error } = await supabase.functions.invoke("sarekon-admin", { body });
+    const { data, error } = await invokeEdge("sarekon-admin", body);
     if (error) throw new Error(error.message);
     return data as Record<string, unknown>;
   }, []);

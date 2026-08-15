@@ -61,9 +61,7 @@ export default function GPSANDTRACKCredentialsPanel({ onStatusChange }: { onStat
   const runTest = useCallback(async (refreshCredentials = false) => {
     setTesting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("sarekon-admin", {
-        body: { action: "test_connection", refresh_credentials: refreshCredentials },
-      });
+      const { data, error } = await invokeEdge("sarekon-admin", { action: "test_connection", refresh_credentials: refreshCredentials });
       if (error) throw new Error(error.message);
       const d = data as Record<string, unknown>;
       const next: ConnStatus = {

@@ -61,9 +61,7 @@ export default function GPSANDTRACKStatusPanel({ refreshKey = 0 }: { refreshKey?
     setLoading(true);
     setError(null);
     try {
-      const { data: res, error: err } = await supabase.functions.invoke("sarekon-admin", {
-        body: { action: "sync_status", limit: 25 },
-      });
+      const { data: res, error: err } = await invokeEdge("sarekon-admin", { action: "sync_status", limit: 25 });
       if (err) throw new Error(err.message);
       setData(res as StatusPayload);
     } catch (e) {
