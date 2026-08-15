@@ -682,7 +682,195 @@ export default function GPSANDTRACKFleetAdminPanel({ onChanged }: { onChanged?: 
             </div>
           </AccordionContent>
         </AccordionItem>
+
+        {/* ---------------- Dealer permissions ---------------- */}
+        <AccordionItem value="permissions" className="rounded-lg border px-4">
+          <AccordionTrigger className="text-base">
+            <span className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" /> Dealer permissions check
+              {perms && perms.missing.length > 0 ? (
+                <Badge variant="destructive">{perms.missing.length} missing</Badge>
+              ) : null}
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pb-4">
+            <p className="text-sm text-muted-foreground">
+              Probes every dealer endpoint with an empty payload — nothing is created or changed — and reports the
+              exact scope GPSANDTRACK is refusing (for example <code>deal/read</code>).
+            </p>
+            <Button
+              variant="outline"
+              disabled={!!busy}
+              onClick={async () => {
+                const d = await run("fleet_permissions", { action: "fleet_permissions" }, "Permission check complete");
+                if (d?.ok) {
+                  setPerms({
+                    results: (d.results as PermissionResult[]) ?? [],
+                    missing: (d.missing_scopes as string[]) ?? [],
+                    summary: String(d.summary ?? ""),
+                    checkedAt: String(d.checked_at ?? ""),
+                  });
+                }
+              }}
+            >
+              {spinner("fleet_permissions") ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+              Run permissions check
+            </Button>
+
+            {perms && (
+              <>
+                <Alert variant={perms.missing.length ? "destructive" : "default"}>
+                  <AlertTitle>
+                    {perms.missing.length ? `${perms.missing.length} scope(s) missing` : "All scopes enabled"}
+                  </AlertTitle>
+                  <AlertDescription>{perms.summary}</AlertDescription>
+                </Alert>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Operation</TableHead>
+                      <TableHead>Scope</TableHead>
+                      <TableHead>Unlocks</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {perms.results.map((r) => (
+                      <TableRow key={r.scope}>
+                        <TableCell>{r.label}</TableCell>
+                        <TableCell><code className="text-xs">{r.missing_scope ?? r.scope}</code></TableCell>
+                        <TableCell className="text-muted-foreground">{r.unlocks}</TableCell>
+                        <TableCell>
+                          <Badge variant={r.state === "granted" ? "outline" : "destructive"}>
+                            {r.state === "granted" ? "Granted" : "Missing"}
+                          </Badge>
+                          <div className="mt-1 text-xs text-muted-foreground">{r.note}</div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {perms.checkedAt && (
+                  <p className="text-xs text-muted-foreground">
+                    Checked {new Date(perms.checkedAt).toLocaleString()}
+                  </p>
+                )}
+              </>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* ---------------- Audit log ---------------- */}
+        <AccordionItem value="audit" className="rounded-lg border px-4">
+          <AccordionTrigger className="text-base">
+            <span className="flex items-center gap-2"><History className="h-4 w-4" /> Fleet action audit log</span>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pb-4">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <Label>Operation</Label>
+                <Select value={auditAction} onValueChange={setAuditAction}>
+                  <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All operations</SelectItem>
+                    {AUDIT_OPERATIONS.map((a) => (
+                      <SelectItem key={a} value={a}>{a.replace(/_/g, " ")}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Outcome</Label>
+                <Select value={auditOutcome} onValueChange={setAuditOutcome}>
+                  <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="ok">Succeeded</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Window</Label>
+                <Select value={auditDays} onValueChange={setAuditDays}>
+                  <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Last 24 hours</SelectItem>
+                    <SelectItem value="7">Last 7 days</SelectItem>
+                    <SelectItem value="30">Last 30 days</SelectItem>
+                    <SelectItem value="90">Last 90 days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                variant="outline"
+                disabled={!!busy}
+                onClick={async () => {
+                  const d = await run(
+                    "fleet_audit_log",
+                    {
+                      action: "fleet_audit_log",
+                      audit_action: auditAction === "all" ? undefined : auditAction,
+                      audit_outcome: auditOutcome,
+                      since_days: Number(auditDays),
+                      limit: 100,
+                    },
+                    "Audit log loaded",
+                  );
+                  setAuditEntries(((d?.entries as AuditEntry[]) ?? []));
+                }}
+              >
+                {spinner("fleet_audit_log") ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                Load audit log
+              </Button>
+            </div>
+
+            {auditEntries.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No fleet-admin actions recorded for this filter.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Who</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Request</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {auditEntries.map((e) => (
+                    <TableRow key={e.id}>
+                      <TableCell className="whitespace-nowrap text-xs">
+                        {new Date(e.created_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        <div>{e.actor_name}</div>
+                        {e.actor_email && <div className="text-muted-foreground">{e.actor_email}</div>}
+                      </TableCell>
+                      <TableCell className="text-xs">{e.operation.replace(/_/g, " ")}</TableCell>
+                      <TableCell className="text-xs">
+                        <Badge variant={e.status === "succeeded" ? "outline" : "destructive"}>
+                          {e.status === "succeeded" ? "Succeeded" : e.status_code}
+                        </Badge>
+                        <div className="mt-1 max-w-xs text-muted-foreground">
+                          {e.status_detail ?? e.status_title}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <pre className="max-h-24 max-w-xs overflow-auto rounded bg-muted p-2 text-[10px]">
+                          {JSON.stringify(e.payload, null, 2)}
+                        </pre>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </AccordionContent>
+        </AccordionItem>
       </Accordion>
+
     </div>
   );
 }
