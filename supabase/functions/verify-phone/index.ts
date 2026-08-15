@@ -137,6 +137,27 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
+      // Pre-flight: the number must not already belong to a different account
+      // (profiles_phone_unique). Fail with a clear message instead of a raw
+      // duplicate-key error, and before we spend an SMS/voice credit.
+      const { data: phoneOwner } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("phone", cleanPhone)
+        .neq("user_id", user.id)
+        .maybeSingle();
+      if (phoneOwner) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error:
+              "That phone number is already linked to another account. Use a different number, or contact support if it belongs to you.",
+            code: "phone_taken",
+          }),
+          { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+
       const code = generateVerificationCode();
       const hashedCode = await bcrypt.hash(code);
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
@@ -152,6 +173,20 @@ const handler = async (req: Request): Promise<Response> => {
         .eq("user_id", user.id);
       if (updateError) {
         console.error("Error storing verification code:", updateError);
+        if (
+          updateError.code === "23505" ||
+          /profiles_phone_unique/i.test(updateError.message ?? "")
+        ) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error:
+                "That phone number is already linked to another account. Use a different number, or contact support if it belongs to you.",
+              code: "phone_taken",
+            }),
+            { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } },
+          );
+        }
         throw new Error("Failed to initiate verification");
       }
 

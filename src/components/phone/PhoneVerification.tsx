@@ -122,7 +122,19 @@ export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerifi
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // functions.invoke masks non-2xx bodies — read the real reason
+        // (e.g. the number already belongs to another account).
+        let detail = error.message;
+        try {
+          const ctx = (error as any)?.context;
+          if (ctx && typeof ctx.text === 'function') {
+            const parsedBody = JSON.parse(await ctx.text());
+            if (parsedBody?.error) detail = parsedBody.error;
+          }
+        } catch { /* keep the generic message */ }
+        throw new Error(detail);
+      }
 
       if (data.success) {
         setShowOTPDialog(true);

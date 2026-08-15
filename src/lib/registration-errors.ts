@@ -143,6 +143,25 @@ export function classifyRegistrationError(
     lower.includes('address is required for driver') ||
     lower.includes('residential address');
 
+  // The same phone number cannot be attached to two accounts
+  // (profiles_phone_unique).
+  if (lower.includes('profiles_phone_unique') || (code === '23505' && lower.includes('phone'))) {
+    return {
+      ...base,
+      title: 'Phone number already in use',
+      description:
+        'That phone number is already linked to another account, so we can’t attach it here.',
+      fixSteps: [
+        'Enter a different phone number you can receive SMS on.',
+        'If this number is yours, sign in to that account instead.',
+        'Contact support if you believe the number was linked by mistake.',
+      ],
+      fields: ['Phone number'],
+      isDuplicate: true,
+      isFixableByUser: true,
+    };
+  }
+
   if (isAddressError) {
     // Too long (> 200 characters).
     if (lower.includes('200 characters') || lower.includes('or fewer') || lower.includes('less than 200')) {
