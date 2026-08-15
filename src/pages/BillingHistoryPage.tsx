@@ -80,6 +80,7 @@ export default function BillingHistoryPage() {
   const [subs, setSubs] = useState<SubRow[]>([]);
   const [invoices, setInvoices] = useState<DocRow[]>([]);
   const [receipts, setReceipts] = useState<DocRow[]>([]);
+  const [disputes, setDisputes] = useState<DisputeRow[]>([]);
   const [downloading, setDownloading] = useState<string | null>(null);
 
   // Search & advanced filters (shared across payments, invoices and receipts).
@@ -93,7 +94,7 @@ export default function BillingHistoryPage() {
   const load = async () => {
     if (!user?.id) return;
     setLoading(true);
-    const [pay, sub, inv, rcp] = await Promise.all([
+    const [pay, sub, inv, rcp, dsp] = await Promise.all([
       supabase.from("payments")
         .select("id, amount, currency, status, purpose, payment_method, transaction_id, created_at, settled_at, driver_id, owner_id")
         .or(`driver_id.eq.${user.id},owner_id.eq.${user.id}`)
@@ -109,13 +110,18 @@ export default function BillingHistoryPage() {
         .select("id, receipt_number, status, amount, currency, payment_method, created_at")
         .or(`driver_id.eq.${user.id},owner_id.eq.${user.id}`)
         .order("created_at", { ascending: false }).limit(100),
+      supabase.from("payment_disputes")
+        .select("id, payment_id, provider, provider_reference, amount, currency, status, reason, resolution_notes, opened_at, resolved_at")
+        .order("opened_at", { ascending: false }).limit(100),
     ]);
     setPayments((pay.data as PaymentRow[]) ?? []);
     setSubs((sub.data as unknown as SubRow[]) ?? []);
     setInvoices((inv.data as DocRow[]) ?? []);
     setReceipts((rcp.data as DocRow[]) ?? []);
+    setDisputes((dsp.data as DisputeRow[]) ?? []);
     setLoading(false);
   };
+
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user?.id]);
 
