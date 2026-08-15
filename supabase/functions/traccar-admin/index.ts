@@ -536,12 +536,14 @@ Deno.serve(async (req) => {
         .eq("provider", "traccar")
         .contains("health_details", { traccar_device_id: device_id } as never)
         .maybeSingle();
+      const queued = r.ok && r.queued === true;
       await audit({
         action: `traccar_command_${command}`,
         device_id: match?.id ?? null,
         vehicle_id: match?.vehicle_id ?? null,
         details: {
           ok: r.ok,
+          queued,
           traccar_device_id: device_id,
           command,
           attributes: attrs,
@@ -555,7 +557,16 @@ Deno.serve(async (req) => {
           replayed_from: (attributes as Record<string, unknown>)?.__replay_of ?? null,
         },
       });
-      return json({ ok: r.ok, ...r });
+      return json({
+        ok: r.ok,
+        queued,
+        // HTTP 202 means Traccar stored the command for an offline device and
+        // will deliver it on the next connection.
+        delivery: r.ok ? (queued ? "queued_offline" : "sent") : "failed",
+        diagnosis: diagnose(r),
+        ...r,
+      });
+
     }
 
     if (action === "link_device" || action === "unlink_device") {
