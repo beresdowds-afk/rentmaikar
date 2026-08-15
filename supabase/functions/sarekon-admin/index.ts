@@ -599,6 +599,154 @@ Deno.serve(async (req) => {
 
     }
 
+    // ---- Fleet-admin audit log viewer ------------------------------------
+    // Reads back the `sarekon_*` rows written by `audit()` below, resolves the
+    // actor to a human name and surfaces the last known request status
+    // (ok / diagnosis) that the provider returned for that attempt.
+    if (action === "fleet_audit_log") {
+      const sinceIso = new Date(Date.now() - (p.since_days ?? 30) * 86_400_000).toISOString();
+      let q = supa
+        .from("iot_audit_log")
+        .select("id, action, performed_by, device_id, vehicle_id, details, created_at")
+        .like("action", "sarekon_%")
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(limit ?? 100);
+      if (p.audit_action) q = q.eq("action", `sarekon_${p.audit_action}`);
+      const { data: rows, error: logErr } = await q;
+      if (logErr) return json({ ok: false, error: logErr.message }, 500);
+
+      const actorIds = [...new Set((rows ?? []).map((r) => r.performed_by).filter(Boolean))] as string[];
+      const names = new Map<string, { name: string; email: string | null }>();
+      if (actorIds.length) {
+        const { data: profs } = await supa
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", actorIds);
+        for (const pr of profs ?? []) {
+          names.set(pr.id as string, {
+            name: (pr.full_name as string) || "Unknown admin",
+            email: (pr.email as string) ?? null,
+          });
+        }
+      }
+
+      const entries = (rows ?? [])
+        .map((r) => {
+          const details = (r.details ?? {}) as Record<string, unknown>;
+          const diagnosis = details.diagnosis as Diagnosis | undefined;
+          const ok = details.ok !== false;
+          const actorInfo = r.performed_by ? names.get(r.performed_by as string) : null;
+          const { ok: _ok, diagnosis: _d, ...payload } = details;
+          return {
+            id: r.id,
+            created_at: r.created_at,
+            operation: String(r.action).replace(/^sarekon_/, ""),
+            actor_id: r.performed_by,
+            actor_name: r.performed_by ? actorInfo?.name ?? "Unknown admin" : "Automated / cron",
+            actor_email: actorInfo?.email ?? null,
+            vehicle_id: r.vehicle_id,
+            status: ok ? "succeeded" : "failed",
+            status_code: ok ? "ok" : diagnosis?.code ?? "provider_error",
+            status_title: ok ? "Accepted by GPSANDTRACK" : diagnosis?.title ?? "Request failed",
+            status_detail: ok ? null : diagnosis?.detail ?? null,
+            hints: ok ? [] : diagnosis?.hints ?? [],
+            payload,
+          };
+        })
+        .filter((e) =>
+          p.audit_outcome === "ok"
+            ? e.status === "succeeded"
+            : p.audit_outcome === "failed"
+              ? e.status === "failed"
+              : true
+        );
+
+      return json({
+        ok: true,
+        entries,
+        counts: {
+          total: entries.length,
+          failed: entries.filter((e) => e.status === "failed").length,
+        },
+      });
+    }
+
+    // ---- Dealer scope / permission probe ---------------------------------
+    // SareKon evaluates the account's permission grants before it validates
+    // arguments, so hitting each endpoint with an empty payload tells us which
+    // scope is missing without ever creating or mutating a provider record.
+    if (action === "fleet_permissions") {
+      const PROBES: Array<{ scope: string; path: string; label: string; unlocks: string }> = [
+        { scope: "dvd/read", path: "/dvd/enumerate.json", label: "List trackers", unlocks: "Devices tab, sync" },
+        { scope: "dvd/install", path: "/dvd/install_create.json", label: "Install device", unlocks: "Install & uninstall" },
+        { scope: "dvd/test", path: "/dvd/test_create.json", label: "Install test", unlocks: "Install test start/result" },
+        { scope: "dvd/assign", path: "/dvd/assign_create.json", label: "Assign driver", unlocks: "Driver assignment" },
+        { scope: "driver/write", path: "/driver/update.json", label: "Update driver", unlocks: "Driver details" },
+        { scope: "asset/write", path: "/asset/update.json", label: "Update asset", unlocks: "Asset update" },
+        { scope: "dvd/transfer", path: "/dvd/transfer_create.json", label: "Transfer trackers", unlocks: "Account transfers" },
+        { scope: "deal/read", path: "/deal/list.json", label: "List deals", unlocks: "Deals list & detail" },
+        { scope: "deal/write", path: "/deal/create.json", label: "Create deal", unlocks: "Deal creation" },
+        { scope: "deal/unwind", path: "/deal/unwind_update.json", label: "Unwind deal", unlocks: "Deal reversal" },
+      ];
+
+      const permissionRequired = (body: unknown): string | null => {
+        const text = typeof body === "string" ? body : JSON.stringify(body ?? {});
+        const m = /Permission Required:\s*([A-Za-z0-9_\/.-]+)/i.exec(text);
+        return m ? m[1] : null;
+      };
+
+      const results = [];
+      for (const probe of PROBES) {
+        const r = await sarekon.raw(probe.path);
+        if (r.ok) {
+          results.push({ ...probe, state: "granted" as const, note: "Endpoint responded successfully." });
+          continue;
+        }
+        if (r.reason === "not_configured" || r.reason === "network_error" || r.reason === "auth_error") {
+          return json({ ok: false, diagnosis: diagnose(r) });
+        }
+        const missing = permissionRequired(r.body);
+        if (missing) {
+          results.push({
+            ...probe,
+            state: "missing" as const,
+            missing_scope: missing,
+            note: `GPSANDTRACK replied "Permission Required: ${missing}".`,
+          });
+        } else {
+          // Rejected on arguments, not on permission — the scope is held.
+          results.push({
+            ...probe,
+            state: "granted" as const,
+            note: "Scope held (call was rejected on arguments, not permissions).",
+          });
+        }
+      }
+
+      const missingScopes = [...new Set(results.filter((r) => r.state === "missing").map((r) => r.missing_scope!))];
+      await activity(
+        missingScopes.length ? "permission_check_gaps" : "permission_check_ok",
+        missingScopes.length ? "warn" : "info",
+        missingScopes.length
+          ? `Dealer account is missing ${missingScopes.length} scope(s): ${missingScopes.join(", ")}`
+          : "Dealer account holds every fleet-admin scope",
+        { missing_scopes: missingScopes },
+      );
+
+      return json({
+        ok: true,
+        checked_at: new Date().toISOString(),
+        results,
+        missing_scopes: missingScopes,
+        summary: missingScopes.length
+          ? `Ask your GPSANDTRACK dealer administrator to enable: ${missingScopes.join(", ")}`
+          : "All fleet-admin scopes are enabled on this dealer account.",
+      });
+    }
+
+
+
     // ---- Dealer / fleet-admin operations ---------------------------------
     // Every write is rate-limited per admin, audited in iot_audit_log and
     // mirrored to the IoT activity feed so the provider stays reconcilable.
