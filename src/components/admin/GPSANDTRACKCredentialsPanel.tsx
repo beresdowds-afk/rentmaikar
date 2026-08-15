@@ -196,6 +196,10 @@ export default function GPSANDTRACKCredentialsPanel({ onStatusChange }: { onStat
               {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
               <span className="ml-2">Test connection</span>
             </Button>
+            <Button variant="destructive" onClick={reset} disabled={saving || testing}>
+              <Trash2 className="h-4 w-4" />
+              <span className="ml-2">Reset credentials</span>
+            </Button>
           </div>
 
           {status && (
