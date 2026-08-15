@@ -88,6 +88,12 @@ const Body = z.object({
   installed_odometer: z.number().int().min(0).max(9_999_999).optional(),
   test_dt: z.string().max(40).optional(),
   fields: z.record(z.union([z.string().max(300), z.number(), z.array(z.string().max(64)).max(50)])).optional(),
+
+  // audit-log viewer / permission prober
+  audit_action: z.string().max(64).optional(),
+  audit_outcome: z.enum(["all", "ok", "failed"]).optional(),
+  since_days: z.number().int().min(1).max(365).optional(),
+
 });
 
 /** Scoped sync-state rows so telemetry, devices and commands report separately. */
