@@ -46,39 +46,42 @@ async function fetchActiveProvider(): Promise<{ name: TelemetryProviderName; bas
   return data as { name: TelemetryProviderName; base_url: string | null; api_key_secret_name: string | null };
 }
 
-// -------- EMQX adapter (thin — existing functions still call EMQX directly)
+// -------- EMQX adapter. Delegates to the hardened v5 management client so it
+// picks up admin-managed endpoints, vault credentials, retries, timeouts and
+// the documented 202/204 response semantics.
 const emqxAdapter: TelemetryAdapter = {
   name: "emqx",
   async getDeviceState(deviceId) {
-    const url = Deno.env.get("EMQX_API_URL");
-    const key = Deno.env.get("EMQX_API_KEY");
-    const secret = Deno.env.get("EMQX_API_SECRET");
-    if (!url || !key || !secret) return { online: false, lastSeen: null };
     try {
-      const auth = "Basic " + btoa(`${key}:${secret}`);
-      const res = await fetch(`${url}/clients/${encodeURIComponent(deviceId)}`, { headers: { Authorization: auth } });
-      if (!res.ok) return { online: false, lastSeen: null };
-      const body = await res.json();
-      return { online: Boolean(body?.connected), lastSeen: body?.connected_at ?? null, raw: body };
+      const { client } = await resolveEmqxClient();
+      if (!client) return { online: false, lastSeen: null };
+      const body = await client.client(deviceId) as Record<string, unknown>;
+      return {
+        online: Boolean(body?.connected),
+        lastSeen: (body?.connected_at as string) ?? null,
+        raw: body,
+      };
     } catch {
       return { online: false, lastSeen: null };
     }
   },
   async sendCommand(deviceId, command, payload = {}) {
-    const url = Deno.env.get("EMQX_API_URL");
-    const key = Deno.env.get("EMQX_API_KEY");
-    const secret = Deno.env.get("EMQX_API_SECRET");
-    if (!url || !key || !secret) return { ok: false, error: "EMQX not configured" };
-    const auth = "Basic " + btoa(`${key}:${secret}`);
-    const topic = `rentmaikar/vehicle/${deviceId}/command`;
-    const res = await fetch(`${url}/publish`, {
-      method: "POST",
-      headers: { Authorization: auth, "Content-Type": "application/json" },
-      body: JSON.stringify({ topic, payload: JSON.stringify({ command, ...payload }), qos: 1 }),
-    });
-    return { ok: res.ok, error: res.ok ? undefined : `EMQX ${res.status}` };
+    const { client, unavailable } = await resolveEmqxClient();
+    if (!client) return { ok: false, error: unavailable?.reason ?? "EMQX not configured" };
+    try {
+      await client.publish({
+        topic: `rentmaikar/vehicle/${deviceId}/command`,
+        payload: { command, ...payload },
+        qos: 1,
+      });
+      return { ok: true };
+    } catch (e) {
+      const err = e as EmqxApiError;
+      return { ok: false, error: `EMQX ${err.httpStatus ?? "unreachable"}: ${err.detail ?? String(e)}`.slice(0, 300) };
+    }
   },
 };
+
 
 // -------- Traccar adapter (REST). Uses TRACCAR_API_TOKEN/TRACCAR_TOKEN when set,
 // otherwise falls back to basic auth with TRACCAR_EMAIL + TRACCAR_PASSWORD.
