@@ -36,9 +36,33 @@ const DEFAULT_BASE = "https://api.sarekon.com/v1";
 /** Query parameter values: scalars, or arrays for the `name[]` style params. */
 type Param = string | number | boolean | null | undefined | Array<string | number>;
 
+/**
+ * Coerce whatever an admin saved into the documented API root
+ * (https://<host>/v1). Spec/doc URLs such as
+ * `https://sys.sarekon.com/api/v1/specs/dealer.yaml` are a common paste
+ * mistake and would make every call 401/404.
+ */
+export function normaliseBaseUrl(input: string): string {
+  const raw = (input || "").trim().replace(/\/+$/, "");
+  if (!raw) return DEFAULT_BASE;
+  let u: URL;
+  try {
+    u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+  } catch {
+    return DEFAULT_BASE;
+  }
+  // Drop documentation artefacts: spec files, /specs/..., /docs, .json/.yaml.
+  let path = u.pathname.replace(/\/(specs?|docs?|redoc|swagger)(\/.*)?$/i, "");
+  path = path.replace(/\/[^/]+\.(ya?ml|json|html?)$/i, "");
+  const version = path.match(/\/v\d+/i)?.[0] ?? "/v1";
+  const host = u.host.replace(/^sys\./i, "api.");
+  return `https://${host}${version}`;
+}
+
 function creds() {
-  const base = (providerOverride("sarekon", "base_url") || Deno.env.get("SAREKON_BASE_URL") || DEFAULT_BASE)
-    .replace(/\/$/, "");
+  const base = normaliseBaseUrl(
+    providerOverride("sarekon", "base_url") || Deno.env.get("SAREKON_BASE_URL") || DEFAULT_BASE,
+  );
   // GPSANDTRACK authenticates with a USERNAME + password. `user_id` is kept as a
   // legacy alias so previously stored credentials keep working.
   const userId = providerOverride("sarekon", "username") || providerOverride("sarekon", "user_id") ||
