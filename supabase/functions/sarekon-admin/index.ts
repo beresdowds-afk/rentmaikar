@@ -167,6 +167,7 @@ Deno.serve(async (req) => {
     const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     let actor: string | null = null;
+    let isFullAdmin = isCron;
     if (!isCron) {
       if (!auth.startsWith("Bearer ")) return json({ error: "Unauthenticated" }, 401);
       const { data: u, error: uErr } = await supa.auth.getUser(auth.replace("Bearer ", ""));
@@ -179,12 +180,20 @@ Deno.serve(async (req) => {
         .in("role", ["admin", "iot_support"]);
       if (roleErr) return json({ error: "Role check failed" }, 500);
       if (!roleRows || roleRows.length === 0) return json({ error: "Admin only" }, 403);
+      isFullAdmin = roleRows.some((r: { role: string }) => r.role === "admin");
     }
 
     const parsed = Body.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
-    const { action, dvd_id, device_row_id, vehicle_id, vehicle_ids, command, parameters, limit, refresh_credentials } =
-      parsed.data;
+    const p = parsed.data;
+    const { action, dvd_id, device_row_id, vehicle_id, vehicle_ids, command, parameters, limit, refresh_credentials } = p;
+
+    // Ownership-changing operations (account transfers and deals) stay with
+    // full admins; iot_support keeps install/assign/maintenance actions.
+    const ADMIN_ONLY = new Set(["transfer_trackers", "deal_create", "deal_unwind"]);
+    if (ADMIN_ONLY.has(action) && !isFullAdmin) {
+      return json({ error: "This operation requires a full admin role." }, 403);
+    }
 
     // A freshly saved credential version must beat the 60s config cache.
     if (refresh_credentials) {
