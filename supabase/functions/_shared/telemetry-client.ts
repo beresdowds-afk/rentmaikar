@@ -5,6 +5,9 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SAREKON_COMMAND_MAP, sarekon } from "./sarekon-client.ts";
+import { traccar } from "./traccar-client.ts";
+import { classifyManagementFailure, getEmqxManagementConfig } from "./emqx-config.ts";
+import { getEmqxCredentials } from "./emqx-credentials.ts";
 
 export type TelemetryProviderName = "emqx" | "traccar" | "sarekon";
 
@@ -187,10 +190,11 @@ export async function sendCommandWithFallback(
 export function isProviderConfigured(name: TelemetryProviderName): boolean {
   if (name === "traccar") {
     return Boolean(
-      Deno.env.get("TRACCAR_BASE_URL") &&
+      (Deno.env.get("TRACCAR_BASE_URL") &&
         (Deno.env.get("TRACCAR_API_TOKEN") ||
           Deno.env.get("TRACCAR_TOKEN") ||
-          (Deno.env.get("TRACCAR_EMAIL") && Deno.env.get("TRACCAR_PASSWORD"))),
+          (Deno.env.get("TRACCAR_EMAIL") && Deno.env.get("TRACCAR_PASSWORD")))) ||
+        traccar.isConfigured(),
     );
   }
   if (name === "sarekon") {
@@ -199,30 +203,67 @@ export function isProviderConfigured(name: TelemetryProviderName): boolean {
   return Boolean(Deno.env.get("EMQX_API_URL") && Deno.env.get("EMQX_API_KEY") && Deno.env.get("EMQX_API_SECRET"));
 }
 
+/**
+ * Live reachability probe. Uses the same admin-managed credential resolution as
+ * the dedicated provider dashboards (vault / platform_kv_settings, then env) and
+ * endpoints that exist on every plan, so a healthy provider is never reported as
+ * unreachable just because a probe path (e.g. EMQX `/nodes`) is plan-restricted.
+ */
 export async function testProvider(
   name: TelemetryProviderName,
 ): Promise<{ ok: boolean; configured: boolean; status?: number; error?: string }> {
-  const configured = isProviderConfigured(name);
-  if (!configured) return { ok: false, configured: false, error: `${name} secrets missing` };
   try {
     if (name === "traccar") {
-      const base = Deno.env.get("TRACCAR_BASE_URL")!;
-      const res = await fetch(`${base}/api/server`, {
-        headers: { Authorization: traccarAuth() ?? "", Accept: "application/json" },
-      });
-
-      return { ok: res.ok, configured: true, status: res.status };
+      await traccar.ensureReady();
+      if (!traccar.isConfigured()) return { ok: false, configured: false, error: "Traccar credentials missing" };
+      const r = await traccar.ping();
+      if (r.ok) return { ok: true, configured: true, status: 200 };
+      const err = r as { reason?: string; status?: number; message?: string; body?: unknown };
+      return {
+        ok: false,
+        configured: true,
+        status: err.status,
+        error: `${err.reason ?? "request_failed"}${err.message ? `: ${err.message}` : ""}${
+          err.body ? `: ${String(typeof err.body === "string" ? err.body : JSON.stringify(err.body)).slice(0, 200)}` : ""
+        }`,
+      };
     }
+
     if (name === "sarekon") {
       await sarekon.ensureReady();
+      if (!sarekon.isConfigured()) return { ok: false, configured: false, error: "GPSANDTRACK credentials missing" };
       const r = await sarekon.ping();
-      return { ok: r.ok, configured: true, status: r.ok ? 200 : (r as { status?: number }).status };
+      if (r.ok) return { ok: true, configured: true, status: 200 };
+      const err = r as { reason?: string; status?: number; message?: string; body?: unknown };
+      return {
+        ok: false,
+        configured: true,
+        status: err.status,
+        error: `${err.reason ?? "request_failed"}${err.message ? `: ${err.message}` : ""}${
+          err.body ? `: ${String(typeof err.body === "string" ? err.body : JSON.stringify(err.body)).slice(0, 200)}` : ""
+        }`,
+      };
     }
-    const url = Deno.env.get("EMQX_API_URL")!;
-    const auth = "Basic " + btoa(`${Deno.env.get("EMQX_API_KEY")}:${Deno.env.get("EMQX_API_SECRET")}`);
-    const res = await fetch(`${url}/nodes`, { headers: { Authorization: auth } });
-    return { ok: res.ok, configured: true, status: res.status };
+
+    // EMQX: admin-configured management endpoint + vault/env credentials.
+    const cfg = await getEmqxManagementConfig();
+    const creds = await getEmqxCredentials();
+    if (!creds) return { ok: false, configured: false, error: "EMQX credentials missing" };
+    if (!cfg.managementEnabled) {
+      return { ok: false, configured: true, error: "EMQX management API disabled for this deployment" };
+    }
+    const apiUrl = cfg.apiUrl.replace(/\/$/, "");
+    const auth = "Basic " + btoa(`${creds.key}:${creds.secret}`);
+    // `/clients` is allowed on every plan (serverless forbids `/nodes` and `/stats`).
+    const res = await fetch(`${apiUrl}/clients?limit=1`, {
+      headers: { Authorization: auth, Accept: "application/json" },
+    });
+    if (res.ok) return { ok: true, configured: true, status: res.status };
+    const detail = (await res.text().catch(() => "")).slice(0, 200);
+    const { reason } = classifyManagementFailure(res.status, detail);
+    return { ok: false, configured: true, status: res.status, error: `${reason}${detail ? `: ${detail}` : ""}` };
   } catch (e) {
+
     return { ok: false, configured: true, error: String(e) };
   }
 }

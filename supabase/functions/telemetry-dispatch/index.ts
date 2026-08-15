@@ -13,6 +13,8 @@ import {
   testProvider,
   type TelemetryProviderName,
 } from "../_shared/telemetry-client.ts";
+import { traccar } from "../_shared/traccar-client.ts";
+import { sarekon } from "../_shared/sarekon-client.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 
 const Body = z.object({
@@ -51,6 +53,11 @@ Deno.serve(async (req) => {
     const active = await getActiveProviderName();
 
     if (action === "get_active_provider") {
+      // Warm admin-managed credentials so "configured" reflects vault/settings too.
+      await Promise.all([
+        traccar.ensureReady().catch(() => {}),
+        sarekon.ensureReady().catch(() => {}),
+      ]);
       const status: Record<string, unknown> = {};
       for (const name of ["emqx", "traccar", "sarekon"] as TelemetryProviderName[]) {
         status[name] = { configured: isProviderConfigured(name) };
