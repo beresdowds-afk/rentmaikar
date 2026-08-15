@@ -6,8 +6,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SAREKON_COMMAND_MAP, sarekon } from "./sarekon-client.ts";
 import { traccar } from "./traccar-client.ts";
-import { classifyManagementFailure, getEmqxManagementConfig } from "./emqx-config.ts";
-import { getEmqxCredentials } from "./emqx-credentials.ts";
+import { EmqxApiError, resolveEmqxClient } from "./emqx-client.ts";
 
 export type TelemetryProviderName = "emqx" | "traccar" | "sarekon";
 
