@@ -104,6 +104,7 @@ const AdminTrainingReviewPage = lazy(() => import("./pages/admin/AdminTrainingRe
 const OrchestratorPage = lazy(() => import("./pages/admin/OrchestratorPage"));
 
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
+const BillingHistoryPage = lazy(() => import("./pages/BillingHistoryPage"));
 const SubscriptionSuccessPage = lazy(() => import("./pages/SubscriptionSuccessPage"));
 const ProxyConsentPage = lazy(() => import("./pages/ProxyConsentPage"));
 const PortalRouteGuard = lazy(() => import("./components/onboarding/PortalRouteGuard"));
@@ -567,6 +568,16 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/billing"
+                    element={
+                      <ProtectedRoute>
+                        <BillingHistoryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+
 
                   <Route path="/driver/portal/:portalKey" element={<PortalRouteGuard role="driver" />} />
                   <Route path="/owner/portal/:portalKey" element={<PortalRouteGuard role="owner" />} />

@@ -11816,6 +11816,18 @@ export type Database = {
         Args: { _limit?: number; _owner_share_pct?: number; _since?: string }
         Returns: Json
       }
+      admin_scan_settlement_integrity: {
+        Args: { _limit?: number; _since?: string }
+        Returns: {
+          amount: number
+          currency: string
+          payment_id: string
+          purpose: string
+          report: Json
+          settled_at: string
+          user_id: string
+        }[]
+      }
       admin_search_persona_users: {
         Args: { _limit?: number; _query?: string; _status?: string }
         Returns: {
@@ -12341,6 +12353,10 @@ export type Database = {
       normalize_country_label: { Args: { _v: string }; Returns: string }
       normalize_msisdn: { Args: { _phone: string }; Returns: string }
       notification_category_for: { Args: { _kind: string }; Returns: string }
+      notify_settlement_invoice_failure: {
+        Args: { _payment_id: string; _reason: string }
+        Returns: undefined
+      }
       onboarding_diagnostics: { Args: never; Returns: Json }
       owner_resubmit_vehicle_for_review: {
         Args: { p_vehicle_id: string }
@@ -12781,6 +12797,10 @@ export type Database = {
       }
       verify_cron_secret: { Args: { _secret: string }; Returns: boolean }
       verify_cron_token: { Args: { _token: string }; Returns: boolean }
+      verify_payment_settlement: {
+        Args: { _payment_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       access_level_enum: "view_only" | "full"

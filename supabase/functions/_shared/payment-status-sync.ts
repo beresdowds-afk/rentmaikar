@@ -47,6 +47,16 @@ export async function syncPaymentStatus(
     } catch (e) {
       console.error("[payment-status-sync] receipt email failed:", args.paymentId, e);
     }
+    // Verify subscription/ledger/invoice/receipt/audit consistency for this
+    // settlement and repair or alert on whatever is missing.
+    try {
+      await supabase.functions.invoke("reconcile-settlements", {
+        headers: { "x-internal-secret": Deno.env.get("CRON_SECRET") ?? "" },
+        body: { payment_id: args.paymentId },
+      });
+    } catch (e) {
+      console.error("[payment-status-sync] reconciliation failed:", args.paymentId, e);
+    }
   }
   return { newlyCompleted };
 }
