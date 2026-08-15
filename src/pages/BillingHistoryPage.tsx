@@ -35,6 +35,15 @@ interface DocRow {
   invoice_number?: string; receipt_number?: string; total_amount?: number; amount?: number;
   due_date?: string | null; invoice_type?: string | null; payment_method?: string | null;
 }
+interface DisputeRow {
+  id: string; payment_id: string; provider: string; provider_reference: string | null;
+  amount: number | null; currency: string | null; status: string; reason: string | null;
+  resolution_notes: string | null; opened_at: string; resolved_at: string | null;
+}
+
+/** Payment statuses that represent a reversal, refund or dispute. */
+const REVERSAL_STATUSES = ["refunded", "partially_refunded", "reversed", "chargeback", "disputed"];
+
 
 const money = (amount: number, currency: string) => {
   try {
