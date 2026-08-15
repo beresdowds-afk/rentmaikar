@@ -36,9 +36,33 @@ const DEFAULT_BASE = "https://api.sarekon.com/v1";
 /** Query parameter values: scalars, or arrays for the `name[]` style params. */
 type Param = string | number | boolean | null | undefined | Array<string | number>;
 
+/**
+ * Coerce whatever an admin saved into the documented API root
+ * (https://<host>/v1). Spec/doc URLs such as
+ * `https://sys.sarekon.com/api/v1/specs/dealer.yaml` are a common paste
+ * mistake and would make every call 401/404.
+ */
+export function normaliseBaseUrl(input: string): string {
+  const raw = (input || "").trim().replace(/\/+$/, "");
+  if (!raw) return DEFAULT_BASE;
+  let u: URL;
+  try {
+    u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+  } catch {
+    return DEFAULT_BASE;
+  }
+  // Drop documentation artefacts: spec files, /specs/..., /docs, .json/.yaml.
+  let path = u.pathname.replace(/\/(specs?|docs?|redoc|swagger)(\/.*)?$/i, "");
+  path = path.replace(/\/[^/]+\.(ya?ml|json|html?)$/i, "");
+  const version = path.match(/\/v\d+/i)?.[0] ?? "/v1";
+  const host = u.host.replace(/^sys\./i, "api.");
+  return `https://${host}${version}`;
+}
+
 function creds() {
-  const base = (providerOverride("sarekon", "base_url") || Deno.env.get("SAREKON_BASE_URL") || DEFAULT_BASE)
-    .replace(/\/$/, "");
+  const base = normaliseBaseUrl(
+    providerOverride("sarekon", "base_url") || Deno.env.get("SAREKON_BASE_URL") || DEFAULT_BASE,
+  );
   // GPSANDTRACK authenticates with a USERNAME + password. `user_id` is kept as a
   // legacy alias so previously stored credentials keep working.
   const userId = providerOverride("sarekon", "username") || providerOverride("sarekon", "user_id") ||
@@ -272,22 +296,40 @@ export function normaliseDevice(row: Record<string, unknown>): GPSANDTRACKDevice
   const asset = (row.asset ?? {}) as Record<string, unknown>;
   const loc = (row.location ?? row.last_location ?? device.location ?? row.position ?? row) as Record<string, unknown>;
   const id = pick(device, ["device_id", "deviceId", "id"]) ?? pick(row, ["device_id", "dvd_id", "id"]);
-  const serial = pick(device, ["serial", "serial_number", "esn", "imei", "meid"]) ??
+  // `device_description` carries the physical device serial (e.g. V24346052939583);
+  // the VIN lives on the asset and is only a fallback label.
+  const serial = pick(device, ["device_description", "serial", "serial_number", "esn", "imei", "meid"]) ??
     pick(asset, ["asset_vin", "vin", "external_ref"]) ?? id;
+  // `status` on /dvd/show.json is an array of data-type readings; the human
+  // status string is the account mode ("Active", "Suspended"…).
+  const modeStatus = pick(row, ["mode_description", "service_description"]) ??
+    pick(device, ["status", "state", "connection_status"]);
   return {
     id: String(id ?? serial ?? ""),
     serial: String(serial ?? id ?? ""),
+    // /dvd/enumerate.json returns a flat row with `description`; /dvd/show.json
+    // nests the label under `asset`.
     name: (pick(asset, ["asset_description", "description", "name"]) ??
-      pick(device, ["name", "label"])) as string ?? null,
-    model: (pick(device, ["model", "device_model", "product", "hardware"]) as string) ?? null,
-    status: (pick(device, ["status", "state", "connection_status"]) as string) ??
-      (pick(row, ["status"]) as string) ?? null,
-    lastUpdate: (pick(loc, ["dt", "dt_local", "timestamp", "time", "gps_time", "reported_at"]) as string) ??
+      pick(row, ["dvd_description", "description", "name", "label"]) ??
+      pick(device, ["device_description", "name", "label"])) as string ?? null,
+    model: (pick(asset, ["model_description"]) ??
+      pick(device, ["hardware_series_description", "model", "device_model", "product"])) as string ?? null,
+    status: typeof modeStatus === "string" ? modeStatus : null,
+    lastUpdate: (pick(loc, [
+      "triggered_on_local",
+      "location_valid_on_local",
+      "dt",
+      "dt_local",
+      "timestamp",
+      "time",
+      "gps_time",
+      "reported_at",
+    ]) as string) ??
       (pick(device, ["last_update", "updated_at", "last_seen"]) as string) ?? null,
     latitude: num(pick(loc, ["latitude", "lat"])),
     longitude: num(pick(loc, ["longitude", "lon", "lng", "long"])),
     speedKmh: num(pick(loc, ["speed_kph", "speed_kmh", "speed", "velocity"])),
-    course: num(pick(loc, ["heading", "course", "bearing", "direction"])),
+    course: num(pick(loc, ["bearing_deg", "heading", "course", "bearing", "direction"])),
     ignition: bool(pick(loc, ["ignition", "ign", "engine_on"]) ?? pick(device, ["ignition"])),
     address: (pick(loc, ["address", "location_name", "street"]) as string) ?? null,
     raw: row,
@@ -445,8 +487,20 @@ export const SAREKON_MESSAGE_TYPES = {
   locate: 6000,
   starterAutoEnable: 1252,
   starterAutoDisable: 1253,
+  // 1262/1263 are documented as Audio-minder and surface on live dealer
+  // accounts as "Payment Reminder" enable/disable — same message ids.
+  paymentReminderEnable: 1262,
+  paymentReminderDisable: 1263,
   audioMinderEnable: 1262,
   audioMinderDisable: 1263,
+  setOverspeed: 3100,
+  setDeviceGeofence: 3400,
+  setPowerSteady: 3350,
+  instaFenceEnable: 6450,
+  instaFenceDisable: 6451,
+  repoOpenTicket: 6100,
+  repoCloseTicket: 6200,
+  repoSetZone: 6110,
   repoModeEnable: 61000,
   repoModeDisable: 62000,
 } as const;
