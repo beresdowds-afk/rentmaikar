@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { Loader2, RefreshCw, Search, MapPin, MessageSquare, Cpu, Save } from "lucide-react";
+import { Loader2, RefreshCw, Search, MapPin, MessageSquare, Cpu, Save, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 type HologramDevice = {
@@ -112,6 +113,7 @@ export function HologramDevicesPanel() {
                   <TableHead>Number</TableHead>
                   <TableHead>Link state</TableHead>
                   <TableHead>Last session</TableHead>
+                  <TableHead className="text-right">Detail</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -129,6 +131,13 @@ export function HologramDevicesPanel() {
                       <TableCell>{number || "—"}</TableCell>
                       <TableCell><Badge variant={state === "live" ? "default" : "secondary"}>{state}</Badge></TableCell>
                       <TableCell className="text-xs">{last ? new Date(last).toLocaleString() : "—"}</TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <Button asChild size="sm" variant="ghost" className="gap-1">
+                          <Link to={`/admin/hologram/devices/${d.id}`}>
+                            <ExternalLink className="h-3.5 w-3.5" /> Open
+                          </Link>
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -146,7 +155,12 @@ export function HologramDevicesPanel() {
                 <SheetTitle className="flex items-center gap-2">
                   <Cpu className="h-4 w-4" /> {selected.name || `Device ${selected.id}`}
                 </SheetTitle>
-                <SheetDescription>Hologram device ID <code>{selected.id}</code></SheetDescription>
+                <SheetDescription className="flex items-center gap-2">
+                  Hologram device ID <code>{selected.id}</code>
+                  <Link className="underline inline-flex items-center gap-1" to={`/admin/hologram/devices/${selected.id}`}>
+                    <ExternalLink className="h-3 w-3" /> Full detail
+                  </Link>
+                </SheetDescription>
               </SheetHeader>
 
               <div className="mt-4 space-y-4 text-sm">
