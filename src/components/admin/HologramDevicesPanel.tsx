@@ -21,7 +21,7 @@ type HologramDevice = {
   lastsession?: { session_begin?: string } | null;
   last_session_time?: string | null;
   tunnelable?: boolean;
-  links?: { cellular?: Array<{ id?: number; sim?: string; state?: string }> };
+  links?: { cellular?: Array<{ id?: number; sim?: string; msisdn?: string; state?: string }> };
   [k: string]: unknown;
 };
 

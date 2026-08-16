@@ -35,6 +35,10 @@ const Body = z.object({
     // One-click onboarding + scheduled sync controls
     "onboard_sim",
     "run_sync",
+    "deactivate_sim",
+    "balance",
+    "open_sessions",
+    "device_locations",
   ]),
   sim_id: z.string().min(1).max(64).optional(),
   sim_row_id: z.string().uuid().optional(),
@@ -403,6 +407,37 @@ Deno.serve(async (req) => {
 
     if (action === "list_plans") {
       const r = await hologram.listPlans();
+      return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "balance") {
+      const r = await hologram.getBalance();
+      return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "open_sessions") {
+      const r = await hologram.listOpenSessions();
+      return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "device_locations") {
+      const r = await hologram.listDeviceLocations(
+        device_id_ext !== undefined ? [device_id_ext] : undefined,
+        limit ?? 500,
+      );
+      return json({ ok: r.ok, ...r });
+    }
+
+    if (action === "deactivate_sim") {
+      if (!sim_id) return json({ error: "sim_id required" }, 400);
+      const r = await hologram.deactivateSim(sim_id);
+      if (r.ok) {
+        await supa
+          .from("iot_sim_cards")
+          .update({ status: "deactivated", suspended_at: new Date().toISOString() })
+          .eq("provider_sim_id", sim_id);
+      }
+      await audit({ action: "hologram_sim_deactivated", details: { provider_sim_id: sim_id, ok: r.ok } });
       return json({ ok: r.ok, ...r });
     }
 
