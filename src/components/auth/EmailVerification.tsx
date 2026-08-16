@@ -36,6 +36,7 @@ export const EmailVerification = ({
   const email = emailOverride ?? user?.email ?? '';
   const [isLoading, setIsLoading] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [lastSentAt, setLastSentAt] = useState<Date | null>(null);
 
   useEffect(() => {
     if (emailOverride) return;
@@ -55,12 +56,35 @@ export const EmailVerification = ({
 
   const handleResend = async () => {
     if (!email) return;
-    const { error } = await supabase.auth.resend({
+    const target = redirectTo ?? `${window.location.origin}/auth`;
+
+    // Preferred path: branded verification email delivered through Resend.
+    if (!emailOverride) {
+      const { data, error } = await supabase.functions.invoke('send-verification-email', {
+        body: { redirect_to: target },
+      });
+      if (!error) {
+        const res = data as { already_verified?: boolean } | null;
+        if (res?.already_verified) {
+          setIsEmailVerified(true);
+          onVerified?.();
+          toast.success('Your email is already verified.');
+          return;
+        }
+        setLastSentAt(new Date());
+        toast.success('Verification email sent via Resend. Check your inbox.');
+        return;
+      }
+      console.warn('Resend verification failed, falling back to default email', error);
+    }
+
+    const { error: fallbackError } = await supabase.auth.resend({
       type: 'signup',
       email,
-      options: { emailRedirectTo: redirectTo ?? window.location.origin },
+      options: { emailRedirectTo: target },
     });
-    if (error) throw error;
+    if (fallbackError) throw fallbackError;
+    setLastSentAt(new Date());
     toast.success('Verification email sent! Check your inbox.');
   };
 
@@ -124,7 +148,9 @@ export const EmailVerification = ({
           </div>
 
           <p className="text-xs text-muted-foreground text-center">
-            Didn't receive the email? Check your spam folder or click "Resend Email".
+            {lastSentAt
+              ? `Last sent ${lastSentAt.toLocaleTimeString()} — delivered by Resend. Check spam if it hasn't arrived.`
+              : 'Didn\'t receive the email? Check your spam folder or click "Resend email".'}
           </p>
         </div>
       )}
