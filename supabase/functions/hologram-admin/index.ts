@@ -240,12 +240,12 @@ Deno.serve(async (req) => {
 
     if (action === "list_sims") {
       const r = await hologram.listSims(100);
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "import_sims") {
       const r = await hologram.listAllSims(1000);
-      if (!r.ok) return json({ ok: false, ...r }, 502);
+      if (!r.ok) return json({ ...r, ok: false }, 502);
       const rows = Array.isArray(r.data) ? r.data : [];
       let imported = 0;
       for (const raw of rows) {
@@ -288,7 +288,7 @@ Deno.serve(async (req) => {
           details: { provider_sim_id: sim_id, plan_id },
         });
       }
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "suspend_sim") {
@@ -309,13 +309,13 @@ Deno.serve(async (req) => {
           details: { provider_sim_id: sim_id },
         });
       }
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "sync_one_usage") {
       if (!sim_id) return json({ error: "sim_id required" }, 400);
       const info = await hologram.getSim(sim_id);
-      if (!info.ok) return json({ ok: false, ...info }, 502);
+      if (!info.ok) return json({ ...info, ok: false }, 502);
       const n = normalizeDevice(info.data);
       const usage = n.link_id ? await hologram.getSimUsage(sim_id, n.link_id) : null;
       const dataMb = usage?.ok ? bytesToMb(monthlyUsageBytes(usage.data)) : null;
@@ -397,27 +397,27 @@ Deno.serve(async (req) => {
 
     if (action === "account") {
       const r = await hologram.me();
-      return json({ ok: r.ok, org_id: hologram.orgId(), ...r });
+      return json({ ...r, ok: r.ok, org_id: hologram.orgId() });
     }
 
     if (action === "list_orgs") {
       const r = await hologram.listOrganizations();
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "list_plans") {
       const r = await hologram.listPlans();
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "balance") {
       const r = await hologram.getBalance();
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "open_sessions") {
       const r = await hologram.listOpenSessions();
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "device_locations") {
@@ -425,7 +425,7 @@ Deno.serve(async (req) => {
         device_id_ext !== undefined ? [device_id_ext] : undefined,
         limit ?? 500,
       );
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "deactivate_sim") {
@@ -438,35 +438,35 @@ Deno.serve(async (req) => {
           .eq("provider_sim_id", sim_id);
       }
       await audit({ action: "hologram_sim_deactivated", details: { provider_sim_id: sim_id, ok: r.ok } });
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "list_tags") {
       const r = await hologram.listTags();
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "list_devices") {
       const r = await hologram.listDevices(limit ?? 100);
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "get_device") {
       if (device_id_ext === undefined) return json({ error: "device_id_ext required" }, 400);
       const r = await hologram.getDevice(device_id_ext);
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "device_location") {
       if (device_id_ext === undefined) return json({ error: "device_id_ext required" }, 400);
       const r = await hologram.getDeviceLocation(device_id_ext);
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "device_data") {
       if (device_id_ext === undefined) return json({ error: "device_id_ext required" }, 400);
       const r = await hologram.getDeviceData(device_id_ext, limit ?? 25);
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     /* ---------------- Write operations ---------------- */
@@ -478,7 +478,7 @@ Deno.serve(async (req) => {
         action: "hologram_device_renamed",
         details: { device_id_ext, name, ok: r.ok },
       });
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "send_sms") {
@@ -488,7 +488,7 @@ Deno.serve(async (req) => {
         action: "hologram_sms_sent",
         details: { device_id_ext, length: message.length, ok: r.ok },
       });
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "resume_sim") {
@@ -501,14 +501,14 @@ Deno.serve(async (req) => {
           .eq("provider_sim_id", sim_id);
       }
       await audit({ action: "hologram_sim_resumed", details: { provider_sim_id: sim_id, ok: r.ok } });
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "change_plan") {
       if (!sim_id || !plan_id) return json({ error: "sim_id and plan_id required" }, 400);
       const r = await hologram.changePlan(sim_id, plan_id, zone);
       await audit({ action: "hologram_sim_plan_changed", details: { provider_sim_id: sim_id, plan_id, zone, ok: r.ok } });
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "set_data_limit") {
@@ -521,7 +521,7 @@ Deno.serve(async (req) => {
           .eq("provider_sim_id", sim_id);
       }
       await audit({ action: "hologram_sim_data_limit_set", details: { provider_sim_id: sim_id, limit_bytes, ok: r.ok } });
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     return json({ error: "Unsupported action" }, 400);
