@@ -91,6 +91,7 @@ const AdminLegalTemplatePreviewPage = lazy(() => import("./pages/admin/AdminLega
 const TourAnalyticsPage = lazy(() => import("./pages/admin/TourAnalyticsPage"));
 const AdminVehicleCataloguePage = lazy(() => import("./pages/admin/AdminVehicleCataloguePage"));
 const AdminVehicleImportsPage = lazy(() => import("./pages/admin/AdminVehicleImportsPage"));
+const HologramDeviceDetailPage = lazy(() => import("./pages/admin/HologramDeviceDetailPage"));
 const AdminNotificationRetryPage = lazy(() => import("./pages/admin/AdminNotificationRetryPage"));
 const AdminSmsConsentAuditPage = lazy(() => import("./pages/admin/AdminSmsConsentAuditPage"));
 
@@ -464,6 +465,14 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
                         <AdminVehicleCataloguePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/hologram/devices/:deviceId"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'iot_support']}>
+                        <HologramDeviceDetailPage />
                       </ProtectedRoute>
                     }
                   />
