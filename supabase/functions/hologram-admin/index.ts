@@ -39,6 +39,7 @@ const Body = z.object({
     "balance",
     "open_sessions",
     "device_locations",
+    "device_detail",
   ]),
   sim_id: z.string().min(1).max(64).optional(),
   sim_row_id: z.string().uuid().optional(),
@@ -412,12 +413,67 @@ Deno.serve(async (req) => {
 
     if (action === "balance") {
       const r = await hologram.getBalance();
+      await audit({
+        action: "hologram_org_balance_viewed",
+        details: { ok: r.ok, status: (r as { status?: number }).status ?? null },
+      });
       return json({ ...r, ok: r.ok });
     }
 
     if (action === "open_sessions") {
       const r = await hologram.listOpenSessions();
+      await audit({
+        action: "hologram_open_sessions_viewed",
+        details: {
+          ok: r.ok,
+          status: (r as { status?: number }).status ?? null,
+          count: Array.isArray(r.data) ? r.data.length : null,
+        },
+      });
       return json({ ...r, ok: r.ok });
+    }
+
+    if (action === "device_detail") {
+      if (device_id_ext === undefined) return json({ error: "device_id_ext required" }, 400);
+      const dev = await hologram.getDevice(device_id_ext);
+      const normalized = dev.ok && dev.data ? normalizeDevice(dev.data as never) : null;
+      const [usage, loc] = await Promise.all([
+        hologram.getSimUsage(device_id_ext, normalized?.link_id ?? undefined),
+        hologram.getDeviceLocation(device_id_ext),
+      ]);
+      const usageBytes = usage.ok ? monthlyUsageBytes(usage.data) : null;
+      await audit({
+        action: "hologram_device_detail_viewed",
+        sim_id: normalized?.iccid ?? null,
+        details: {
+          device_id_ext,
+          device_status: (dev as { status?: number }).status ?? null,
+          device_ok: dev.ok,
+          usage_ok: usage.ok,
+          usage_status: (usage as { status?: number }).status ?? null,
+          location_ok: loc.ok,
+          location_status: (loc as { status?: number }).status ?? null,
+          usage_mb: bytesToMb(usageBytes),
+        },
+      });
+      return json({
+        ok: dev.ok,
+        device: dev.ok ? dev.data : null,
+        normalized,
+        usage: {
+          ok: usage.ok,
+          bytes: usageBytes,
+          mb: bytesToMb(usageBytes),
+          raw: usage.ok ? usage.data : null,
+          error: usage.ok ? null : (usage as { error?: string }).error ?? null,
+        },
+        location: {
+          ok: loc.ok,
+          data: loc.ok ? loc.data : null,
+          error: loc.ok ? null : (loc as { error?: string }).error ?? null,
+        },
+        error: dev.ok ? null : (dev as { error?: string }).error ?? null,
+      });
     }
 
     if (action === "device_locations") {
@@ -425,6 +481,15 @@ Deno.serve(async (req) => {
         device_id_ext !== undefined ? [device_id_ext] : undefined,
         limit ?? 500,
       );
+      await audit({
+        action: "hologram_device_locations_viewed",
+        details: {
+          ok: r.ok,
+          status: (r as { status?: number }).status ?? null,
+          device_id_ext: device_id_ext ?? null,
+          count: Array.isArray(r.data) ? r.data.length : null,
+        },
+      });
       return json({ ...r, ok: r.ok });
     }
 
