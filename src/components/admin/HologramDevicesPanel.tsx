@@ -65,7 +65,7 @@ export function HologramDevicesPanel() {
     const q = query.trim().toLowerCase();
     if (!q) return devices;
     return devices.filter(d =>
-      [d.name, d.iccid, d.imei, d.phonenumber, String(d.id)]
+      [d.name, d.iccid, d.links?.cellular?.[0]?.sim, d.imei, d.phonenumber, d.links?.cellular?.[0]?.msisdn, String(d.id)]
         .filter(Boolean).some(v => String(v).toLowerCase().includes(q)));
   }, [devices, query]);
 
@@ -116,14 +116,17 @@ export function HologramDevicesPanel() {
               </TableHeader>
               <TableBody>
                 {filtered.map(d => {
-                  const state = d.links?.cellular?.[0]?.state ?? "—";
+                  const link = d.links?.cellular?.[0];
+                  const state = link?.state ?? "—";
+                  const iccid = d.iccid || link?.sim || "";
+                  const number = d.phonenumber || link?.msisdn || "";
                   const last = d.lastsession?.session_begin ?? d.last_session_time ?? null;
                   return (
                     <TableRow key={d.id} className="cursor-pointer" onClick={() => open(d)}>
                       <TableCell className="font-medium">{d.name || "Unnamed"}</TableCell>
                       <TableCell className="font-mono text-xs">{d.id}</TableCell>
-                      <TableCell className="font-mono text-xs">{d.iccid || "—"}</TableCell>
-                      <TableCell>{d.phonenumber || "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">{iccid || "—"}</TableCell>
+                      <TableCell>{number || "—"}</TableCell>
                       <TableCell><Badge variant={state === "live" ? "default" : "secondary"}>{state}</Badge></TableCell>
                       <TableCell className="text-xs">{last ? new Date(last).toLocaleString() : "—"}</TableCell>
                     </TableRow>
