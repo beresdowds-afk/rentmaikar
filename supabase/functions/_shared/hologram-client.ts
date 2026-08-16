@@ -490,3 +490,37 @@ export const hologram = {
     );
   },
 };
+
+/**
+ * Flatten a Hologram device into the fields the platform stores. Device-level
+ * identity (ICCID/IMSI/state/plan) lives on links.cellular[0], not the device.
+ */
+export function normalizeDevice(device: HologramDevice) {
+  const link = cellularLink(device) ?? {};
+  return {
+    device_id: device.id !== undefined ? String(device.id) : null,
+    name: (device.name as string | undefined) ?? null,
+    iccid: (link.sim as string | undefined) ?? (device.iccid as string | undefined) ?? null,
+    imsi: link.imsi !== undefined && link.imsi !== null ? String(link.imsi) : null,
+    msisdn: (link.msisdn as string | undefined) ?? (device.phonenumber as string | undefined) ?? null,
+    state: (link.state as string | undefined) ?? (device.state as string | undefined) ?? null,
+    link_id: deviceLinkId(device),
+    zone: (link.zone as number | undefined) ?? null,
+    overage_limit: (link.overagelimit as number | undefined) ?? null,
+    imei: (device.imei as string | undefined) ?? null,
+    plan_id: (device as { intended_plan_id?: number | null }).intended_plan_id ?? null,
+  };
+}
+
+/** Bytes -> MB helper used when persisting usage. */
+export function bytesToMb(bytes: number | null | undefined): number | null {
+  if (bytes === null || bytes === undefined || !Number.isFinite(Number(bytes))) return null;
+  return Math.round((Number(bytes) / 1_000_000) * 100) / 100;
+}
+
+/** Extract current-month usage bytes from a /usage/data/monthly response. */
+export function monthlyUsageBytes(rows: unknown): number | null {
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  const rec = rows[0] as { bytes?: number };
+  return Number.isFinite(Number(rec?.bytes)) ? Number(rec.bytes) : null;
+}
