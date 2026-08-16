@@ -4,7 +4,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
-import { hologram } from "../_shared/hologram-client.ts";
+import { bytesToMb, hologram, monthlyUsageBytes, normalizeDevice } from "../_shared/hologram-client.ts";
 
 const Body = z.object({
   action: z.enum([
@@ -35,6 +35,10 @@ const Body = z.object({
     // One-click onboarding + scheduled sync controls
     "onboard_sim",
     "run_sync",
+    "deactivate_sim",
+    "balance",
+    "open_sessions",
+    "device_locations",
   ]),
   sim_id: z.string().min(1).max(64).optional(),
   sim_row_id: z.string().uuid().optional(),
@@ -126,26 +130,29 @@ Deno.serve(async (req) => {
 
       const steps: Array<{ step: string; ok: boolean; detail?: unknown }> = [];
 
-      // Resolve the identifier against the org inventory (accepts ICCID or SIM id).
-      const inv = await hologram.listSims(500);
+      // Resolve the identifier against the org inventory (accepts ICCID or device id).
+      const inv = await hologram.listAllSims(1000);
       if (!inv.ok) {
         return json({ ok: false, error: "Could not read the Hologram SIM inventory", detail: inv }, 502);
       }
-      const rows = ((inv.body as { data?: unknown[] })?.data ?? []) as Array<Record<string, unknown>>;
+      const rows = Array.isArray(inv.data) ? inv.data : [];
       const needle = sim_id.trim().toLowerCase();
-      const match = rows.find((s) =>
-        [s.id, s.sim, s.iccid, s.phonenumber].filter(Boolean)
-          .some((v) => String(v).toLowerCase() === needle));
+      const match = rows.find((d) => {
+        const n = normalizeDevice(d);
+        return [n.device_id, n.iccid, n.msisdn].filter(Boolean)
+          .some((v) => String(v).toLowerCase() === needle);
+      });
       if (!match) {
         return json({
           ok: false,
           error: `No SIM matching "${sim_id}" exists in Hologram org ${hologram.orgId()}. Confirm the SIM was added to the RENTMAIKAR organization.`,
         }, 404);
       }
-      steps.push({ step: "resolved_in_hologram", ok: true, detail: { id: match.id, iccid: match.iccid } });
+      const matched = normalizeDevice(match);
+      steps.push({ step: "resolved_in_hologram", ok: true, detail: { id: matched.device_id, iccid: matched.iccid } });
 
-      const providerSimId = String(match.id ?? match.sim ?? "");
-      const iccid = String(match.iccid ?? match.sim ?? providerSimId);
+      const providerSimId = matched.device_id ?? "";
+      const iccid = matched.iccid ?? providerSimId;
 
       // Activate on the chosen plan when requested.
       if (plan_id) {
@@ -161,7 +168,8 @@ Deno.serve(async (req) => {
 
       // Re-read authoritative state after the writes.
       const fresh = await hologram.getSim(providerSimId);
-      const freshData = (fresh.ok ? (fresh.body as { data?: Record<string, unknown> })?.data : null) ?? match;
+      const freshRaw = fresh.ok ? fresh.data : match;
+      const freshData = normalizeDevice(freshRaw);
 
       const { data: row, error: upErr } = await supa
         .from("iot_sim_cards")
@@ -169,15 +177,15 @@ Deno.serve(async (req) => {
           iccid,
           provider: "hologram",
           provider_sim_id: providerSimId,
-          msisdn: (freshData.phonenumber as string | null) ?? null,
-          imsi: (freshData.imsi as string | null) ?? null,
-          status: (freshData.state as string) ?? "unknown",
-          plan_name: (freshData.plan as string | null) ?? null,
+          msisdn: freshData.msisdn,
+          imsi: freshData.imsi,
+          status: freshData.state ?? "unknown",
+          plan_name: freshData.plan_id ? String(freshData.plan_id) : null,
           data_limit_mb: limit_bytes !== undefined ? Math.round(limit_bytes / 1_000_000) : undefined,
           activated_at: plan_id ? new Date().toISOString() : undefined,
           vehicle_id: vehicle_id ?? undefined,
           device_id: device_id ?? undefined,
-          metadata: freshData as never,
+          metadata: freshRaw as never,
         } as never, { onConflict: "iccid" })
         .select("*")
         .maybeSingle();
@@ -232,27 +240,28 @@ Deno.serve(async (req) => {
 
     if (action === "list_sims") {
       const r = await hologram.listSims(100);
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "import_sims") {
-      const r = await hologram.listSims(200);
-      if (!r.ok) return json({ ok: false, ...r }, 502);
-      const rows = ((r.body as { data?: unknown[] })?.data ?? []) as Array<Record<string, unknown>>;
+      const r = await hologram.listAllSims(1000);
+      if (!r.ok) return json({ ...r, ok: false }, 502);
+      const rows = Array.isArray(r.data) ? r.data : [];
       let imported = 0;
-      for (const s of rows) {
-        const providerSimId = String(s.id ?? s.sim ?? "");
-        const iccid = String(s.iccid ?? s.sim ?? providerSimId);
+      for (const raw of rows) {
+        const n = normalizeDevice(raw);
+        const providerSimId = n.device_id ?? "";
+        const iccid = n.iccid ?? providerSimId;
         if (!iccid) continue;
         const payload = {
           iccid,
           provider: "hologram",
           provider_sim_id: providerSimId,
-          msisdn: (s.phonenumber as string | null) ?? null,
-          imsi: (s.imsi as string | null) ?? null,
-          status: (s.state as string) ?? "unknown",
-          plan_name: (s.plan as string | null) ?? null,
-          metadata: s as never,
+          msisdn: n.msisdn,
+          imsi: n.imsi,
+          status: n.state ?? "unknown",
+          plan_name: n.plan_id ? String(n.plan_id) : null,
+          metadata: raw as never,
         };
         const { error } = await supa.from("iot_sim_cards").upsert(payload, { onConflict: "iccid" });
         if (!error) imported++;
@@ -263,7 +272,7 @@ Deno.serve(async (req) => {
 
     if (action === "activate_sim") {
       if (!sim_id || !plan_id) return json({ error: "sim_id and plan_id required" }, 400);
-      const r = await hologram.activateSim(sim_id, plan_id);
+      const r = await hologram.activateSim(sim_id, plan_id, zone ?? "global");
       if (r.ok) {
         const { data: row } = await supa
           .from("iot_sim_cards")
@@ -279,7 +288,7 @@ Deno.serve(async (req) => {
           details: { provider_sim_id: sim_id, plan_id },
         });
       }
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "suspend_sim") {
@@ -300,23 +309,25 @@ Deno.serve(async (req) => {
           details: { provider_sim_id: sim_id },
         });
       }
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "sync_one_usage") {
       if (!sim_id) return json({ error: "sim_id required" }, 400);
       const info = await hologram.getSim(sim_id);
-      const usage = await hologram.getSimUsage(sim_id);
-      const state = (info.ok ? (info.body as { data?: { state?: string } })?.data?.state : null) ?? null;
-      const dataMb = usage.ok
-        ? Number((usage.body as { data?: { usage_mb?: number } })?.data?.usage_mb ?? 0)
-        : null;
+      if (!info.ok) return json({ ...info, ok: false }, 502);
+      const n = normalizeDevice(info.data);
+      const usage = n.link_id ? await hologram.getSimUsage(sim_id, n.link_id) : null;
+      const dataMb = usage?.ok ? bytesToMb(monthlyUsageBytes(usage.data)) : null;
       const { data: row } = await supa
         .from("iot_sim_cards")
         .update({
-          status: state ?? undefined,
+          status: n.state ?? undefined,
+          msisdn: n.msisdn ?? undefined,
+          imsi: n.imsi ?? undefined,
           data_usage_mb: dataMb ?? undefined,
           last_session_at: new Date().toISOString(),
+          metadata: info.data as never,
         })
         .eq("provider_sim_id", sim_id)
         .select("id")
@@ -324,9 +335,9 @@ Deno.serve(async (req) => {
       await audit({
         action: "hologram_sim_usage_synced",
         sim_id: row?.id,
-        details: { state, usage_mb: dataMb },
+        details: { state: n.state, usage_mb: dataMb },
       });
-      return json({ ok: true, state, usage_mb: dataMb });
+      return json({ ok: true, state: n.state, usage_mb: dataMb });
     }
 
     if (action === "sync_usage") {
@@ -340,17 +351,18 @@ Deno.serve(async (req) => {
       for (const sim of sims || []) {
         const info = await hologram.getSim(sim.provider_sim_id as string);
         if (!info.ok) continue;
-        const usage = await hologram.getSimUsage(sim.provider_sim_id as string);
-        const state = (info.body as { data?: { state?: string } })?.data?.state ?? null;
-        const dataMb = usage.ok
-          ? Number((usage.body as { data?: { usage_mb?: number } })?.data?.usage_mb ?? 0)
-          : null;
+        const n = normalizeDevice(info.data);
+        const usage = n.link_id ? await hologram.getSimUsage(sim.provider_sim_id as string, n.link_id) : null;
+        const dataMb = usage?.ok ? bytesToMb(monthlyUsageBytes(usage.data)) : null;
         await supa
           .from("iot_sim_cards")
           .update({
-            status: state ?? undefined,
+            status: n.state ?? undefined,
+            msisdn: n.msisdn ?? undefined,
+            imsi: n.imsi ?? undefined,
             data_usage_mb: dataMb ?? undefined,
             last_session_at: new Date().toISOString(),
+            metadata: info.data as never,
           })
           .eq("id", sim.id);
         updated++;
@@ -385,45 +397,76 @@ Deno.serve(async (req) => {
 
     if (action === "account") {
       const r = await hologram.me();
-      return json({ ok: r.ok, org_id: hologram.orgId(), ...r });
+      return json({ ...r, ok: r.ok, org_id: hologram.orgId() });
     }
 
     if (action === "list_orgs") {
       const r = await hologram.listOrganizations();
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "list_plans") {
       const r = await hologram.listPlans();
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
+    }
+
+    if (action === "balance") {
+      const r = await hologram.getBalance();
+      return json({ ...r, ok: r.ok });
+    }
+
+    if (action === "open_sessions") {
+      const r = await hologram.listOpenSessions();
+      return json({ ...r, ok: r.ok });
+    }
+
+    if (action === "device_locations") {
+      const r = await hologram.listDeviceLocations(
+        device_id_ext !== undefined ? [device_id_ext] : undefined,
+        limit ?? 500,
+      );
+      return json({ ...r, ok: r.ok });
+    }
+
+    if (action === "deactivate_sim") {
+      if (!sim_id) return json({ error: "sim_id required" }, 400);
+      const r = await hologram.deactivateSim(sim_id);
+      if (r.ok) {
+        await supa
+          .from("iot_sim_cards")
+          .update({ status: "deactivated", suspended_at: new Date().toISOString() })
+          .eq("provider_sim_id", sim_id);
+      }
+      await audit({ action: "hologram_sim_deactivated", details: { provider_sim_id: sim_id, ok: r.ok } });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "list_tags") {
       const r = await hologram.listTags();
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "list_devices") {
       const r = await hologram.listDevices(limit ?? 100);
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "get_device") {
       if (device_id_ext === undefined) return json({ error: "device_id_ext required" }, 400);
       const r = await hologram.getDevice(device_id_ext);
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "device_location") {
       if (device_id_ext === undefined) return json({ error: "device_id_ext required" }, 400);
       const r = await hologram.getDeviceLocation(device_id_ext);
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "device_data") {
       if (device_id_ext === undefined) return json({ error: "device_id_ext required" }, 400);
       const r = await hologram.getDeviceData(device_id_ext, limit ?? 25);
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     /* ---------------- Write operations ---------------- */
@@ -435,7 +478,7 @@ Deno.serve(async (req) => {
         action: "hologram_device_renamed",
         details: { device_id_ext, name, ok: r.ok },
       });
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "send_sms") {
@@ -445,7 +488,7 @@ Deno.serve(async (req) => {
         action: "hologram_sms_sent",
         details: { device_id_ext, length: message.length, ok: r.ok },
       });
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "resume_sim") {
@@ -458,14 +501,14 @@ Deno.serve(async (req) => {
           .eq("provider_sim_id", sim_id);
       }
       await audit({ action: "hologram_sim_resumed", details: { provider_sim_id: sim_id, ok: r.ok } });
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "change_plan") {
       if (!sim_id || !plan_id) return json({ error: "sim_id and plan_id required" }, 400);
       const r = await hologram.changePlan(sim_id, plan_id, zone);
       await audit({ action: "hologram_sim_plan_changed", details: { provider_sim_id: sim_id, plan_id, zone, ok: r.ok } });
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     if (action === "set_data_limit") {
@@ -478,7 +521,7 @@ Deno.serve(async (req) => {
           .eq("provider_sim_id", sim_id);
       }
       await audit({ action: "hologram_sim_data_limit_set", details: { provider_sim_id: sim_id, limit_bytes, ok: r.ok } });
-      return json({ ok: r.ok, ...r });
+      return json({ ...r, ok: r.ok });
     }
 
     return json({ error: "Unsupported action" }, 400);

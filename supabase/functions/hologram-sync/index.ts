@@ -4,7 +4,7 @@
 // iot_sync_activity_log + iot_sync_state so admins can see it in the dashboard.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { hologram } from "../_shared/hologram-client.ts";
+import { bytesToMb, hologram, monthlyUsageBytes, normalizeDevice } from "../_shared/hologram-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -69,26 +69,29 @@ serve(async (req) => {
     const errors: Array<{ sim: string; error: string }> = [];
 
     // 1) Pull the org inventory so newly provisioned SIMs appear automatically.
-    const inventory = await hologram.listSims(500);
+    //    /devices is cursor paged (`continues` + `startafter`).
+    const inventory = await hologram.listAllSims(1000);
     if (!inventory.ok) {
       const detail = "reason" in inventory ? inventory.reason : "provider_error";
-      await log("inventory_fetch_failed", "error", `Could not list SIMs from Hologram (${detail})`, inventory as never);
-      errors.push({ sim: "*", error: String(detail) });
+      const message = "error" in inventory ? inventory.error : String(detail);
+      await log("inventory_fetch_failed", "error", `Could not list SIMs from Hologram (${message})`, inventory as never);
+      errors.push({ sim: "*", error: message });
     } else {
-      const rows = ((inventory.body as { data?: unknown[] })?.data ?? []) as Array<Record<string, unknown>>;
-      for (const s of rows) {
-        const providerSimId = String(s.id ?? s.sim ?? "");
-        const iccid = String(s.iccid ?? s.sim ?? providerSimId);
+      const rows = Array.isArray(inventory.data) ? inventory.data : [];
+      for (const raw of rows) {
+        const s = normalizeDevice(raw);
+        const providerSimId = s.device_id ?? "";
+        const iccid = s.iccid ?? providerSimId;
         if (!iccid) continue;
         const { error } = await supabase.from("iot_sim_cards").upsert({
           iccid,
           provider: "hologram",
           provider_sim_id: providerSimId,
-          msisdn: (s.phonenumber as string | null) ?? null,
-          imsi: (s.imsi as string | null) ?? null,
-          status: (s.state as string) ?? "unknown",
-          plan_name: (s.plan as string | null) ?? null,
-          metadata: s as never,
+          msisdn: s.msisdn,
+          imsi: s.imsi,
+          status: s.state ?? "unknown",
+          plan_name: s.plan_id ? String(s.plan_id) : null,
+          metadata: raw as never,
         } as never, { onConflict: "iccid" });
         if (error) errors.push({ sim: iccid, error: error.message });
         else imported++;
@@ -107,18 +110,25 @@ serve(async (req) => {
       const simId = sim.provider_sim_id as string;
       const info = await hologram.getSim(simId);
       if (!info.ok) {
-        errors.push({ sim: sim.iccid as string, error: "reason" in info ? String(info.reason) : "provider_error" });
+        errors.push({
+          sim: sim.iccid as string,
+          error: "error" in info ? info.error : ("reason" in info ? String(info.reason) : "provider_error"),
+        });
         continue;
       }
-      const usage = await hologram.getSimUsage(simId);
-      const state = ((info.body as { data?: { state?: string } })?.data?.state) ?? null;
-      const dataMb = usage.ok
-        ? Number((usage.body as { data?: { usage_mb?: number } })?.data?.usage_mb ?? 0)
-        : null;
+      const norm = normalizeDevice(info.data);
+      const usage = norm.link_id ? await hologram.getSimUsage(simId, norm.link_id) : null;
+      const dataMb = usage?.ok ? bytesToMb(monthlyUsageBytes(usage.data)) : null;
       const { error } = await supabase.from("iot_sim_cards").update({
-        status: state ?? undefined,
+        status: norm.state ?? undefined,
+        msisdn: norm.msisdn ?? undefined,
+        imsi: norm.imsi ?? undefined,
         data_usage_mb: dataMb ?? undefined,
+        data_limit_mb: norm.overage_limit && norm.overage_limit > 0
+          ? Math.round(norm.overage_limit / 1_000_000)
+          : undefined,
         last_session_at: new Date().toISOString(),
+        metadata: info.data as never,
       }).eq("id", sim.id);
       if (error) errors.push({ sim: sim.iccid as string, error: error.message });
       else updated++;
