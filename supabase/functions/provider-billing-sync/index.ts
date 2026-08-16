@@ -7,7 +7,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 import { corsHeaders } from "../_shared/cors.ts";
-import { hologram } from "../_shared/hologram-client.ts";
+import { hologram, normalizeDevice } from "../_shared/hologram-client.ts";
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -107,20 +107,18 @@ Deno.serve(async (req) => {
             status = "skipped";
             detail = "hologram not configured";
           } else {
-            const sims = await hologram.listSims(200);
+            const sims = await hologram.listAllSims(1000);
             if (!sims.ok) {
               status = "error";
-              detail = `hologram ${sims.reason}`;
+              detail = `hologram ${"error" in sims ? sims.error : sims.reason}`;
             } else {
-              const list =
-                ((sims.body as { data?: unknown })?.data as Array<Record<string, unknown>>) ?? [];
+              const list = Array.isArray(sims.data) ? sims.data : [];
               const month = new Date();
               const periodStart = new Date(month.getFullYear(), month.getMonth(), 1).toISOString();
-              const rows = list.map((sim) => {
-                const id = String(sim.id ?? sim.sim ?? "");
-                const dataUsed = Number(
-                  (sim.data_threshold as number) ?? (sim.datausage as number) ?? 0,
-                );
+              const rows = list.map((raw) => {
+                const sim = normalizeDevice(raw);
+                const id = sim.device_id ?? "";
+                const dataUsed = Number((raw as { datausage?: number }).datausage ?? 0);
                 const monthlyFee = Number(
                   (account.config?.monthly_fee_per_sim as number) ?? 0,
                 );
@@ -128,7 +126,7 @@ Deno.serve(async (req) => {
                   provider: "hologram",
                   external_id: `hologram:sim:${id}:${periodStart.slice(0, 7)}`,
                   event_type: "usage",
-                  description: `SIM ${sim.sim ?? id} monthly connectivity`,
+                  description: `SIM ${sim.iccid ?? id} monthly connectivity`,
                   quantity: dataUsed,
                   unit: "bytes",
                   amount: monthlyFee,
@@ -137,7 +135,7 @@ Deno.serve(async (req) => {
                   period_end: new Date().toISOString(),
                   sim_id: id || null,
                   source: "sync",
-                  raw: sim,
+                  raw: raw,
                 };
               });
               if (rows.length) {
