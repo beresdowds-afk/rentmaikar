@@ -3239,6 +3239,7 @@ export type Database = {
           longitude: number | null
           notes: string | null
           provider: string
+          provider_device_id: string | null
           serial_number: string
           signal_strength: number | null
           sim_number: string | null
@@ -3268,6 +3269,7 @@ export type Database = {
           longitude?: number | null
           notes?: string | null
           provider?: string
+          provider_device_id?: string | null
           serial_number: string
           signal_strength?: number | null
           sim_number?: string | null
@@ -3297,6 +3299,7 @@ export type Database = {
           longitude?: number | null
           notes?: string | null
           provider?: string
+          provider_device_id?: string | null
           serial_number?: string
           signal_strength?: number | null
           sim_number?: string | null
@@ -10284,48 +10287,72 @@ export type Database = {
       }
       vehicle_telemetry_state: {
         Row: {
+          address: string | null
+          altitude: number | null
           battery: number | null
           created_at: string
           fuel: number | null
+          gps_timestamp: string | null
+          heading: number | null
           ignition: boolean | null
+          is_historic: boolean
           last_event_at: string | null
           last_event_type: string | null
           last_source: string | null
           latitude: number | null
           longitude: number | null
           payload: Json
+          provider: string | null
+          provider_device_id: string | null
+          received_at: string | null
           speed: number | null
           temperature: number | null
           updated_at: string
           vehicle_id: string
         }
         Insert: {
+          address?: string | null
+          altitude?: number | null
           battery?: number | null
           created_at?: string
           fuel?: number | null
+          gps_timestamp?: string | null
+          heading?: number | null
           ignition?: boolean | null
+          is_historic?: boolean
           last_event_at?: string | null
           last_event_type?: string | null
           last_source?: string | null
           latitude?: number | null
           longitude?: number | null
           payload?: Json
+          provider?: string | null
+          provider_device_id?: string | null
+          received_at?: string | null
           speed?: number | null
           temperature?: number | null
           updated_at?: string
           vehicle_id: string
         }
         Update: {
+          address?: string | null
+          altitude?: number | null
           battery?: number | null
           created_at?: string
           fuel?: number | null
+          gps_timestamp?: string | null
+          heading?: number | null
           ignition?: boolean | null
+          is_historic?: boolean
           last_event_at?: string | null
           last_event_type?: string | null
           last_source?: string | null
           latitude?: number | null
           longitude?: number | null
           payload?: Json
+          provider?: string | null
+          provider_device_id?: string | null
+          received_at?: string | null
           speed?: number | null
           temperature?: number | null
           updated_at?: string
