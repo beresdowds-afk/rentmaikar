@@ -166,8 +166,9 @@ export function writeSoundSettings(settings: SoundSettings): void {
 }
 
 export function regionPref(settings: SoundSettings, region: string): RegionSoundPref {
-  return settings.byRegion[region] ?? DEFAULT_REGION_PREF;
+  return settings.byRegion[region] ?? regionDefaultPref(region);
 }
+
 
 export function setRegionPref(
   settings: SoundSettings,
