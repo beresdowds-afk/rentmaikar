@@ -11,6 +11,8 @@ export interface PersistOptions {
   publishMqtt?: boolean;
   /** Movement threshold (metres) under which a fix counts as unchanged. */
   minMoveMeters?: number;
+  /** Append to mqtt_telemetry_logs (disable when the caller already logs). */
+  writeHistory?: boolean;
 }
 
 export interface PersistResult {
@@ -27,6 +29,7 @@ const DEFAULTS: Required<PersistOptions> = {
   heartbeatMs: 5 * 60_000,
   publishMqtt: true,
   minMoveMeters: 10,
+  writeHistory: true,
 };
 
 function metersBetween(aLat: number, aLng: number, bLat: number, bLng: number): number {
@@ -242,7 +245,7 @@ export async function persistLocations(
         iot_device_id: l.iotDeviceId,
       },
     }));
-  if (logs.length) {
+  if (opts.writeHistory && logs.length) {
     const { error } = await admin.from("mqtt_telemetry_logs").insert(logs as never);
     if (error) result.errors.push(`history_insert: ${error.message}`);
   }

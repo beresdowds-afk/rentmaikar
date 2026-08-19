@@ -137,7 +137,7 @@ export async function ingestRecords(
     );
     if (locations.length) {
       // History + MQTT publish are already covered by this pipeline/topic.
-      await persistLocations(admin, locations, { publishMqtt: false });
+      await persistLocations(admin, locations, { publishMqtt: false, writeHistory: false });
     }
   } catch (e) {
     console.error("[orchestrator] unified location persist failed", (e as Error).message);
