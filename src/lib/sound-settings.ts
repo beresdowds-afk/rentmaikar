@@ -201,16 +201,21 @@ export function readNotificationPermission(): NotificationPermissionState {
  *
  * Blocked notifications are treated as an explicit "do not disturb": we keep
  * the worker silent rather than routing around the user's browser-level choice.
+ * Alerts are also held outside the region's own local contact window, so the
+ * device's time zone never decides when a Lagos or US desk gets rung.
  */
 export function canPlaySound(
   settings: SoundSettings,
   region: string,
   permission: NotificationPermissionState = readNotificationPermission(),
+  now: Date = new Date(),
 ): boolean {
   if (!settings.workerEnabled) return false;
   if (permission === "denied") return false;
+  if (settings.respectQuietHours && !isWithinRegionAlertHours(region, now)) return false;
   return regionPref(settings, region).enabled;
 }
+
 
 /** Effective volume, already gated by {@link canPlaySound}. */
 export function effectiveVolume(settings: SoundSettings, region: string): number {
