@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
         const chunk = deviceIds.slice(i, i + BATCH);
         const r = await sarekon.currentLocations(chunk);
         if (!r.ok) {
-          lastError = `${r.code ?? "error"}: ${String(r.error ?? "").slice(0, 180)}`;
+          lastError = `${r.reason}${"status" in r ? `:${r.status}` : ""}`;
           continue;
         }
         // An empty response means "no new fix" — never clears known positions.
