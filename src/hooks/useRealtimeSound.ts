@@ -78,9 +78,24 @@ export function useRealtimeSound() {
     [],
   );
 
+  // Re-evaluated on a slow tick so the quiet-hours gate opens/closes without a reload.
+  const [clockTick, setClockTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setClockTick((t) => t + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const profile = useMemo(() => regionSoundProfile(country), [country]);
+  const withinAlertHours = useMemo(
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- clockTick re-evaluates the clock
+    () => isWithinRegionAlertHours(country),
+    [country, clockTick],
+  );
+
   const allowed = useMemo(
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- clockTick re-evaluates the clock
     () => canPlaySound(settings, country, permission),
-    [settings, country, permission],
+    [settings, country, permission, clockTick],
   );
 
   /** Play the chime for the active region. `force` bypasses the enabled check (test button). */
@@ -97,7 +112,8 @@ export function useRealtimeSound() {
       if (volume <= 0) return;
 
       const now = ctx.currentTime;
-      [880, 1174.66].forEach((freq, i) => {
+      // Each region has its own motif so a multi-desk operator can tell them apart.
+      profile.tones.forEach((freq, i) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "sine";
@@ -111,7 +127,7 @@ export function useRealtimeSound() {
         osc.stop(start + 0.24);
       });
     },
-    [allowed, country, ensureContext, settings],
+    [allowed, country, ensureContext, profile, settings],
   );
 
   const update = useCallback((next: SoundSettings) => {
@@ -128,6 +144,11 @@ export function useRealtimeSound() {
     (muteWhenFocused: boolean) => update({ ...readSoundSettings(), muteWhenFocused }),
     [update],
   );
+  const setRespectQuietHours = useCallback(
+    (respectQuietHours: boolean) => update({ ...readSoundSettings(), respectQuietHours }),
+    [update],
+  );
+
   const setRegionEnabled = useCallback(
     (region: string, enabled: boolean) =>
       update(setRegionPref(readSoundSettings(), region, { enabled })),
