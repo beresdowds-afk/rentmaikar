@@ -1,6 +1,10 @@
 import { useRegion } from "@/contexts/RegionContext";
 import { useRealtimeSound } from "@/hooks/useRealtimeSound";
-import { regionPref } from "@/lib/sound-settings";
+import {
+  isWithinRegionAlertHours,
+  regionPref,
+  regionSoundProfile,
+} from "@/lib/sound-settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -8,13 +12,23 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { BellOff, Play, Volume2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { BellOff, Clock, Play, Volume2 } from "lucide-react";
+
+/** "9:00 AM – 9:00 PM" for a region's local alert window. */
+const hourLabel = (hour: number) => {
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const h = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h}:00 ${suffix}`;
+};
 
 /**
  * Installed-PWA audio preferences for the real-time sync worker.
  *
  * Everything is opt-in and stored per region so an operator running more than
- * one desk can keep, say, Nigeria loud and the US quiet.
+ * one desk can keep, say, Nigeria loud and the US quiet. Each region also has
+ * its own chime motif and local contact window, so alerts follow the region's
+ * clock rather than the device's.
  */
 export default function PWASettingsPanel() {
   const { availableRegions, country } = useRegion();
@@ -22,14 +36,18 @@ export default function PWASettingsPanel() {
     settings,
     permission,
     play,
+    withinAlertHours,
     setWorkerEnabled,
     setMuteWhenFocused,
+    setRespectQuietHours,
     setRegionEnabled,
     setRegionVolume,
     requestNotificationPermission,
   } = useRealtimeSound();
 
   const blocked = permission === "denied";
+  const activeProfile = regionSoundProfile(country);
+
 
   return (
     <Card>
