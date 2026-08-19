@@ -147,8 +147,10 @@ export function readSoundSettings(): SoundSettings {
     return {
       workerEnabled: !!parsed.workerEnabled,
       muteWhenFocused: parsed.muteWhenFocused !== false,
+      respectQuietHours: parsed.respectQuietHours !== false,
       byRegion,
     };
+
   } catch {
     return { ...DEFAULT_SOUND_SETTINGS };
   }
