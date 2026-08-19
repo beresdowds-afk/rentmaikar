@@ -419,6 +419,24 @@ export const sarekon = {
     return { ok: true, body: r.body.slice(0, limit) };
   },
 
+  /**
+   * Fleet-wide current locations for up to ~50 devices in one call. Used by the
+   * high-frequency location worker; pagination is bounded so a large fleet can
+   * never stall a single scheduled run.
+   */
+  async currentLocations(deviceIds: string[]): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
+    const ids = [...new Set(deviceIds.filter(Boolean).map(String))];
+    if (!ids.length) return { ok: true, body: [] };
+    return await callPaged(
+      "/location/list.json",
+      { "device_ids[]": ids, latest: 1 },
+      ["locations", "results", "data", "items"],
+      Math.max(1, Math.ceil(ids.length / 100)),
+    );
+  },
+
+
+
   /** Event history (also carries command result detail via message_id). */
   async messages(deviceId: string, limit = 50): Promise<GPSANDTRACKResult<Record<string, unknown>[]>> {
     const r = await callPaged("/message/list.json", { "device_ids[]": [deviceId] }, [
