@@ -175,14 +175,18 @@ export function useRealtimeSound() {
     permission,
     allowed,
     unlocked,
+    profile,
+    withinAlertHours,
     play,
     ensureContext,
     setWorkerEnabled,
     setMuteWhenFocused,
+    setRespectQuietHours,
     setRegionEnabled,
     setRegionVolume,
     requestNotificationPermission,
   };
+
 }
 
 /** Should the worker emit a cue right now for `region`? Used by useRealtimeSync. */
