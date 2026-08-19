@@ -14,10 +14,30 @@ export interface FleetDevice {
   status: string | null;
   batteryLevel: number | null;
   provider: string;
+  providerDeviceId: string | null;
+  /** Time the fix was produced by the device (falls back to last ping). */
+  gpsTimestamp: string | null;
+  altitude: number | null;
+  isHistoric: boolean;
   make: string;
   model: string;
   licensePlate: string;
   address: string | null;
+}
+
+interface TelemetryStateRow {
+  vehicle_id: string;
+  latitude: number | null;
+  longitude: number | null;
+  speed: number | null;
+  heading: number | null;
+  altitude: number | null;
+  address: string | null;
+  provider: string | null;
+  provider_device_id: string | null;
+  gps_timestamp: string | null;
+  received_at: string | null;
+  is_historic: boolean | null;
 }
 
 interface DeviceRow {
@@ -30,6 +50,7 @@ interface DeviceRow {
   status: string | null;
   battery_level: number | null;
   provider: string;
+  provider_device_id: string | null;
   health_details: Record<string, unknown> | null;
   vehicles: { make: string | null; model: string | null; license_plate: string | null } | null;
 }
@@ -54,7 +75,7 @@ export function useFleetDeviceLocations() {
     const { data, error: err } = await supabase
       .from("iot_devices")
       .select(
-        "id, serial_number, vehicle_id, latitude, longitude, last_ping, status, battery_level, provider, health_details, vehicles(make, model, license_plate)",
+        "id, serial_number, vehicle_id, latitude, longitude, last_ping, status, battery_level, provider, provider_device_id, health_details, vehicles(make, model, license_plate)",
       )
       .not("latitude", "is", null)
       .not("longitude", "is", null)
@@ -68,26 +89,45 @@ export function useFleetDeviceLocations() {
     }
     setError(null);
     const rows = (data as unknown as DeviceRow[]) || [];
+
+    // Normalized state wins over the provider-shaped health_details blob: it is
+    // written by the unified location service for every provider alike.
+    const vehicleIds = rows.map((r) => r.vehicle_id).filter((v): v is string => !!v);
+    const stateByVehicle = new Map<string, TelemetryStateRow>();
+    if (vehicleIds.length) {
+      const { data: states } = await supabase
+        .from("vehicle_telemetry_state")
+        .select("vehicle_id, latitude, longitude, speed, heading, altitude, address, provider, provider_device_id, gps_timestamp, received_at, is_historic")
+        .in("vehicle_id", vehicleIds);
+      for (const st of (states as unknown as TelemetryStateRow[]) ?? []) {
+        stateByVehicle.set(st.vehicle_id, st);
+      }
+    }
     setDevices(
       rows.map((r) => {
         const lastPos = ((r.health_details as { last_position?: Record<string, number> } | null)
           ?.last_position) ?? {};
+        const st = r.vehicle_id ? stateByVehicle.get(r.vehicle_id) : undefined;
         return {
           deviceRowId: r.id,
           serialNumber: r.serial_number,
           vehicleId: r.vehicle_id,
-          latitude: Number(r.latitude),
-          longitude: Number(r.longitude),
-          speedKmh: Number(lastPos.speed_kmh ?? 0),
-          course: Number(lastPos.course ?? 0),
-          lastPing: r.last_ping,
+          latitude: Number(st?.latitude ?? r.latitude),
+          longitude: Number(st?.longitude ?? r.longitude),
+          speedKmh: Number(st?.speed ?? lastPos.speed_kmh ?? 0),
+          course: Number(st?.heading ?? lastPos.course ?? 0),
+          lastPing: st?.gps_timestamp ?? r.last_ping,
           status: r.status,
           batteryLevel: r.battery_level,
-          provider: r.provider,
+          provider: st?.provider ?? r.provider,
+          providerDeviceId: st?.provider_device_id ?? r.provider_device_id ?? null,
+          gpsTimestamp: st?.gps_timestamp ?? r.last_ping,
+          altitude: st?.altitude ?? null,
+          isHistoric: !!st?.is_historic,
           make: r.vehicles?.make ?? "Unassigned",
           model: r.vehicles?.model ?? r.serial_number,
           licensePlate: r.vehicles?.license_plate ?? r.serial_number,
-          address: (lastPos as { address?: string }).address ?? null,
+          address: st?.address ?? (lastPos as { address?: string }).address ?? null,
         };
       }),
     );
@@ -146,6 +186,7 @@ export function useFleetDeviceLocations() {
     const channel = supabase
       .channel("fleet-device-locations")
       .on("postgres_changes", { event: "*", schema: "public", table: "iot_devices" }, () => { load(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "vehicle_telemetry_state" }, () => { load(); })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [load]);
