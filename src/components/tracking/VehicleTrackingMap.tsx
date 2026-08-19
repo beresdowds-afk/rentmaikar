@@ -88,11 +88,20 @@ const VehicleTrackingMap = () => {
           make: d.make,
           model: d.model,
           licensePlate: d.licensePlate,
-          driverName: d.provider === 'traccar'
-            ? `Traccar · ${d.serialNumber}`
-            : d.provider === 'sarekon'
-              ? `GPSANDTRACK · ${d.serialNumber}`
-              : d.serialNumber,
+          // Provider is a label only — positions are already normalized upstream,
+          // so the map never parses provider-specific payloads.
+          driverName: [
+            d.provider === 'traccar'
+              ? 'Traccar'
+              : d.provider === 'sarekon'
+                ? 'GPSANDTRACK'
+                : 'EMQX',
+            d.serialNumber,
+            isStale
+              ? `last seen ${silentFor === null ? 'unknown' : `${silentFor}m ago`}`
+              : 'LIVE',
+          ].join(' · '),
+
 
           serialNumber: d.serialNumber,
           isStale,

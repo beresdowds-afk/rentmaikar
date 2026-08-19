@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { adaptMqttLocations } from "./location-adapters/emqx.ts";
+import { persistLocations } from "./unified-location-service.ts";
 import {
   normalizeEvent,
   reduceState,
@@ -121,6 +123,25 @@ export async function ingestRecords(
     }
   }
 
+
+  // Locations additionally flow through the unified location service so every
+  // provider (MQTT included) lands in one normalized shape on the shared map.
+  try {
+    const locations = adaptMqttLocations(
+      events.map((e) => ({
+        vehicleId: e.vehicleId,
+        topic: e.topic ?? null,
+        timestamp: e.timestamp,
+        payload: (e.payload ?? {}) as Record<string, unknown>,
+      })),
+    );
+    if (locations.length) {
+      // History + MQTT publish are already covered by this pipeline/topic.
+      await persistLocations(admin, locations, { publishMqtt: false, writeHistory: false });
+    }
+  } catch (e) {
+    console.error("[orchestrator] unified location persist failed", (e as Error).message);
+  }
 
   result.vehicles = ids;
   return result;

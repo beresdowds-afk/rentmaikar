@@ -3,6 +3,8 @@
 // commands (engineStop/engineResume/custom), device→vehicle linking, and
 // a persistent iot_sync_state row for the ingestion monitor. All lifecycle
 // commands are logged to iot_audit_log.
+import { adaptTraccarPositions } from "../_shared/location-adapters/traccar.ts";
+import { persistLocations } from "../_shared/unified-location-service.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
@@ -389,6 +391,7 @@ Deno.serve(async (req) => {
         const row = {
           serial_number: serial,
           provider: "traccar",
+          provider_device_id: String(d.id),
           device_model: d.model ?? null,
           status,
           last_ping: d.lastUpdate ?? nowIso,
@@ -417,6 +420,17 @@ Deno.serve(async (req) => {
         const linkedVehicleId = upserted?.vehicle_id ?? existing?.vehicle_id ?? null;
 
         if (p) {
+          // Unified location pipeline: one normalized shape, shared fleet map.
+          try {
+            const normalized = adaptTraccarPositions([p as never], {
+              serials: new Map([[String(d.id), serial]]),
+            });
+            if (normalized.length) {
+              await persistLocations(supa as never, normalized, { writeHistory: false, publishMqtt: true });
+            }
+          } catch (e) {
+            deviceErrors.push({ device: serial, error: `unified_location: ${(e as Error).message}` });
+          }
           const { error: telErr } = await supa.from("mqtt_telemetry_logs").insert({
             data_type: "traccar_position",
             vehicle_id: linkedVehicleId ?? serial,

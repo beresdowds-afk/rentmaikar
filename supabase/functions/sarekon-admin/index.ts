@@ -2,6 +2,8 @@
 // (writes to iot_devices + mqtt_telemetry_logs so the existing live map and
 // telemetry feed pick the data up), remote commands via the GPSANDTRACK command
 // queue, device→vehicle linking, and iot_sync_state for the ingestion monitor.
+import { adaptSarekonLocations } from "../_shared/location-adapters/sarekon.ts";
+import { persistLocations } from "../_shared/unified-location-service.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
@@ -497,6 +499,7 @@ Deno.serve(async (req) => {
         const row = {
           serial_number: serial,
           provider: PROVIDER,
+          provider_device_id: String(d.id ?? serial),
           device_model: d.model,
           status,
           last_ping: d.lastUpdate ?? nowIso,
@@ -526,6 +529,25 @@ Deno.serve(async (req) => {
         const linkedVehicleId = upserted?.vehicle_id ?? existing?.vehicle_id ?? null;
 
         if (writeTelemetry && d.latitude !== null && d.longitude !== null) {
+          // Unified location pipeline: one normalized shape, shared fleet map.
+          try {
+            const normalized = adaptSarekonLocations([{
+              device_id: String(d.id ?? serial),
+              latitude: d.latitude,
+              longitude: d.longitude,
+              speed_kph: d.speedKmh,
+              bearing_deg: d.course,
+              ignition: d.ignition,
+              address: d.address,
+              dt: d.lastUpdate ?? nowIso,
+              device: { device_description: serial },
+            }]);
+            if (normalized.length) {
+              await persistLocations(supa as never, normalized, { writeHistory: false, publishMqtt: true });
+            }
+          } catch (e) {
+            deviceErrors.push({ device: serial, error: `unified_location: ${(e as Error).message}` });
+          }
           const { error: telErr } = await supa.from("mqtt_telemetry_logs").insert({
             data_type: "sarekon_position",
             vehicle_id: linkedVehicleId ?? serial,
