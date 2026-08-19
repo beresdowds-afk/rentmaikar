@@ -23,16 +23,75 @@ export interface SoundSettings {
   workerEnabled: boolean;
   /** Suppress sound while the app tab is focused (avoids double-signalling). */
   muteWhenFocused: boolean;
+  /** Stay silent outside each region's local contact hours. */
+  respectQuietHours: boolean;
   byRegion: Record<string, RegionSoundPref>;
+}
+
+/**
+ * Region-aware chime behaviour.
+ *
+ * Each region gets its own two-note motif, default loudness and local contact
+ * window, so an operator running more than one desk can tell by ear which
+ * region just fired — and so a Lagos alert never rings at 3am Lagos time while
+ * the browser happens to sit in New York.
+ */
+export interface RegionSoundProfile {
+  /** Two-note motif (Hz) used for the chime. */
+  tones: [number, number];
+  defaultVolume: number;
+  /** IANA zone the alert hours are evaluated in. */
+  timeZone: string;
+  /** Local hour the region starts accepting audible alerts (inclusive). */
+  startHour: number;
+  /** Local hour audible alerts stop (exclusive). */
+  endHour: number;
+}
+
+export const FALLBACK_SOUND_PROFILE: RegionSoundProfile = {
+  tones: [880, 1174.66],
+  defaultVolume: 0.5,
+  timeZone: "UTC",
+  startHour: 8,
+  endHour: 21,
+};
+
+export const REGION_SOUND_PROFILES: Record<string, RegionSoundProfile> = {
+  // Bright, higher motif — matches the 9am–9pm ET contact window.
+  USA: {
+    tones: [880, 1174.66],
+    defaultVolume: 0.5,
+    timeZone: "America/New_York",
+    startHour: 9,
+    endHour: 21,
+  },
+  // Warmer, lower motif — 8am–8pm WAT contact window.
+  Nigeria: {
+    tones: [659.25, 880],
+    defaultVolume: 0.65,
+    timeZone: "Africa/Lagos",
+    startHour: 8,
+    endHour: 20,
+  },
+};
+
+export function regionSoundProfile(region: string): RegionSoundProfile {
+  return REGION_SOUND_PROFILES[region] ?? FALLBACK_SOUND_PROFILE;
 }
 
 const STORAGE_KEY = "rentmaikar.sound-settings.v1";
 
 export const DEFAULT_REGION_PREF: RegionSoundPref = { enabled: false, volume: 0.5 };
 
+/** Starting preference for a region the user has not tuned yet. */
+export function regionDefaultPref(region: string): RegionSoundPref {
+  return { enabled: false, volume: regionSoundProfile(region).defaultVolume };
+}
+
 export const DEFAULT_SOUND_SETTINGS: SoundSettings = {
   workerEnabled: false,
   muteWhenFocused: true,
+  respectQuietHours: true,
   byRegion: {},
 };
 
@@ -43,6 +102,34 @@ const clampVolume = (v: unknown): number => {
   if (!Number.isFinite(n)) return DEFAULT_REGION_PREF.volume;
   return Math.min(1, Math.max(0, n));
 };
+
+/** Current hour (0–23) in the region's own time zone. */
+export function regionLocalHour(region: string, now: Date = new Date()): number {
+  const { timeZone } = regionSoundProfile(region);
+  try {
+    const hour = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      hour12: false,
+      timeZone,
+    }).format(now);
+    const parsed = Number(hour);
+    return Number.isFinite(parsed) ? parsed % 24 : now.getHours();
+  } catch {
+    // Unknown zone on an old engine — fall back to device time rather than mute.
+    return now.getHours();
+  }
+}
+
+/** True while the region is inside its local audible-alert window. */
+export function isWithinRegionAlertHours(region: string, now: Date = new Date()): boolean {
+  const { startHour, endHour } = regionSoundProfile(region);
+  const hour = regionLocalHour(region, now);
+  // Windows never wrap midnight today, but handle it defensively.
+  return startHour <= endHour
+    ? hour >= startHour && hour < endHour
+    : hour >= startHour || hour < endHour;
+}
+
 
 export function readSoundSettings(): SoundSettings {
   if (!isBrowser()) return { ...DEFAULT_SOUND_SETTINGS };
