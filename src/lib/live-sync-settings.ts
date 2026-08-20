@@ -8,7 +8,7 @@
  * instant and effectively free.
  */
 
-export type LiveSyncProfile = "realtime" | "balanced" | "battery_saver" | "custom";
+export type LiveSyncProfile = "maximum" | "realtime" | "balanced" | "battery_saver" | "custom";
 
 export interface LiveSyncSettings {
   profile: LiveSyncProfile;
@@ -28,6 +28,9 @@ export const LIVE_SYNC_PRESETS: Record<
   Exclude<LiveSyncProfile, "custom">,
   Pick<LiveSyncSettings, "heartbeatMs" | "versionCheckMs">
 > = {
+  // Fastest schedule the limits allow — the default for owners and drivers,
+  // whose payment, vehicle and task screens must never show stale state.
+  maximum: { heartbeatMs: 15_000, versionCheckMs: 60_000 },
   realtime: { heartbeatMs: 30_000, versionCheckMs: 2 * 60_000 },
   balanced: { heartbeatMs: 60_000, versionCheckMs: 5 * 60_000 },
   battery_saver: { heartbeatMs: 5 * 60_000, versionCheckMs: 30 * 60_000 },
@@ -47,6 +50,16 @@ export const DEFAULT_LIVE_SYNC_SETTINGS: LiveSyncSettings = {
   respectSaveData: true,
   adaptOnLowBattery: true,
 };
+
+/** Maximum-freshness defaults applied for owner and driver accounts. */
+export const MAXIMUM_LIVE_SYNC_SETTINGS: LiveSyncSettings = {
+  ...DEFAULT_LIVE_SYNC_SETTINGS,
+  profile: "maximum",
+  ...LIVE_SYNC_PRESETS.maximum,
+  // Keep sync running in the background — that is the point of "maximum".
+  pauseWhenHidden: false,
+};
+
 
 const STORAGE_KEY = "rentmaikar_live_sync_settings";
 export const LIVE_SYNC_SETTINGS_EVENT = "rentmaikar:live-sync-settings";
