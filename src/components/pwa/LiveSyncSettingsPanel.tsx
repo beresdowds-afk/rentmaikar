@@ -77,7 +77,7 @@ export default function LiveSyncSettingsPanel({ defaultProfile }: LiveSyncSettin
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {PROFILE_OPTIONS.map((opt) => {
             const active = settings.profile === opt.value;
             return (
@@ -183,7 +183,7 @@ export default function LiveSyncSettingsPanel({ defaultProfile }: LiveSyncSettin
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => update(DEFAULT_LIVE_SYNC_SETTINGS)}
+          onClick={() => update(recommended)}
         >
           Reset to recommended
         </Button>
