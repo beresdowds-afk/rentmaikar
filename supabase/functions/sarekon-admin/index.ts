@@ -298,6 +298,92 @@ Deno.serve(async (req) => {
       });
     }
 
+    /**
+     * Registry rows for the link screen: every SareKon device row we know
+     * about, with the vehicle it feeds. The unified GPS worker polls rows that
+     * have BOTH a provider_device_id and a vehicle_id, so the UI reports that
+     * pair as the readiness signal.
+     */
+    if (action === "device_links") {
+      const { data: rows, error } = await supa
+        .from("iot_devices")
+        .select(
+          "id, provider_device_id, serial_number, sim_number, vehicle_id, telemetry_enabled, status, last_ping, latitude, longitude",
+        )
+        .eq("provider", PROVIDER)
+        .order("serial_number");
+      if (error) return json({ ok: false, error: error.message }, 400);
+
+      const vehicleIds = [...new Set((rows ?? []).map((r) => r.vehicle_id).filter(Boolean))] as string[];
+      const { data: vehicles } = vehicleIds.length
+        ? await supa.from("vehicles").select("id, make, model, year, license_plate").in("id", vehicleIds)
+        : { data: [] as Record<string, unknown>[] };
+      const vmap = new Map((vehicles ?? []).map((v: Record<string, unknown>) => [v.id as string, v]));
+
+      return json({
+        ok: true,
+        devices: (rows ?? []).map((r) => ({
+          ...r,
+          vehicle: r.vehicle_id ? vmap.get(r.vehicle_id) ?? null : null,
+          polling_ready: Boolean(r.provider_device_id && r.vehicle_id && r.telemetry_enabled),
+        })),
+      });
+    }
+
+    /**
+     * Create or update the provider-device → vehicle mapping the unified
+     * location pipeline resolves on. Upserts on (provider, provider_device_id)
+     * so re-linking an already-known tracker never duplicates a registry row.
+     */
+    if (action === "link_provider_device") {
+      const providerDeviceId = (p.provider_device_id ?? "").trim();
+      if (!providerDeviceId) return json({ error: "provider_device_id required" }, 400);
+      const serial = (p.serial_number ?? "").trim() || providerDeviceId;
+      const target = vehicle_id ?? null;
+
+      if (target) {
+        // One vehicle can only be fed by one tracker, otherwise the map flips
+        // between two position sources.
+        const { data: clash } = await supa
+          .from("iot_devices")
+          .select("id, serial_number, provider, provider_device_id")
+          .eq("vehicle_id", target)
+          .maybeSingle();
+        if (clash && clash.provider_device_id !== providerDeviceId) {
+          return json({
+            ok: false,
+            conflict: true,
+            existing_device: clash,
+            message: `Vehicle already linked to ${clash.provider} device ${clash.serial_number}. Unlink it first.`,
+          });
+        }
+      }
+
+      const patch: Record<string, unknown> = {
+        provider: PROVIDER,
+        provider_device_id: providerDeviceId,
+        serial_number: serial,
+        vehicle_id: target,
+        telemetry_enabled: p.telemetry_enabled ?? true,
+        updated_at: new Date().toISOString(),
+      };
+      if (p.iccid !== undefined) patch.sim_number = p.iccid ? p.iccid.trim() : null;
+
+      const { data: saved, error } = await supa
+        .from("iot_devices")
+        .upsert(patch as never, { onConflict: "provider,provider_device_id" })
+        .select("id, provider_device_id, serial_number, sim_number, vehicle_id, telemetry_enabled")
+        .maybeSingle();
+      if (error) return json({ ok: false, error: error.message }, 400);
+
+      await audit({
+        action: target ? "sarekon_device_linked" : "sarekon_device_unlinked",
+        device_id: saved?.id ?? null,
+        vehicle_id: target,
+        details: { provider_device_id: providerDeviceId, serial_number: serial, iccid: patch.sim_number ?? null },
+      });
+      return json({ ok: true, device: saved });
+    }
 
 
     if (action === "link_device" || action === "unlink_device") {
