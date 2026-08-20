@@ -39,7 +39,10 @@ const Body = z.object({
     "device_detail",
     "link_device",
     "unlink_device",
+    "device_links",
+    "link_provider_device",
     "get_sync_state",
+
     // dealer / fleet-admin operations
     "install_device",
     "uninstall_device",
