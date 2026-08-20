@@ -71,12 +71,14 @@ const clamp = (value: number, min: number, max: number) =>
 export function normalizeLiveSyncSettings(input: Partial<LiveSyncSettings> | null | undefined): LiveSyncSettings {
   const base = { ...DEFAULT_LIVE_SYNC_SETTINGS, ...(input ?? {}) };
   const profile: LiveSyncProfile =
+    base.profile === "maximum" ||
     base.profile === "realtime" ||
     base.profile === "balanced" ||
     base.profile === "battery_saver" ||
     base.profile === "custom"
       ? base.profile
       : "balanced";
+
 
   const preset = profile === "custom" ? null : LIVE_SYNC_PRESETS[profile];
 
