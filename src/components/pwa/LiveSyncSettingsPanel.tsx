@@ -10,8 +10,10 @@ import {
   DEFAULT_LIVE_SYNC_SETTINGS,
   LIVE_SYNC_LIMITS,
   LIVE_SYNC_PRESETS,
+  MAXIMUM_LIVE_SYNC_SETTINGS,
   type LiveSyncProfile,
   type LiveSyncSettings,
+  hasStoredLiveSyncSettings,
   isDataSaverActive,
   loadLiveSyncSettings,
   saveLiveSyncSettings,
@@ -19,26 +21,46 @@ import {
 } from "@/lib/live-sync-settings";
 
 const PROFILE_OPTIONS: Array<{ value: Exclude<LiveSyncProfile, "custom">; label: string; hint: string }> = [
-  { value: "realtime", label: "Realtime", hint: "Freshest data, highest usage" },
-  { value: "balanced", label: "Balanced", hint: "Recommended default" },
+  { value: "maximum", label: "Maximum", hint: "Fastest updates, highest usage" },
+  { value: "realtime", label: "Realtime", hint: "Fast updates, lower usage" },
+  { value: "balanced", label: "Balanced", hint: "Even battery/data trade-off" },
   { value: "battery_saver", label: "Battery saver", hint: "Fewest wakeups" },
 ];
 
 const fmt = (ms: number) => (ms >= 60_000 ? `${Math.round(ms / 60_000)} min` : `${Math.round(ms / 1000)} sec`);
 
+interface LiveSyncSettingsPanelProps {
+  /**
+   * Schedule applied on this device when the user has never saved one.
+   * Owner and driver accounts default to "maximum".
+   */
+  defaultProfile?: Exclude<LiveSyncProfile, "custom">;
+}
+
 /**
  * Lets a user trade freshness for battery/data. Changes apply immediately to
  * the running scheduler in every open tab — no reload required.
  */
-export default function LiveSyncSettingsPanel() {
+export default function LiveSyncSettingsPanel({ defaultProfile }: LiveSyncSettingsPanelProps = {}) {
   const [settings, setSettings] = useState<LiveSyncSettings>(DEFAULT_LIVE_SYNC_SETTINGS);
   const [dataSaver, setDataSaver] = useState(false);
 
+  const recommended =
+    defaultProfile === "maximum"
+      ? MAXIMUM_LIVE_SYNC_SETTINGS
+      : defaultProfile
+        ? { ...DEFAULT_LIVE_SYNC_SETTINGS, profile: defaultProfile, ...LIVE_SYNC_PRESETS[defaultProfile] }
+        : DEFAULT_LIVE_SYNC_SETTINGS;
+
   useEffect(() => {
-    setSettings(loadLiveSyncSettings());
+    // First visit on this device: seed the role's recommended schedule so the
+    // scheduler actually runs at that rate instead of the global default.
+    setSettings(hasStoredLiveSyncSettings() ? loadLiveSyncSettings() : saveLiveSyncSettings(recommended));
     setDataSaver(isDataSaverActive());
     return subscribeLiveSyncSettings(setSettings);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once per mount
   }, []);
+
 
   const update = (patch: Partial<LiveSyncSettings>) => setSettings(saveLiveSyncSettings(patch));
 
@@ -55,7 +77,7 @@ export default function LiveSyncSettingsPanel() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {PROFILE_OPTIONS.map((opt) => {
             const active = settings.profile === opt.value;
             return (
@@ -161,7 +183,7 @@ export default function LiveSyncSettingsPanel() {
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => update(DEFAULT_LIVE_SYNC_SETTINGS)}
+          onClick={() => update(recommended)}
         >
           Reset to recommended
         </Button>
