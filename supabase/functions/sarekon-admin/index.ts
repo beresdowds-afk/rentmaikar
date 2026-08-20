@@ -70,6 +70,13 @@ const Body = z.object({
   limit: z.number().int().positive().max(200).optional(),
   refresh_credentials: z.boolean().optional(),
 
+  // provider-device → vehicle mapping (what the unified GPS worker resolves on)
+  provider_device_id: z.string().min(1).max(128).optional(),
+  serial_number: z.string().min(1).max(128).optional(),
+  iccid: z.string().min(5).max(32).nullable().optional(),
+  telemetry_enabled: z.boolean().optional(),
+
+
   // fleet-admin payloads
   asset_vin: short.optional(),
   asset_id: id.optional(),
