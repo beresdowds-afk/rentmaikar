@@ -539,7 +539,11 @@ export default function ProfileSettingsPage() {
 
           <PWASettingsPanel />
 
-          <LiveSyncSettingsPanel />
+          {/* Owners and drivers depend on live payment/vehicle state — default them to the fastest schedule. */}
+          <LiveSyncSettingsPanel
+            defaultProfile={hasRole('owner') || hasRole('driver') ? 'maximum' : undefined}
+          />
+
 
 
           <ConnectedAccounts />
