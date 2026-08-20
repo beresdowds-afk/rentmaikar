@@ -113,6 +113,17 @@ export function loadLiveSyncSettings(): LiveSyncSettings {
   }
 }
 
+/** True once the user has saved a schedule of their own on this device. */
+export function hasStoredLiveSyncSettings(): boolean {
+  if (typeof localStorage === "undefined") return false;
+  try {
+    return localStorage.getItem(STORAGE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+
 /** Persists settings and notifies every listener in this window. */
 export function saveLiveSyncSettings(input: Partial<LiveSyncSettings>): LiveSyncSettings {
   const next = normalizeLiveSyncSettings({ ...loadLiveSyncSettings(), ...input });
