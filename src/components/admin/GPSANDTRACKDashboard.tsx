@@ -422,6 +422,10 @@ export default function GPSANDTRACKDashboard() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="links">
+          <GPSANDTRACKDeviceLinkPanel />
+        </TabsContent>
+
         <TabsContent value="commands" className="space-y-4">
           <Card>
             <CardHeader>
