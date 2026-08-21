@@ -10,12 +10,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCw, Satellite, ShieldAlert, ShieldCheck, Search, Send, Eye, Power, Cpu, ListRestart, Activity, KeyRound, Wrench } from "lucide-react";
+import { Loader2, RefreshCw, Satellite, ShieldAlert, ShieldCheck, Search, Send, Eye, Power, Cpu, ListRestart, Activity, KeyRound, Wrench, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { VehiclePicker } from "./VehiclePicker";
 import GPSANDTRACKStatusPanel from "./GPSANDTRACKStatusPanel";
 import GPSANDTRACKCredentialsPanel from "./GPSANDTRACKCredentialsPanel";
 import GPSANDTRACKFleetAdminPanel from "./GPSANDTRACKFleetAdminPanel";
+import GPSANDTRACKDeviceLinkPanel from "./GPSANDTRACKDeviceLinkPanel";
 
 
 interface GPSANDTRACKDevice {
@@ -312,6 +313,9 @@ export default function GPSANDTRACKDashboard() {
       <Tabs defaultValue="devices">
         <TabsList>
           <TabsTrigger value="devices">Devices</TabsTrigger>
+          <TabsTrigger value="links" className="flex items-center gap-2">
+            <Link2 className="h-4 w-4" /> Links
+          </TabsTrigger>
           <TabsTrigger value="commands">Commands</TabsTrigger>
           <TabsTrigger value="fleet" className="flex items-center gap-2">
             <Wrench className="h-4 w-4" /> Fleet admin
@@ -416,6 +420,10 @@ export default function GPSANDTRACKDashboard() {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="links">
+          <GPSANDTRACKDeviceLinkPanel />
         </TabsContent>
 
         <TabsContent value="commands" className="space-y-4">
