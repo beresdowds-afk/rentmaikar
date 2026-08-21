@@ -16,6 +16,7 @@ import { VehiclePicker } from "./VehiclePicker";
 import GPSANDTRACKStatusPanel from "./GPSANDTRACKStatusPanel";
 import GPSANDTRACKCredentialsPanel from "./GPSANDTRACKCredentialsPanel";
 import GPSANDTRACKFleetAdminPanel from "./GPSANDTRACKFleetAdminPanel";
+import GPSANDTRACKDeviceLinkPanel from "./GPSANDTRACKDeviceLinkPanel";
 
 
 interface GPSANDTRACKDevice {
