@@ -23,6 +23,11 @@ const json = (body: unknown, status = 200) =>
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const BATCH = 50;
+/**
+ * Hard wall-clock budget. Edge functions are killed (502) well before the
+ * previous 4 × 15s loop finished, so every pass is gated on this deadline.
+ */
+const MAX_RUNTIME_MS = 25_000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -51,7 +56,9 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({})) as { interval_seconds?: number; passes?: number };
     const intervalSeconds = Math.min(60, Math.max(5, Number(body.interval_seconds) || 15));
-    const passes = Math.min(6, Math.max(1, Number(body.passes) || Math.floor(60 / intervalSeconds)));
+    // pg_cron fires this every minute; a single pass per invocation keeps the
+    // run inside the edge wall-time limit. Extra passes are opt-in only.
+    const passes = Math.min(3, Math.max(1, Number(body.passes) || 1));
 
     const { data: devices } = await admin
       .from("iot_devices")
@@ -79,10 +86,16 @@ Deno.serve(async (req) => {
     let published = 0;
     let lastError: string | null = null;
 
+    let passesRun = 0;
     for (let pass = 0; pass < passes; pass++) {
-      if (pass > 0) await sleep(intervalSeconds * 1000);
+      if (pass > 0) {
+        if (Date.now() - startedAt > MAX_RUNTIME_MS - intervalSeconds * 1000) break;
+        await sleep(intervalSeconds * 1000);
+      }
+      passesRun++;
 
       for (let i = 0; i < deviceIds.length; i += BATCH) {
+        if (Date.now() - startedAt > MAX_RUNTIME_MS) { lastError ??= "runtime_budget_reached"; break; }
         const chunk = deviceIds.slice(i, i + BATCH);
         const r = await sarekon.currentLocations(chunk);
         if (!r.ok) {
@@ -108,7 +121,7 @@ Deno.serve(async (req) => {
       analytics_emitted: published,
       degraded_reason: lastError ? "partial_provider_errors" : null,
       error: lastError,
-      passes,
+      passes: passesRun,
       deduped,
       unmapped,
     });
