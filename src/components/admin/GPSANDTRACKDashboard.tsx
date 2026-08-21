@@ -313,6 +313,9 @@ export default function GPSANDTRACKDashboard() {
       <Tabs defaultValue="devices">
         <TabsList>
           <TabsTrigger value="devices">Devices</TabsTrigger>
+          <TabsTrigger value="links" className="flex items-center gap-2">
+            <Link2 className="h-4 w-4" /> Links
+          </TabsTrigger>
           <TabsTrigger value="commands">Commands</TabsTrigger>
           <TabsTrigger value="fleet" className="flex items-center gap-2">
             <Wrench className="h-4 w-4" /> Fleet admin
