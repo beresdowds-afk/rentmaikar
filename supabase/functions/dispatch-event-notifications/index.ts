@@ -8,8 +8,25 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
-const BATCH_SIZE = 50;
+const BATCH_SIZE = 25;
 const MAX_ATTEMPTS = 5;
+/** Per-request timeout for every downstream call (email/push/slack/webhook). */
+const FETCH_TIMEOUT_MS = 10_000;
+/** Wall-clock budget: stop pulling new rows before the edge runtime kills us (502). */
+const MAX_RUNTIME_MS = 40_000;
+
+/** fetch with a hard timeout so one hanging destination cannot stall the run. */
+async function fetchWithTimeout(input: string, init: RequestInit) {
+  try {
+    return await fetch(input, { ...init, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+  } catch (e) {
+    const name = (e as Error)?.name;
+    if (name === "TimeoutError" || name === "AbortError") {
+      throw new Error(`Request timed out after ${FETCH_TIMEOUT_MS}ms`);
+    }
+    throw e;
+  }
+}
 
 interface OutboxRow {
   id: string;
@@ -58,7 +75,8 @@ serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
 
-  const results = { processed: 0, sent: 0, failed: 0, skipped: 0 };
+  const startedAt = Date.now();
+  const results = { processed: 0, sent: 0, failed: 0, skipped: 0, deferred: 0 };
 
   try {
     const { data: rows, error } = await supabase
@@ -72,6 +90,11 @@ serve(async (req) => {
     if (error) throw error;
 
     for (const row of (rows ?? []) as OutboxRow[]) {
+      if (Date.now() - startedAt > MAX_RUNTIME_MS) {
+        // Leave the rest pending; the next scheduled run picks them up.
+        results.deferred++;
+        continue;
+      }
       results.processed++;
       let status = "sent";
       let lastError: string | null = null;
@@ -89,7 +112,7 @@ serve(async (req) => {
             status = "skipped";
             lastError = "No email address on profile";
           } else {
-            const res = await fetch(`${supabaseUrl}/functions/v1/send-outbound-email`, {
+            const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-outbound-email`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -117,7 +140,7 @@ serve(async (req) => {
             }
           }
         } else if (row.channel === "push") {
-          const res = await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+          const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push-notification`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -140,7 +163,7 @@ serve(async (req) => {
             lastError = `[${res.status}] ${await res.text()}`;
           }
         } else if (row.channel === "slack") {
-          const res = await fetch(row.destination!, {
+          const res = await fetchWithTimeout(row.destination!, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -191,7 +214,7 @@ serve(async (req) => {
             )}`;
           }
 
-          const res = await fetch(row.destination!, {
+          const res = await fetchWithTimeout(row.destination!, {
             method: "POST",
             headers,
             body: bodyText,
