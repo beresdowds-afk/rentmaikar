@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Send, RefreshCw, MessageSquare, Phone } from "lucide-react";
 import { toast } from "sonner";
+import { useRegionSamples } from "@/hooks/useRegionSamples";
 
 type Channel = "sms" | "whatsapp";
 
@@ -34,6 +35,7 @@ const DELIVERED = new Set(["delivered", "read"]);
 const FAILED = new Set(["undelivered", "failed"]);
 
 export const TwilioTestSendPanel = () => {
+  const samples = useRegionSamples();
   const [channel, setChannel] = useState<Channel>("sms");
   const [to, setTo] = useState("");
   const [message, setMessage] = useState("");
@@ -93,7 +95,7 @@ export const TwilioTestSendPanel = () => {
     setError(null);
     setStatus(null);
     if (!/^\+[1-9]\d{6,14}$/.test(to.trim())) {
-      setError("Enter destination in E.164 format, e.g. +15551234567");
+      setError(`Enter destination in E.164 format, e.g. ${samples.phoneE164}`);
       return;
     }
     setSending(true);
@@ -213,7 +215,7 @@ export const TwilioTestSendPanel = () => {
         <div className="space-y-2">
           <Label>Destination (E.164)</Label>
           <Input
-            placeholder="+15551234567"
+            placeholder={samples.phoneE164}
             value={to}
             onChange={(e) => setTo(e.target.value)}
           />

@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { recordSmsConsentPair } from "@/lib/sms-consent";
+import { useRegionSamples } from "@/hooks/useRegionSamples";
 
 /**
  * Public, optional SMS opt-in web form.
@@ -25,6 +26,7 @@ import { recordSmsConsentPair } from "@/lib/sms-consent";
  */
 const SmsOptIn = () => {
   const { user } = useAuth();
+  const samples = useRegionSamples();
   const [phone, setPhone] = useState("");
   const [service, setService] = useState(false);
   const [marketing, setMarketing] = useState(false);
@@ -129,7 +131,7 @@ const SmsOptIn = () => {
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel"
-                placeholder="+1 555 000 0000"
+                placeholder={samples.phoneDisplay}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
