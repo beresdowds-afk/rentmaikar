@@ -24,8 +24,8 @@ interface PickupDetails {
   } | null;
 }
 
-type RefereeForm = { name: string; phone: string; address: string; email: string };
-const emptyReferee = (): RefereeForm => ({ name: '', phone: '', address: '', email: '' });
+type RefereeForm = { name: string; phone: string; email: string };
+const emptyReferee = (): RefereeForm => ({ name: '', phone: '', email: '' });
 
 /**
  * Pickup-location gate for drivers.
@@ -73,21 +73,26 @@ export function RefereePickupGate() {
     referees.forEach((r, idx) => {
       if (r.name.trim().length < 2) errs[`${idx}-name`] = 'Full name is required';
       const parsed = r.phone.trim() ? parsePhoneNumberFromString(r.phone.trim()) : undefined;
-      if (!parsed?.isValid()) errs[`${idx}-phone`] = 'Enter a valid number with country code';
+      if (r.phone.trim() && !parsed?.isValid())
+        errs[`${idx}-phone`] = 'Enter a valid number with country code';
       if (r.email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(r.email.trim()))
         errs[`${idx}-email`] = 'Enter a valid email';
+      if (!parsed?.isValid() && !r.email.trim())
+        errs[`${idx}-phone`] = 'Provide a phone number or an email address';
     });
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
     setSaving(true);
     try {
-      const payload = referees.map((r) => ({
-        name: r.name.trim(),
-        phone: parsePhoneNumberFromString(r.phone.trim())!.format('E.164'),
-        address: r.address.trim() || null,
-        email: r.email.trim() || null,
-      }));
+      const payload = referees.map((r) => {
+        const parsed = parsePhoneNumberFromString(r.phone.trim());
+        return {
+          name: r.name.trim(),
+          phone: parsed?.isValid() ? parsed.format('E.164') : null,
+          email: r.email.trim() || null,
+        };
+      });
       const { data: applicationId, error } = await supabase.rpc('submit_driver_referees' as never, {
         _referees: payload,
       } as never);
