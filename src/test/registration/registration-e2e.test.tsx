@@ -303,6 +303,7 @@ describe("owner registration (e2e)", () => {
       if ((box as HTMLElement).getAttribute("aria-checked") === "true") continue;
       await user.click(box);
     }
+    await user.click(screen.getAllByRole("radio")[0]); // SMS as the second messaging channel
 
     await user.click(screen.getByRole("button", { name: /submit (registration|vehicle for review)/i }));
 
