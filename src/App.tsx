@@ -496,6 +496,14 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/admin/email-delivery"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminEmailDeliveryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/sms-consent-audit"
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
