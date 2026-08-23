@@ -1,5 +1,7 @@
 // Traccar API client — reads TRACCAR_BASE_URL and either TRACCAR_API_TOKEN /
 // TRACCAR_TOKEN (session bearer / API token) OR TRACCAR_EMAIL + TRACCAR_PASSWORD.
+// When both are configured, the token is tried first and a 401 automatically
+// falls back to the email/password combination (Basic → session cookie).
 // Returns { ok: false, reason: "not_configured" } until secrets are set,
 // so the rest of the app keeps working.
 //
