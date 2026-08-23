@@ -26,12 +26,13 @@ const MESSAGING_HOURS: Record<Country, string> = {
 const REGIONS: Country[] = ["USA", "Nigeria"];
 
 const Contact = () => {
-  const { region } = useRegion();
+  const { country } = useRegion();
   const { infoFor } = usePublishedCompanyInfo();
 
+  const current: Country = country === "USA" || country === "Nigeria" ? country : "USA";
   const orderedRegions: Country[] = [
-    region,
-    ...REGIONS.filter((r) => r !== region),
+    current,
+    ...REGIONS.filter((r) => r !== current),
   ];
 
   return (
