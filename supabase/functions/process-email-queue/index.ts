@@ -439,7 +439,10 @@ Deno.serve(async (req) => {
 
         // 403s are permanent configuration or authorization failures for this
         // message, so move straight to DLQ and stop processing the rest of the batch.
-        if (isForbidden(error)) {
+        // In Resend-fallback mode a 403 usually means the from-domain is not
+        // verified in the Resend account — that needs human action, so keep the
+        // message in the normal retry path instead of nuking the batch to DLQ.
+        if (isForbidden(error) && !useResendFallback) {
           await moveToDlq(supabase, queue, msg, errorMsg.slice(0, 1000))
           return new Response(
             JSON.stringify({ processed: totalProcessed, stopped: 'forbidden' }),
