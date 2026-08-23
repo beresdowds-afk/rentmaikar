@@ -1183,6 +1183,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       case "HELP":
+      case "INFO":
       case "SUPPORT": {
         const firstName = profile.full_name?.split(" ")[0];
         responseMessage = buildChatbotResponse("greeting", { firstName, phone: from, region }) +
