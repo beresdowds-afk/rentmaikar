@@ -902,7 +902,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // ─── Send response ───
-    await sendSMS(from, responseMessage, { supabase, allowOptedOut: command === "HELP" });
+    await sendSMS(from, responseMessage, { supabase, allowOptedOut: command === "HELP" || command === "INFO" });
 
     // ─── Log to unified_message_log ───
     try {
