@@ -99,7 +99,7 @@ const Contact = () => {
                   <CardTitle className="flex items-center gap-2">
                     <Globe className="w-5 h-5 text-primary" />
                     {r === "USA" ? "United States" : "Nigeria"}
-                    {r === region && (
+                    {r === current && (
                       <span className="text-xs font-normal text-muted-foreground">(your region)</span>
                     )}
                   </CardTitle>
