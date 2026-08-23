@@ -217,9 +217,10 @@ async function call<T = unknown>(path: string, opts: CallOptions = {}): Promise<
     // once, remembering the rejection so later calls skip the dead token.
     if (res.status === 401 && !anonymous && useToken && c.email && c.password && !retriedWithBasic) {
       retriedWithBasic = true;
+      sessionCookie = null;
+      sessionCookieBase = null;
       markTokenRejected();
       useToken = false;
-      resetTraccarSession();
       attempt--; // the auth fallback shouldn't burn a retry budget
       continue;
     }
@@ -233,10 +234,12 @@ async function call<T = unknown>(path: string, opts: CallOptions = {}): Promise<
         continue;
       }
     }
-    // A stale cookie also surfaces as 401 — fall back to header auth.
+    // A stale cookie also surfaces as 401 — fall back to header auth (the
+    // token-rejection memory is kept so we don't re-try a dead token).
     if (res.status === 401 && sessionCookie && !retriedWithSession) {
       retriedWithSession = true;
-      resetTraccarSession();
+      sessionCookie = null;
+      sessionCookieBase = null;
       continue;
     }
 
