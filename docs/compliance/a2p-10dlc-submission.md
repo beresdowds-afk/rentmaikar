@@ -90,13 +90,13 @@ The identical component (same wording, same defaults) renders on `/auth`,
 
 | Keyword | Meaning | Reply |
 |---|---|---|
-| START | Re-subscribe after opting out | `Rentmaikar: You are re-subscribed to Rentmaikar text messages. Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.` |
-| STOP | Opt out of all Rentmaikar text messages | `Rentmaikar: You have been unsubscribed and will receive no further messages. Reply START to re-subscribe.` |
-| HELP | Get support contact details | `Rentmaikar: For help email support@rentmaikar.com or visit rentmaikar.com/contact. Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out.` |
+| START | Re-subscribe after opting out | `Rentmaikar: You're re-subscribed to SMS notifications. Reply HELP for commands or STOP to opt out again.` |
+| STOP, STOPALL, OPTOUT, CANCEL, END, QUIT, UNSUBSCRIBE, REVOKE | Opt out of all Rentmaikar text messages | `You have successfully been unsubscribed. You will not receive any more messages from this number. Reply START to resubscribe.` |
+| HELP, INFO | Get help and opt-out information | `Reply STOP to unsubscribe. Msg&Data Rates May Apply.` |
 
-(Leave the opt-in keyword / opt-in message fields blank — opt-in is web-based. STOP/HELP/START are handled by Twilio Advanced Opt-Out.)
+(Leave the opt-in keyword / opt-in message fields blank — opt-in is web-based. STOP/HELP/START keyword replies are served by the platform and match the campaign submission verbatim.)
 
-Every inbound keyword event (STOP / START / HELP, via SMS or WhatsApp) is also
+Every inbound keyword event (STOP / START / HELP / INFO, via SMS or WhatsApp) is also
 written to the consent audit log with the raw keyword and channel, so carrier-level
 opt-outs are part of the same audit trail as web-form decisions.
 
