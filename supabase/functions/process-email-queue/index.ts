@@ -473,7 +473,10 @@ Deno.serve(async (req) => {
   }
 
   return new Response(
-    JSON.stringify({ processed: totalProcessed }),
+    JSON.stringify({
+      processed: totalProcessed,
+      provider: useResendFallback ? 'resend-gateway' : 'lovable-managed',
+    }),
     { headers: { 'Content-Type': 'application/json' } }
   )
 })
