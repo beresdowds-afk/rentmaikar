@@ -2,7 +2,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { requireCronSecretAsync } from "../_shared/cron-auth.ts";
 import { sarekon } from "../_shared/sarekon-client.ts";
 import { adaptSarekonLocations } from "../_shared/location-adapters/sarekon.ts";
-import { persistLocations } from "../_shared/unified-location-service.ts";
+import { getGpsDisabledVehicles, persistLocations } from "../_shared/unified-location-service.ts";
 import { logIngestRun, serviceClient } from "../_shared/telemetry-ingest-core.ts";
 
 /**
@@ -62,15 +62,27 @@ Deno.serve(async (req) => {
 
     const { data: devices } = await admin
       .from("iot_devices")
-      .select("provider_device_id, serial_number")
+      .select("provider_device_id, serial_number, vehicle_id")
       .eq("provider", "sarekon")
       .eq("telemetry_enabled", true)
       .not("vehicle_id", "is", null)
       .limit(500);
 
+    // Per-vehicle GPS/telemetry switch: disabled vehicles are not polled at
+    // all, so the provider is never queried for them.
+    const gpsDisabled = await getGpsDisabledVehicles(
+      admin,
+      (devices ?? []).map((d: Record<string, unknown>) => d.vehicle_id as string | null)
+        .filter((v): v is string => !!v),
+    );
+    const pollable = (devices ?? []).filter(
+      (d: Record<string, unknown>) => !gpsDisabled.has(d.vehicle_id as string),
+    );
+    const gpsSkipped = (devices ?? []).length - pollable.length;
+
     const deviceIds = [
       ...new Set(
-        (devices ?? [])
+        pollable
           .map((d: Record<string, unknown>) => (d.provider_device_id ?? d.serial_number) as string | null)
           .filter((v): v is string => !!v),
       ),
