@@ -12,6 +12,7 @@ import { Loader2, Check, AlertCircle, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useResendCooldown } from '@/hooks/useResendCooldown';
 import { normalizeToE164, PhoneValidationError } from '@/lib/phone-normalize';
+import { useRegionSamples } from '@/hooks/useRegionSamples';
 
 export type PhoneOtpMode = 'signin' | 'link';
 type Role = 'driver' | 'owner';
@@ -72,6 +73,7 @@ interface Props {
  * new user or profile — it only updates the signed-in account).
  */
 export function PhoneOtpPanel({ mode = 'signin', defaultRole = 'driver', initialPhone = '', onDone }: Props) {
+  const samples = useRegionSamples();
   const [step, setStep] = useState<Step>('phone');
   const [phoneRaw, setPhoneRaw] = useState(initialPhone);
   const [name, setName] = useState('');
@@ -87,14 +89,14 @@ export function PhoneOtpPanel({ mode = 'signin', defaultRole = 'driver', initial
   // Parse once and reuse: everything downstream works with strict E.164.
   const parsed = useMemo(() => {
     try {
-      return { e164: normalizeToE164(phoneRaw).e164, error: null as string | null };
+      return { e164: normalizeToE164(phoneRaw, null, samples.phoneE164).e164, error: null as string | null };
     } catch (e) {
       return {
         e164: null,
         error: e instanceof PhoneValidationError && e.code !== 'empty' ? e.message : null,
       };
     }
-  }, [phoneRaw]);
+  }, [phoneRaw, samples.phoneE164]);
 
   const { remaining, canSend, trigger } = useResendCooldown('sms', parsed.e164 ?? phoneRaw);
 
@@ -133,7 +135,7 @@ export function PhoneOtpPanel({ mode = 'signin', defaultRole = 'driver', initial
     setError(null);
     let e164: string;
     try {
-      e164 = normalizeToE164(phoneRaw).e164;
+      e164 = normalizeToE164(phoneRaw, null, samples.phoneE164).e164;
     } catch (e) {
       setError(e instanceof PhoneValidationError ? e.message : 'Enter a valid phone number.');
       return;
