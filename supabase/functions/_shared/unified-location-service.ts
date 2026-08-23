@@ -165,6 +165,19 @@ export async function persistLocations(
     }
   }
 
+  // ── 2b. drop fixes for vehicles whose GPS/telemetry switch is off ────────
+  const gpsDisabled = await getGpsDisabledVehicles(
+    admin,
+    resolved.map((l) => l.vehicleId).filter((v): v is string => !!v),
+  );
+  if (gpsDisabled.size) {
+    const enabled = resolved.filter((l) => !l.vehicleId || !gpsDisabled.has(l.vehicleId));
+    result.gps_disabled = resolved.length - enabled.length;
+    resolved.length = 0;
+    resolved.push(...enabled);
+    for (const id of gpsDisabled) latestByVehicle.delete(id);
+  }
+
   const vehicleIds = [...latestByVehicle.keys()];
   const existingState = new Map<string, Record<string, unknown>>();
   if (vehicleIds.length) {
