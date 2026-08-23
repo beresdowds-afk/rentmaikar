@@ -3,6 +3,7 @@ import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js'
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { PhoneNumberInput, type PhoneNumberInputProps } from '@/components/ui/phone-number-input';
+import { useRegionSamples } from '@/hooks/useRegionSamples';
 import { cn } from '@/lib/utils';
 
 export interface PhoneNumberFieldProps
@@ -44,6 +45,7 @@ export const PhoneNumberField = React.forwardRef<HTMLInputElement, PhoneNumberFi
     },
     ref,
   ) => {
+    const samples = useRegionSamples();
     const parsed = React.useMemo(() => {
       const v = (value ?? '').trim();
       if (!v) return null;
@@ -75,7 +77,7 @@ export const PhoneNumberField = React.forwardRef<HTMLInputElement, PhoneNumberFi
     const errorText =
       error ??
       (!isValid && value && value.trim().length > 3
-        ? 'That number isn’t a valid international format. Include the country code (e.g. +15551234567).'
+        ? `That number isn’t a valid international format. Include the country code (e.g. ${samples.phoneE164}).`
         : null);
 
     return (

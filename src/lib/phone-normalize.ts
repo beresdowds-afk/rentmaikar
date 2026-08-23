@@ -27,10 +27,14 @@ export class PhoneValidationError extends Error {
  *                     number's country must match — this prevents users
  *                     saving e.g. a Nigerian number while their selected
  *                     region is USA.
+ * @param examplePhone Optional region-aware sample number shown in the
+ *                     validation message (e.g. from `regionSampleData`).
+ *                     Never hardcode a "+1" example at call sites.
  */
 export function normalizeToE164(
   raw: string | null | undefined,
   expectedCountry?: CountryCode | null,
+  examplePhone?: string,
 ): NormalizedPhone {
   const trimmed = (raw ?? '').trim();
   if (!trimmed) {
@@ -41,7 +45,9 @@ export function normalizeToE164(
   if (!parsed || !parsed.isValid()) {
     throw new PhoneValidationError(
       'invalid',
-      'Enter a valid international phone number (e.g. +14155551234).',
+      examplePhone
+        ? `Enter a valid international phone number (e.g. ${examplePhone}).`
+        : 'Enter a valid international phone number including the country code.',
     );
   }
   if (expectedCountry && parsed.country && parsed.country !== expectedCountry) {
