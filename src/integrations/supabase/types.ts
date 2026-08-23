@@ -8621,40 +8621,52 @@ export type Database = {
           analytics_emitted: number
           broker_reachable: boolean
           created_at: string
+          deduped: number | null
           degraded_reason: string | null
           devices_seen: number
           duration_ms: number | null
           error: string | null
           events_processed: number
+          gps_disabled: number | null
           id: string
+          passes: number | null
           provider: string | null
           source: string
+          unmapped: number | null
         }
         Insert: {
           analytics_emitted?: number
           broker_reachable?: boolean
           created_at?: string
+          deduped?: number | null
           degraded_reason?: string | null
           devices_seen?: number
           duration_ms?: number | null
           error?: string | null
           events_processed?: number
+          gps_disabled?: number | null
           id?: string
+          passes?: number | null
           provider?: string | null
           source: string
+          unmapped?: number | null
         }
         Update: {
           analytics_emitted?: number
           broker_reachable?: boolean
           created_at?: string
+          deduped?: number | null
           degraded_reason?: string | null
           devices_seen?: number
           duration_ms?: number | null
           error?: string | null
           events_processed?: number
+          gps_disabled?: number | null
           id?: string
+          passes?: number | null
           provider?: string | null
           source?: string
+          unmapped?: number | null
         }
         Relationships: []
       }
