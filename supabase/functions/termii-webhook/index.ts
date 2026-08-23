@@ -151,7 +151,7 @@ const processLocationMessage = async (
 
 // Self-service command keywords
 const COMMAND_KEYWORDS = [
-  "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "SUPPORT",
+  "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "INFO", "SUPPORT",
   "OK", "DONE", "1", "BOOKING", "2", "3", "4", "HUMAN", "DOCS", "RULES", "IOT",
   // Negotiation keywords
   "ACCEPT", "REJECT", "COUNTER", "NEGOTIATE", "PRICE", "OFFER",
@@ -272,7 +272,7 @@ serve(async (req) => {
 
       // Route SMS keywords to sms-commands
       const SMS_KEYWORDS = [
-        "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "STOP", "START",
+        "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "INFO", "STOP", "START",
         "DOC", "DOCS", "LOCATION", "DONE", "1", "2", "3", "4", "HUMAN",
         // Negotiation keywords
         "ACCEPT", "REJECT", "COUNTER", "NEGOTIATE", "PRICE", "OFFER",
