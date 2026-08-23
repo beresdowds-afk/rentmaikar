@@ -138,6 +138,7 @@ Deno.serve(async (req) => {
       passes: passesRun,
       deduped,
       unmapped,
+      gps_disabled: gpsSkipped + gpsDisabledPersisted,
     });
   } catch (err) {
     console.error("[sarekon-location-worker]", (err as Error).message);
