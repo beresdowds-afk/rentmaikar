@@ -16,6 +16,7 @@ import {
 } from "../_shared/sarekon-client.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { invalidateProviderConfig } from "../_shared/provider-config.ts";
+import { logIngestRun } from "../_shared/telemetry-ingest-core.ts";
 
 
 const PROVIDER = "sarekon";
@@ -42,6 +43,8 @@ const Body = z.object({
     "device_links",
     "link_provider_device",
     "get_sync_state",
+    "force_sync_device",
+    "set_vehicle_gps",
 
     // dealer / fleet-admin operations
     "install_device",
@@ -75,6 +78,7 @@ const Body = z.object({
   serial_number: z.string().min(1).max(128).optional(),
   iccid: z.string().min(5).max(32).nullable().optional(),
   telemetry_enabled: z.boolean().optional(),
+  gps_tracking_enabled: z.boolean().optional(),
 
 
   // fleet-admin payloads
@@ -316,17 +320,22 @@ Deno.serve(async (req) => {
 
       const vehicleIds = [...new Set((rows ?? []).map((r) => r.vehicle_id).filter(Boolean))] as string[];
       const { data: vehicles } = vehicleIds.length
-        ? await supa.from("vehicles").select("id, make, model, year, license_plate").in("id", vehicleIds)
+        ? await supa.from("vehicles").select("id, make, model, year, license_plate, gps_tracking_enabled").in("id", vehicleIds)
         : { data: [] as Record<string, unknown>[] };
       const vmap = new Map((vehicles ?? []).map((v: Record<string, unknown>) => [v.id as string, v]));
 
       return json({
         ok: true,
-        devices: (rows ?? []).map((r) => ({
-          ...r,
-          vehicle: r.vehicle_id ? vmap.get(r.vehicle_id) ?? null : null,
-          polling_ready: Boolean(r.provider_device_id && r.vehicle_id && r.telemetry_enabled),
-        })),
+        devices: (rows ?? []).map((r) => {
+          const vehicle = r.vehicle_id ? vmap.get(r.vehicle_id) ?? null : null;
+          const vehicleGpsOn = vehicle ? (vehicle as Record<string, unknown>).gps_tracking_enabled !== false : true;
+          return {
+            ...r,
+            vehicle,
+            vehicle_gps_enabled: vehicleGpsOn,
+            polling_ready: Boolean(r.provider_device_id && r.vehicle_id && r.telemetry_enabled && vehicleGpsOn),
+          };
+        }),
       });
     }
 
