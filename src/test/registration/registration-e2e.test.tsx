@@ -236,6 +236,7 @@ describe("driver registration (e2e)", () => {
     renderPage(<DriverRegistration />);
 
     await fillDriverForm(user, { address: "24 Ademola Street, Ikeja" });
+    await user.click(screen.getAllByRole("radio")[0]); // SMS as the second messaging channel
     await user.click(screen.getByRole("button", { name: /submit (registration|vehicle for review)/i }));
 
     await waitFor(() => expect(insert).toHaveBeenCalledTimes(1));
