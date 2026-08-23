@@ -183,11 +183,12 @@ const SMS_TEMPLATES = {
   balanceClear: () =>
     `Rentmaikar: No outstanding balance. You're current! Reply STATUS for rental info.`,
 
-  help: (supportPhone: string) =>
+  // HELP/INFO reply — must match the A2P 10DLC campaign submission verbatim.
+  help: () =>
     ov(
       "kw_help",
-      { support_phone: supportPhone },
-      `Rentmaikar: Commands - PAY: Pay now, STATUS: Rental info, BALANCE: Check due, DOC: Upload docs, STOP: Opt out. Call ${supportPhone}`,
+      {},
+      `Reply STOP to unsubscribe. Msg&Data Rates May Apply.`,
     ),
 
   docStatus: (pending: number, missing: number) =>
@@ -204,18 +205,19 @@ const SMS_TEMPLATES = {
   docsComplete: () =>
     `Rentmaikar: All documents verified! No action needed.`,
 
+  // STOP reply — must match the A2P 10DLC campaign submission verbatim.
   optOutConfirm: () =>
     ov(
       "kw_stop",
       {},
-      `Rentmaikar: You've been opted out of SMS notifications. Reply START to re-subscribe. This is your last message.`,
+      `You have successfully been unsubscribed. You will not receive any more messages from this number. Reply START to resubscribe.`,
     ),
 
   optIn: () =>
     ov(
       "kw_start",
       {},
-      `Rentmaikar: Welcome back! You've been re-subscribed to SMS notifications. Reply HELP for commands.`,
+      `Rentmaikar: You're re-subscribed to SMS notifications. Reply HELP for commands or STOP to opt out again.`,
     ),
 
   locationReceived: () =>
