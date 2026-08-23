@@ -211,6 +211,8 @@ const fillDriverForm = async (user: ReturnType<typeof userEvent.setup>) => {
     if ((box as HTMLElement).getAttribute("aria-checked") === "true") continue;
     await user.click(box);
   }
+  // Required dual-channel consent: pick SMS as the second messaging channel.
+  await user.click(screen.getAllByRole("radio")[0]);
 };
 
 /** Exact messages raised by the database triggers/constraints. */
