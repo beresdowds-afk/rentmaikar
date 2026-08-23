@@ -19,7 +19,7 @@ interface Props {
 }
 
 const HINTS_401 = [
-  "Verify TRACCAR_TOKEN is a valid session token (or that TRACCAR_EMAIL + TRACCAR_PASSWORD are correct).",
+  "Verify TRACCAR_API_TOKEN is a valid session token (or that TRACCAR_EMAIL + TRACCAR_PASSWORD are correct).",
   "Regenerate a session token from Traccar → Settings → Account → Tokens.",
 ];
 const HINTS_404 = [
@@ -32,7 +32,7 @@ const HINTS_NETWORK = [
 ];
 const HINTS_MISSING = [
   "Set TRACCAR_BASE_URL to your server URL (e.g. https://traccar.example.com).",
-  "Set TRACCAR_TOKEN OR both TRACCAR_EMAIL and TRACCAR_PASSWORD.",
+  "Set TRACCAR_API_TOKEN OR both TRACCAR_EMAIL and TRACCAR_PASSWORD.",
 ];
 
 export default function TraccarSettingsPanel({ onStateChange, autoRun = true }: Props) {
@@ -130,7 +130,7 @@ export default function TraccarSettingsPanel({ onStateChange, autoRun = true }: 
           Traccar Connection Validation
         </CardTitle>
         <CardDescription>
-          Validates <code>TRACCAR_BASE_URL</code> and <code>TRACCAR_TOKEN</code> (or
+          Validates <code>TRACCAR_BASE_URL</code> and <code>TRACCAR_API_TOKEN</code> (or
           <code> TRACCAR_EMAIL</code> + <code>TRACCAR_PASSWORD</code>) against{" "}
           <code>/api/server</code>. The Live Map only enables after a successful check.
         </CardDescription>
