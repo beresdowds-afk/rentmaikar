@@ -15,6 +15,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 if (!(globalThis as unknown as { ResizeObserver?: unknown }).ResizeObserver) {
@@ -76,9 +77,6 @@ vi.mock("@/contexts/RegionContext", () => ({
   }),
 }));
 
-vi.mock("@/hooks/usePersonaEnabled", () => ({
-  usePersonaEnabled: () => ({ enabled: false, isLoading: false }),
-}));
 
 vi.mock("@/components/layout/Header", () => ({ default: () => <header /> }));
 vi.mock("@/components/layout/Footer", () => ({ default: () => <footer /> }));
@@ -167,11 +165,13 @@ import { classifyRegistrationError } from "@/lib/registration-errors";
 const renderPage = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/register/driver"]}>
-        <DriverRegistration />
-      </MemoryRouter>
-    </QueryClientProvider>,
+    <HelmetProvider>
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/register/driver"]}>
+          <DriverRegistration />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </HelmetProvider>,
   );
 };
 
@@ -206,16 +206,6 @@ const fillDriverForm = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByLabelText("Uber"));
   await checkByLabelText(user, /valid driver'?s? license/i);
 
-  for (const n of [1, 2, 3]) {
-    await type(user, `referee${n}Name`, `Referee ${n}`);
-    const phone = document.getElementById(`referee${n}Phone`) as HTMLInputElement | null;
-    if (phone) {
-      await user.clear(phone);
-      await user.type(phone, `+120255501${20 + n}`);
-    } else {
-      await user.type(screen.getByTestId(`referee${n}Phone`), `+120255501${20 + n}`);
-    }
-  }
 
   for (const box of screen.getAllByRole("checkbox")) {
     if ((box as HTMLElement).getAttribute("aria-checked") === "true") continue;

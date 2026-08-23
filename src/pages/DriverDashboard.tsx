@@ -63,6 +63,7 @@ import { TrainingComplianceBanner } from '@/components/dashboard/TrainingComplia
 import { RealtimeStatusCard } from '@/components/dashboard/RealtimeStatusCard';
 
 import { DriverOverviewTab } from '@/components/dashboard/DriverOverviewTab';
+import { RefereePickupGate } from '@/components/driver/RefereePickupGate';
 import { useNavigate } from 'react-router-dom';
 import {
   Car,
@@ -379,6 +380,7 @@ export default function DriverDashboard() {
 
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
+              <RefereePickupGate />
               <DriverOverviewTab onNavigateTab={setActiveTab} />
             </TabsContent>
 
