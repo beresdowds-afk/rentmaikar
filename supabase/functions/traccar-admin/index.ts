@@ -296,13 +296,16 @@ Deno.serve(async (req) => {
           { diagnosis, auth_mode: authMode(), base_url: traccar.baseUrl(), reachable: health.ok, account },
         );
       }
+      // Some deployments disable the unauthenticated /health endpoint; an
+      // authenticated /server success also proves reachability.
+      const reachable = health.ok || ping.ok;
       return json({
         ok: true,
         configured: true,
         base_url: traccar.baseUrl(),
         auth_mode: authMode(),
         latency_ms,
-        reachable: health.ok,
+        reachable,
         server_version: ping.ok ? (ping.body as { version?: string }).version ?? null : null,
         account,
         ping,
