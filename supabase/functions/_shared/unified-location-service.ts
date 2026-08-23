@@ -85,6 +85,25 @@ export async function resolveDeviceMap(
 }
 
 /**
+ * Vehicles whose admin-controlled GPS/telemetry switch is off. The unified
+ * pipeline (state, history, MQTT publish) drops their fixes entirely until an
+ * admin re-enables tracking on the vehicle.
+ */
+export async function getGpsDisabledVehicles(
+  admin: Admin,
+  vehicleIds: string[],
+): Promise<Set<string>> {
+  const ids = [...new Set(vehicleIds.filter(Boolean))];
+  if (!ids.length) return new Set();
+  const { data } = await admin
+    .from("vehicles")
+    .select("id")
+    .in("id", ids)
+    .eq("gps_tracking_enabled", false);
+  return new Set(((data ?? []) as { id: string }[]).map((r) => r.id));
+}
+
+/**
  * Persist normalized locations.
  *
  * Guarantees:
