@@ -788,9 +788,9 @@ const handler = async (req: Request): Promise<Response> => {
         break;
       }
 
-      case "HELP": {
-        const supportPhone = getRegionConfig(from).support;
-        responseMessage = SMS_TEMPLATES.help(supportPhone);
+      case "HELP":
+      case "INFO": {
+        responseMessage = SMS_TEMPLATES.help();
         await recordKeywordConsent(supabase as never, {
           event: "help",
           phone: from,
