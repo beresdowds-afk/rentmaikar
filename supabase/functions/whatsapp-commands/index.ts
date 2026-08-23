@@ -961,15 +961,24 @@ const handler = async (req: Request): Promise<Response> => {
       const stopping = isStopKeyword(rawBody);
       const { data: optProfile } = await supabase
         .from("profiles").select("user_id").eq("phone", from).maybeSingle();
+      const optUserId = (optProfile as { user_id?: string } | null)?.user_id ?? null;
       await setOptOut(from, stopping, {
         channel: "all",
-        userId: (optProfile as { user_id?: string } | null)?.user_id ?? null,
+        userId: optUserId,
         source: "whatsapp_keyword",
         keyword: body,
         supabase: supabase as never,
       });
+      await recordKeywordConsent(supabase as never, {
+        event: stopping ? "stop" : "start",
+        phone: from,
+        userId: optUserId,
+        keyword: body,
+        channel: "whatsapp",
+      });
+      // Opt-out wording must match the A2P 10DLC campaign submission verbatim.
       const confirm = stopping
-        ? "You've been unsubscribed from Rentmaikar messages. You will not receive further SMS or WhatsApp messages. Reply START to resume."
+        ? "You have successfully been unsubscribed. You will not receive any more messages from this number. Reply START to resubscribe."
         : "You're subscribed again. Rentmaikar will resume sending you SMS and WhatsApp updates. Reply STOP to unsubscribe.";
       await sendWhatsAppMessage(from, confirm, { supabase, allowOptedOut: true });
       return new Response("OK", { status: 200, headers: corsHeaders });
