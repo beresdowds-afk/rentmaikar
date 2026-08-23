@@ -4,10 +4,14 @@ import Footer from "@/components/layout/Footer";
 import { FileText } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EMAIL_CONFIG, COMPANY_INFO } from "@/lib/email-config";
+import { EMAIL_CONFIG } from "@/lib/email-config";
+import { usePublishedCompanyInfo } from "@/hooks/usePublishedCompanyInfo";
 
 const Terms = () => {
   const { country } = useRegion();
+  const { infoFor } = usePublishedCompanyInfo();
+  const usaInfo = infoFor("USA");
+  const nigeriaInfo = infoFor("Nigeria");
 
   const USATerms = () => (
     <div className="prose prose-lg max-w-none space-y-8">
@@ -224,7 +228,7 @@ const Terms = () => {
         <p className="text-muted-foreground">
           For questions about these Terms of Use:<br />
           Email: {EMAIL_CONFIG.legal}<br />
-          Phone: {COMPANY_INFO.USA.phone}
+          Phone: {usaInfo.phone}
         </p>
       </section>
     </div>
@@ -448,8 +452,8 @@ const Terms = () => {
         <p className="text-muted-foreground">
           For questions about these Terms of Use:<br />
           Email: {EMAIL_CONFIG.legal}<br />
-          Phone: +234 803 555 0123<br />
-          Address: Rentmaikar Nigeria Limited, Lagos, Nigeria
+          Phone: {nigeriaInfo.phone}<br />
+          Address: {nigeriaInfo.companyName}{nigeriaInfo.fullAddress ? `, ${nigeriaInfo.fullAddress}` : ", Lagos, Nigeria"}
         </p>
       </section>
     </div>
