@@ -5,24 +5,24 @@
  * snapshot the exact wording that was shown to the user.
  */
 
+// Replies must match the A2P 10DLC campaign submission verbatim.
 export const SMS_KEYWORDS: { keyword: string; meaning: string; reply: string }[] = [
   {
     keyword: "START",
     meaning: "Re-subscribe after opting out",
     reply:
-      "Rentmaikar: You are re-subscribed to Rentmaikar text messages. Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.",
+      "Rentmaikar: You're re-subscribed to SMS notifications. Reply HELP for commands or STOP to opt out again.",
   },
   {
-    keyword: "STOP",
+    keyword: "STOP, STOPALL, OPTOUT, CANCEL, END, QUIT, UNSUBSCRIBE, REVOKE",
     meaning: "Opt out of all Rentmaikar text messages",
     reply:
-      "Rentmaikar: You have been unsubscribed and will receive no further messages. Reply START to re-subscribe.",
+      "You have successfully been unsubscribed. You will not receive any more messages from this number. Reply START to resubscribe.",
   },
   {
-    keyword: "HELP",
-    meaning: "Get support contact details",
-    reply:
-      "Rentmaikar: For help email support@rentmaikar.com or visit rentmaikar.com/contact. Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out.",
+    keyword: "HELP, INFO",
+    meaning: "Get help and opt-out information",
+    reply: "Reply STOP to unsubscribe. Msg&Data Rates May Apply.",
   },
 ];
 

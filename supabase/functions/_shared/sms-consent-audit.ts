@@ -5,15 +5,16 @@
  */
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-export const SMS_DISCLOSURE_VERSION = "2026-08-14.v1";
+export const SMS_DISCLOSURE_VERSION = "2026-08-23.v1";
 
+// Quoted confirmations must match the A2P 10DLC campaign submission verbatim.
 export const KEYWORD_DISCLOSURES = {
   stop:
-    "STOP keyword received by SMS. All Rentmaikar service and promotional text messages to this number are stopped immediately. Confirmation sent: \"Rentmaikar: You have been unsubscribed and will receive no further messages. Reply START to re-subscribe.\"",
+    "STOP keyword received (accepted opt-out keywords: STOP, STOPALL, OPTOUT, CANCEL, END, QUIT, UNSUBSCRIBE, REVOKE). All Rentmaikar service and promotional text messages to this number are stopped immediately. Confirmation sent: \"You have successfully been unsubscribed. You will not receive any more messages from this number. Reply START to resubscribe.\"",
   start:
-    "START keyword received by SMS. The user re-subscribed to Rentmaikar text messages. Confirmation sent: \"Rentmaikar: You are re-subscribed to Rentmaikar text messages. Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.\"",
+    "START keyword received by SMS. The user re-subscribed to Rentmaikar text messages. Confirmation sent: \"Rentmaikar: You're re-subscribed to SMS notifications. Reply HELP for commands or STOP to opt out again.\"",
   help:
-    "HELP keyword received by SMS. Support contact and program details were returned: \"Rentmaikar: For help email support@rentmaikar.com or visit rentmaikar.com/contact. Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out.\"",
+    "HELP/INFO keyword received by SMS. Help and opt-out information was returned: \"Reply STOP to unsubscribe. Msg&Data Rates May Apply.\"",
 } as const;
 
 export type SmsKeywordEvent = keyof typeof KEYWORD_DISCLOSURES;

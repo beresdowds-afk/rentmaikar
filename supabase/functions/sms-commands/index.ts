@@ -183,11 +183,12 @@ const SMS_TEMPLATES = {
   balanceClear: () =>
     `Rentmaikar: No outstanding balance. You're current! Reply STATUS for rental info.`,
 
-  help: (supportPhone: string) =>
+  // HELP/INFO reply — must match the A2P 10DLC campaign submission verbatim.
+  help: () =>
     ov(
       "kw_help",
-      { support_phone: supportPhone },
-      `Rentmaikar: Commands - PAY: Pay now, STATUS: Rental info, BALANCE: Check due, DOC: Upload docs, STOP: Opt out. Call ${supportPhone}`,
+      {},
+      `Reply STOP to unsubscribe. Msg&Data Rates May Apply.`,
     ),
 
   docStatus: (pending: number, missing: number) =>
@@ -204,18 +205,19 @@ const SMS_TEMPLATES = {
   docsComplete: () =>
     `Rentmaikar: All documents verified! No action needed.`,
 
+  // STOP reply — must match the A2P 10DLC campaign submission verbatim.
   optOutConfirm: () =>
     ov(
       "kw_stop",
       {},
-      `Rentmaikar: You've been opted out of SMS notifications. Reply START to re-subscribe. This is your last message.`,
+      `You have successfully been unsubscribed. You will not receive any more messages from this number. Reply START to resubscribe.`,
     ),
 
   optIn: () =>
     ov(
       "kw_start",
       {},
-      `Rentmaikar: Welcome back! You've been re-subscribed to SMS notifications. Reply HELP for commands.`,
+      `Rentmaikar: You're re-subscribed to SMS notifications. Reply HELP for commands or STOP to opt out again.`,
     ),
 
   locationReceived: () =>
@@ -661,14 +663,26 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (!profile) {
+      // HELP/INFO must be answered even for unregistered numbers (carrier requirement).
+      if (command === "HELP" || command === "INFO") {
+        await sendSMS(from, SMS_TEMPLATES.help(), { supabase, allowOptedOut: true });
+        await recordKeywordConsent(supabase as never, {
+          event: "help",
+          phone: from,
+          userId: null,
+          keyword: command,
+          channel: "sms",
+        });
+        return new Response("OK", { status: 200, headers: corsHeaders });
+      }
       await sendSMS(from, SMS_TEMPLATES.unregistered(), { supabase });
       return new Response("OK", { status: 200, headers: corsHeaders });
     }
 
     const firstName = profile.full_name?.split(" ")[0] || "there";
 
-    // ─── Check opt-out status (except for HELP) ───
-    if (profile.notification_sms === false && command !== "HELP") {
+    // ─── Check opt-out status (except for HELP/INFO) ───
+    if (profile.notification_sms === false && command !== "HELP" && command !== "INFO") {
       console.log(`[SMS] User ${profile.user_id} opted out, skipping response`);
       return new Response("OK", { status: 200, headers: corsHeaders });
     }
@@ -774,9 +788,9 @@ const handler = async (req: Request): Promise<Response> => {
         break;
       }
 
-      case "HELP": {
-        const supportPhone = getRegionConfig(from).support;
-        responseMessage = SMS_TEMPLATES.help(supportPhone);
+      case "HELP":
+      case "INFO": {
+        responseMessage = SMS_TEMPLATES.help();
         await recordKeywordConsent(supabase as never, {
           event: "help",
           phone: from,
@@ -888,7 +902,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // ─── Send response ───
-    await sendSMS(from, responseMessage, { supabase, allowOptedOut: command === "HELP" });
+    await sendSMS(from, responseMessage, { supabase, allowOptedOut: command === "HELP" || command === "INFO" });
 
     // ─── Log to unified_message_log ───
     try {

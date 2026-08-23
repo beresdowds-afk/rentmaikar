@@ -9,7 +9,12 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 
 export type OptOutChannel = "sms" | "whatsapp" | "all";
 
-/** Keywords that stop all messaging (Twilio/CTIA standard set + local variants). */
+/**
+ * Keywords that stop all messaging.
+ * The A2P 10DLC campaign submission declares: OPTOUT, CANCEL, END, QUIT,
+ * UNSUBSCRIBE, REVOKE, STOP, STOPALL. Extra variants below are a superset so
+ * users are never kept subscribed because of phrasing.
+ */
 export const STOP_KEYWORDS = [
   "STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "OPTOUT", "OPT-OUT",
   "REVOKE",
@@ -21,6 +26,9 @@ export const START_KEYWORDS = [
   "START", "UNSTOP", "YES", "SUBSCRIBE", "RESUME", "OPTIN", "OPT-IN", "BEGIN",
 ];
 
+/** Help keywords per the A2P 10DLC campaign submission: HELP, INFO. */
+export const HELP_KEYWORDS = ["HELP", "INFO"];
+
 const normalizeKeyword = (message: string) =>
   (message || "").trim().toUpperCase().replace(/[.!,]+$/g, "");
 
@@ -29,6 +37,9 @@ export const isStopKeyword = (message: string): boolean =>
 
 export const isStartKeyword = (message: string): boolean =>
   START_KEYWORDS.includes(normalizeKeyword(message));
+
+export const isHelpKeyword = (message: string): boolean =>
+  HELP_KEYWORDS.includes(normalizeKeyword(message));
 
 function client(supabase?: SupabaseClient): SupabaseClient {
   return (

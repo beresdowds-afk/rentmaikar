@@ -268,7 +268,7 @@ serve(async (req) => {
     // ─── Route SMS keywords to sms-commands ───
     if (channel === "sms" && parsed.type === "text") {
       const SMS_KEYWORDS = [
-        "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "STOP", "START",
+        "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "INFO", "STOP", "START",
         "DOC", "DOCS", "LOCATION", "DONE", "1", "2", "3", "4", "HUMAN",
         ...NEGOTIATION_KEYWORDS,
       ];
