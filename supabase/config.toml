@@ -56,7 +56,7 @@ project_id = "bwvocmhcledbwqlpcswp"
   [functions.process-daily-debits]
     verify_jwt = false
   [functions.process-email-queue]
-    verify_jwt = true
+    verify_jwt = false
   [functions.process-expiry-notifications]
     verify_jwt = false
   [functions.process-inspection-reminders]
