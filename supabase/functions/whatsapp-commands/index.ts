@@ -11,6 +11,7 @@ import {
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { verifyTwilioRequestRaw } from "../_shared/twilio-signature.ts";
 import { isOptedOut, setOptOut, isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
+import { recordKeywordConsent } from "../_shared/sms-consent-audit.ts";
 import {
   preloadTemplates,
   templateFromCache,
@@ -1032,7 +1033,7 @@ const handler = async (req: Request): Promise<Response> => {
     let intentResult: IntentResult | null = null;
 
     const exactCommands = [
-      "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "SUPPORT",
+      "PAY", "PAYMENT", "STATUS", "BALANCE", "HELP", "INFO", "SUPPORT",
       "OK", "DONE", "1", "BOOKING", "2", "3", "4", "HUMAN", "CARS", "DOCS",
     ];
 
