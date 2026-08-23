@@ -215,9 +215,12 @@ async function call<T = unknown>(path: string, opts: CallOptions = {}): Promise<
 
     const raw = await res.text().catch(() => "");
 
-    // 401 with the API token → fall back to the email/password combination
-    // once, remembering the rejection so later calls skip the dead token.
-    if (res.status === 401 && !anonymous && useToken && c.email && c.password && !retriedWithBasic) {
+    // Token rejected → fall back to the email/password combination once,
+    // remembering the rejection so later calls skip the dead token.
+    // 401 = token refused; 400 = Traccar's TokenManager fails to even decode
+    // a malformed token (NegativeArraySizeException) before auth runs.
+    // A genuine bad-request 400 simply fails again after the auth switch.
+    if ((res.status === 401 || res.status === 400) && !anonymous && useToken && c.email && c.password && !retriedWithBasic) {
       retriedWithBasic = true;
       sessionCookie = null;
       sessionCookieBase = null;
