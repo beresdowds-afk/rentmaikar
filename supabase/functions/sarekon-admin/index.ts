@@ -215,7 +215,7 @@ Deno.serve(async (req) => {
 
     // Ownership-changing operations (account transfers and deals) stay with
     // full admins; iot_support keeps install/assign/maintenance actions.
-    const ADMIN_ONLY = new Set(["transfer_trackers", "deal_create", "deal_unwind"]);
+    const ADMIN_ONLY = new Set(["transfer_trackers", "deal_create", "deal_unwind", "set_vehicle_gps"]);
     if (ADMIN_ONLY.has(action) && !isFullAdmin) {
       return json({ error: "This operation requires a full admin role." }, 403);
     }
