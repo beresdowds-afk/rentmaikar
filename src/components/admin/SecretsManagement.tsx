@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRegionSamples } from "@/hooks/useRegionSamples";
 import { Lock, RotateCw } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -337,6 +338,7 @@ const categoryConfig = {
 
 export function SecretsManagement() {
   const { user, userRole, twoFactorVerified } = useAuth();
+  const samples = useRegionSamples();
   const [unlocked, setUnlocked] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
   const [testingSecret, setTestingSecret] = useState<string | null>(null);
@@ -648,7 +650,7 @@ export function SecretsManagement() {
                             <Label htmlFor="test-phone">Phone Number</Label>
                             <Input
                               id="test-phone"
-                              placeholder="+12025550123"
+                              placeholder={samples.phoneE164}
                               value={testPhone}
                               onChange={(e) => setTestPhone(e.target.value)}
                             />
