@@ -124,6 +124,7 @@ export async function persistLocations(
     deduped: 0,
     unmapped: 0,
     published: 0,
+    gps_disabled: 0,
     vehicles: [],
     errors: [],
   };
