@@ -19,8 +19,8 @@ interface Props {
 }
 
 const HINTS_401 = [
-  "Verify TRACCAR_API_TOKEN is a valid session token (or that TRACCAR_EMAIL + TRACCAR_PASSWORD are correct).",
-  "Regenerate a session token from Traccar → Settings → Account → Tokens.",
+  "The API token and the email/password fallback were both rejected — verify TRACCAR_EMAIL + TRACCAR_PASSWORD are correct.",
+  "Regenerate a session token from Traccar → Settings → Account → Tokens (email/password is used automatically when the token fails).",
 ];
 const HINTS_404 = [
   "TRACCAR_BASE_URL must be the API root of your Traccar server (e.g. https://demo.traccar.org).",
