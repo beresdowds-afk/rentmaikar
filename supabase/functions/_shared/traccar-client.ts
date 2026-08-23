@@ -1,5 +1,5 @@
-// Traccar API client — reads TRACCAR_BASE_URL and either TRACCAR_TOKEN
-// (session bearer / API token) OR TRACCAR_EMAIL + TRACCAR_PASSWORD.
+// Traccar API client — reads TRACCAR_BASE_URL and either TRACCAR_API_TOKEN /
+// TRACCAR_TOKEN (session bearer / API token) OR TRACCAR_EMAIL + TRACCAR_PASSWORD.
 // Returns { ok: false, reason: "not_configured" } until secrets are set,
 // so the rest of the app keeps working.
 //
@@ -35,13 +35,18 @@ type ErrResult =
   };
 export type TraccarResult<T = unknown> = OkResult<T> | ErrResult;
 
+/** The stored secret is TRACCAR_API_TOKEN; TRACCAR_TOKEN kept as a legacy alias. */
+function envToken(): string {
+  return Deno.env.get("TRACCAR_API_TOKEN") || Deno.env.get("TRACCAR_TOKEN") || "";
+}
+
 const REQUEST_TIMEOUT_MS = 20_000;
 const MAX_ATTEMPTS = 3;
 const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 function creds() {
   const base = (providerOverride("traccar", "base_url") || Deno.env.get("TRACCAR_BASE_URL") || "").replace(/\/+$/, "");
-  const token = providerOverride("traccar", "token") || Deno.env.get("TRACCAR_TOKEN") || "";
+  const token = providerOverride("traccar", "token") || envToken();
   const email = providerOverride("traccar", "email") || Deno.env.get("TRACCAR_EMAIL") || "";
   const password = providerOverride("traccar", "password") || Deno.env.get("TRACCAR_PASSWORD") || "";
   if (!base) return null;
@@ -52,7 +57,7 @@ function creds() {
 /** Which credential pieces are absent — powers precise "not configured" errors. */
 export function missingCredentials(): string[] {
   const base = providerOverride("traccar", "base_url") || Deno.env.get("TRACCAR_BASE_URL") || "";
-  const token = providerOverride("traccar", "token") || Deno.env.get("TRACCAR_TOKEN") || "";
+  const token = providerOverride("traccar", "token") || envToken();
   const email = providerOverride("traccar", "email") || Deno.env.get("TRACCAR_EMAIL") || "";
   const password = providerOverride("traccar", "password") || Deno.env.get("TRACCAR_PASSWORD") || "";
   const missing: string[] = [];
