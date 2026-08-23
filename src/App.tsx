@@ -56,6 +56,7 @@ const ApiDocs = lazy(() => import("./pages/ApiDocs"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const SmsOptIn = lazy(() => import("./pages/SmsOptIn"));
+const Contact = lazy(() => import("./pages/Contact"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const HowItWorksPage = lazy(() => import("./pages/HowItWorksPage"));
 const RentingVsOwning = lazy(() => import("./pages/guides/RentingVsOwning"));
@@ -227,6 +228,7 @@ const App = () => (
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/sms-opt-in" element={<SmsOptIn />} />
+                  <Route path="/contact" element={<Contact />} />
                   <Route path="/faq" element={<FAQ />} />
                   <Route path="/how-it-works" element={<HowItWorksPage />} />
                   <Route path="/guides/renting-vs-owning-for-rideshare" element={<RentingVsOwning />} />
