@@ -42,7 +42,14 @@ export async function ingestRecords(
   result.skipped = records.length - events.length;
   if (!events.length) return result;
 
-  const ids = [...new Set(events.map((e) => e.vehicleId))];
+  // Vehicles whose admin GPS/telemetry switch is off are dropped entirely —
+  // no state, history, analytics, or downstream location persist.
+  const gpsDisabled = await getGpsDisabledVehicles(admin, events.map((e) => e.vehicleId));
+  const scoped = gpsDisabled.size ? events.filter((e) => !gpsDisabled.has(e.vehicleId)) : events;
+  result.skipped += events.length - scoped.length;
+  if (!scoped.length) return result;
+
+  const ids = [...new Set(scoped.map((e) => e.vehicleId))];
   const { data: existing } = await admin
     .from("vehicle_telemetry_state")
     .select("*")
@@ -56,7 +63,7 @@ export async function ingestRecords(
   const analytics: AnalyticsRow[] = [];
   const telemetryLogs: Record<string, unknown>[] = [];
 
-  for (const event of events) {
+  for (const event of scoped) {
     const prev = (stateMap.get(event.vehicleId) ?? null) as never;
     const next = reduceState(prev, event);
     stateMap.set(event.vehicleId, next as unknown as Record<string, unknown>);
@@ -128,7 +135,7 @@ export async function ingestRecords(
   // provider (MQTT included) lands in one normalized shape on the shared map.
   try {
     const locations = adaptMqttLocations(
-      events.map((e) => ({
+      scoped.map((e) => ({
         vehicleId: e.vehicleId,
         topic: e.topic ?? null,
         timestamp: e.timestamp,
