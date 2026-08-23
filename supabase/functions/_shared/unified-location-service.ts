@@ -65,6 +65,7 @@ export async function resolveDeviceMap(
   const map = new Map<string, DeviceRow>();
   if (!deviceIds.length && !serials.length) return map;
 
+
   const { data } = await admin
     .from("iot_devices")
     .select("id, vehicle_id, provider, serial_number, provider_device_id")
