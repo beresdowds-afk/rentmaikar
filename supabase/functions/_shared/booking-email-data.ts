@@ -8,9 +8,35 @@ const SITE_URL = 'https://rentmaikar.com'
 export interface BookingEmailPayload {
   ok: true
   status: string
+  driverId: string
   recipientEmail: string
   startDateIso: string
   templateData: Record<string, unknown>
+}
+
+export type BookingEmailPreferenceKey = 'booking_confirmations' | 'booking_reminders'
+
+/**
+ * Per-user email preference check. Missing rows mean the defaults apply
+ * (booking confirmations and reminders both ON). Errors fail open so a
+ * preferences lookup problem never silently drops transactional mail.
+ */
+export async function isBookingEmailEnabled(
+  supabase: SupabaseClient,
+  userId: string,
+  key: BookingEmailPreferenceKey,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('email_notification_preferences')
+    .select(key)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) {
+    console.error('email preference lookup failed', { code: error.code, message: error.message })
+    return true
+  }
+  if (!data) return true
+  return (data as Record<string, unknown>)[key] !== false
 }
 
 export interface BookingEmailFailure {
@@ -83,6 +109,7 @@ export async function loadBookingEmailPayload(
   return {
     ok: true,
     status: booking.status,
+    driverId: booking.driver_id,
     recipientEmail: driver.email,
     startDateIso: booking.start_date,
     templateData: {

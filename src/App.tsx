@@ -108,6 +108,7 @@ const AdminTrainingReviewPage = lazy(() => import("./pages/admin/AdminTrainingRe
 const OrchestratorPage = lazy(() => import("./pages/admin/OrchestratorPage"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const AdminEmailDeliveryPage = lazy(() => import("./pages/admin/AdminEmailDeliveryPage"));
+const AdminGpsTrackingStatusPage = lazy(() => import("./pages/admin/AdminGpsTrackingStatusPage"));
 
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
 const BillingHistoryPage = lazy(() => import("./pages/BillingHistoryPage"));
@@ -500,6 +501,14 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <AdminEmailDeliveryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/gps-tracking"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminGpsTrackingStatusPage />
                       </ProtectedRoute>
                     }
                   />

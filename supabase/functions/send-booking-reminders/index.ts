@@ -4,7 +4,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { requireCronSecretAsync } from '../_shared/cron-auth.ts'
-import { loadBookingEmailPayload, sendBookingEmail } from '../_shared/booking-email-data.ts'
+import { isBookingEmailEnabled, loadBookingEmailPayload, sendBookingEmail } from '../_shared/booking-email-data.ts'
 
 function json(data: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -49,6 +49,12 @@ Deno.serve(async (req) => {
   for (const booking of bookings ?? []) {
     const payload = await loadBookingEmailPayload(supabase, booking.id)
     if (!payload.ok) {
+      skipped++
+      continue
+    }
+
+    const enabled = await isBookingEmailEnabled(supabase, payload.driverId, 'booking_reminders')
+    if (!enabled) {
       skipped++
       continue
     }

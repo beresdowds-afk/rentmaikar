@@ -1894,6 +1894,33 @@ export type Database = {
         }
         Relationships: []
       }
+      email_notification_preferences: {
+        Row: {
+          booking_confirmations: boolean
+          booking_reminders: boolean
+          created_at: string
+          marketing: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          booking_confirmations?: boolean
+          booking_reminders?: boolean
+          created_at?: string
+          marketing?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          booking_confirmations?: boolean
+          booking_reminders?: boolean
+          created_at?: string
+          marketing?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_opens: {
         Row: {
           created_at: string

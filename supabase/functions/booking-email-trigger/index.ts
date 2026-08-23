@@ -4,7 +4,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { requireCronSecretAsync } from '../_shared/cron-auth.ts'
-import { loadBookingEmailPayload, sendBookingEmail } from '../_shared/booking-email-data.ts'
+import { isBookingEmailEnabled, loadBookingEmailPayload, sendBookingEmail } from '../_shared/booking-email-data.ts'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -49,6 +49,11 @@ Deno.serve(async (req) => {
   if (payload.status !== 'accepted') {
     // Stale trigger delivery or status changed since — do not email.
     return json({ success: false, reason: 'booking_not_accepted' })
+  }
+
+  const enabled = await isBookingEmailEnabled(supabase, payload.driverId, 'booking_confirmations')
+  if (!enabled) {
+    return json({ success: false, reason: 'preference_disabled' })
   }
 
   const sent = await sendBookingEmail(
