@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { UserPlus, ShieldCheck, Send, CreditCard, Loader2, Info } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
+import { useRegionSamples } from "@/hooks/useRegionSamples";
 import { ProxyStatusTimeline } from "@/components/proxy/ProxyStatusTimeline";
 import { ProxyNotificationPrefs } from "@/components/proxy/ProxyNotificationPrefs";
 
@@ -18,6 +19,7 @@ interface Props { userId?: string }
 
 export function ProxyBillingSettings({ userId }: Props) {
   const { country } = useRegion();
+  const samples = useRegionSamples();
   const [proxy, setProxy] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -169,7 +171,7 @@ export function ProxyBillingSettings({ userId }: Props) {
             <div className="grid gap-3 sm:grid-cols-2">
               <div><Label>Proxy full name</Label><Input value={form.proxy_full_name} onChange={(e) => setForm({ ...form, proxy_full_name: e.target.value })} maxLength={120} /></div>
               <div><Label>Proxy email</Label><Input type="email" value={form.proxy_email} onChange={(e) => setForm({ ...form, proxy_email: e.target.value })} maxLength={200} /></div>
-              <div><Label>Proxy phone (E.164)</Label><Input value={form.proxy_phone} onChange={(e) => setForm({ ...form, proxy_phone: e.target.value })} placeholder="+1 555…" /></div>
+              <div><Label>Proxy phone (E.164)</Label><Input value={form.proxy_phone} onChange={(e) => setForm({ ...form, proxy_phone: e.target.value })} placeholder={samples.phoneDisplay} /></div>
               <div>
                 <Label>Relationship</Label>
                 <Select value={form.proxy_relationship} onValueChange={(v) => setForm({ ...form, proxy_relationship: v })}>
