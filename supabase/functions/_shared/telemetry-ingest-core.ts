@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { adaptMqttLocations } from "./location-adapters/emqx.ts";
-import { persistLocations } from "./unified-location-service.ts";
+import { getGpsDisabledVehicles, persistLocations } from "./unified-location-service.ts";
 import {
   normalizeEvent,
   reduceState,
