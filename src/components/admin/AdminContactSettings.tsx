@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useRegionSamples } from '@/hooks/useRegionSamples';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,7 @@ const ContactSettingCard = ({
   onUpdate: (id: string, updates: Partial<ContactSetting>) => Promise<boolean>;
   onDelete?: (id: string) => void;
 }) => {
+  const samples = useRegionSamples();
   const [isEditing, setIsEditing] = useState(false);
   const [contactValue, setContactValue] = useState(setting.contact_value);
   const [displayName, setDisplayName] = useState(setting.display_name || '');
@@ -87,7 +89,7 @@ const ContactSettingCard = ({
                     <Input
                       value={contactValue}
                       onChange={(e) => setContactValue(e.target.value)}
-                      placeholder={setting.contact_type === 'email' ? 'support@example.com' : '+1234567890'}
+                      placeholder={setting.contact_type === 'email' ? 'support@example.com' : samples.phoneE164}
                       className="mt-1"
                     />
                   </div>
@@ -167,6 +169,7 @@ const CopyButton = ({ value }: { value: string }) => {
 };
 
 const AddContactForm = ({ region, onAdded }: { region: string; onAdded: () => void }) => {
+  const samples = useRegionSamples();
   const [isOpen, setIsOpen] = useState(false);
   const [contactType, setContactType] = useState('email');
   const [contactValue, setContactValue] = useState('');
@@ -226,7 +229,7 @@ const AddContactForm = ({ region, onAdded }: { region: string; onAdded: () => vo
         </div>
         <div>
           <Label className="text-xs text-muted-foreground">Contact Value</Label>
-          <Input value={contactValue} onChange={(e) => setContactValue(e.target.value)} placeholder={contactType === 'email' ? 'support@example.com' : '+1234567890'} className="mt-1" />
+          <Input value={contactValue} onChange={(e) => setContactValue(e.target.value)} placeholder={contactType === 'email' ? 'support@example.com' : samples.phoneE164} className="mt-1" />
         </div>
         <div className="flex gap-2">
           <Button size="sm" onClick={handleAdd} disabled={isSaving || !contactValue.trim()}>
@@ -323,6 +326,7 @@ interface CompanyInfoRow {
 }
 
 const CompanyInfoEditor = ({ row, onSaved }: { row: CompanyInfoRow; onSaved: () => void }) => {
+  const samples = useRegionSamples();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<CompanyInfoRow>(row);
@@ -375,7 +379,7 @@ const CompanyInfoEditor = ({ row, onSaved }: { row: CompanyInfoRow; onSaved: () 
           <div className="grid grid-cols-2 gap-2">
             <div><Label className="text-xs">Company name</Label><Input value={form.company_name || ''} onChange={e => set('company_name', e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Phone (display)</Label><Input value={form.phone || ''} onChange={e => set('phone', e.target.value)} className="h-8" /></div>
-            <div><Label className="text-xs">Phone (dial)</Label><Input value={form.phone_raw || ''} onChange={e => set('phone_raw', e.target.value)} placeholder="+16083843932" className="h-8" /></div>
+            <div><Label className="text-xs">Phone (dial)</Label><Input value={form.phone_raw || ''} onChange={e => set('phone_raw', e.target.value)} placeholder={samples.phoneE164} className="h-8" /></div>
             <div><Label className="text-xs">Email</Label><Input value={form.email || ''} onChange={e => set('email', e.target.value)} className="h-8" /></div>
             <div className="col-span-2"><Label className="text-xs">Address line</Label><Input value={form.address_line || ''} onChange={e => set('address_line', e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">City</Label><Input value={form.city || ''} onChange={e => set('city', e.target.value)} className="h-8" /></div>
