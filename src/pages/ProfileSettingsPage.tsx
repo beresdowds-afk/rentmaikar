@@ -34,12 +34,13 @@ import { useRegion } from '@/contexts/RegionContext';
 import { z } from 'zod';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { normalizeToE164, PhoneValidationError } from '@/lib/phone-normalize';
+import { useRegionSamples } from '@/hooks/useRegionSamples';
 import { friendlyPhoneError } from '@/lib/phone-errors';
 import AddPhoneNumberCard from '@/components/auth/AddPhoneNumberCard';
 import { regionToDefaultCountry } from '@/hooks/useDefaultPhoneCountry';
 
 
-const nameSchema = z.object({
+const buildNameSchema = (phoneExample: string) => z.object({
   full_name: z
     .string()
     .trim()
@@ -55,7 +56,7 @@ const nameSchema = z.object({
       if (!v) return true;
       const withPlus = v.startsWith('+') ? v : `+${v.replace(/[^\d]/g, '')}`;
       return !!parsePhoneNumberFromString(withPlus)?.isValid();
-    }, 'Enter a valid international phone number (e.g. +14155551234)'),
+    }, `Enter a valid international phone number (e.g. ${phoneExample})`),
 });
 
 import { validateAddress, ADDRESS_MIN, ADDRESS_MAX } from '@/lib/address-validation';
@@ -73,6 +74,7 @@ export { validateAddress, ADDRESS_MIN, ADDRESS_MAX };
 export default function ProfileSettingsPage() {
   const { user, hasRole } = useAuth();
   const { country } = useRegion();
+  const samples = useRegionSamples();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [streetAddress, setStreetAddress] = useState('');
@@ -227,7 +229,7 @@ export default function ProfileSettingsPage() {
       return;
     }
 
-    const parsed = nameSchema.safeParse({ full_name: fullName, phone });
+    const parsed = buildNameSchema(samples.phoneE164).safeParse({ full_name: fullName, phone });
     if (!parsed.success) {
       toast({
         title: 'Please check your details',
@@ -254,7 +256,7 @@ export default function ProfileSettingsPage() {
         try {
           // No hardcoded region: fall back to the number's own country code.
           const expected = regionToDefaultCountry(country);
-          newPhone = normalizeToE164(parsed.data.phone, expected).e164;
+          newPhone = normalizeToE164(parsed.data.phone, expected, samples.phoneE164).e164;
         } catch (err) {
           const message = err instanceof PhoneValidationError ? err.message : 'Invalid phone number.';
           toast({ title: 'Phone number', description: message, variant: 'destructive' });
