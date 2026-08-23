@@ -663,14 +663,26 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (!profile) {
+      // HELP/INFO must be answered even for unregistered numbers (carrier requirement).
+      if (command === "HELP" || command === "INFO") {
+        await sendSMS(from, SMS_TEMPLATES.help(), { supabase, allowOptedOut: true });
+        await recordKeywordConsent(supabase as never, {
+          event: "help",
+          phone: from,
+          userId: null,
+          keyword: command,
+          channel: "sms",
+        });
+        return new Response("OK", { status: 200, headers: corsHeaders });
+      }
       await sendSMS(from, SMS_TEMPLATES.unregistered(), { supabase });
       return new Response("OK", { status: 200, headers: corsHeaders });
     }
 
     const firstName = profile.full_name?.split(" ")[0] || "there";
 
-    // ─── Check opt-out status (except for HELP) ───
-    if (profile.notification_sms === false && command !== "HELP") {
+    // ─── Check opt-out status (except for HELP/INFO) ───
+    if (profile.notification_sms === false && command !== "HELP" && command !== "INFO") {
       console.log(`[SMS] User ${profile.user_id} opted out, skipping response`);
       return new Response("OK", { status: 200, headers: corsHeaders });
     }
