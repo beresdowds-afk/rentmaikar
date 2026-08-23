@@ -41,7 +41,7 @@ const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 function creds() {
   const base = (providerOverride("traccar", "base_url") || Deno.env.get("TRACCAR_BASE_URL") || "").replace(/\/+$/, "");
-  const token = providerOverride("traccar", "token") || Deno.env.get("TRACCAR_TOKEN") || "";
+  const token = providerOverride("traccar", "token") || envToken();
   const email = providerOverride("traccar", "email") || Deno.env.get("TRACCAR_EMAIL") || "";
   const password = providerOverride("traccar", "password") || Deno.env.get("TRACCAR_PASSWORD") || "";
   if (!base) return null;
