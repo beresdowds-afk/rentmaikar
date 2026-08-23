@@ -57,7 +57,7 @@ function creds() {
 /** Which credential pieces are absent — powers precise "not configured" errors. */
 export function missingCredentials(): string[] {
   const base = providerOverride("traccar", "base_url") || Deno.env.get("TRACCAR_BASE_URL") || "";
-  const token = providerOverride("traccar", "token") || Deno.env.get("TRACCAR_TOKEN") || "";
+  const token = providerOverride("traccar", "token") || envToken();
   const email = providerOverride("traccar", "email") || Deno.env.get("TRACCAR_EMAIL") || "";
   const password = providerOverride("traccar", "password") || Deno.env.get("TRACCAR_PASSWORD") || "";
   const missing: string[] = [];
