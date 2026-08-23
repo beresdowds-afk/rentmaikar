@@ -127,8 +127,8 @@ export function RefereePickupGate() {
           </CardTitle>
           <CardDescription>
             To protect owners, the pickup location for {vehicleLabel} is revealed only after you
-            submit three referees who can vouch for you. Name and phone number are required;
-            residential address and email are optional.
+            submit three referees who can vouch for you. Each referee needs a full name plus a
+            phone number or an email address.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -161,17 +161,6 @@ export function RefereePickupGate() {
                   {fieldErrors[`${idx}-phone`] && (
                     <p className="text-destructive text-sm">{fieldErrors[`${idx}-phone`]}</p>
                   )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`gate-referee${idx}-address`}>
-                    Residential Address <span className="text-muted-foreground">(optional)</span>
-                  </Label>
-                  <Input
-                    id={`gate-referee${idx}-address`}
-                    placeholder="Full residential address"
-                    value={r.address}
-                    onChange={(e) => update(idx, 'address')(e.target.value)}
-                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor={`gate-referee${idx}-email`}>
