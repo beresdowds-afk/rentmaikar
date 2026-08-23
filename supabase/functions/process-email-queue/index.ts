@@ -7,6 +7,103 @@ const DEFAULT_SEND_DELAY_MS = 200
 const DEFAULT_AUTH_TTL_MINUTES = 15
 const DEFAULT_TRANSACTIONAL_TTL_MINUTES = 60
 
+// --- Resend fallback (active until notify.rentmaikar.com NS delegation propagates) ---
+// While the sender subdomain is not delegated to Lovable nameservers, the managed
+// email API cannot send. Until then, deliver through the linked Resend connection
+// via the connector gateway. The dispatcher live-checks DNS on every run and
+// switches back automatically the moment the expected NS records appear.
+const SENDER_DOMAIN = 'notify.rentmaikar.com'
+const EXPECTED_NS = ['ns3.lovable.cloud', 'ns4.lovable.cloud']
+const RESEND_GATEWAY_URL = 'https://connector-gateway.lovable.dev/resend'
+const EMAIL_DOMAIN_STATUS_KV_KEY = 'email_domain_status'
+
+class ProviderSendError extends Error {
+  status: number
+  retryAfterSeconds: number | null
+  constructor(message: string, status: number, retryAfterSeconds: number | null = null) {
+    super(message)
+    this.status = status
+    this.retryAfterSeconds = retryAfterSeconds
+  }
+}
+
+// Returns null when the DNS lookup itself failed (caller should use stored state).
+async function resolveNsRecords(name: string): Promise<string[] | null> {
+  try {
+    const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=NS`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data.Answer ?? [])
+      .filter((a: { type?: number }) => a.type === 2)
+      .map((a: { data?: string }) => (a.data ?? '').replace(/\.$/, '').toLowerCase())
+  } catch {
+    return null
+  }
+}
+
+// Decide whether to route sends through Resend instead of the managed email API.
+// Primary signal: live NS lookup. Fallback signal: last recorded status from the
+// email-domain-status-check cron (platform_kv_settings). Fail-safe: when neither
+// signal confirms delegation, use Resend (the provider that can actually send).
+async function shouldUseResendFallback(
+  supabase: ReturnType<typeof createClient>
+): Promise<boolean> {
+  const ns = await resolveNsRecords(SENDER_DOMAIN)
+  if (ns !== null) {
+    const delegated = EXPECTED_NS.every((expected) => ns.includes(expected))
+    return !delegated
+  }
+  try {
+    const { data } = await supabase
+      .from('platform_kv_settings')
+      .select('value')
+      .eq('key', EMAIL_DOMAIN_STATUS_KV_KEY)
+      .maybeSingle()
+    const value = (data?.value ?? {}) as Record<string, unknown>
+    return value.dns_verified !== true
+  } catch {
+    return true
+  }
+}
+
+// Send one message through the Resend connector gateway.
+// The `from` domain must be verified in the Resend account; RESEND_FALLBACK_FROM
+// (optional secret) overrides the queued sender if a different verified sender is needed.
+async function sendViaResend(payload: Record<string, unknown>): Promise<void> {
+  const resendKey = Deno.env.get('RESEND_API_KEY')
+  const apiKey = Deno.env.get('LOVABLE_API_KEY')
+  if (!resendKey || !apiKey) {
+    throw new Error('Resend fallback not configured (missing RESEND_API_KEY or LOVABLE_API_KEY)')
+  }
+
+  const res = await fetch(`${RESEND_GATEWAY_URL}/emails`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+      'X-Connection-Api-Key': resendKey,
+    },
+    body: JSON.stringify({
+      from: Deno.env.get('RESEND_FALLBACK_FROM') || payload.from,
+      to: [payload.to],
+      subject: payload.subject,
+      html: payload.html,
+      ...(payload.text ? { text: payload.text } : {}),
+    }),
+  })
+
+  if (!res.ok) {
+    const bodyText = await res.text()
+    const retryAfterHeader = res.headers.get('retry-after')
+    const retryAfterSeconds = retryAfterHeader ? Number(retryAfterHeader) : null
+    throw new ProviderSendError(
+      `Resend send failed [${res.status}]: ${bodyText.slice(0, 500)}`,
+      res.status,
+      Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : null
+    )
+  }
+}
+
 // Check if an error is a rate-limit (429) response.
 // Uses EmailAPIError.status when available (email-js >=0.x with structured errors),
 // falls back to parsing the error message for older versions.
