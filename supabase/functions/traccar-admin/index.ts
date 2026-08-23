@@ -99,11 +99,11 @@ function diagnose(r: TraccarResult, latency_ms?: number): Diagnosis {
     return {
       code: "invalid_credentials",
       title: "Invalid Traccar credentials",
-      detail: r.auth_mode === "basic"
-        ? "The tracker email/password was rejected (HTTP 401)."
-        : "The API token was rejected (HTTP 401).",
+      detail: r.auth_mode === "token"
+        ? "The API token was rejected (HTTP 401) and no email/password fallback is configured."
+        : "The API token and the email/password fallback were both rejected (HTTP 401).",
       hints: [
-        "Re-enter the tracker email and password in the Credentials tab and save.",
+        "Re-enter the tracker email and password in the Credentials tab and save — they are used automatically whenever the token fails.",
         "If using a token, regenerate it in Traccar → Settings → Account → Tokens.",
       ],
       status,
@@ -296,13 +296,16 @@ Deno.serve(async (req) => {
           { diagnosis, auth_mode: authMode(), base_url: traccar.baseUrl(), reachable: health.ok, account },
         );
       }
+      // Some deployments disable the unauthenticated /health endpoint; an
+      // authenticated /server success also proves reachability.
+      const reachable = health.ok || ping.ok;
       return json({
         ok: true,
         configured: true,
         base_url: traccar.baseUrl(),
         auth_mode: authMode(),
         latency_ms,
-        reachable: health.ok,
+        reachable,
         server_version: ping.ok ? (ping.body as { version?: string }).version ?? null : null,
         account,
         ping,

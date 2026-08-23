@@ -1,5 +1,7 @@
 // Traccar API client — reads TRACCAR_BASE_URL and either TRACCAR_API_TOKEN /
 // TRACCAR_TOKEN (session bearer / API token) OR TRACCAR_EMAIL + TRACCAR_PASSWORD.
+// When both are configured, the token is tried first and a 401 automatically
+// falls back to the email/password combination (Basic → session cookie).
 // Returns { ok: false, reason: "not_configured" } until secrets are set,
 // so the rest of the app keeps working.
 //
@@ -72,11 +74,32 @@ export function missingCredentials(): string[] {
 export function authMode(): "token" | "basic" | "none" {
   const c = creds();
   if (!c) return "none";
-  return c.token ? "token" : "basic";
+  return c.token && !isTokenRejected() ? "token" : "basic";
 }
 
-function authHeader(c: NonNullable<ReturnType<typeof creds>>): Record<string, string> {
-  if (c.token) return { Authorization: `Bearer ${c.token}` };
+// ── Token → email/password fallback ────────────────────────────────────────
+// When the configured API token is rejected (HTTP 401) but TRACCAR_EMAIL +
+// TRACCAR_PASSWORD are also present, the client automatically falls back to
+// the email/password combination (Basic header, then the session-cookie flow).
+// The rejection is remembered for TOKEN_RETRY_AFTER_MS so every request does
+// not pay a wasted 401 round-trip; after the cooldown the token is tried again
+// so a rotated/fixed token is picked up without a redeploy.
+const TOKEN_RETRY_AFTER_MS = 5 * 60_000;
+let tokenRejectedAt = 0;
+
+function isTokenRejected(): boolean {
+  return tokenRejectedAt !== 0 && Date.now() - tokenRejectedAt < TOKEN_RETRY_AFTER_MS;
+}
+
+function markTokenRejected() {
+  tokenRejectedAt = Date.now();
+}
+
+function authHeader(
+  c: NonNullable<ReturnType<typeof creds>>,
+  useToken: boolean,
+): Record<string, string> {
+  if (useToken && c.token) return { Authorization: `Bearer ${c.token}` };
   return { Authorization: "Basic " + btoa(`${c.email}:${c.password}`) };
 }
 
@@ -121,10 +144,11 @@ async function openSession(c: NonNullable<ReturnType<typeof creds>>): Promise<bo
   }
 }
 
-/** Drop any cached session (used when credentials are rotated). */
+/** Drop any cached session + token rejection (used when credentials are rotated). */
 export function resetTraccarSession() {
   sessionCookie = null;
   sessionCookieBase = null;
+  tokenRejectedAt = 0;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -156,6 +180,10 @@ async function call<T = unknown>(path: string, opts: CallOptions = {}): Promise<
   let attempt = 0;
   let lastNetworkError = "";
   let retriedWithSession = false;
+  let retriedWithBasic = false;
+  // Effective auth for this call: token first, unless it was rejected recently
+  // (or is absent) and the email/password combination exists as fallback.
+  let useToken = !!c.token && !isTokenRejected();
 
   while (attempt < MAX_ATTEMPTS) {
     attempt++;
@@ -164,7 +192,7 @@ async function call<T = unknown>(path: string, opts: CallOptions = {}): Promise<
       ...(init.body !== undefined && !(init.headers as Record<string, string> | undefined)?.["Content-Type"]
         ? { "Content-Type": "application/json" }
         : {}),
-      ...(anonymous ? {} : sessionCookie ? { Cookie: sessionCookie } : authHeader(c)),
+      ...(anonymous ? {} : sessionCookie ? { Cookie: sessionCookie } : authHeader(c, useToken)),
       ...(init.headers as Record<string, string> | undefined ?? {}),
     };
 
@@ -187,19 +215,36 @@ async function call<T = unknown>(path: string, opts: CallOptions = {}): Promise<
 
     const raw = await res.text().catch(() => "");
 
+    // Token rejected → fall back to the email/password combination once,
+    // remembering the rejection so later calls skip the dead token.
+    // 401 = token refused; 400 = Traccar's TokenManager fails to even decode
+    // a malformed token (NegativeArraySizeException) before auth runs.
+    // A genuine bad-request 400 simply fails again after the auth switch.
+    if ((res.status === 401 || res.status === 400) && !anonymous && useToken && c.email && c.password && !retriedWithBasic) {
+      retriedWithBasic = true;
+      sessionCookie = null;
+      sessionCookieBase = null;
+      markTokenRejected();
+      useToken = false;
+      attempt--; // the auth fallback shouldn't burn a retry budget
+      continue;
+    }
     // 401 with basic credentials → try the documented session-cookie flow once.
-    if (res.status === 401 && !anonymous && !c.token && !retriedWithSession) {
+    if (res.status === 401 && !anonymous && !useToken && !sessionCookie && !retriedWithSession) {
       retriedWithSession = true;
-      resetTraccarSession();
+      sessionCookie = null;
+      sessionCookieBase = null;
       if (await openSession(c)) {
         attempt--; // the session handshake shouldn't burn a retry budget
         continue;
       }
     }
-    // A stale cookie also surfaces as 401 — fall back to header auth.
+    // A stale cookie also surfaces as 401 — fall back to header auth (the
+    // token-rejection memory is kept so we don't re-try a dead token).
     if (res.status === 401 && sessionCookie && !retriedWithSession) {
       retriedWithSession = true;
-      resetTraccarSession();
+      sessionCookie = null;
+      sessionCookieBase = null;
       continue;
     }
 
@@ -220,11 +265,13 @@ async function call<T = unknown>(path: string, opts: CallOptions = {}): Promise<
         reason: "provider_error",
         status: res.status,
         body,
-        auth_mode: c.token ? "token" : sessionCookie ? "session" : "basic",
+        auth_mode: useToken ? "token" : sessionCookie ? "session" : "basic",
         attempts: attempt,
         retry_after_seconds: retryAfterSeconds(res),
       };
     }
+    // A token that works again clears any remembered rejection.
+    if (useToken && tokenRejectedAt !== 0) tokenRejectedAt = 0;
     return { ok: true, body: body as T, status: res.status, queued: res.status === 202 };
   }
 
