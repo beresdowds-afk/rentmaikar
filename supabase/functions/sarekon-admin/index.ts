@@ -16,6 +16,7 @@ import {
 } from "../_shared/sarekon-client.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { invalidateProviderConfig } from "../_shared/provider-config.ts";
+import { logIngestRun } from "../_shared/telemetry-ingest-core.ts";
 
 
 const PROVIDER = "sarekon";
@@ -42,6 +43,8 @@ const Body = z.object({
     "device_links",
     "link_provider_device",
     "get_sync_state",
+    "force_sync_device",
+    "set_vehicle_gps",
 
     // dealer / fleet-admin operations
     "install_device",
@@ -75,6 +78,7 @@ const Body = z.object({
   serial_number: z.string().min(1).max(128).optional(),
   iccid: z.string().min(5).max(32).nullable().optional(),
   telemetry_enabled: z.boolean().optional(),
+  gps_tracking_enabled: z.boolean().optional(),
 
 
   // fleet-admin payloads
@@ -211,7 +215,7 @@ Deno.serve(async (req) => {
 
     // Ownership-changing operations (account transfers and deals) stay with
     // full admins; iot_support keeps install/assign/maintenance actions.
-    const ADMIN_ONLY = new Set(["transfer_trackers", "deal_create", "deal_unwind"]);
+    const ADMIN_ONLY = new Set(["transfer_trackers", "deal_create", "deal_unwind", "set_vehicle_gps"]);
     if (ADMIN_ONLY.has(action) && !isFullAdmin) {
       return json({ error: "This operation requires a full admin role." }, 403);
     }
@@ -316,17 +320,22 @@ Deno.serve(async (req) => {
 
       const vehicleIds = [...new Set((rows ?? []).map((r) => r.vehicle_id).filter(Boolean))] as string[];
       const { data: vehicles } = vehicleIds.length
-        ? await supa.from("vehicles").select("id, make, model, year, license_plate").in("id", vehicleIds)
+        ? await supa.from("vehicles").select("id, make, model, year, license_plate, gps_tracking_enabled").in("id", vehicleIds)
         : { data: [] as Record<string, unknown>[] };
       const vmap = new Map((vehicles ?? []).map((v: Record<string, unknown>) => [v.id as string, v]));
 
       return json({
         ok: true,
-        devices: (rows ?? []).map((r) => ({
-          ...r,
-          vehicle: r.vehicle_id ? vmap.get(r.vehicle_id) ?? null : null,
-          polling_ready: Boolean(r.provider_device_id && r.vehicle_id && r.telemetry_enabled),
-        })),
+        devices: (rows ?? []).map((r) => {
+          const vehicle = r.vehicle_id ? vmap.get(r.vehicle_id) ?? null : null;
+          const vehicleGpsOn = vehicle ? (vehicle as Record<string, unknown>).gps_tracking_enabled !== false : true;
+          return {
+            ...r,
+            vehicle,
+            vehicle_gps_enabled: vehicleGpsOn,
+            polling_ready: Boolean(r.provider_device_id && r.vehicle_id && r.telemetry_enabled && vehicleGpsOn),
+          };
+        }),
       });
     }
 
@@ -416,6 +425,32 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    /**
+     * Per-vehicle GPS/telemetry switch (full admins only — enforced in
+     * ADMIN_ONLY). It gates the entire unified location pipeline for the
+     * vehicle: worker polling, state/history writes, and live publishing.
+     */
+    if (action === "set_vehicle_gps") {
+      if (!vehicle_id) return json({ error: "vehicle_id required" }, 400);
+      if (p.gps_tracking_enabled === undefined) {
+        return json({ ok: false, error: "gps_tracking_enabled required" }, 400);
+      }
+      const { data: veh, error } = await supa
+        .from("vehicles")
+        .update({ gps_tracking_enabled: p.gps_tracking_enabled } as never)
+        .eq("id", vehicle_id)
+        .select("id, make, model, license_plate, gps_tracking_enabled")
+        .maybeSingle();
+      if (error) return json({ ok: false, error: error.message }, 400);
+      if (!veh) return json({ ok: false, error: "Vehicle not found" }, 404);
+      await audit({
+        action: p.gps_tracking_enabled ? "vehicle_gps_enabled" : "vehicle_gps_disabled",
+        vehicle_id,
+        details: { gps_tracking_enabled: p.gps_tracking_enabled },
+      });
+      return json({ ok: true, vehicle: veh });
+    }
+
     await sarekon.ensureReady();
 
     if (!sarekon.isConfigured()) {
@@ -453,6 +488,129 @@ Deno.serve(async (req) => {
         );
       }
       return json({ ok: true, configured: true, base_url: sarekon.baseUrl(), latency_ms, authenticated: ping.ok, diagnosis });
+    }
+
+    /**
+     * Force a one-off location sync for a single tracker: polls the provider
+     * immediately, funnels the fix through the unified location service, and
+     * returns the API result with request/response/finish timestamps so the
+     * admin UI can show exactly what came back. Logged under its own
+     * ingestion source so it shows up in the worker drill-down.
+     */
+    if (action === "force_sync_device") {
+      const providerDeviceId = (p.provider_device_id ?? dvd_id ?? "").trim();
+      if (!providerDeviceId) return json({ error: "provider_device_id required" }, 400);
+      const requestedAt = new Date().toISOString();
+      const startedMs = Date.now();
+
+      const { data: reg } = await supa
+        .from("iot_devices")
+        .select("id, provider_device_id, serial_number, vehicle_id, telemetry_enabled")
+        .eq("provider", PROVIDER)
+        .or(`provider_device_id.eq."${providerDeviceId}",serial_number.eq."${providerDeviceId}"`)
+        .maybeSingle();
+      const pollId = (reg?.provider_device_id as string | null) ?? providerDeviceId;
+
+      let vehicleGpsEnabled: boolean | null = null;
+      if (reg?.vehicle_id) {
+        const { data: veh } = await supa
+          .from("vehicles")
+          .select("gps_tracking_enabled")
+          .eq("id", reg.vehicle_id)
+          .maybeSingle();
+        vehicleGpsEnabled = veh ? (veh as { gps_tracking_enabled: boolean }).gps_tracking_enabled : null;
+      }
+
+      const r = await sarekon.currentLocations([pollId]);
+      const respondedAt = new Date().toISOString();
+
+      if (!r.ok) {
+        const dg = diagnose(r);
+        await logIngestRun(supa, {
+          source: "sarekon_force_sync",
+          provider: PROVIDER,
+          devices_seen: 1,
+          events_processed: 0,
+          broker_reachable: r.reason !== "network_error",
+          error: `${dg.title}: ${dg.detail}`.slice(0, 400),
+          degraded_reason: dg.code,
+          duration_ms: Date.now() - startedMs,
+        });
+        await audit({
+          action: "sarekon_force_sync_failed",
+          device_id: (reg?.id as string | null) ?? null,
+          vehicle_id: (reg?.vehicle_id as string | null) ?? null,
+          details: { provider_device_id: pollId, diagnosis: dg },
+        });
+        return json({
+          ok: false,
+          provider_device_id: pollId,
+          requested_at: requestedAt,
+          provider_responded_at: respondedAt,
+          finished_at: new Date().toISOString(),
+          diagnosis: dg,
+          linked_vehicle_id: (reg?.vehicle_id as string | null) ?? null,
+          vehicle_gps_enabled: vehicleGpsEnabled,
+        });
+      }
+
+      const normalized = adaptSarekonLocations(r.body);
+      const res = await persistLocations(supa, normalized);
+      const finishedAt = new Date().toISOString();
+
+      await logIngestRun(supa, {
+        source: "sarekon_force_sync",
+        provider: PROVIDER,
+        devices_seen: 1,
+        events_processed: res.persisted,
+        broker_reachable: true,
+        error: res.errors[0]?.slice(0, 400) ?? null,
+        degraded_reason: res.errors.length ? "persist_errors" : res.gps_disabled ? "gps_disabled" : null,
+        duration_ms: Date.now() - startedMs,
+      });
+      await audit({
+        action: "sarekon_force_sync",
+        device_id: (reg?.id as string | null) ?? null,
+        vehicle_id: (reg?.vehicle_id as string | null) ?? null,
+        details: {
+          provider_device_id: pollId,
+          fixes: normalized.length,
+          persisted: res.persisted,
+          gps_disabled: res.gps_disabled,
+        },
+      });
+
+      const first = normalized[0] ?? null;
+      const rawFirst = Array.isArray(r.body) ? ((r.body as Record<string, unknown>[])[0] ?? null) : null;
+      return json({
+        ok: true,
+        provider_device_id: pollId,
+        requested_at: requestedAt,
+        provider_responded_at: respondedAt,
+        finished_at: finishedAt,
+        fixes: normalized.length,
+        persisted: res.persisted,
+        deduped: res.deduped,
+        unmapped: res.unmapped,
+        published: res.published,
+        gps_disabled: res.gps_disabled,
+        linked_vehicle_id: (reg?.vehicle_id as string | null) ?? first?.vehicleId ?? null,
+        vehicle_gps_enabled: vehicleGpsEnabled,
+        location: first
+          ? {
+              latitude: first.latitude,
+              longitude: first.longitude,
+              speed_kmh: first.speedKmh ?? null,
+              heading: first.heading ?? null,
+              ignition: first.ignition ?? null,
+              address: first.address ?? null,
+              gps_timestamp: first.gpsTimestamp,
+              received_at: first.receivedAt,
+            }
+          : null,
+        raw: rawFirst,
+        errors: res.errors,
+      });
     }
 
     if (action === "list_devices") {

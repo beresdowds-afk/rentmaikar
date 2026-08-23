@@ -52,7 +52,7 @@ interface DeviceRow {
   provider: string;
   provider_device_id: string | null;
   health_details: Record<string, unknown> | null;
-  vehicles: { make: string | null; model: string | null; license_plate: string | null } | null;
+  vehicles: { make: string | null; model: string | null; license_plate: string | null; gps_tracking_enabled: boolean | null } | null;
 }
 
 export const minutesSince = (iso: string | null): number | null =>
@@ -75,7 +75,7 @@ export function useFleetDeviceLocations() {
     const { data, error: err } = await supabase
       .from("iot_devices")
       .select(
-        "id, serial_number, vehicle_id, latitude, longitude, last_ping, status, battery_level, provider, provider_device_id, health_details, vehicles(make, model, license_plate)",
+        "id, serial_number, vehicle_id, latitude, longitude, last_ping, status, battery_level, provider, provider_device_id, health_details, vehicles(make, model, license_plate, gps_tracking_enabled)",
       )
       .not("latitude", "is", null)
       .not("longitude", "is", null)
@@ -89,10 +89,13 @@ export function useFleetDeviceLocations() {
     }
     setError(null);
     const rows = (data as unknown as DeviceRow[]) || [];
+    // Vehicles with the admin GPS/telemetry switch off are hidden from live
+    // location surfaces until tracking is re-enabled.
+    const visible = rows.filter((r) => r.vehicles?.gps_tracking_enabled !== false);
 
     // Normalized state wins over the provider-shaped health_details blob: it is
     // written by the unified location service for every provider alike.
-    const vehicleIds = rows.map((r) => r.vehicle_id).filter((v): v is string => !!v);
+    const vehicleIds = visible.map((r) => r.vehicle_id).filter((v): v is string => !!v);
     const stateByVehicle = new Map<string, TelemetryStateRow>();
     if (vehicleIds.length) {
       const { data: states } = await supabase
@@ -104,7 +107,7 @@ export function useFleetDeviceLocations() {
       }
     }
     setDevices(
-      rows.map((r) => {
+      visible.map((r) => {
         const lastPos = ((r.health_details as { last_position?: Record<string, number> } | null)
           ?.last_position) ?? {};
         const st = r.vehicle_id ? stateByVehicle.get(r.vehicle_id) : undefined;

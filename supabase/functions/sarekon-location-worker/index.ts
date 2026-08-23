@@ -2,7 +2,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { requireCronSecretAsync } from "../_shared/cron-auth.ts";
 import { sarekon } from "../_shared/sarekon-client.ts";
 import { adaptSarekonLocations } from "../_shared/location-adapters/sarekon.ts";
-import { persistLocations } from "../_shared/unified-location-service.ts";
+import { getGpsDisabledVehicles, persistLocations } from "../_shared/unified-location-service.ts";
 import { logIngestRun, serviceClient } from "../_shared/telemetry-ingest-core.ts";
 
 /**
@@ -62,28 +62,41 @@ Deno.serve(async (req) => {
 
     const { data: devices } = await admin
       .from("iot_devices")
-      .select("provider_device_id, serial_number")
+      .select("provider_device_id, serial_number, vehicle_id")
       .eq("provider", "sarekon")
       .eq("telemetry_enabled", true)
       .not("vehicle_id", "is", null)
       .limit(500);
 
+    // Per-vehicle GPS/telemetry switch: disabled vehicles are not polled at
+    // all, so the provider is never queried for them.
+    const gpsDisabled = await getGpsDisabledVehicles(
+      admin,
+      (devices ?? []).map((d: Record<string, unknown>) => d.vehicle_id as string | null)
+        .filter((v): v is string => !!v),
+    );
+    const pollable = (devices ?? []).filter(
+      (d: Record<string, unknown>) => !gpsDisabled.has(d.vehicle_id as string),
+    );
+    const gpsSkipped = (devices ?? []).length - pollable.length;
+
     const deviceIds = [
       ...new Set(
-        (devices ?? [])
+        pollable
           .map((d: Record<string, unknown>) => (d.provider_device_id ?? d.serial_number) as string | null)
           .filter((v): v is string => !!v),
       ),
     ];
 
     if (!deviceIds.length) {
-      return await finish({ broker_reachable: true, devices_seen: 0, events_processed: 0 });
+      return await finish({ broker_reachable: true, devices_seen: 0, events_processed: 0, gps_disabled: gpsSkipped });
     }
 
     let processed = 0;
     let deduped = 0;
     let unmapped = 0;
     let published = 0;
+    let gpsDisabledPersisted = 0;
     let lastError: string | null = null;
 
     let passesRun = 0;
@@ -110,6 +123,7 @@ Deno.serve(async (req) => {
         deduped += res.deduped;
         unmapped += res.unmapped;
         published += res.published;
+        gpsDisabledPersisted += res.gps_disabled;
         if (res.errors.length) lastError = res.errors[0].slice(0, 180);
       }
     }
@@ -124,6 +138,7 @@ Deno.serve(async (req) => {
       passes: passesRun,
       deduped,
       unmapped,
+      gps_disabled: gpsSkipped + gpsDisabledPersisted,
     });
   } catch (err) {
     console.error("[sarekon-location-worker]", (err as Error).message);

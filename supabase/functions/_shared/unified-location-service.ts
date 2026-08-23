@@ -21,6 +21,8 @@ export interface PersistResult {
   deduped: number;
   unmapped: number;
   published: number;
+  /** Fixes dropped because the vehicle's GPS/telemetry switch is off. */
+  gps_disabled: number;
   vehicles: string[];
   errors: string[];
 }
@@ -63,6 +65,7 @@ export async function resolveDeviceMap(
   const map = new Map<string, DeviceRow>();
   if (!deviceIds.length && !serials.length) return map;
 
+
   const { data } = await admin
     .from("iot_devices")
     .select("id, vehicle_id, provider, serial_number, provider_device_id")
@@ -79,6 +82,25 @@ export async function resolveDeviceMap(
     if (row.serial_number) map.set(`serial:${row.serial_number}`, row);
   }
   return map;
+}
+
+/**
+ * Vehicles whose admin-controlled GPS/telemetry switch is off. The unified
+ * pipeline (state, history, MQTT publish) drops their fixes entirely until an
+ * admin re-enables tracking on the vehicle.
+ */
+export async function getGpsDisabledVehicles(
+  admin: Admin,
+  vehicleIds: string[],
+): Promise<Set<string>> {
+  const ids = [...new Set(vehicleIds.filter(Boolean))];
+  if (!ids.length) return new Set();
+  const { data } = await admin
+    .from("vehicles")
+    .select("id")
+    .in("id", ids)
+    .eq("gps_tracking_enabled", false);
+  return new Set(((data ?? []) as { id: string }[]).map((r) => r.id));
 }
 
 /**
@@ -102,6 +124,7 @@ export async function persistLocations(
     deduped: 0,
     unmapped: 0,
     published: 0,
+    gps_disabled: 0,
     vehicles: [],
     errors: [],
   };
@@ -140,6 +163,19 @@ export async function persistLocations(
     if (!prev || Date.parse(loc.gpsTimestamp) >= Date.parse(prev.gpsTimestamp)) {
       latestByVehicle.set(loc.vehicleId, loc);
     }
+  }
+
+  // ── 2b. drop fixes for vehicles whose GPS/telemetry switch is off ────────
+  const gpsDisabled = await getGpsDisabledVehicles(
+    admin,
+    resolved.map((l) => l.vehicleId).filter((v): v is string => !!v),
+  );
+  if (gpsDisabled.size) {
+    const enabled = resolved.filter((l) => !l.vehicleId || !gpsDisabled.has(l.vehicleId));
+    result.gps_disabled = resolved.length - enabled.length;
+    resolved.length = 0;
+    resolved.push(...enabled);
+    for (const id of gpsDisabled) latestByVehicle.delete(id);
   }
 
   const vehicleIds = [...latestByVehicle.keys()];

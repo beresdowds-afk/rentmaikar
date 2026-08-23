@@ -8621,40 +8621,52 @@ export type Database = {
           analytics_emitted: number
           broker_reachable: boolean
           created_at: string
+          deduped: number | null
           degraded_reason: string | null
           devices_seen: number
           duration_ms: number | null
           error: string | null
           events_processed: number
+          gps_disabled: number | null
           id: string
+          passes: number | null
           provider: string | null
           source: string
+          unmapped: number | null
         }
         Insert: {
           analytics_emitted?: number
           broker_reachable?: boolean
           created_at?: string
+          deduped?: number | null
           degraded_reason?: string | null
           devices_seen?: number
           duration_ms?: number | null
           error?: string | null
           events_processed?: number
+          gps_disabled?: number | null
           id?: string
+          passes?: number | null
           provider?: string | null
           source: string
+          unmapped?: number | null
         }
         Update: {
           analytics_emitted?: number
           broker_reachable?: boolean
           created_at?: string
+          deduped?: number | null
           degraded_reason?: string | null
           devices_seen?: number
           duration_ms?: number | null
           error?: string | null
           events_processed?: number
+          gps_disabled?: number | null
           id?: string
+          passes?: number | null
           provider?: string | null
           source?: string
+          unmapped?: number | null
         }
         Relationships: []
       }
@@ -10234,6 +10246,7 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string | null
+          gps_tracking_enabled: boolean
           id: string
           inspection_expiry: string | null
           insurance_expiry: string | null
@@ -10262,6 +10275,7 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string | null
+          gps_tracking_enabled?: boolean
           id?: string
           inspection_expiry?: string | null
           insurance_expiry?: string | null
@@ -10290,6 +10304,7 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string | null
+          gps_tracking_enabled?: boolean
           id?: string
           inspection_expiry?: string | null
           insurance_expiry?: string | null
@@ -11795,6 +11810,7 @@ export type Database = {
         Returns: {
           color: string | null
           created_at: string | null
+          gps_tracking_enabled: boolean
           id: string
           inspection_expiry: string | null
           insurance_expiry: string | null
