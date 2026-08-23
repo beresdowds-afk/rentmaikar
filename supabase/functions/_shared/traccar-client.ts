@@ -178,6 +178,10 @@ async function call<T = unknown>(path: string, opts: CallOptions = {}): Promise<
   let attempt = 0;
   let lastNetworkError = "";
   let retriedWithSession = false;
+  let retriedWithBasic = false;
+  // Effective auth for this call: token first, unless it was rejected recently
+  // (or is absent) and the email/password combination exists as fallback.
+  let useToken = !!c.token && !isTokenRejected();
 
   while (attempt < MAX_ATTEMPTS) {
     attempt++;
@@ -186,7 +190,7 @@ async function call<T = unknown>(path: string, opts: CallOptions = {}): Promise<
       ...(init.body !== undefined && !(init.headers as Record<string, string> | undefined)?.["Content-Type"]
         ? { "Content-Type": "application/json" }
         : {}),
-      ...(anonymous ? {} : sessionCookie ? { Cookie: sessionCookie } : authHeader(c)),
+      ...(anonymous ? {} : sessionCookie ? { Cookie: sessionCookie } : authHeader(c, useToken)),
       ...(init.headers as Record<string, string> | undefined ?? {}),
     };
 
@@ -209,10 +213,21 @@ async function call<T = unknown>(path: string, opts: CallOptions = {}): Promise<
 
     const raw = await res.text().catch(() => "");
 
-    // 401 with basic credentials → try the documented session-cookie flow once.
-    if (res.status === 401 && !anonymous && !c.token && !retriedWithSession) {
-      retriedWithSession = true;
+    // 401 with the API token → fall back to the email/password combination
+    // once, remembering the rejection so later calls skip the dead token.
+    if (res.status === 401 && !anonymous && useToken && c.email && c.password && !retriedWithBasic) {
+      retriedWithBasic = true;
+      markTokenRejected();
+      useToken = false;
       resetTraccarSession();
+      attempt--; // the auth fallback shouldn't burn a retry budget
+      continue;
+    }
+    // 401 with basic credentials → try the documented session-cookie flow once.
+    if (res.status === 401 && !anonymous && !useToken && !sessionCookie && !retriedWithSession) {
+      retriedWithSession = true;
+      sessionCookie = null;
+      sessionCookieBase = null;
       if (await openSession(c)) {
         attempt--; // the session handshake shouldn't burn a retry budget
         continue;
@@ -242,11 +257,13 @@ async function call<T = unknown>(path: string, opts: CallOptions = {}): Promise<
         reason: "provider_error",
         status: res.status,
         body,
-        auth_mode: c.token ? "token" : sessionCookie ? "session" : "basic",
+        auth_mode: useToken ? "token" : sessionCookie ? "session" : "basic",
         attempts: attempt,
         retry_after_seconds: retryAfterSeconds(res),
       };
     }
+    // A token that works again clears any remembered rejection.
+    if (useToken && tokenRejectedAt !== 0) tokenRejectedAt = 0;
     return { ok: true, body: body as T, status: res.status, queued: res.status === 202 };
   }
 
