@@ -7,6 +7,103 @@ const DEFAULT_SEND_DELAY_MS = 200
 const DEFAULT_AUTH_TTL_MINUTES = 15
 const DEFAULT_TRANSACTIONAL_TTL_MINUTES = 60
 
+// --- Resend fallback (active until notify.rentmaikar.com NS delegation propagates) ---
+// While the sender subdomain is not delegated to Lovable nameservers, the managed
+// email API cannot send. Until then, deliver through the linked Resend connection
+// via the connector gateway. The dispatcher live-checks DNS on every run and
+// switches back automatically the moment the expected NS records appear.
+const SENDER_DOMAIN = 'notify.rentmaikar.com'
+const EXPECTED_NS = ['ns3.lovable.cloud', 'ns4.lovable.cloud']
+const RESEND_GATEWAY_URL = 'https://connector-gateway.lovable.dev/resend'
+const EMAIL_DOMAIN_STATUS_KV_KEY = 'email_domain_status'
+
+class ProviderSendError extends Error {
+  status: number
+  retryAfterSeconds: number | null
+  constructor(message: string, status: number, retryAfterSeconds: number | null = null) {
+    super(message)
+    this.status = status
+    this.retryAfterSeconds = retryAfterSeconds
+  }
+}
+
+// Returns null when the DNS lookup itself failed (caller should use stored state).
+async function resolveNsRecords(name: string): Promise<string[] | null> {
+  try {
+    const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=NS`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data.Answer ?? [])
+      .filter((a: { type?: number }) => a.type === 2)
+      .map((a: { data?: string }) => (a.data ?? '').replace(/\.$/, '').toLowerCase())
+  } catch {
+    return null
+  }
+}
+
+// Decide whether to route sends through Resend instead of the managed email API.
+// Primary signal: live NS lookup. Fallback signal: last recorded status from the
+// email-domain-status-check cron (platform_kv_settings). Fail-safe: when neither
+// signal confirms delegation, use Resend (the provider that can actually send).
+async function shouldUseResendFallback(
+  supabase: ReturnType<typeof createClient>
+): Promise<boolean> {
+  const ns = await resolveNsRecords(SENDER_DOMAIN)
+  if (ns !== null) {
+    const delegated = EXPECTED_NS.every((expected) => ns.includes(expected))
+    return !delegated
+  }
+  try {
+    const { data } = await supabase
+      .from('platform_kv_settings')
+      .select('value')
+      .eq('key', EMAIL_DOMAIN_STATUS_KV_KEY)
+      .maybeSingle()
+    const value = (data?.value ?? {}) as Record<string, unknown>
+    return value.dns_verified !== true
+  } catch {
+    return true
+  }
+}
+
+// Send one message through the Resend connector gateway.
+// The `from` domain must be verified in the Resend account; RESEND_FALLBACK_FROM
+// (optional secret) overrides the queued sender if a different verified sender is needed.
+async function sendViaResend(payload: Record<string, unknown>): Promise<void> {
+  const resendKey = Deno.env.get('RESEND_API_KEY')
+  const apiKey = Deno.env.get('LOVABLE_API_KEY')
+  if (!resendKey || !apiKey) {
+    throw new Error('Resend fallback not configured (missing RESEND_API_KEY or LOVABLE_API_KEY)')
+  }
+
+  const res = await fetch(`${RESEND_GATEWAY_URL}/emails`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+      'X-Connection-Api-Key': resendKey,
+    },
+    body: JSON.stringify({
+      from: Deno.env.get('RESEND_FALLBACK_FROM') || payload.from,
+      to: [payload.to],
+      subject: payload.subject,
+      html: payload.html,
+      ...(payload.text ? { text: payload.text } : {}),
+    }),
+  })
+
+  if (!res.ok) {
+    const bodyText = await res.text()
+    const retryAfterHeader = res.headers.get('retry-after')
+    const retryAfterSeconds = retryAfterHeader ? Number(retryAfterHeader) : null
+    throw new ProviderSendError(
+      `Resend send failed [${res.status}]: ${bodyText.slice(0, 500)}`,
+      res.status,
+      Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : null
+    )
+  }
+}
+
 // Check if an error is a rate-limit (429) response.
 // Uses EmailAPIError.status when available (email-js >=0.x with structured errors),
 // falls back to parsing the error message for older versions.
@@ -112,6 +209,16 @@ Deno.serve(async (req) => {
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+  // Decide the sending provider for this run: Resend gateway until the
+  // notify.rentmaikar.com NS delegation is confirmed propagated.
+  const useResendFallback = await shouldUseResendFallback(supabase)
+  console.log('Email provider selected', {
+    provider: useResendFallback ? 'resend-gateway' : 'lovable-managed',
+    reason: useResendFallback
+      ? `${SENDER_DOMAIN} NS delegation not yet propagated`
+      : `${SENDER_DOMAIN} delegated to Lovable nameservers`,
+  })
 
   // 1. Check rate-limit cooldown and read queue config
   const { data: state } = await supabase
@@ -250,26 +357,30 @@ Deno.serve(async (req) => {
       }
 
       try {
-        await sendLovableEmail(
-          {
-            run_id: payload.run_id,
-            to: payload.to,
-            from: payload.from,
-            sender_domain: payload.sender_domain,
-            subject: payload.subject,
-            html: payload.html,
-            text: payload.text,
-            purpose: payload.purpose,
-            label: payload.label,
-            idempotency_key: payload.idempotency_key,
-            unsubscribe_token: payload.unsubscribe_token,
-            message_id: payload.message_id,
-          },
-          // sendUrl is optional — when LOVABLE_SEND_URL is not set, the library
-          // falls back to the default Lovable API endpoint (https://api.lovable.dev).
-          // Set LOVABLE_SEND_URL as a Supabase secret to override (e.g. for local dev).
-          { apiKey, sendUrl: Deno.env.get('LOVABLE_SEND_URL') }
-        )
+        if (useResendFallback) {
+          await sendViaResend(payload)
+        } else {
+          await sendLovableEmail(
+            {
+              run_id: payload.run_id,
+              to: payload.to,
+              from: payload.from,
+              sender_domain: payload.sender_domain,
+              subject: payload.subject,
+              html: payload.html,
+              text: payload.text,
+              purpose: payload.purpose,
+              label: payload.label,
+              idempotency_key: payload.idempotency_key,
+              unsubscribe_token: payload.unsubscribe_token,
+              message_id: payload.message_id,
+            },
+            // sendUrl is optional — when LOVABLE_SEND_URL is not set, the library
+            // falls back to the default Lovable API endpoint (https://api.lovable.dev).
+            // Set LOVABLE_SEND_URL as a Supabase secret to override (e.g. for local dev).
+            { apiKey, sendUrl: Deno.env.get('LOVABLE_SEND_URL') }
+          )
+        }
 
         // Log success
         await supabase.from('email_send_log').insert({
@@ -277,6 +388,7 @@ Deno.serve(async (req) => {
           template_name: payload.label || queue,
           recipient_email: payload.to,
           status: 'sent',
+          metadata: { provider: useResendFallback ? 'resend-gateway' : 'lovable-managed' },
         })
 
         // Delete from queue
@@ -327,7 +439,10 @@ Deno.serve(async (req) => {
 
         // 403s are permanent configuration or authorization failures for this
         // message, so move straight to DLQ and stop processing the rest of the batch.
-        if (isForbidden(error)) {
+        // In Resend-fallback mode a 403 usually means the from-domain is not
+        // verified in the Resend account — that needs human action, so keep the
+        // message in the normal retry path instead of nuking the batch to DLQ.
+        if (isForbidden(error) && !useResendFallback) {
           await moveToDlq(supabase, queue, msg, errorMsg.slice(0, 1000))
           return new Response(
             JSON.stringify({ processed: totalProcessed, stopped: 'forbidden' }),
@@ -358,7 +473,10 @@ Deno.serve(async (req) => {
   }
 
   return new Response(
-    JSON.stringify({ processed: totalProcessed }),
+    JSON.stringify({
+      processed: totalProcessed,
+      provider: useResendFallback ? 'resend-gateway' : 'lovable-managed',
+    }),
     { headers: { 'Content-Type': 'application/json' } }
   )
 })
