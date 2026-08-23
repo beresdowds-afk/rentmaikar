@@ -106,6 +106,8 @@ const AdminPersonaReviewPage = lazy(() => import("./pages/admin/AdminPersonaRevi
 const AdminPersonaTemplatesPage = lazy(() => import("./pages/admin/AdminPersonaTemplatesPage"));
 const AdminTrainingReviewPage = lazy(() => import("./pages/admin/AdminTrainingReviewPage"));
 const OrchestratorPage = lazy(() => import("./pages/admin/OrchestratorPage"));
+const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
+const AdminEmailDeliveryPage = lazy(() => import("./pages/admin/AdminEmailDeliveryPage"));
 
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
 const BillingHistoryPage = lazy(() => import("./pages/BillingHistoryPage"));
@@ -175,6 +177,7 @@ const App = () => (
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/referee-attest" element={<RefereeAttestation />} />
                   <Route path="/proxy/consent" element={<ProxyConsentPage />} />
+                  <Route path="/unsubscribe" element={<Unsubscribe />} />
                   <Route path="/m/call-in" element={<ProtectedRoute><MobileCallIn /></ProtectedRoute>} />
                   <Route path="/m/call-in/:type" element={<ProtectedRoute><MobileCallIn /></ProtectedRoute>} />
                   <Route path="/m/settings/notifications" element={<ProtectedRoute><MobileNotificationPreferences /></ProtectedRoute>} />
@@ -489,6 +492,14 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <AdminNotificationRetryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/email-delivery"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminEmailDeliveryPage />
                       </ProtectedRoute>
                     }
                   />
