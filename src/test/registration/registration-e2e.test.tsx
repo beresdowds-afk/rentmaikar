@@ -163,9 +163,11 @@ import OwnerRegistration from "@/pages/OwnerRegistration";
 const renderPage = (ui: React.ReactElement) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/register"]}>{ui}</MemoryRouter>
-    </QueryClientProvider>,
+    <HelmetProvider>
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/register"]}>{ui}</MemoryRouter>
+      </QueryClientProvider>
+    </HelmetProvider>,
   );
 };
 

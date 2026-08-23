@@ -164,11 +164,13 @@ import { classifyRegistrationError } from "@/lib/registration-errors";
 const renderPage = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/register/driver"]}>
-        <DriverRegistration />
-      </MemoryRouter>
-    </QueryClientProvider>,
+    <HelmetProvider>
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/register/driver"]}>
+          <DriverRegistration />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </HelmetProvider>,
   );
 };
 
