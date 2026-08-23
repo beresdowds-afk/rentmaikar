@@ -210,6 +210,16 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+  // Decide the sending provider for this run: Resend gateway until the
+  // notify.rentmaikar.com NS delegation is confirmed propagated.
+  const useResendFallback = await shouldUseResendFallback(supabase)
+  console.log('Email provider selected', {
+    provider: useResendFallback ? 'resend-gateway' : 'lovable-managed',
+    reason: useResendFallback
+      ? `${SENDER_DOMAIN} NS delegation not yet propagated`
+      : `${SENDER_DOMAIN} delegated to Lovable nameservers`,
+  })
+
   // 1. Check rate-limit cooldown and read queue config
   const { data: state } = await supabase
     .from('email_send_state')
