@@ -142,10 +142,11 @@ async function openSession(c: NonNullable<ReturnType<typeof creds>>): Promise<bo
   }
 }
 
-/** Drop any cached session (used when credentials are rotated). */
+/** Drop any cached session + token rejection (used when credentials are rotated). */
 export function resetTraccarSession() {
   sessionCookie = null;
   sessionCookieBase = null;
+  tokenRejectedAt = 0;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
