@@ -89,13 +89,14 @@ Deno.serve(async (req) => {
     ];
 
     if (!deviceIds.length) {
-      return await finish({ broker_reachable: true, devices_seen: 0, events_processed: 0 });
+      return await finish({ broker_reachable: true, devices_seen: 0, events_processed: 0, gps_disabled: gpsSkipped });
     }
 
     let processed = 0;
     let deduped = 0;
     let unmapped = 0;
     let published = 0;
+    let gpsDisabledPersisted = 0;
     let lastError: string | null = null;
 
     let passesRun = 0;
@@ -122,6 +123,7 @@ Deno.serve(async (req) => {
         deduped += res.deduped;
         unmapped += res.unmapped;
         published += res.published;
+        gpsDisabledPersisted += res.gps_disabled;
         if (res.errors.length) lastError = res.errors[0].slice(0, 180);
       }
     }
