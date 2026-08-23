@@ -72,11 +72,32 @@ export function missingCredentials(): string[] {
 export function authMode(): "token" | "basic" | "none" {
   const c = creds();
   if (!c) return "none";
-  return c.token ? "token" : "basic";
+  return c.token && !isTokenRejected() ? "token" : "basic";
 }
 
-function authHeader(c: NonNullable<ReturnType<typeof creds>>): Record<string, string> {
-  if (c.token) return { Authorization: `Bearer ${c.token}` };
+// ── Token → email/password fallback ────────────────────────────────────────
+// When the configured API token is rejected (HTTP 401) but TRACCAR_EMAIL +
+// TRACCAR_PASSWORD are also present, the client automatically falls back to
+// the email/password combination (Basic header, then the session-cookie flow).
+// The rejection is remembered for TOKEN_RETRY_AFTER_MS so every request does
+// not pay a wasted 401 round-trip; after the cooldown the token is tried again
+// so a rotated/fixed token is picked up without a redeploy.
+const TOKEN_RETRY_AFTER_MS = 5 * 60_000;
+let tokenRejectedAt = 0;
+
+function isTokenRejected(): boolean {
+  return tokenRejectedAt !== 0 && Date.now() - tokenRejectedAt < TOKEN_RETRY_AFTER_MS;
+}
+
+function markTokenRejected() {
+  tokenRejectedAt = Date.now();
+}
+
+function authHeader(
+  c: NonNullable<ReturnType<typeof creds>>,
+  useToken: boolean,
+): Record<string, string> {
+  if (useToken && c.token) return { Authorization: `Bearer ${c.token}` };
   return { Authorization: "Basic " + btoa(`${c.email}:${c.password}`) };
 }
 
