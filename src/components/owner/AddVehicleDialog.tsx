@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Plus, Loader2, MapPin, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -53,6 +54,11 @@ const EMPTY: FormState = {
  * Owner vehicle submission. Writes straight to `vehicles` so the record is
  * immediately visible on the owner dashboard, and (once an admin approves and
  * publishes it) in the public catalogue. RLS forces `pending` + non-public.
+ *
+ * The pickup location (city + street address) is mandatory and collected
+ * FIRST: vehicle credentials and photo uploads stay locked until it is set,
+ * and a database trigger (`enforce_vehicle_pickup_before_listing`) rejects
+ * owner inserts that skip it.
  */
 export function AddVehicleDialog() {
   const { user } = useAuth();
@@ -83,7 +89,16 @@ export function AddVehicleDialog() {
   }, [specs, yearNumber]);
 
   const currentYear = new Date().getFullYear();
-  const errors: Partial<Record<keyof FormState, string>> = {};
+
+  // Step 1 — pickup location must be complete before anything else unlocks.
+  const pickupErrors: Partial<Record<keyof FormState, string>> = {};
+  if (form.pickup_city.trim().length < 2) pickupErrors.pickup_city = "Enter the pickup city";
+  if (form.pickup_address.trim().length < 5)
+    pickupErrors.pickup_address = "Enter the full pickup street address";
+  const pickupComplete = Object.keys(pickupErrors).length === 0;
+
+  // Step 2 — vehicle credentials.
+  const errors: Partial<Record<keyof FormState, string>> = { ...pickupErrors };
   if (form.make.trim().length < 2) errors.make = "Enter the vehicle make";
   if (form.model.trim().length < 1) errors.model = "Enter the vehicle model";
   if (!yearNumber || yearNumber < 1990 || yearNumber > currentYear + 1)
@@ -100,6 +115,12 @@ export function AddVehicleDialog() {
 
   const submit = async () => {
     if (!user || !canSubmit) return;
+    if (!pickupComplete) {
+      toast.error("Set the pickup location first", {
+        description: "Pickup city and street address are required before submitting a vehicle.",
+      });
+      return;
+    }
     setSubmitting(true);
     try {
       // Photos must be fully uploaded before the vehicle row is written, so a
@@ -125,8 +146,8 @@ export function AddVehicleDialog() {
           license_plate: form.license_plate.trim().toUpperCase(),
           color: form.color.trim() || null,
           vin: form.vin.trim() || null,
-          pickup_city: form.pickup_city.trim() || null,
-          pickup_address: form.pickup_address.trim() || null,
+          pickup_city: form.pickup_city.trim(),
+          pickup_address: form.pickup_address.trim(),
           pickup_instructions: form.pickup_instructions.trim() || null,
           photo_urls: photoUrls,
           status: "pending",
@@ -160,6 +181,8 @@ export function AddVehicleDialog() {
       const msg = String(err?.message ?? "");
       if (/duplicate key|unique/i.test(msg)) {
         toast.error("That plate number is already registered on the platform.");
+      } else if (/pickup/i.test(msg)) {
+        toast.error("Pickup location required", { description: msg });
       } else if (/row-level security|permission denied/i.test(msg)) {
         toast.error("Your owner account is not approved to list vehicles yet.");
       } else {
@@ -203,56 +226,89 @@ export function AddVehicleDialog() {
         <DialogHeader>
           <DialogTitle>Add New Vehicle</DialogTitle>
           <DialogDescription>
-            Details are saved to your account straight away. Listings go live in the catalogue after
-            admin approval.
+            Set the pickup location first — vehicle credentials and photos unlock once drivers can
+            be told where to collect the car.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-4">
-          <div className="grid grid-cols-2 gap-4">
-            {field("make", "Make", "e.g. Toyota")}
-            {field("model", "Model", "e.g. Camry")}
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            {field("year", "Year", "e.g. 2021", "number")}
-            {field("license_plate", "Plate Number", "e.g. ABC-123")}
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            {field("color", "Colour (optional)", "e.g. Silver")}
-            {field("vin", "VIN / Chassis (optional)", "17-character VIN")}
-          </div>
-          {derivedCategory && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Pricing tier:</span>
-              <Badge variant="secondary">
-                {derivedCategory.label} ({derivedCategory.min_year}–{derivedCategory.max_year})
-              </Badge>
+          {/* Step 1 — pickup location (required before credentials & photos) */}
+          <div className="space-y-3 rounded-lg border border-accent/40 p-4">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-accent" />
+              Step 1 of 3 — Pickup location (required)
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              {field("pickup_city", "Pickup city", "e.g. Lagos")}
+              {field("pickup_address", "Pickup street address", "Street address")}
             </div>
-          )}
-          <div className="grid grid-cols-2 gap-4">
-            {field("pickup_city", "Pickup city (optional)", "e.g. Lagos")}
-            {field("pickup_address", "Pickup address (optional)", "Street address")}
+            <div className="space-y-2">
+              <Label htmlFor="veh-instructions">Pickup instructions (optional)</Label>
+              <Textarea
+                id="veh-instructions"
+                value={form.pickup_instructions}
+                placeholder="Where should the driver collect the vehicle?"
+                onChange={(e) => set("pickup_instructions")(e.target.value)}
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="veh-instructions">Pickup instructions (optional)</Label>
-            <Textarea
-              id="veh-instructions"
-              value={form.pickup_instructions}
-              placeholder="Where should the driver collect the vehicle?"
-              onChange={(e) => set("pickup_instructions")(e.target.value)}
-            />
-          </div>
-          {user && (
-            <VehiclePhotoUploader
-              ref={photosRef}
-              ownerId={user.id}
-              draftId={draftId}
-              disabled={submitting}
-              onStateChange={setPhotoState}
-            />
+
+          {!pickupComplete && (
+            <Alert>
+              <Lock className="h-4 w-4" />
+              <AlertTitle>Credentials &amp; photos are locked</AlertTitle>
+              <AlertDescription>
+                Enter the pickup city and street address above to unlock the vehicle credentials
+                and photo upload steps.
+              </AlertDescription>
+            </Alert>
           )}
-          <p className="text-xs text-muted-foreground">
-            You can add or reorder photos later from the vehicle card on the “My Vehicles” tab.
-          </p>
+
+          <fieldset
+            disabled={!pickupComplete || submitting}
+            className={`space-y-4 ${pickupComplete ? "" : "opacity-60 pointer-events-none"}`}
+          >
+            {/* Step 2 — vehicle credentials */}
+            <div className="space-y-3 rounded-lg border border-border p-4">
+              <h3 className="text-sm font-semibold text-foreground">
+                Step 2 of 3 — Vehicle credentials
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                {field("make", "Make", "e.g. Toyota")}
+                {field("model", "Model", "e.g. Camry")}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {field("year", "Year", "e.g. 2021", "number")}
+                {field("license_plate", "Plate Number", "e.g. ABC-123")}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {field("color", "Colour (optional)", "e.g. Silver")}
+                {field("vin", "VIN / Chassis (optional)", "17-character VIN")}
+              </div>
+              {derivedCategory && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Pricing tier:</span>
+                  <Badge variant="secondary">
+                    {derivedCategory.label} ({derivedCategory.min_year}–{derivedCategory.max_year})
+                  </Badge>
+                </div>
+              )}
+            </div>
+
+            {/* Step 3 — photos */}
+            {user && (
+              <VehiclePhotoUploader
+                ref={photosRef}
+                ownerId={user.id}
+                draftId={draftId}
+                disabled={submitting || !pickupComplete}
+                onStateChange={setPhotoState}
+              />
+            )}
+            <p className="text-xs text-muted-foreground">
+              You can add or reorder photos later from the vehicle card on the “My Vehicles” tab.
+            </p>
+          </fieldset>
+
           <Button onClick={submit} disabled={!canSubmit} className="w-full">
             {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {submitting

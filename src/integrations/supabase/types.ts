@@ -12208,6 +12208,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_my_pickup_details: { Args: never; Returns: Json }
       get_my_registration_progress: { Args: never; Returns: Json }
       get_my_role_change_status: { Args: never; Returns: Json }
       get_my_training_status: { Args: never; Returns: Json }
@@ -12684,6 +12685,7 @@ export type Database = {
         }
         Returns: string
       }
+      submit_driver_referees: { Args: { _referees: Json }; Returns: string }
       submit_proxy_consent: {
         Args: {
           _ip?: string

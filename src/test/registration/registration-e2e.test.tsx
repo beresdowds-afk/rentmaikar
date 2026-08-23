@@ -65,10 +65,6 @@ vi.mock("@/contexts/RegionContext", () => ({
   }),
 }));
 
-vi.mock("@/hooks/usePersonaEnabled", () => ({
-  // Referee address/email stay optional so the test focuses on the address rules.
-  usePersonaEnabled: () => ({ enabled: false, isLoading: false }),
-}));
 
 vi.mock("@/components/layout/Header", () => ({ default: () => <header /> }));
 vi.mock("@/components/layout/Footer", () => ({ default: () => <footer /> }));
@@ -225,16 +221,6 @@ describe("driver registration (e2e)", () => {
     await user.click(screen.getByLabelText("Uber"));
     await checkByLabelText(user, /valid driver'?s? license/i);
 
-    for (const n of [1, 2, 3]) {
-      await type(user, `referee${n}Name`, `Referee ${n}`);
-      const phone = document.getElementById(`referee${n}Phone`) as HTMLInputElement | null;
-      if (phone) {
-        await user.clear(phone);
-        await user.type(phone, `+120255501${20 + n}`);
-      } else {
-        await user.type(screen.getByTestId(`referee${n}Phone`), `+120255501${20 + n}`);
-      }
-    }
 
     for (const box of screen.getAllByRole("checkbox")) {
       if ((box as HTMLElement).getAttribute("aria-checked") === "true") continue;
