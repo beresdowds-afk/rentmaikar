@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Link2, Link2Off, RefreshCw, Satellite, Search, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -32,7 +33,9 @@ interface RegistryDevice {
   latitude: number | null;
   longitude: number | null;
   polling_ready: boolean;
-  vehicle: { id: string; make: string | null; model: string | null; year: number | null; license_plate: string | null } | null;
+  /** False when the linked vehicle's GPS/telemetry switch is off. */
+  vehicle_gps_enabled: boolean;
+  vehicle: { id: string; make: string | null; model: string | null; year: number | null; license_plate: string | null; gps_tracking_enabled?: boolean | null } | null;
 }
 
 /** Merged view: one line per tracker, whichever side knows about it. */
@@ -177,6 +180,26 @@ export default function GPSANDTRACKDeviceLinkPanel() {
     }
   };
 
+  /** Per-vehicle GPS/telemetry switch — gates the whole unified location pipeline. */
+  const toggleGps = async (row: MergedRow, enabled: boolean) => {
+    const vehicleId = row.registry?.vehicle_id;
+    if (!vehicleId) return;
+    setSavingKey(`gps:${row.key}`);
+    try {
+      const res = await call({ action: "set_vehicle_gps", vehicle_id: vehicleId, gps_tracking_enabled: enabled });
+      if (!res.ok) {
+        toast.error((res.error as string) ?? "Could not update GPS tracking");
+        return;
+      }
+      toast.success(enabled ? "GPS tracking enabled — locations resume on the next pass" : "GPS tracking paused — this vehicle stops syncing locations");
+      await load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
   const addManual = async () => {
     if (!manualId.trim()) {
       toast.error("Enter the SareKon device id or ICCID");
@@ -265,6 +288,7 @@ export default function GPSANDTRACKDeviceLinkPanel() {
                 <TableHead>Device / serial</TableHead>
                 <TableHead>ICCID</TableHead>
                 <TableHead>Vehicle</TableHead>
+                <TableHead>GPS tracking</TableHead>
                 <TableHead>Feed</TableHead>
                 <TableHead>Last position</TableHead>
                 <TableHead />
@@ -305,9 +329,30 @@ export default function GPSANDTRACKDeviceLinkPanel() {
                       )}
                     </TableCell>
                     <TableCell className="align-top">
+                      {row.registry?.vehicle_id ? (
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={row.registry.vehicle_gps_enabled !== false}
+                            disabled={savingKey === `gps:${row.key}`}
+                            onCheckedChange={(v) => toggleGps(row, v)}
+                            aria-label={`GPS tracking for ${vehicleLabel(row.registry.vehicle)}`}
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            {row.registry.vehicle_gps_enabled !== false ? "On" : "Off"}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="align-top">
                       {row.registry?.polling_ready ? (
                         <Badge className="gap-1">
                           <Link2 className="h-3 w-3" /> Feeding GPS
+                        </Badge>
+                      ) : linked && row.registry && row.registry.vehicle_gps_enabled === false ? (
+                        <Badge variant="secondary" className="gap-1">
+                          <Link2Off className="h-3 w-3" /> GPS off
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="gap-1">
@@ -345,7 +390,7 @@ export default function GPSANDTRACKDeviceLinkPanel() {
               })}
               {!rows.length && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
                     {loading ? "Loading trackers…" : "No trackers match this filter."}
                   </TableCell>
                 </TableRow>
