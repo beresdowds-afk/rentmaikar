@@ -554,29 +554,47 @@ export default function DriverDashboard() {
             {/* Vehicle Inspection Tab - Monthly for USA, Weekly for Nigeria */}
             <TabsContent value="inspection" className="space-y-6">
               <PortalGate portal="Inspection Report" require="verification">
-                <WeeklyInspectionReport
-                  vehicleId={vehicle.id}
-                  vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-                  ownerId={null}
-                  region={country}
-                />
+                {vehicle ? (
+                  <WeeklyInspectionReport
+                    vehicleId={vehicle.id}
+                    vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                    ownerId={null}
+                    region={country}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground py-8 text-center">
+                    No active vehicle assigned. Inspection reports unlock once a rental is active.
+                  </p>
+                )}
               </PortalGate>
             </TabsContent>
 
             {/* Rideshare Profile Tab - Weekly for all */}
             <TabsContent value="rideshare-profile" className="space-y-6">
               <PortalGate portal="Rideshare Profile" require="documents">
-                <RideshareProfileUpload vehicleId={vehicle.id} />
+                {vehicle ? (
+                  <RideshareProfileUpload vehicleId={vehicle.id} />
+                ) : (
+                  <p className="text-sm text-muted-foreground py-8 text-center">
+                    No active vehicle assigned. Rideshare profile uploads unlock once a rental is active.
+                  </p>
+                )}
               </PortalGate>
             </TabsContent>
 
             {/* Incidents Tab */}
             <TabsContent value="incidents" className="space-y-6">
               <PortalGate portal="Report an Incident" require="documents">
-                <IncidentReportForm
-                  vehicleId={vehicle.id}
-                  vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-                />
+                {vehicle ? (
+                  <IncidentReportForm
+                    vehicleId={vehicle.id}
+                    vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground py-8 text-center">
+                    No active vehicle assigned. Incident reporting unlocks once a rental is active.
+                  </p>
+                )}
               </PortalGate>
             </TabsContent>
 
