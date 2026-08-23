@@ -21,6 +21,8 @@ export interface PersistResult {
   deduped: number;
   unmapped: number;
   published: number;
+  /** Fixes dropped because the vehicle's GPS/telemetry switch is off. */
+  gps_disabled: number;
   vehicles: string[];
   errors: string[];
 }
