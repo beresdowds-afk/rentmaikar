@@ -415,7 +415,13 @@ Deno.serve(async (req) => {
           });
         }
       }
-      const { error } = await supa.from("iot_devices").update({ vehicle_id: target }).eq("id", device_row_id);
+      // Linking a tracker to a vehicle also arms telemetry polling, otherwise
+      // the location worker (which filters on telemetry_enabled) skips it and
+      // the vehicle never appears on the live map.
+      const { error } = await supa
+        .from("iot_devices")
+        .update({ vehicle_id: target, telemetry_enabled: !!target })
+        .eq("id", device_row_id);
       if (error) return json({ ok: false, error: error.message }, 400);
       await audit({
         action: action === "link_device" ? "sarekon_device_linked" : "sarekon_device_unlinked",
