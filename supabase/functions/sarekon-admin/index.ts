@@ -746,9 +746,16 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const status = d.status
-          ? (/online|active|connected/i.test(d.status) ? "active" : /offline|disconnected/i.test(d.status) ? "offline" : "unknown")
-          : "unknown";
+        // device_status enum has no "unknown" member — providers that omit a
+        // status (GPSANDTRACK list endpoint does) fall back to "inactive"
+        // until telemetry proves the device is reporting.
+        const status: "active" | "offline" | "inactive" = d.status
+          ? (/online|active|connected/i.test(d.status)
+            ? "active"
+            : /offline|disconnected/i.test(d.status)
+            ? "offline"
+            : "inactive")
+          : "inactive";
 
         const row = {
           serial_number: serial,
