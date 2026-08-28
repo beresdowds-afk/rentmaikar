@@ -297,15 +297,19 @@ export interface CancelAuthorizationParams {
 export async function cancelVehicleAuthorization(
   params: CancelAuthorizationParams
 ): Promise<{ success: boolean; authorization: VehicleRentalAuthorization | null; message: string }> {
-  const list = getStoredAuthorizations();
-  const targetIdx = list.findIndex((a) => {
-    if (params.cancellationToken && a.cancellation_token === params.cancellationToken) return true;
-    if (params.authorizationId && a.id === params.authorizationId) return true;
-    if (params.vehicleId && a.vehicle_id === params.vehicleId) return true;
-    return false;
-  });
+  const reasonText = params.reason || 'Published by mistake / Owner requested cancellation';
 
-  if (targetIdx === -1) {
+  // Resolve the target record (token first — it works for link holders on any device)
+  let token = params.cancellationToken || null;
+  if (!token) {
+    let lookup = db().select('cancellation_token').limit(1);
+    if (params.authorizationId) lookup = lookup.eq('id', params.authorizationId);
+    else if (params.vehicleId) lookup = lookup.eq('vehicle_id', params.vehicleId);
+    const { data } = await lookup.maybeSingle();
+    token = data?.cancellation_token || null;
+  }
+
+  if (!token) {
     return {
       success: false,
       authorization: null,
@@ -313,50 +317,24 @@ export async function cancelVehicleAuthorization(
     };
   }
 
-  const now = new Date().toISOString();
-  const current = list[targetIdx];
-  const reasonText = params.reason || 'Published by mistake / Owner requested cancellation';
+  // The RPC cancels the authorization, appends the audit event and unpublishes the vehicle atomically.
+  const { data: result, error } = await (supabase as any).rpc('cancel_authorization_by_token', {
+    p_token: token,
+    p_reason: reasonText,
+    p_by_name: params.cancelledByName || 'Vehicle Owner / Admin',
+  });
 
-  // 1. Unpublish vehicle from Catalogue
-  try {
-    await supabase
-      .from('vehicles')
-      .update({
-        is_public: false,
-        status: 'pending',
-        updated_at: now,
-      } as never)
-      .eq('id', current.vehicle_id);
-  } catch (err) {
-    console.warn('Could not update vehicle table via supabase on cancel:', err);
+  if (error || !result?.success) {
+    return {
+      success: false,
+      authorization: null,
+      message: error?.message || result?.message || 'Vehicle rental authorization record not found.',
+    };
   }
 
-  // 2. Update record and append cancellation audit event
-  const updatedRecord: VehicleRentalAuthorization = {
-    ...current,
-    status: 'CANCELLED',
-    matching_status: 'unlisted_cancelled',
-    cancelled_at: now,
-    cancelled_by: params.cancelledByUserId,
-    cancellation_reason: reasonText,
-    audit_trail: [
-      ...current.audit_trail,
-      {
-        id: `AUD-CANC-${Date.now()}`,
-        action: 'AUTHORIZATION_CANCELLED',
-        performed_by: params.cancelledByUserId,
-        performed_by_name: params.cancelledByName || 'Vehicle Owner / Admin',
-        performed_by_role: params.cancelledByRole || 'owner',
-        timestamp: now,
-        notes: `Vehicle authorization revoked and listing unpublished from Catalogue. Reason: "${reasonText}"`,
-      },
-    ],
-  };
+  const updatedRecord = mapRow(result.authorization);
+  broadcast(1);
 
-  list[targetIdx] = updatedRecord;
-  persistAuthorizations(list);
-
-  // 3. Send cancellation log confirmation message
   await sendCancellationAcknowledgmentMessage({
     ownerId: updatedRecord.owner_id,
     authorization: updatedRecord,
@@ -366,9 +344,10 @@ export async function cancelVehicleAuthorization(
   return {
     success: true,
     authorization: updatedRecord,
-    message: 'Vehicle rental authorization has been successfully cancelled and removed from the active catalogue.',
+    message: result.message || 'Vehicle rental authorization has been successfully cancelled and removed from the active catalogue.',
   };
 }
+
 
 /**
  * Sends in-app authorization message to the Owner's inbox containing the confirmation and cancellation link.
