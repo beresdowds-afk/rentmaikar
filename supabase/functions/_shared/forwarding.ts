@@ -1,0 +1,266 @@
+// ════════════════════════════════════════════════════════════
+// Unified inbound forwarding engine
+//
+// Forwards inbound customer communications (call / SMS / WhatsApp / email)
+// to the human destinations configured per region in `contact_settings`
+// (with `platform_regions.forwarding_sms|forwarding_whatsapp` as fallback).
+//
+// Master on/off switches live in `platform_kv_settings` under the
+// `forwarding_config` key so admins can toggle each channel at runtime.
+// ════════════════════════════════════════════════════════════
+
+// deno-lint-ignore no-explicit-any
+type Supa = any;
+
+export type ForwardChannel = "call" | "sms" | "whatsapp" | "email";
+
+export interface ForwardingConfig {
+  call: boolean;
+  sms: boolean;
+  whatsapp: boolean;
+  email: boolean;
+}
+
+export const FORWARDING_CONFIG_KEY = "forwarding_config";
+
+const DEFAULT_CONFIG: ForwardingConfig = {
+  call: false,
+  sms: false,
+  whatsapp: false,
+  email: false,
+};
+
+/** Normalise the many region spellings used across the platform. */
+export function normaliseRegion(region?: string | null): "USA" | "Nigeria" {
+  const r = (region || "").trim().toLowerCase();
+  if (r.startsWith("ng") || r.includes("nigeria")) return "Nigeria";
+  return "USA";
+}
+
+/** Region inferred from an E.164 phone number. */
+export function regionFromPhone(...numbers: (string | null | undefined)[]): "USA" | "Nigeria" {
+  for (const n of numbers) {
+    const clean = (n || "").replace("whatsapp:", "").replace(/\s/g, "");
+    if (clean.startsWith("+234") || clean.startsWith("234")) return "Nigeria";
+  }
+  return "USA";
+}
+
+export async function getForwardingConfig(supabase: Supa): Promise<ForwardingConfig> {
+  try {
+    const { data } = await supabase
+      .from("platform_kv_settings")
+      .select("value")
+      .eq("key", FORWARDING_CONFIG_KEY)
+      .maybeSingle();
+    const value = (data?.value ?? {}) as Partial<ForwardingConfig>;
+    return { ...DEFAULT_CONFIG, ...value };
+  } catch (e) {
+    console.error("[forwarding] failed to read config:", e);
+    return DEFAULT_CONFIG;
+  }
+}
+
+export async function isForwardingEnabled(supabase: Supa, channel: ForwardChannel): Promise<boolean> {
+  const cfg = await getForwardingConfig(supabase);
+  return !!cfg[channel];
+}
+
+/**
+ * Resolve the destination for a channel in a region.
+ * `call` forwards to the SMS/voice contact number for that region.
+ */
+export async function getForwardingDestination(
+  supabase: Supa,
+  channel: ForwardChannel,
+  region?: string | null,
+): Promise<string | null> {
+  const target = normaliseRegion(region);
+  const contactType = channel === "call" ? "sms" : channel;
+
+  const { data: rows } = await supabase
+    .from("contact_settings")
+    .select("region, contact_value, is_active")
+    .eq("contact_type", contactType)
+    .eq("is_active", true);
+
+  const list = (rows ?? []) as { region: string; contact_value: string }[];
+  const match =
+    list.find((r) => normaliseRegion(r.region) === target) ?? list[0] ?? null;
+
+  let value = match?.contact_value?.trim() || null;
+
+  // Fallback to the regional operations forwarding numbers.
+  if (!value && channel !== "email") {
+    const column = channel === "whatsapp" ? "forwarding_whatsapp" : "forwarding_sms";
+    const { data: regionRows } = await supabase
+      .from("platform_regions")
+      .select(`${column}`)
+      .eq("is_active", true)
+      .limit(1);
+    value = (regionRows?.[0]?.[column] as string | undefined)?.trim() || null;
+  }
+
+  if (!value) return null;
+  if (channel === "email") return value;
+  // Phone numbers are stored with display spacing — normalise to E.164.
+  const digits = value.replace(/[^\d+]/g, "");
+  return digits.startsWith("+") ? digits : `+${digits}`;
+}
+
+/** Build the TwiML used by the inbound-call forwarding webhook. */
+export function buildCallForwardTwiml(destination: string | null, callerId?: string | null): string {
+  if (!destination) {
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">Thank you for calling Rent My Car. All of our agents are currently unavailable. Please leave a message after the tone.</Say>
+  <Record maxLength="120" playBeep="true" />
+  <Say voice="alice">Thank you. Goodbye.</Say>
+</Response>`;
+  }
+  const callerAttr = callerId ? ` callerId="${callerId}"` : "";
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">Please hold while we connect you to a Rent My Car support agent.</Say>
+  <Dial${callerAttr} timeout="25" answerOnBridge="true">
+    <Number>${destination}</Number>
+  </Dial>
+  <Say voice="alice">Sorry, no agent is available right now. Please leave a message after the tone.</Say>
+  <Record maxLength="120" playBeep="true" />
+  <Say voice="alice">Thank you. Goodbye.</Say>
+</Response>`;
+}
+
+interface ForwardMessageArgs {
+  channel: "sms" | "whatsapp";
+  region?: string | null;
+  from: string;
+  body: string;
+  senderName?: string | null;
+  mediaUrl?: string | null;
+}
+
+/**
+ * Forward an inbound SMS / WhatsApp message to the configured staff number.
+ * Never throws — forwarding must not break inbound ingestion.
+ */
+export async function forwardInboundMessage(
+  supabase: Supa,
+  args: ForwardMessageArgs,
+): Promise<{ forwarded: boolean; reason?: string }> {
+  try {
+    if (!(await isForwardingEnabled(supabase, args.channel))) {
+      return { forwarded: false, reason: "disabled" };
+    }
+    const destination = await getForwardingDestination(supabase, args.channel, args.region);
+    if (!destination) return { forwarded: false, reason: "no_destination" };
+
+    const cleanFrom = (args.from || "").replace("whatsapp:", "");
+    if (destination.replace(/\s/g, "") === cleanFrom.replace(/\s/g, "")) {
+      return { forwarded: false, reason: "loop_guard" };
+    }
+
+    const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+    const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+    const twilioNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
+    const whatsappNumber = Deno.env.get("TWILIO_WHATSAPP_NUMBER") || twilioNumber;
+    if (!accountSid || !authToken) return { forwarded: false, reason: "twilio_not_configured" };
+
+    const isWa = args.channel === "whatsapp";
+    const fromNumber = isWa ? `whatsapp:${whatsappNumber}` : twilioNumber;
+    if (!fromNumber) return { forwarded: false, reason: "no_sender_number" };
+
+    const label = args.senderName ? `${args.senderName} (${cleanFrom})` : cleanFrom;
+    const text = `[Forwarded ${isWa ? "WhatsApp" : "SMS"} from ${label}]\n${args.body || "(no text)"}`;
+
+    const params = new URLSearchParams({
+      To: isWa ? `whatsapp:${destination}` : destination,
+      From: fromNumber,
+      Body: text.slice(0, 1500),
+    });
+    if (args.mediaUrl) params.append("MediaUrl", args.mediaUrl);
+
+    const res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Basic " + btoa(`${accountSid}:${authToken}`),
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
+      },
+    );
+
+    if (!res.ok) {
+      const detail = await res.text();
+      console.error(`[forwarding] ${args.channel} forward failed [${res.status}]: ${detail}`);
+      return { forwarded: false, reason: `provider_error_${res.status}` };
+    }
+    console.log(`[forwarding] ${args.channel} message forwarded to configured destination`);
+    return { forwarded: true };
+  } catch (e) {
+    console.error("[forwarding] unexpected error forwarding message:", e);
+    return { forwarded: false, reason: "exception" };
+  }
+}
+
+interface ForwardEmailArgs {
+  region?: string | null;
+  fromAddress: string;
+  fromName?: string | null;
+  subject: string;
+  body: string;
+  htmlBody?: string | null;
+}
+
+/** Forward an inbound email to the configured regional support mailbox. */
+export async function forwardInboundEmail(
+  supabase: Supa,
+  args: ForwardEmailArgs,
+): Promise<{ forwarded: boolean; reason?: string }> {
+  try {
+    if (!(await isForwardingEnabled(supabase, "email"))) {
+      return { forwarded: false, reason: "disabled" };
+    }
+    const destination = await getForwardingDestination(supabase, "email", args.region);
+    if (!destination) return { forwarded: false, reason: "no_destination" };
+    if (destination.toLowerCase() === (args.fromAddress || "").toLowerCase()) {
+      return { forwarded: false, reason: "loop_guard" };
+    }
+
+    const apiKey = Deno.env.get("RESEND_API_KEY");
+    if (!apiKey) return { forwarded: false, reason: "resend_not_configured" };
+
+    const label = args.fromName ? `${args.fromName} <${args.fromAddress}>` : args.fromAddress;
+    const html =
+      `<p style="color:#64748b;font-size:12px">Forwarded from <strong>${label}</strong></p><hr/>` +
+      (args.htmlBody || `<pre style="white-space:pre-wrap;font-family:inherit">${args.body}</pre>`);
+
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Rentmaikar Inbox <noreply@rentmaikar.com>",
+        to: [destination],
+        reply_to: args.fromAddress,
+        subject: `[Fwd] ${args.subject || "(no subject)"}`,
+        html,
+      }),
+    });
+
+    if (!res.ok) {
+      const detail = await res.text();
+      console.error(`[forwarding] email forward failed [${res.status}]: ${detail}`);
+      return { forwarded: false, reason: `provider_error_${res.status}` };
+    }
+    console.log("[forwarding] inbound email forwarded to configured mailbox");
+    return { forwarded: true };
+  } catch (e) {
+    console.error("[forwarding] unexpected error forwarding email:", e);
+    return { forwarded: false, reason: "exception" };
+  }
+}
