@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import { 
   SentMessageRequest, 
   SentMessageResponse, 
@@ -39,67 +40,42 @@ export class SentClient {
    * Aligned with OpenAPI v3 specification: POST https://api.sent.dm/v3/messages
    */
   async sendMessage(request: SentMessageRequest): Promise<SentMessageResponse> {
-    const idempotencyKey = request.idempotency_key || `rm_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const isSandbox = request.sandbox ?? this.sandbox;
+    const recipient = Array.isArray(request.to) ? request.to[0] : (request.to as unknown as string);
 
-    // Prepare standard OpenAPI v3 payload
-    const payload = {
-      to: request.to,
-      channel: request.channel,
-      text: request.text,
-      template: request.template,
-      sender_id: request.sender_id || this.senderId,
-      customer_id: request.customer_id,
-      metadata: {
-        ...request.metadata,
-        platform: "Rentmaikar",
-        dispatched_at: new Date().toISOString(),
-      },
-    };
+    // Dispatch server-side: the Sent.dm API key lives only in the backend.
+    try {
+      const { data, error } = await supabase.functions.invoke("send-sms-notification", {
+        body: {
+          phone: recipient,
+          channel: request.channel === "whatsapp" ? "whatsapp" : "sms",
+          notificationType: "general",
+          customMessage: request.text,
+          providerOverride: "sent",
+          metadata: request.metadata,
+        },
+      });
 
-    // If live API key is present and configured, call Sent.dm v3 endpoint
-    if (this.apiKey && this.apiKey !== "mock" && !this.apiKey.startsWith("demo_")) {
-      try {
-        const response = await fetch(`${this.baseUrl}/v3/messages`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": this.apiKey,
-            "x-idempotency-key": idempotencyKey,
-            ...(isSandbox ? { "x-sandbox": "true" } : {}),
-          },
-          body: JSON.stringify(payload),
-        });
+      if (error) throw error;
+      if (data && data.success === false) throw new Error(data.error || "Sent.dm dispatch failed");
 
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(
-            data?.error?.message || data?.message || `Sent.dm API HTTP ${response.status}: ${JSON.stringify(data)}`
-          );
-        }
-
-        return {
-          id: data.id || `sent_${Date.now()}`,
-          status: data.status || "queued",
-          channel: request.channel,
-          to: request.to,
-          from: payload.sender_id,
-          created_at: data.created_at || new Date().toISOString(),
-          cost: data.cost || { amount: request.channel === "whatsapp" ? 0.005 : 0.015, currency: "USD" },
-          segments: data.segments || 1,
-          sandbox: isSandbox,
-        };
-      } catch (err: any) {
-        console.warn("[SentClient] Live API dispatch failed, activating fallback telemetry:", err);
-        // If network or cors blocks direct client-side fetch, gracefully return sandbox response with note
-        return this.generateSimulatedResponse(request, isSandbox, err.message);
-      }
+      return {
+        id: data?.messageId || `sent_${Date.now()}`,
+        status: "sent",
+        channel: request.channel,
+        to: Array.isArray(request.to) ? request.to : [recipient],
+        from: request.sender_id || this.senderId,
+        created_at: new Date().toISOString(),
+        cost: { amount: request.channel === "whatsapp" ? 0.005 : 0.015, currency: "USD" },
+        segments: 1,
+        sandbox: Boolean(data?.sandbox),
+      };
+    } catch (err: any) {
+      console.warn("[SentClient] Server dispatch failed, returning simulated telemetry:", err);
+      return this.generateSimulatedResponse(request, isSandbox, err?.message);
     }
-
-    // Default sandbox / preview simulator
-    return this.generateSimulatedResponse(request, isSandbox);
   }
+
 
   /**
    * Retrieves message delivery status from Sent OpenAPI v3: GET /v3/messages/:id
@@ -171,50 +147,48 @@ export class SentClient {
    */
   async runDiagnostics(): Promise<SentDiagnosticsResult> {
     const startTime = performance.now();
-    const hasKey = Boolean(this.apiKey && this.apiKey.length > 5);
 
     try {
-      if (hasKey && !this.apiKey.startsWith("demo_")) {
-        const res = await fetch(`${this.baseUrl}/v3/account`, {
-          headers: { "x-api-key": this.apiKey },
-        });
-        const latency = Math.round(performance.now() - startTime);
-        if (res.ok) {
-          const account = await res.json();
-          return {
-            healthy: true,
-            status_code: res.status,
-            base_url: this.baseUrl,
-            api_key_configured: true,
-            sandbox_mode: this.sandbox,
-            account,
-            latency_ms: latency,
-            supported_channels: ["sms", "whatsapp", "rcs"],
-            message: "Sent.dm OpenAPI v3 gateway reachable and authorized.",
-            checked_at: new Date().toISOString(),
-          };
-        }
-      }
+      const { data, error } = await supabase.functions.invoke("sent-health");
+      if (error) throw error;
+
+      const latency = Math.round(performance.now() - startTime);
+      const configured = Boolean(data?.configured);
+      const healthy = Boolean(data?.healthy);
+
+      return {
+        healthy,
+        status_code: data?.status_code ?? (healthy ? 200 : 503),
+        base_url: data?.base_url || this.baseUrl,
+        api_key_configured: configured,
+        sandbox_mode: Boolean(data?.sandbox),
+        account: data?.account ?? (await this.getAccount()),
+        latency_ms: data?.latency_ms ?? latency,
+        supported_channels: ["sms", "whatsapp", "rcs"],
+        message: healthy
+          ? "Sent.dm OpenAPI v3 gateway reachable and authorized (server-side)."
+          : configured
+            ? `Sent.dm gateway unreachable: ${data?.error ?? "unknown error"}. Outbound traffic falls back to Twilio (US) / Termii (NG).`
+            : "SENT_API_KEY is not configured. Add it in the secrets vault to activate Sent.dm as the default global provider.",
+        checked_at: new Date().toISOString(),
+      };
     } catch (e: any) {
       console.warn("[SentClient] Diagnostics probe error:", e);
+      return {
+        healthy: false,
+        status_code: 500,
+        base_url: this.baseUrl,
+        api_key_configured: false,
+        sandbox_mode: true,
+        account: await this.getAccount(),
+        latency_ms: Math.round(performance.now() - startTime),
+        supported_channels: ["sms", "whatsapp", "rcs"],
+        message: `Unable to reach the Sent.dm health probe: ${e?.message ?? "unknown error"}`,
+        checked_at: new Date().toISOString(),
+      };
     }
-
-    const latency = Math.round(performance.now() - startTime);
-    return {
-      healthy: true,
-      status_code: 200,
-      base_url: this.baseUrl,
-      api_key_configured: hasKey,
-      sandbox_mode: true,
-      account: await this.getAccount(),
-      latency_ms: Math.max(latency, 42),
-      supported_channels: ["sms", "whatsapp", "rcs"],
-      message: hasKey 
-        ? "Sent.dm gateway connected with active credentials." 
-        : "Sent.dm OpenAPI v3 integration active in Sandbox Mode. Ready to receive production SENT_API_KEY in Secrets Vault.",
-      checked_at: new Date().toISOString(),
-    };
   }
+
 
   /**
    * Verifies inbound webhook HMAC signature
