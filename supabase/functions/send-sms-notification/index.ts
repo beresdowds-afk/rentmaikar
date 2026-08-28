@@ -321,12 +321,22 @@ const handler = async (req: Request): Promise<Response> => {
     // Sent is attempted first for every destination. Twilio (USA) and Termii
     // (Nigeria) remain as automatic regional fallbacks.
     if (body.providerOverride !== 'twilio' && body.providerOverride !== 'termii') {
+      const isWa = body.channel === 'whatsapp';
       const sentResult = await sendViaSent({
         to: body.phone,
-        channel: body.channel === 'whatsapp' ? 'whatsapp' : 'sms',
+        channel: isWa ? 'whatsapp' : 'sms',
         text: message,
+        template: isWa && body.whatsappTemplateId
+          ? {
+              id: body.whatsappTemplateId,
+              language: body.whatsappTemplateLanguage,
+              parameters: body.whatsappTemplateParams,
+            }
+          : undefined,
+        mediaUrls: isWa ? body.mediaUrls : undefined,
         metadata: { notification_type: body.notificationType, region: isNigeria ? 'NIGERIA' : 'USA' },
       });
+
 
       if (sentResult.ok) {
         console.log(`${body.channel.toUpperCase()} sent via Sent.dm:`, sentResult.messageId);
