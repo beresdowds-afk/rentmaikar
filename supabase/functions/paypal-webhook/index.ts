@@ -22,19 +22,31 @@ import { getPayPalConfig, verifyWebhookSignature,
   ensurePayPalConfig,
 } from "../_shared/paypal-client.ts";
 
-const PP_WH_ID = Deno.env.get("PAYPAL_WEBHOOK_ID") ?? "";
+function paypalWebhookId(): string {
+  return (Deno.env.get("PAYPAL_WEBHOOK_ID") ?? "").trim();
+}
 
 /**
  * Verify with PayPal. The environment resolution is shared with every other
  * PayPal function, so the verifier can no longer end up pointed at sandbox
  * while checkout runs against live (which silently failed every signature).
+ *
+ * Returns an explicit reason so a missing `PAYPAL_WEBHOOK_ID` (configuration
+ * gap) is never mistaken for a forged payload (security event).
  */
-async function verifySignature(headers: Headers, rawBody: string): Promise<boolean> {
+async function verifySignature(
+  headers: Headers,
+  rawBody: string,
+): Promise<{ valid: boolean; reason?: "missing_webhook_id" | "missing_credentials" | "rejected" }> {
   await ensurePayPalConfig();
   const cfg = getPayPalConfig();
-  if (!cfg || !PP_WH_ID) return false;
-  return verifyWebhookSignature(cfg, PP_WH_ID, headers, rawBody);
+  if (!cfg) return { valid: false, reason: "missing_credentials" };
+  const whId = paypalWebhookId();
+  if (!whId) return { valid: false, reason: "missing_webhook_id" };
+  const valid = await verifyWebhookSignature(cfg, whId, headers, rawBody);
+  return { valid, reason: valid ? undefined : "rejected" };
 }
+
 
 
 Deno.serve(async (req) => {
