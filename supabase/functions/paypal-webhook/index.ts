@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     externalEventId: externalId ?? null,
     reference: orderId ?? null,
   });
-  logger.info("received", { signature_valid: signatureValid });
+  logger.info("received", { signature_valid: signatureValid, verify_reason: verification.reason ?? null });
 
   // Idempotent event log — duplicate deliveries with the same PayPal event id
   // short-circuit with 200 so PayPal stops retrying.
