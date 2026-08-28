@@ -208,15 +208,14 @@ export async function publishAndAuthorizeVehicle(
     console.warn('Could not update vehicle table via supabase, proceeding with authorization record:', err);
   }
 
-  // 2. Build or update authorization record
-  const currentList = getStoredAuthorizations();
-  const existingIdx = currentList.findIndex((a) => a.vehicle_id === params.vehicleId);
+  // 2. Build or update authorization record in the shared database
+  const existing = await getAuthorizationByVehicleId(params.vehicleId);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const cancellationUrl = `${origin}/cancel-authorization/${cancellationToken}`;
 
   const newAuthRecord: VehicleRentalAuthorization = {
-    id: existingIdx >= 0 ? currentList[existingIdx].id : authId,
+    id: existing?.id || authId,
     vehicle_id: params.vehicleId,
     vehicle_make: params.vehicleMake,
     vehicle_model: params.vehicleModel,
@@ -229,21 +228,20 @@ export async function publishAndAuthorizeVehicle(
     photo_urls: params.photoUrls,
     owner_id: params.ownerId,
     owner_name: params.ownerName || 'Vehicle Owner',
-    owner_email: params.ownerEmail || 'owner@rentmaikar.com',
+    owner_email: params.ownerEmail || '',
     owner_phone: params.ownerPhone || null,
     status: 'ACTIVE',
     matching_status: 'matching_pool_active',
     authorization_text: LEGAL_AUTHORIZATION_TEXT,
     terms_version: 'v2026.1',
     authorized_at: now,
-    ip_address: 'Logged Session User',
     user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Browser Client',
     cancellation_token: cancellationToken,
     cancelled_at: null,
     cancelled_by: null,
     cancellation_reason: null,
     audit_trail: [
-      ...(existingIdx >= 0 ? currentList[existingIdx].audit_trail : []),
+      ...(existing?.audit_trail || []),
       {
         id: `AUD-${Date.now()}`,
         action: 'PUBLISHED_AND_AUTHORIZED',
@@ -256,15 +254,13 @@ export async function publishAndAuthorizeVehicle(
     ],
   };
 
-  let updatedList: VehicleRentalAuthorization[];
-  if (existingIdx >= 0) {
-    updatedList = [...currentList];
-    updatedList[existingIdx] = newAuthRecord;
-  } else {
-    updatedList = [newAuthRecord, ...currentList];
+  const { error: upsertError } = await db().upsert(newAuthRecord, { onConflict: 'vehicle_id' });
+  if (upsertError) {
+    console.error('Failed to persist vehicle authorization:', upsertError);
+    throw new Error(upsertError.message || 'Could not save the vehicle rental authorization record.');
   }
 
-  persistAuthorizations(updatedList);
+  broadcast(1);
 
   // 3. Send authorization notification message with cancellation link to Owner's inbox
   await sendAuthorizationNotificationMessage({
@@ -279,6 +275,7 @@ export async function publishAndAuthorizeVehicle(
     cancellationUrl,
   };
 }
+
 
 export interface CancelAuthorizationParams {
   cancellationToken?: string;
