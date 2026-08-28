@@ -306,7 +306,63 @@ const handler = async (req: Request): Promise<Response> => {
       fallback: getMessageContent(body),
     });
 
+    // ─── SENT.dm (global default CPaaS) ───
+    // Sent is attempted first for every destination. Twilio (USA) and Termii
+    // (Nigeria) remain as automatic regional fallbacks.
+    if (body.providerOverride !== 'twilio' && body.providerOverride !== 'termii') {
+      const sentResult = await sendViaSent({
+        to: body.phone,
+        channel: body.channel === 'whatsapp' ? 'whatsapp' : 'sms',
+        text: message,
+        metadata: { notification_type: body.notificationType, region: isNigeria ? 'NIGERIA' : 'USA' },
+      });
+
+      if (sentResult.ok) {
+        console.log(`${body.channel.toUpperCase()} sent via Sent.dm:`, sentResult.messageId);
+        const supabase = createClient(Deno.env.get("SUPABASE_URL")!, supabaseServiceKey);
+        await logMessagingEvent(supabase, {
+          channel: body.channel === 'whatsapp' ? 'whatsapp' : 'sms',
+          provider: 'sent',
+          event_type: 'sent',
+          direction: 'outbound',
+          recipient: body.phone,
+          region: isNigeria ? 'NIGERIA' : 'USA',
+          provider_message_id: sentResult.messageId,
+          template_name: body.notificationType,
+          metadata: { notification_type: body.notificationType, sandbox: sentResult.sandbox },
+        });
+        await logOutboundDecision(supabase, {
+          channel: body.channel === 'whatsapp' ? 'whatsapp' : 'sms',
+          decision: 'sent',
+          reason: 'accepted_by_provider',
+          region: isNigeria ? 'Nigeria' : 'USA',
+          provider: 'sent',
+          recipient: body.phone,
+          notificationType: body.notificationType,
+          messageId: sentResult.messageId,
+          functionName: 'send-sms-notification',
+        });
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            messageId: sentResult.messageId,
+            channel: body.channel,
+            provider: 'sent',
+            region: isNigeria ? 'NIGERIA' : 'USA',
+            sandbox: sentResult.sandbox,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      if (!sentResult.skipped) {
+        console.warn(`[send-sms-notification] Sent.dm dispatch failed, falling back: ${sentResult.error}`);
+      }
+    }
+
     if (isNigeria) {
+
       // ─── TERMII (Nigeria) ───
       const termiiApiKey = Deno.env.get("TERMII_API_KEY");
 
