@@ -62,7 +62,8 @@ Deno.serve(async (req) => {
   let evt: any = {};
   try { evt = JSON.parse(raw); } catch { return new Response("bad json", { status: 400 }); }
 
-  const signatureValid = await verifySignature(req.headers, raw);
+  const verification = await verifySignature(req.headers, raw);
+  const signatureValid = verification.valid;
   const eventType = evt.event_type as string | undefined;
   const externalId = evt.id as string | undefined;
   const resource = evt.resource ?? {};
