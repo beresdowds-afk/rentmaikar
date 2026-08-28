@@ -75,8 +75,14 @@ interface SMSNotificationRequest {
   device?: string;
   /** Force a specific provider; omit to use Sent.dm with regional fallback. */
   providerOverride?: "sent" | "twilio" | "termii";
-
+  /** WhatsApp approved template (required outside the 24h session window). */
+  whatsappTemplateId?: string;
+  whatsappTemplateLanguage?: string;
+  whatsappTemplateParams?: Record<string, string | number>;
+  /** Public media URLs (WhatsApp only). */
+  mediaUrls?: string[];
 }
+
 
 // From numbers sourced from shared sms-config.ts via getFromNumber()
 
@@ -315,12 +321,22 @@ const handler = async (req: Request): Promise<Response> => {
     // Sent is attempted first for every destination. Twilio (USA) and Termii
     // (Nigeria) remain as automatic regional fallbacks.
     if (body.providerOverride !== 'twilio' && body.providerOverride !== 'termii') {
+      const isWa = body.channel === 'whatsapp';
       const sentResult = await sendViaSent({
         to: body.phone,
-        channel: body.channel === 'whatsapp' ? 'whatsapp' : 'sms',
+        channel: isWa ? 'whatsapp' : 'sms',
         text: message,
+        template: isWa && body.whatsappTemplateId
+          ? {
+              id: body.whatsappTemplateId,
+              language: body.whatsappTemplateLanguage,
+              parameters: body.whatsappTemplateParams,
+            }
+          : undefined,
+        mediaUrls: isWa ? body.mediaUrls : undefined,
         metadata: { notification_type: body.notificationType, region: isNigeria ? 'NIGERIA' : 'USA' },
       });
+
 
       if (sentResult.ok) {
         console.log(`${body.channel.toUpperCase()} sent via Sent.dm:`, sentResult.messageId);

@@ -5,6 +5,8 @@ import { whatchimp } from "../_shared/whatchimp-client.ts";
 import { manychat } from "../_shared/manychat-client.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
 import { outboundPausedResponse, outboundRegionFromPhone } from "../_shared/channel-guard.ts";
+import { sendViaSent } from "../_shared/sent-client.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -127,7 +129,56 @@ serve(async (req) => {
       );
     }
 
+    // ─── SENT.dm (global default CPaaS for SMS + WhatsApp) ───
+    // Attempted before the regional providers; falls through silently when
+    // the channel is disabled or the dispatch fails.
+    {
+      const sentChannel = channel === "whatsapp" ? "whatsapp" : "sms";
+      const sentResult = await sendViaSent({
+        to: recipientPhone,
+        channel: sentChannel,
+        text: messageContent,
+        mediaUrls: mediaUrls,
+        senderId: forwardingFrom || undefined,
+        metadata: { conversation_id: conversationId, region: conversation?.region ?? null },
+      });
+
+      if (sentResult.ok) {
+        console.log(`Inbox reply sent via Sent.dm (${sentChannel}):`, sentResult.messageId);
+        await supabase.from("inbox_messages").update({
+          external_id: sentResult.messageId,
+          metadata: {
+            provider: "sent",
+            status: sentResult.status ?? "sent",
+            sent_at: new Date().toISOString(),
+            sent_from: forwardingFrom || "sent_default",
+            is_forwarding_number: !!forwardingFrom,
+            sandbox: sentResult.sandbox,
+            ...(mediaList.length ? { attachments_detail: mediaList } : {}),
+          },
+        }).eq("conversation_id", conversationId).eq("content", messageContent).eq("sender_type", "admin")
+          .is("external_id", null).order("created_at", { ascending: false }).limit(1);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            provider: "sent",
+            channel: sentChannel,
+            messageSid: sentResult.messageId,
+            status: sentResult.status ?? "sent",
+            sentFrom: forwardingFrom || "default",
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      if (!sentResult.skipped) {
+        console.warn(`[send-inbox-reply] Sent.dm dispatch failed, falling back: ${sentResult.error}`);
+      }
+    }
+
     if (isNigeria) {
+
       // ─── TERMII (Nigeria +234) ───
       const termiiApiKey = Deno.env.get("TERMII_API_KEY");
       const termiiSenderId = Deno.env.get("TERMII_SENDER_ID") || "Rentmaikar";
