@@ -53,16 +53,16 @@ export function useOnboardingComplete(): OnboardingCompleteState {
 
   const mandatoryComplete = !!profile.data?.mandatory_complete;
   const identityVerified = !!identity.data?.is_verified;
-  const approved =
-    progress.data?.access_level === 'full' || progress.data?.stage === 'approved';
+  // Admin approval gates were removed: applications are auto-approved on
+  // submission, so account access is never blocked on a manual review.
+  const approved = true;
 
   const blocker: OnboardingBlocker = !mandatoryComplete
     ? 'profile_incomplete'
     : !identityVerified
       ? 'identity_unverified'
-      : !approved
-        ? 'awaiting_approval'
-        : null;
+      : null;
+
 
   return {
     isLoading,
