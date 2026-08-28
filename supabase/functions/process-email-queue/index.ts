@@ -30,7 +30,9 @@ class ProviderSendError extends Error {
 // Returns null when the DNS lookup itself failed (caller should use stored state).
 async function resolveNsRecords(name: string): Promise<string[] | null> {
   try {
-    const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=NS`)
+    const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=NS`, {
+      signal: AbortSignal.timeout(5000),
+    })
     if (!res.ok) return null
     const data = await res.json()
     return (data.Answer ?? [])
@@ -176,6 +178,21 @@ async function moveToDlq(
 }
 
 Deno.serve(async (req) => {
+  try {
+    return await handleRequest(req)
+  } catch (error) {
+    // Never let an uncaught exception terminate the isolate: the edge gateway
+    // reports that as a 502 and the cron run is lost with no diagnostics.
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('process-email-queue crashed', { error: message })
+    return new Response(
+      JSON.stringify({ error: 'Queue processing failed', detail: message.slice(0, 500) }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+})
+
+async function handleRequest(req: Request): Promise<Response> {
   const apiKey = Deno.env.get('LOVABLE_API_KEY')
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -479,4 +496,4 @@ Deno.serve(async (req) => {
     }),
     { headers: { 'Content-Type': 'application/json' } }
   )
-})
+}
