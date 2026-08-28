@@ -75,8 +75,14 @@ interface SMSNotificationRequest {
   device?: string;
   /** Force a specific provider; omit to use Sent.dm with regional fallback. */
   providerOverride?: "sent" | "twilio" | "termii";
-
+  /** WhatsApp approved template (required outside the 24h session window). */
+  whatsappTemplateId?: string;
+  whatsappTemplateLanguage?: string;
+  whatsappTemplateParams?: Record<string, string | number>;
+  /** Public media URLs (WhatsApp only). */
+  mediaUrls?: string[];
 }
+
 
 // From numbers sourced from shared sms-config.ts via getFromNumber()
 
