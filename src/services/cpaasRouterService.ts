@@ -193,30 +193,32 @@ export class CPaaSRouterService {
     channel: SentChannel, 
     payload: UnifiedMessagePayload
   ): Promise<UnifiedMessageResult> {
-    const sentReq: SentMessageRequest = {
-      to: [to],
-      channel,
-      text: payload.message,
-      template: payload.templateId 
-        ? { id: payload.templateId, parameters: payload.templateParams } 
-        : undefined,
-      sender_id: payload.customSenderId || this.config.defaultSenderId,
-      metadata: payload.metadata,
-      sandbox: this.config.sandboxMode,
-    };
+    // Sent.dm is dispatched server-side (the API key never reaches the browser).
+    const { data, error } = await supabase.functions.invoke("send-sms-notification", {
+      body: {
+        phone: to,
+        channel: channel === "whatsapp" ? "whatsapp" : "sms",
+        notificationType: payload.notificationType || "general",
+        customMessage: payload.message,
+        providerOverride: "sent",
+        metadata: payload.metadata,
+      },
+    });
 
-    const res = await sent.sendMessage(sentReq);
+    if (error) throw error;
+    if (data && data.success === false) throw new Error(data.error || "Sent.dm dispatch failed");
 
     return {
-      success: res.status !== "failed" && res.status !== "undelivered",
+      success: true,
       provider: "sent",
-      messageId: res.id,
-      channel: res.channel,
-      status: res.status,
+      messageId: data?.messageId || `sent_${Date.now()}`,
+      channel: data?.channel || channel,
+      status: "delivered",
       recipient: to,
-      timestamp: res.created_at,
+      timestamp: new Date().toISOString(),
     };
   }
+
 
   private async dispatchViaTwilio(
     to: string, 
