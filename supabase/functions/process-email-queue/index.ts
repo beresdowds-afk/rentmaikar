@@ -1,4 +1,13 @@
-import { sendLovableEmail } from 'npm:@lovable.dev/email-js'
+// Loaded lazily: a module-resolution or init failure here must not crash the
+// isolate at boot (that surfaces as a 502 on every scheduled run).
+let sendLovableEmailFn: ((...args: any[]) => Promise<unknown>) | null = null
+async function getSendLovableEmail() {
+  if (!sendLovableEmailFn) {
+    const mod = await import('npm:@lovable.dev/email-js')
+    sendLovableEmailFn = mod.sendLovableEmail
+  }
+  return sendLovableEmailFn
+}
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const MAX_RETRIES = 5
@@ -377,6 +386,7 @@ async function handleRequest(req: Request): Promise<Response> {
         if (useResendFallback) {
           await sendViaResend(payload)
         } else {
+          const sendLovableEmail = await getSendLovableEmail()
           await sendLovableEmail(
             {
               run_id: payload.run_id,
