@@ -193,16 +193,25 @@ export class CPaaSRouterService {
     payload: UnifiedMessagePayload
   ): Promise<UnifiedMessageResult> {
     // Sent.dm is dispatched server-side (the API key never reaches the browser).
+    const isWa = channel === "whatsapp";
     const { data, error } = await supabase.functions.invoke("send-sms-notification", {
       body: {
         phone: to,
-        channel: channel === "whatsapp" ? "whatsapp" : "sms",
+        channel: isWa ? "whatsapp" : "sms",
         notificationType: payload.notificationType || "general",
         customMessage: payload.message,
         providerOverride: "sent",
+        ...(isWa && payload.templateId
+          ? {
+              whatsappTemplateId: payload.templateId,
+              whatsappTemplateParams: payload.templateParams,
+            }
+          : {}),
+        ...(isWa && payload.mediaUrls?.length ? { mediaUrls: payload.mediaUrls } : {}),
         metadata: payload.metadata,
       },
     });
+
 
     if (error) throw error;
     if (data && data.success === false) throw new Error(data.error || "Sent.dm dispatch failed");
