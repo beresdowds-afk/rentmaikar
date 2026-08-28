@@ -73,6 +73,9 @@ interface SMSNotificationRequest {
   dueDate?: string;
   documentType?: string;
   device?: string;
+  /** Force a specific provider; omit to use Sent.dm with regional fallback. */
+  providerOverride?: "sent" | "twilio" | "termii";
+
 }
 
 // From numbers sourced from shared sms-config.ts via getFromNumber()
