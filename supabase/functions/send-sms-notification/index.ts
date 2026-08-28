@@ -6,6 +6,8 @@ import { resolveMessage, countryCodeForPhone } from "../_shared/message-template
 import { isOptedOut } from "../_shared/opt-out.ts";
 import { outboundPausedResponse, outboundRegionFromPhone } from "../_shared/channel-guard.ts";
 import { logOutboundDecision } from "../_shared/outbound-audit.ts";
+import { sendViaSent } from "../_shared/sent-client.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
