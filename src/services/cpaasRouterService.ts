@@ -1,5 +1,4 @@
-import { sent, SentClient } from "@/integrations/sent/client";
-import { SentChannel, SentMessageRequest, SentMessageResponse } from "@/integrations/sent/types";
+import { SentChannel } from "@/integrations/sent/types";
 import { supabase } from "@/integrations/supabase/client";
 
 export type CPaaSProvider = "sent" | "twilio" | "termii" | "auto";
@@ -231,6 +230,7 @@ export class CPaaSRouterService {
         channel: channel === "whatsapp" ? "whatsapp" : "sms",
         notificationType: payload.notificationType || "general",
         customMessage: payload.message,
+        providerOverride: "twilio",
         metadata: payload.metadata,
       },
     });
@@ -260,6 +260,7 @@ export class CPaaSRouterService {
         notificationType: payload.notificationType || "general",
         customMessage: payload.message,
         provider: "termii",
+        providerOverride: "termii",
         metadata: payload.metadata,
       },
     });
