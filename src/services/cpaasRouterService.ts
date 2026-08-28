@@ -40,7 +40,10 @@ export interface UnifiedMessagePayload {
   notificationType?: string;
   customSenderId?: string;
   metadata?: Record<string, any>;
+  /** Public media URLs (WhatsApp/RCS only). */
+  mediaUrls?: string[];
   providerOverride?: CPaaSProvider;
+
 }
 
 export interface UnifiedMessageResult {
