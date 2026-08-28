@@ -10167,6 +10167,108 @@ export type Database = {
           },
         ]
       }
+      vehicle_rental_authorizations: {
+        Row: {
+          audit_trail: Json
+          authorization_text: string
+          authorized_at: string
+          cancellation_reason: string | null
+          cancellation_token: string
+          cancelled_at: string | null
+          cancelled_by: string | null
+          color: string | null
+          created_at: string
+          id: string
+          ip_address: string | null
+          license_plate: string | null
+          matched_driver_id: string | null
+          matched_driver_name: string | null
+          matching_status: string
+          owner_email: string | null
+          owner_id: string
+          owner_name: string | null
+          owner_phone: string | null
+          photo_urls: string[]
+          pickup_city: string | null
+          pickup_location: string | null
+          status: string
+          terms_version: string
+          updated_at: string
+          user_agent: string | null
+          vehicle_id: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_year: number | null
+          vin: string | null
+        }
+        Insert: {
+          audit_trail?: Json
+          authorization_text?: string
+          authorized_at?: string
+          cancellation_reason?: string | null
+          cancellation_token: string
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          color?: string | null
+          created_at?: string
+          id: string
+          ip_address?: string | null
+          license_plate?: string | null
+          matched_driver_id?: string | null
+          matched_driver_name?: string | null
+          matching_status?: string
+          owner_email?: string | null
+          owner_id: string
+          owner_name?: string | null
+          owner_phone?: string | null
+          photo_urls?: string[]
+          pickup_city?: string | null
+          pickup_location?: string | null
+          status?: string
+          terms_version?: string
+          updated_at?: string
+          user_agent?: string | null
+          vehicle_id: string
+          vehicle_make?: string
+          vehicle_model?: string
+          vehicle_year?: number | null
+          vin?: string | null
+        }
+        Update: {
+          audit_trail?: Json
+          authorization_text?: string
+          authorized_at?: string
+          cancellation_reason?: string | null
+          cancellation_token?: string
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          license_plate?: string | null
+          matched_driver_id?: string | null
+          matched_driver_name?: string | null
+          matching_status?: string
+          owner_email?: string | null
+          owner_id?: string
+          owner_name?: string | null
+          owner_phone?: string | null
+          photo_urls?: string[]
+          pickup_city?: string | null
+          pickup_location?: string | null
+          status?: string
+          terms_version?: string
+          updated_at?: string
+          user_agent?: string | null
+          vehicle_id?: string
+          vehicle_make?: string
+          vehicle_model?: string
+          vehicle_year?: number | null
+          vin?: string | null
+        }
+        Relationships: []
+      }
       vehicle_telemetry_state: {
         Row: {
           address: string | null
@@ -11986,6 +12088,10 @@ export type Database = {
         Returns: boolean
       }
       can_review_applications: { Args: never; Returns: boolean }
+      cancel_authorization_by_token: {
+        Args: { p_by_name?: string; p_reason?: string; p_token: string }
+        Returns: Json
+      }
       check_auth_rate_limit: {
         Args: {
           _endpoint: string
@@ -12224,6 +12330,7 @@ export type Database = {
           value: string
         }[]
       }
+      get_authorization_by_token: { Args: { p_token: string }; Returns: Json }
       get_ledger_balance: {
         Args: {
           _account_type: string

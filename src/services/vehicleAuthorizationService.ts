@@ -54,29 +54,15 @@ export interface VehicleRentalAuthorization {
 export const LEGAL_AUTHORIZATION_TEXT = 
   "By clicking the publish button, you as the owner are granting Rentmaikar the permission to list the vehicle for rentals, match the vehicle to suitable drivers from our verified drivers pool, and you are committed to handing over the vehicle to the matched Driver. Rentmaikar is authorized to market the vehicle photos, specifications, and availability on the public Catalogue and execute reservation agreements with verified drivers in accordance with Rentmaikar platform terms.";
 
-const STORAGE_KEY = 'rentmaikar:vehicle_authorizations:v1';
+const TABLE = 'vehicle_rental_authorizations';
 const BROADCAST_EVENT = 'rentmaikar:vehicle_authorization_updated';
 
-function getStoredAuthorizations(): VehicleRentalAuthorization[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch (e) {
-    console.error('Failed to parse stored vehicle authorizations:', e);
-    return [];
-  }
-}
+// Untyped accessor: the generated Supabase types may lag behind new tables.
+const db = () => (supabase as any).from(TABLE);
 
-function persistAuthorizations(list: VehicleRentalAuthorization[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-    // Broadcast for real-time reactivity across tabs/components
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent(BROADCAST_EVENT, { detail: { count: list.length } }));
-    }
-  } catch (e) {
-    console.error('Failed to persist vehicle authorizations:', e);
+function broadcast(count: number) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(BROADCAST_EVENT, { detail: { count } }));
   }
 }
 
@@ -90,92 +76,17 @@ function generateToken(): string {
   return `${Math.random().toString(36).substring(2, 10)}${Date.now().toString(36)}`;
 }
 
-/**
- * Seed initial authorizations from current vehicles if storage is empty,
- * ensuring admins and assistants always have retrievable logs.
- */
-export async function seedAuthorizationsIfEmpty(): Promise<VehicleRentalAuthorization[]> {
-  const current = getStoredAuthorizations();
-  if (current.length > 0) return current;
-
-  try {
-    const { data: vehicles } = await supabase
-      .from('vehicles')
-      .select('id, make, model, year, license_plate, vin, color, pickup_city, pickup_location, photo_urls, owner_id, status, is_public, created_at')
-      .order('created_at', { ascending: false });
-
-    if (!vehicles || vehicles.length === 0) return [];
-
-    const seeded: VehicleRentalAuthorization[] = vehicles.map((v, index) => {
-      const isPublic = v.is_public ?? (v.status === 'active');
-      const isCancelled = index === 2; // sample cancelled historical record
-      const status: AuthorizationStatus = isCancelled ? 'CANCELLED' : isPublic ? 'ACTIVE' : 'PENDING';
-      const token = generateToken();
-      const authDate = v.created_at || new Date().toISOString();
-
-      return {
-        id: generateAuthId(`AUTH-VEH-${index + 100}`),
-        vehicle_id: v.id,
-        vehicle_make: v.make || 'Toyota',
-        vehicle_model: v.model || 'Corolla',
-        vehicle_year: v.year || 2021,
-        license_plate: v.license_plate || 'RMK-8821',
-        vin: v.vin || `1HGCR2F83HA${100000 + index}`,
-        color: v.color || 'Silver',
-        pickup_city: v.pickup_city || 'Washington DC',
-        pickup_location: v.pickup_location || 'Downtown Hub',
-        photo_urls: (v.photo_urls as string[]) || [],
-        owner_id: v.owner_id || 'system-owner',
-        owner_name: 'Registered Host / Fleet Owner',
-        owner_email: 'owner@rentmaikar.com',
-        status,
-        matching_status: isCancelled ? 'unlisted_cancelled' : status === 'ACTIVE' ? 'matching_pool_active' : 'pending',
-        authorization_text: LEGAL_AUTHORIZATION_TEXT,
-        terms_version: 'v2026.1',
-        authorized_at: authDate,
-        ip_address: '197.210.54.12',
-        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Mozilla/5.0',
-        cancellation_token: token,
-        cancelled_at: isCancelled ? new Date(Date.now() - 86400000).toISOString() : null,
-        cancelled_by: isCancelled ? v.owner_id : null,
-        cancellation_reason: isCancelled ? 'Published in error / testing listing' : null,
-        audit_trail: [
-          {
-            id: `AUD-${Date.now()}-${index}`,
-            action: 'PUBLISHED_AND_AUTHORIZED',
-            performed_by: v.owner_id || 'system-owner',
-            performed_by_name: 'Registered Host',
-            performed_by_role: 'owner',
-            timestamp: authDate,
-            notes: 'Owner clicked Publish button and agreed to rental authorization & driver matching commitment.',
-          },
-          ...(isCancelled
-            ? [
-                {
-                  id: `AUD-CANC-${Date.now()}-${index}`,
-                  action: 'AUTHORIZATION_CANCELLED' as const,
-                  performed_by: v.owner_id || 'system-owner',
-                  performed_by_name: 'Registered Host',
-                  performed_by_role: 'owner',
-                  timestamp: new Date(Date.now() - 86400000).toISOString(),
-                  notes: 'Cancellation link used. Vehicle unpublished from catalogue.',
-                },
-              ]
-            : []),
-        ],
-      };
-    });
-
-    persistAuthorizations(seeded);
-    return seeded;
-  } catch (err) {
-    console.error('Error seeding vehicle authorizations:', err);
-    return [];
-  }
+function mapRow(row: any): VehicleRentalAuthorization {
+  return {
+    ...row,
+    photo_urls: Array.isArray(row?.photo_urls) ? row.photo_urls : [],
+    audit_trail: Array.isArray(row?.audit_trail) ? row.audit_trail : [],
+  } as VehicleRentalAuthorization;
 }
 
 /**
- * Get all authorizations with optional filtering.
+ * Get all authorizations the current user is allowed to see, with optional filtering.
+ * Records live in the database, so they are shared across devices and browsers.
  */
 export async function getVehicleAuthorizations(filters?: {
   search?: string;
@@ -183,52 +94,63 @@ export async function getVehicleAuthorizations(filters?: {
   vehicleId?: string;
   ownerId?: string;
 }): Promise<VehicleRentalAuthorization[]> {
-  let list = getStoredAuthorizations();
-  if (list.length === 0) {
-    list = await seedAuthorizationsIfEmpty();
+  let query = db().select('*').order('authorized_at', { ascending: false });
+
+  if (filters?.vehicleId) query = query.eq('vehicle_id', filters.vehicleId);
+  if (filters?.ownerId) query = query.eq('owner_id', filters.ownerId);
+  if (filters?.status && filters.status !== 'ALL') query = query.eq('status', filters.status);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('Failed to load vehicle authorizations:', error);
+    return [];
   }
 
-  return list.filter((item) => {
-    if (filters?.vehicleId && item.vehicle_id !== filters.vehicleId) {
-      return false;
-    }
-    if (filters?.ownerId && item.owner_id !== filters.ownerId) {
-      return false;
-    }
-    if (filters?.status && filters.status !== 'ALL' && item.status !== filters.status) {
-      return false;
-    }
-    if (filters?.search && filters.search.trim()) {
-      const q = filters.search.toLowerCase().trim();
-      const matches =
-        item.id.toLowerCase().includes(q) ||
-        item.vehicle_make.toLowerCase().includes(q) ||
-        item.vehicle_model.toLowerCase().includes(q) ||
-        item.license_plate.toLowerCase().includes(q) ||
-        (item.vin && item.vin.toLowerCase().includes(q)) ||
-        item.owner_name.toLowerCase().includes(q) ||
-        item.owner_email.toLowerCase().includes(q);
-      if (!matches) return false;
-    }
-    return true;
-  });
+  const list = (data || []).map(mapRow);
+
+  if (!filters?.search || !filters.search.trim()) return list;
+
+  const q = filters.search.toLowerCase().trim();
+  return list.filter((item) =>
+    [
+      item.id,
+      item.vehicle_make,
+      item.vehicle_model,
+      item.license_plate,
+      item.vin,
+      item.owner_name,
+      item.owner_email,
+    ]
+      .filter(Boolean)
+      .some((field) => String(field).toLowerCase().includes(q))
+  );
 }
 
 /**
  * Find single authorization by vehicle ID.
  */
 export async function getAuthorizationByVehicleId(vehicleId: string): Promise<VehicleRentalAuthorization | null> {
-  const list = await getVehicleAuthorizations();
-  return list.find((a) => a.vehicle_id === vehicleId) || null;
+  const { data, error } = await db().select('*').eq('vehicle_id', vehicleId).maybeSingle();
+  if (error) {
+    console.error('Failed to load authorization for vehicle:', error);
+    return null;
+  }
+  return data ? mapRow(data) : null;
 }
 
 /**
  * Find single authorization by cancellation token.
+ * Uses a token-gated RPC so the link works on any device, signed in or not.
  */
 export async function getAuthorizationByToken(token: string): Promise<VehicleRentalAuthorization | null> {
-  const list = await getVehicleAuthorizations();
-  return list.find((a) => a.cancellation_token === token) || null;
+  const { data, error } = await (supabase as any).rpc('get_authorization_by_token', { p_token: token });
+  if (error) {
+    console.error('Failed to resolve authorization token:', error);
+    return null;
+  }
+  return data ? mapRow(data) : null;
 }
+
 
 export interface PublishAndAuthorizeParams {
   vehicleId: string;
@@ -286,15 +208,14 @@ export async function publishAndAuthorizeVehicle(
     console.warn('Could not update vehicle table via supabase, proceeding with authorization record:', err);
   }
 
-  // 2. Build or update authorization record
-  const currentList = getStoredAuthorizations();
-  const existingIdx = currentList.findIndex((a) => a.vehicle_id === params.vehicleId);
+  // 2. Build or update authorization record in the shared database
+  const existing = await getAuthorizationByVehicleId(params.vehicleId);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const cancellationUrl = `${origin}/cancel-authorization/${cancellationToken}`;
 
   const newAuthRecord: VehicleRentalAuthorization = {
-    id: existingIdx >= 0 ? currentList[existingIdx].id : authId,
+    id: existing?.id || authId,
     vehicle_id: params.vehicleId,
     vehicle_make: params.vehicleMake,
     vehicle_model: params.vehicleModel,
@@ -307,21 +228,20 @@ export async function publishAndAuthorizeVehicle(
     photo_urls: params.photoUrls,
     owner_id: params.ownerId,
     owner_name: params.ownerName || 'Vehicle Owner',
-    owner_email: params.ownerEmail || 'owner@rentmaikar.com',
+    owner_email: params.ownerEmail || '',
     owner_phone: params.ownerPhone || null,
     status: 'ACTIVE',
     matching_status: 'matching_pool_active',
     authorization_text: LEGAL_AUTHORIZATION_TEXT,
     terms_version: 'v2026.1',
     authorized_at: now,
-    ip_address: 'Logged Session User',
     user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Browser Client',
     cancellation_token: cancellationToken,
     cancelled_at: null,
     cancelled_by: null,
     cancellation_reason: null,
     audit_trail: [
-      ...(existingIdx >= 0 ? currentList[existingIdx].audit_trail : []),
+      ...(existing?.audit_trail || []),
       {
         id: `AUD-${Date.now()}`,
         action: 'PUBLISHED_AND_AUTHORIZED',
@@ -334,15 +254,13 @@ export async function publishAndAuthorizeVehicle(
     ],
   };
 
-  let updatedList: VehicleRentalAuthorization[];
-  if (existingIdx >= 0) {
-    updatedList = [...currentList];
-    updatedList[existingIdx] = newAuthRecord;
-  } else {
-    updatedList = [newAuthRecord, ...currentList];
+  const { error: upsertError } = await db().upsert(newAuthRecord, { onConflict: 'vehicle_id' });
+  if (upsertError) {
+    console.error('Failed to persist vehicle authorization:', upsertError);
+    throw new Error(upsertError.message || 'Could not save the vehicle rental authorization record.');
   }
 
-  persistAuthorizations(updatedList);
+  broadcast(1);
 
   // 3. Send authorization notification message with cancellation link to Owner's inbox
   await sendAuthorizationNotificationMessage({
@@ -357,6 +275,7 @@ export async function publishAndAuthorizeVehicle(
     cancellationUrl,
   };
 }
+
 
 export interface CancelAuthorizationParams {
   cancellationToken?: string;
@@ -378,15 +297,19 @@ export interface CancelAuthorizationParams {
 export async function cancelVehicleAuthorization(
   params: CancelAuthorizationParams
 ): Promise<{ success: boolean; authorization: VehicleRentalAuthorization | null; message: string }> {
-  const list = getStoredAuthorizations();
-  const targetIdx = list.findIndex((a) => {
-    if (params.cancellationToken && a.cancellation_token === params.cancellationToken) return true;
-    if (params.authorizationId && a.id === params.authorizationId) return true;
-    if (params.vehicleId && a.vehicle_id === params.vehicleId) return true;
-    return false;
-  });
+  const reasonText = params.reason || 'Published by mistake / Owner requested cancellation';
 
-  if (targetIdx === -1) {
+  // Resolve the target record (token first — it works for link holders on any device)
+  let token = params.cancellationToken || null;
+  if (!token) {
+    let lookup = db().select('cancellation_token').limit(1);
+    if (params.authorizationId) lookup = lookup.eq('id', params.authorizationId);
+    else if (params.vehicleId) lookup = lookup.eq('vehicle_id', params.vehicleId);
+    const { data } = await lookup.maybeSingle();
+    token = data?.cancellation_token || null;
+  }
+
+  if (!token) {
     return {
       success: false,
       authorization: null,
@@ -394,50 +317,24 @@ export async function cancelVehicleAuthorization(
     };
   }
 
-  const now = new Date().toISOString();
-  const current = list[targetIdx];
-  const reasonText = params.reason || 'Published by mistake / Owner requested cancellation';
+  // The RPC cancels the authorization, appends the audit event and unpublishes the vehicle atomically.
+  const { data: result, error } = await (supabase as any).rpc('cancel_authorization_by_token', {
+    p_token: token,
+    p_reason: reasonText,
+    p_by_name: params.cancelledByName || 'Vehicle Owner / Admin',
+  });
 
-  // 1. Unpublish vehicle from Catalogue
-  try {
-    await supabase
-      .from('vehicles')
-      .update({
-        is_public: false,
-        status: 'pending',
-        updated_at: now,
-      } as never)
-      .eq('id', current.vehicle_id);
-  } catch (err) {
-    console.warn('Could not update vehicle table via supabase on cancel:', err);
+  if (error || !result?.success) {
+    return {
+      success: false,
+      authorization: null,
+      message: error?.message || result?.message || 'Vehicle rental authorization record not found.',
+    };
   }
 
-  // 2. Update record and append cancellation audit event
-  const updatedRecord: VehicleRentalAuthorization = {
-    ...current,
-    status: 'CANCELLED',
-    matching_status: 'unlisted_cancelled',
-    cancelled_at: now,
-    cancelled_by: params.cancelledByUserId,
-    cancellation_reason: reasonText,
-    audit_trail: [
-      ...current.audit_trail,
-      {
-        id: `AUD-CANC-${Date.now()}`,
-        action: 'AUTHORIZATION_CANCELLED',
-        performed_by: params.cancelledByUserId,
-        performed_by_name: params.cancelledByName || 'Vehicle Owner / Admin',
-        performed_by_role: params.cancelledByRole || 'owner',
-        timestamp: now,
-        notes: `Vehicle authorization revoked and listing unpublished from Catalogue. Reason: "${reasonText}"`,
-      },
-    ],
-  };
+  const updatedRecord = mapRow(result.authorization);
+  broadcast(1);
 
-  list[targetIdx] = updatedRecord;
-  persistAuthorizations(list);
-
-  // 3. Send cancellation log confirmation message
   await sendCancellationAcknowledgmentMessage({
     ownerId: updatedRecord.owner_id,
     authorization: updatedRecord,
@@ -447,9 +344,10 @@ export async function cancelVehicleAuthorization(
   return {
     success: true,
     authorization: updatedRecord,
-    message: 'Vehicle rental authorization has been successfully cancelled and removed from the active catalogue.',
+    message: result.message || 'Vehicle rental authorization has been successfully cancelled and removed from the active catalogue.',
   };
 }
+
 
 /**
  * Sends in-app authorization message to the Owner's inbox containing the confirmation and cancellation link.
