@@ -1,10 +1,14 @@
-# RENTMAIKAR 
+# RENTMAIKAR
 
-can you create a complete web App and mobile app (Android and iOS) set from text description ?
+[![GitHub Repo](https://img.shields.io/badge/GitHub-beresdowds--afk%2FRentmaikar--G2-181717?logo=github)](https://github.com/beresdowds-afk/Rentmaikar-G2)
+
+Can you create a complete web App and mobile app (Android and iOS) set from text description?
 
 This project was built with [Lovable](https://lovable.dev).
 
 **Live app**: https://rentmaikar.lovable.app
+
+**Repository**: https://github.com/beresdowds-afk/Rentmaikar-G2
 
 ## Build with Lovable
 
@@ -19,8 +23,8 @@ Continue developing this project in the [Lovable editor](https://lovable.dev/pro
 Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
+git clone https://github.com/beresdowds-afk/Rentmaikar-G2.git
+cd Rentmaikar-G2
 npm i
 npm run dev
 ```
