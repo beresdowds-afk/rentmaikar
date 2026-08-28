@@ -97,11 +97,14 @@ Deno.serve(async (req) => {
   }
 
   if (!signatureValid) {
-    logger.warn("signature.invalid");
-    return new Response(JSON.stringify({ received: true, verified: false }), {
-      status: 202,
-      headers: { ...corsHeaders, ...correlationHeaders(logger), "Content-Type": "application/json" },
-    });
+    logger.warn("signature.invalid", { reason: verification.reason });
+    return new Response(
+      JSON.stringify({ received: true, verified: false, reason: verification.reason }),
+      {
+        status: 202,
+        headers: { ...corsHeaders, ...correlationHeaders(logger), "Content-Type": "application/json" },
+      },
+    );
   }
 
   const amountValue = Number(resource.amount?.value ?? 0) || null;
