@@ -146,50 +146,48 @@ export class SentClient {
    */
   async runDiagnostics(): Promise<SentDiagnosticsResult> {
     const startTime = performance.now();
-    const hasKey = Boolean(this.apiKey && this.apiKey.length > 5);
 
     try {
-      if (hasKey && !this.apiKey.startsWith("demo_")) {
-        const res = await fetch(`${this.baseUrl}/v3/account`, {
-          headers: { "x-api-key": this.apiKey },
-        });
-        const latency = Math.round(performance.now() - startTime);
-        if (res.ok) {
-          const account = await res.json();
-          return {
-            healthy: true,
-            status_code: res.status,
-            base_url: this.baseUrl,
-            api_key_configured: true,
-            sandbox_mode: this.sandbox,
-            account,
-            latency_ms: latency,
-            supported_channels: ["sms", "whatsapp", "rcs"],
-            message: "Sent.dm OpenAPI v3 gateway reachable and authorized.",
-            checked_at: new Date().toISOString(),
-          };
-        }
-      }
+      const { data, error } = await supabase.functions.invoke("sent-health");
+      if (error) throw error;
+
+      const latency = Math.round(performance.now() - startTime);
+      const configured = Boolean(data?.configured);
+      const healthy = Boolean(data?.healthy);
+
+      return {
+        healthy,
+        status_code: data?.status_code ?? (healthy ? 200 : 503),
+        base_url: data?.base_url || this.baseUrl,
+        api_key_configured: configured,
+        sandbox_mode: Boolean(data?.sandbox),
+        account: data?.account ?? (await this.getAccount()),
+        latency_ms: data?.latency_ms ?? latency,
+        supported_channels: ["sms", "whatsapp", "rcs"],
+        message: healthy
+          ? "Sent.dm OpenAPI v3 gateway reachable and authorized (server-side)."
+          : configured
+            ? `Sent.dm gateway unreachable: ${data?.error ?? "unknown error"}. Outbound traffic falls back to Twilio (US) / Termii (NG).`
+            : "SENT_API_KEY is not configured. Add it in the secrets vault to activate Sent.dm as the default global provider.",
+        checked_at: new Date().toISOString(),
+      };
     } catch (e: any) {
       console.warn("[SentClient] Diagnostics probe error:", e);
+      return {
+        healthy: false,
+        status_code: 500,
+        base_url: this.baseUrl,
+        api_key_configured: false,
+        sandbox_mode: true,
+        account: await this.getAccount(),
+        latency_ms: Math.round(performance.now() - startTime),
+        supported_channels: ["sms", "whatsapp", "rcs"],
+        message: `Unable to reach the Sent.dm health probe: ${e?.message ?? "unknown error"}`,
+        checked_at: new Date().toISOString(),
+      };
     }
-
-    const latency = Math.round(performance.now() - startTime);
-    return {
-      healthy: true,
-      status_code: 200,
-      base_url: this.baseUrl,
-      api_key_configured: hasKey,
-      sandbox_mode: true,
-      account: await this.getAccount(),
-      latency_ms: Math.max(latency, 42),
-      supported_channels: ["sms", "whatsapp", "rcs"],
-      message: hasKey 
-        ? "Sent.dm gateway connected with active credentials." 
-        : "Sent.dm OpenAPI v3 integration active in Sandbox Mode. Ready to receive production SENT_API_KEY in Secrets Vault.",
-      checked_at: new Date().toISOString(),
-    };
   }
+
 
   /**
    * Verifies inbound webhook HMAC signature
