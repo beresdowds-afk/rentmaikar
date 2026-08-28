@@ -5,6 +5,8 @@ import { whatchimp } from "../_shared/whatchimp-client.ts";
 import { manychat } from "../_shared/manychat-client.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
 import { outboundPausedResponse, outboundRegionFromPhone } from "../_shared/channel-guard.ts";
+import { sendViaSent } from "../_shared/sent-client.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
