@@ -1,5 +1,5 @@
 import Seo from "@/components/seo/Seo";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,6 +25,8 @@ import { logRegistrationEvent } from "@/lib/registration-audit";
 import { RegistrationErrorAlert } from "@/components/registration/RegistrationErrorAlert";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePersonaEnabled } from "@/hooks/usePersonaEnabled";
+import { refereeDetailsRequired } from "@/lib/referee-requirements";
 import {
   ADDRESS_MIN,
   ADDRESS_MAX,
@@ -38,7 +40,32 @@ const toE164 = (v: string) => {
   return t.startsWith("+") ? t.replace(/\s+/g, "") : `+${t.replace(/[^\d]/g, "")}`;
 };
 
-const driverSchema = z.object({
+const refereePhone = (label: string) =>
+  z
+    .string()
+    .min(1, `${label} phone is required`)
+    .max(20, "Phone too long")
+    .refine((v) => {
+      const p = parsePhoneNumberFromString(toE164(v));
+      return !!p && p.isValid();
+    }, `Enter ${label}'s phone with country code, e.g. +2348012345678`);
+
+/**
+ * Referee address/email are conditionally required — see
+ * `refereeDetailsRequired()`. `detailsRequired` is driven by the admin's
+ * identity-gating switch plus the application type.
+ */
+const buildDriverSchema = (detailsRequired: boolean) => {
+  const refereeAddress = (label: string) =>
+    detailsRequired
+      ? z.string().min(5, `${label} home address is required`).max(200, "Address too long")
+      : z.string().max(200, "Address too long").optional().or(z.literal(""));
+  const refereeEmail = (label: string) =>
+    detailsRequired
+      ? z.string().min(1, `${label} email is required`).email("Invalid email address").max(255)
+      : z.string().email("Invalid email address").max(255).optional().or(z.literal(""));
+
+  return z.object({
   firstName: z.string().min(2, "First name is required").max(50, "First name too long"),
   lastName: z.string().min(2, "Last name is required").max(50, "Last name too long"),
   email: z.string().email("Invalid email address").max(255, "Email too long"),
@@ -57,6 +84,23 @@ const driverSchema = z.object({
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
   rideshareApproval: z.array(z.string()).min(1, "Select at least one platform"),
   hasDriverLicense: z.boolean().refine(val => val, "Driver license is required"),
+  // Referee 1 — phones must be E.164; the DB enforces this with a trigger, so
+  // validate here to surface an inline error instead of a failed submission.
+  // Home address and email are conditionally required.
+  referee1Name: z.string().min(2, "Referee 1 name is required").max(100, "Name too long"),
+  referee1Phone: refereePhone("Referee 1"),
+  referee1Address: refereeAddress("Referee 1"),
+  referee1Email: refereeEmail("Referee 1"),
+  // Referee 2
+  referee2Name: z.string().min(2, "Referee 2 name is required").max(100, "Name too long"),
+  referee2Phone: refereePhone("Referee 2"),
+  referee2Address: refereeAddress("Referee 2"),
+  referee2Email: refereeEmail("Referee 2"),
+  // Referee 3
+  referee3Name: z.string().min(2, "Referee 3 name is required").max(100, "Name too long"),
+  referee3Phone: refereePhone("Referee 3"),
+  referee3Address: refereeAddress("Referee 3"),
+  referee3Email: refereeEmail("Referee 3"),
 
   // Security deposit acknowledgment
   securityDepositAcknowledged: z.boolean().refine(val => val, "You must acknowledge the security deposit requirement"),
@@ -72,8 +116,9 @@ const driverSchema = z.object({
   smsMarketingConsent: z.boolean().optional().default(false),
 
   });
+};
 
-type DriverFormData = z.infer<typeof driverSchema>;
+type DriverFormData = z.infer<ReturnType<typeof buildDriverSchema>>;
 
 const usaCities = [
   "Washington DC",
@@ -105,6 +150,14 @@ const DriverRegistration = () => {
   // password) and reuse the session so we don't create a duplicate account.
   const alreadySignedIn = !!user;
 
+  // Referee address/email are only mandatory while the admin keeps identity
+  // (Persona) gating switched on for an application type that needs vetting.
+  const { enabled: personaEnabled } = usePersonaEnabled();
+  const refereeDetailsMandatory = refereeDetailsRequired(personaEnabled, "driver");
+  const driverSchema = useMemo(
+    () => buildDriverSchema(refereeDetailsMandatory),
+    [refereeDetailsMandatory],
+  );
 
   const {
     register,
@@ -124,6 +177,18 @@ const DriverRegistration = () => {
       country: "usa",
       rideshareApproval: [],
       hasDriverLicense: false,
+      referee1Name: "",
+      referee1Phone: "",
+      referee1Address: "",
+      referee1Email: "",
+      referee2Name: "",
+      referee2Phone: "",
+      referee2Address: "",
+      referee2Email: "",
+      referee3Name: "",
+      referee3Phone: "",
+      referee3Address: "",
+      referee3Email: "",
 
       securityDepositAcknowledged: false,
       agreeTerms: false,
@@ -213,6 +278,18 @@ const DriverRegistration = () => {
         region: data.country === 'usa' ? 'usa' : 'nigeria',
         rideshare_platforms: data.rideshareApproval,
         has_driver_license: data.hasDriverLicense,
+        referee1_name: data.referee1Name,
+        referee1_phone: toE164(data.referee1Phone),
+        referee1_address: data.referee1Address || null,
+        referee1_email: data.referee1Email || null,
+        referee2_name: data.referee2Name,
+        referee2_phone: toE164(data.referee2Phone),
+        referee2_address: data.referee2Address || null,
+        referee2_email: data.referee2Email || null,
+        referee3_name: data.referee3Name,
+        referee3_phone: toE164(data.referee3Phone),
+        referee3_address: data.referee3Address || null,
+        referee3_email: data.referee3Email || null,
 
         security_deposit_acknowledged: data.securityDepositAcknowledged,
         agreed_terms: data.agreeTerms,
@@ -562,15 +639,100 @@ const DriverRegistration = () => {
                 )}
               </div>
 
-              {/* Referees are collected later — see driver dashboard */}
-              <div className="rounded-lg border border-dashed border-accent/40 bg-accent/5 p-4 text-sm text-muted-foreground">
-                <p className="font-medium text-foreground">Referees are no longer needed at signup</p>
-                <p className="mt-1">
-                  Once your application is approved and a vehicle is assigned to you, we'll ask for
-                  your three referees before the vehicle pickup location is revealed.
-                </p>
-              </div>
+              {/* Referees Section */}
+              <div className="space-y-4 pt-4 border-t border-border">
+                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <User className="w-5 h-5 text-accent" />
+                  Referees (3 Required)
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Please provide details for three referees who can vouch for your character.
+                  Name and phone number are always required — home address and email are{" "}
+                  {refereeDetailsMandatory ? "also required for identity verification" : "optional"}.
 
+                </p>
+
+                {[1, 2, 3].map((num) => (
+                  <div key={num} className="p-4 rounded-lg border border-border space-y-3">
+                    <h4 className="font-medium text-foreground">Referee {num}</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor={`referee${num}Name`}>Full Name</Label>
+                        <Input
+                          id={`referee${num}Name`}
+                          placeholder="Full name"
+                          {...register(`referee${num}Name` as keyof DriverFormData)}
+                        />
+                        {errors[`referee${num}Name` as keyof typeof errors] && (
+                          <p className="text-destructive text-sm">
+                            {errors[`referee${num}Name` as keyof typeof errors]?.message}
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`referee${num}Phone`}>Phone Number</Label>
+                        <Controller
+                          control={control}
+                          name={`referee${num}Phone` as keyof DriverFormData}
+                          render={({ field }) => (
+                            <PhoneNumberInput
+                              id={`referee${num}Phone`}
+                              
+                              value={(field.value as string) || ""}
+                              onChange={field.onChange}
+                            />
+                          )}
+                        />
+                        {errors[`referee${num}Phone` as keyof typeof errors] && (
+                          <p className="text-destructive text-sm">
+                            {errors[`referee${num}Phone` as keyof typeof errors]?.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor={`referee${num}Address`}>
+                          Residential Address{" "}
+                          {!refereeDetailsMandatory && (
+                            <span className="text-muted-foreground">(optional)</span>
+                          )}
+                        </Label>
+                        <Input
+                          id={`referee${num}Address`}
+                          placeholder="Full residential address"
+                          {...register(`referee${num}Address` as keyof DriverFormData)}
+                        />
+                        {errors[`referee${num}Address` as keyof typeof errors] && (
+                          <p className="text-destructive text-sm">
+                            {errors[`referee${num}Address` as keyof typeof errors]?.message}
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`referee${num}Email`}>
+                          Email{" "}
+                          {!refereeDetailsMandatory && (
+                            <span className="text-muted-foreground">(optional)</span>
+                          )}
+                        </Label>
+                        <Input
+                          id={`referee${num}Email`}
+                          type="email"
+                          placeholder="referee@example.com"
+                          {...register(`referee${num}Email` as keyof DriverFormData)}
+                        />
+                        {errors[`referee${num}Email` as keyof typeof errors] && (
+                          <p className="text-destructive text-sm">
+                            {errors[`referee${num}Email` as keyof typeof errors]?.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                  </div>
+                ))}
+              </div>
 
               {/* Requirements */}
               <div className="space-y-4 pt-4 border-t border-border">

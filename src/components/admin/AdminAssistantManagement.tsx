@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { ShieldCheck, Loader2, Pencil, Trash2, UserPlus, KeyRound, Users } from 'lucide-react';
 import { AssistantUserAssignmentsDialog } from './AssistantUserAssignmentsDialog';
-import { useRegionSamples } from '@/hooks/useRegionSamples';
 
 export const PERMISSION_GROUPS: Array<{
   label: string;
@@ -91,7 +90,6 @@ const EMPTY_PERMS: Record<PermissionKey, boolean> = {
 };
 
 export function AdminAssistantManagement() {
-  const samples = useRegionSamples();
   const [assistants, setAssistants] = useState<AssistantRow[]>([]);
   const [candidateUsers, setCandidateUsers] = useState<Array<{ user_id: string; email: string | null; full_name: string | null; hasRole?: boolean }>>([]);
   const [candidateSearch, setCandidateSearch] = useState('');
@@ -457,7 +455,7 @@ export function AdminAssistantManagement() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="cu-phone">Phone (optional, international format)</Label>
-              <Input id="cu-phone" value={newUser.phone} onChange={e => setNewUser(u => ({ ...u, phone: e.target.value }))} placeholder={samples.phoneE164} />
+              <Input id="cu-phone" value={newUser.phone} onChange={e => setNewUser(u => ({ ...u, phone: e.target.value }))} placeholder="+15551234567" />
             </div>
           </div>
           <DialogFooter>

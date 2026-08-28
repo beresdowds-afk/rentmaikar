@@ -56,7 +56,6 @@ const ApiDocs = lazy(() => import("./pages/ApiDocs"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const SmsOptIn = lazy(() => import("./pages/SmsOptIn"));
-const Contact = lazy(() => import("./pages/Contact"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const HowItWorksPage = lazy(() => import("./pages/HowItWorksPage"));
 const RentingVsOwning = lazy(() => import("./pages/guides/RentingVsOwning"));
@@ -91,6 +90,8 @@ const TourStepConfigPage = lazy(() => import("./pages/admin/TourStepConfigPage")
 const AdminLegalTemplatePreviewPage = lazy(() => import("./pages/admin/AdminLegalTemplatePreviewPage"));
 const TourAnalyticsPage = lazy(() => import("./pages/admin/TourAnalyticsPage"));
 const AdminVehicleCataloguePage = lazy(() => import("./pages/admin/AdminVehicleCataloguePage"));
+const AdminVehicleAuthorizationsPage = lazy(() => import("./pages/admin/AdminVehicleAuthorizationsPage"));
+const CancelAuthorizationPage = lazy(() => import("./pages/CancelAuthorizationPage"));
 const AdminVehicleImportsPage = lazy(() => import("./pages/admin/AdminVehicleImportsPage"));
 const HologramDeviceDetailPage = lazy(() => import("./pages/admin/HologramDeviceDetailPage"));
 const AdminNotificationRetryPage = lazy(() => import("./pages/admin/AdminNotificationRetryPage"));
@@ -107,9 +108,6 @@ const AdminPersonaReviewPage = lazy(() => import("./pages/admin/AdminPersonaRevi
 const AdminPersonaTemplatesPage = lazy(() => import("./pages/admin/AdminPersonaTemplatesPage"));
 const AdminTrainingReviewPage = lazy(() => import("./pages/admin/AdminTrainingReviewPage"));
 const OrchestratorPage = lazy(() => import("./pages/admin/OrchestratorPage"));
-const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
-const AdminEmailDeliveryPage = lazy(() => import("./pages/admin/AdminEmailDeliveryPage"));
-const AdminGpsTrackingStatusPage = lazy(() => import("./pages/admin/AdminGpsTrackingStatusPage"));
 
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
 const BillingHistoryPage = lazy(() => import("./pages/BillingHistoryPage"));
@@ -179,7 +177,8 @@ const App = () => (
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/referee-attest" element={<RefereeAttestation />} />
                   <Route path="/proxy/consent" element={<ProxyConsentPage />} />
-                  <Route path="/unsubscribe" element={<Unsubscribe />} />
+                  <Route path="/cancel-authorization/:token" element={<CancelAuthorizationPage />} />
+                  <Route path="/cancel-authorization" element={<CancelAuthorizationPage />} />
                   <Route path="/m/call-in" element={<ProtectedRoute><MobileCallIn /></ProtectedRoute>} />
                   <Route path="/m/call-in/:type" element={<ProtectedRoute><MobileCallIn /></ProtectedRoute>} />
                   <Route path="/m/settings/notifications" element={<ProtectedRoute><MobileNotificationPreferences /></ProtectedRoute>} />
@@ -228,7 +227,6 @@ const App = () => (
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/sms-opt-in" element={<SmsOptIn />} />
-                  <Route path="/contact" element={<Contact />} />
                   <Route path="/faq" element={<FAQ />} />
                   <Route path="/how-it-works" element={<HowItWorksPage />} />
                   <Route path="/guides/renting-vs-owning-for-rideshare" element={<RentingVsOwning />} />
@@ -403,6 +401,14 @@ const App = () => (
                   />
 
                   <Route
+                    path="/admin/authorizations"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
+                        <AdminVehicleAuthorizationsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/export-audit"
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
@@ -495,22 +501,6 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <AdminNotificationRetryPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin/email-delivery"
-                    element={
-                      <ProtectedRoute allowedRoles={['admin']}>
-                        <AdminEmailDeliveryPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin/gps-tracking"
-                    element={
-                      <ProtectedRoute allowedRoles={['admin']}>
-                        <AdminGpsTrackingStatusPage />
                       </ProtectedRoute>
                     }
                   />
@@ -690,6 +680,8 @@ const App = () => (
                   <Route path="/dashboard" element={<OnboardingRedirect />} />
                   <Route path="/catalogue" element={<Navigate to="/catalogue/standard" replace />} />
                   <Route path="/forgot-password" element={<Navigate to="/auth?forgot=1" replace />} />
+                  <Route path="/~oauth/*" element={<Navigate to="/auth" replace />} />
+                  <Route path="/~oauth" element={<Navigate to="/auth" replace />} />
 
                   <Route path="*" element={<NotFound />} />
 

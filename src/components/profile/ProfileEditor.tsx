@@ -22,7 +22,6 @@ interface ProfileEditorProps {
 
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { friendlyPhoneError } from '@/lib/phone-errors';
-import { useRegionSamples } from '@/hooks/useRegionSamples';
 
 /**
  * Normalise phone to E.164 using libphonenumber-js. Returns '' if the input
@@ -37,7 +36,7 @@ const normalizePhone = (raw: string) => {
   return parsed?.isValid() ? parsed.number : trimmed;
 };
 
-const buildProfileSchema = (phoneExample: string) => z.object({
+const profileSchema = z.object({
   fullName: z.string()
     .trim()
     .min(2, 'Name must be at least 2 characters')
@@ -55,7 +54,7 @@ const buildProfileSchema = (phoneExample: string) => z.object({
       const withPlus = v.startsWith('+') ? v : `+${v.replace(/[^\d]/g, '')}`;
       const parsed = parsePhoneNumberFromString(withPlus);
       return !!parsed?.isValid();
-    }, `Enter a valid international phone number (e.g. ${phoneExample})`),
+    }, 'Enter a valid international phone number (e.g. +15551234567)'),
 });
 
 
@@ -63,7 +62,6 @@ type FieldErrors = Partial<Record<'fullName' | 'email' | 'phone', string>>;
 
 export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
   const { user } = useAuth();
-  const samples = useRegionSamples();
   const isNative = Capacitor.isNativePlatform();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -123,7 +121,7 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
   }, [emailChanged, phoneChanged, email, phone, emailVerified, phoneVerified]);
 
   const validateShape = (): FieldErrors => {
-    const parsed = buildProfileSchema(samples.phoneE164).safeParse({
+    const parsed = profileSchema.safeParse({
       fullName,
       email,
       phone: normalizePhone(phone),
@@ -400,7 +398,7 @@ export function ProfileEditor({ subjectRole }: ProfileEditorProps) {
                 onChange={(v) => { setPhone(v); if (errors.phone) setErrors(x => ({ ...x, phone: undefined })); }}
                 autoComplete="tel"
                 error={errors.phone ?? null}
-                hint={`Numbers are saved in international E.164 format (e.g. ${samples.phoneE164}). Include your country code.`}
+                hint="Numbers are saved in international E.164 format (e.g. +15551234567). Include your country code."
               />
             </div>
           </div>

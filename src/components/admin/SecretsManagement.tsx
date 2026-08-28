@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRegionSamples } from "@/hooks/useRegionSamples";
 import { Lock, RotateCw } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,9 +18,11 @@ import {
   Mail,
   CreditCard,
   AlertTriangle,
-  Info
+  Info,
+  Globe
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { sent } from "@/integrations/sent/client";
 import {
   Dialog,
   DialogContent,
@@ -41,13 +42,59 @@ interface SecretConfig {
   name: string;
   displayName: string;
   description: string;
-  category: "sms" | "sms_ng" | "email" | "payment" | "iot" | "voice" | "identity" | "system";
+  category: "cpaas_sent" | "sms" | "sms_ng" | "email" | "payment" | "iot" | "voice" | "identity" | "gcp" | "system";
   testable: boolean;
   docsUrl?: string;
-  region?: "USA" | "Nigeria" | (string & {});
+  region?: "USA" | "Nigeria" | "Global" | (string & {});
 }
 
 const secrets: SecretConfig[] = [
+  // Global CPaaS — Sent.dm (Universal OpenAPI v3: SMS, WhatsApp, RCS)
+  {
+    name: "SENT_API_KEY",
+    displayName: "Sent.dm API Key",
+    description: "API key for Sent.dm OpenAPI v3 global CPaaS gateway (SMS, WhatsApp, RCS)",
+    category: "cpaas_sent",
+    testable: true,
+    docsUrl: "https://docs.sent.dm/api/openapi/v3",
+    region: "Global",
+  },
+  {
+    name: "SENT_SENDER_ID",
+    displayName: "Sent.dm Sender ID",
+    description: "Registered alphanumeric sender ID or phone number (e.g. 'Rentmaikar' or '+12025550143')",
+    category: "cpaas_sent",
+    testable: true,
+    docsUrl: "https://docs.sent.dm/api/openapi/v3",
+    region: "Global",
+  },
+  {
+    name: "SENT_WHATSAPP_NUMBER",
+    displayName: "Sent.dm WhatsApp Channel ID / Number",
+    description: "WhatsApp-enabled phone number on Sent.dm in +E.164 format",
+    category: "cpaas_sent",
+    testable: false,
+    docsUrl: "https://docs.sent.dm/api/openapi/v3",
+    region: "Global",
+  },
+  {
+    name: "SENT_WEBHOOK_SECRET",
+    displayName: "Sent.dm Webhook Secret",
+    description: "Signing secret used to verify delivery reports & incoming message callbacks from Sent.dm",
+    category: "cpaas_sent",
+    testable: false,
+    docsUrl: "https://docs.sent.dm/api/openapi/v3",
+    region: "Global",
+  },
+  {
+    name: "SENT_SANDBOX_MODE",
+    displayName: "Sent.dm Sandbox Mode Flag",
+    description: "Set to 'true' to run test dispatches via sandbox without incurring telco charges",
+    category: "cpaas_sent",
+    testable: false,
+    docsUrl: "https://docs.sent.dm/api/openapi/v3",
+    region: "Global",
+  },
   // SMS/WhatsApp — USA (Twilio)
   {
     name: "TWILIO_ACCOUNT_SID",
@@ -315,6 +362,43 @@ const secrets: SecretConfig[] = [
     testable: false,
     region: "USA",
   },
+  // Google Cloud / ADC
+  {
+    name: "GOOGLE_APPLICATION_CREDENTIALS",
+    displayName: "Google ADC Service Account Key (JSON)",
+    description: "Service Account key JSON string or path for Google Cloud Application Default Credentials",
+    category: "gcp",
+    testable: false,
+    docsUrl: "https://cloud.google.com/docs/authentication/application-default-credentials",
+    region: "Global",
+  },
+  {
+    name: "GCP_PROJECT_ID",
+    displayName: "Google Cloud Project ID",
+    description: "Google Cloud Project identifier (e.g. avian-computer-477009-v0)",
+    category: "gcp",
+    testable: false,
+    docsUrl: "https://cloud.google.com/resource-manager/docs/creating-managing-projects",
+    region: "Global",
+  },
+  {
+    name: "GCP_CLIENT_ID",
+    displayName: "Google OAuth Client ID",
+    description: "Client ID for Google Cloud OAuth 2.0 Web Application credentials",
+    category: "gcp",
+    testable: false,
+    docsUrl: "https://console.cloud.google.com/apis/credentials",
+    region: "Global",
+  },
+  {
+    name: "GCP_CLIENT_SECRET",
+    displayName: "Google OAuth Client Secret",
+    description: "Client secret paired with Google OAuth Client ID",
+    category: "gcp",
+    testable: false,
+    docsUrl: "https://console.cloud.google.com/apis/credentials",
+    region: "Global",
+  },
   // Public app URL (used in outbound links, e.g. referee attestation)
   {
     name: "PUBLIC_APP_URL",
@@ -326,6 +410,7 @@ const secrets: SecretConfig[] = [
 ];
 
 const categoryConfig = {
+  cpaas_sent: { icon: Globe, label: "Global CPaaS — Sent.dm (SMS, WhatsApp, RCS)", color: "bg-emerald-600", region: "Global" },
   sms: { icon: Phone, label: "SMS/WhatsApp/VoIP — USA (Twilio)", color: "bg-blue-500", region: "USA" },
   sms_ng: { icon: Phone, label: "SMS/Voice — Nigeria (Termii)", color: "bg-emerald-600", region: "Nigeria" },
   email: { icon: Mail, label: "Email", color: "bg-green-500", region: null },
@@ -333,12 +418,12 @@ const categoryConfig = {
   iot: { icon: Shield, label: "IoT / Telemetry (EMQX & Traccar)", color: "bg-orange-500", region: null },
   voice: { icon: Phone, label: "Voice / TTS", color: "bg-pink-500", region: null },
   identity: { icon: Shield, label: "Identity Verification (Persona)", color: "bg-indigo-500", region: null },
+  gcp: { icon: Key, label: "Google Cloud / ADC & OAuth", color: "bg-sky-600", region: "Global" },
   system: { icon: Shield, label: "System", color: "bg-gray-500", region: null },
 };
 
 export function SecretsManagement() {
   const { user, userRole, twoFactorVerified } = useAuth();
-  const samples = useRegionSamples();
   const [unlocked, setUnlocked] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
   const [testingSecret, setTestingSecret] = useState<string | null>(null);
@@ -397,6 +482,45 @@ export function SecretsManagement() {
 
 
 
+
+  const testSentSecrets = async () => {
+    if (!testPhone) {
+      toast.error("Please enter a phone number");
+      return;
+    }
+
+    setTestingSecret("SENT");
+    try {
+      const res = await sent.sendMessage({
+        to: [testPhone],
+        channel: "sms",
+        text: "This is a test notification from Rentmaikar admin portal via Sent.dm OpenAPI v3 gateway. Delivery operational!",
+        sender_id: "Rentmaikar",
+        metadata: { source: "admin_secrets_test" },
+      });
+
+      if (res.status === "failed" || res.status === "undelivered") {
+        throw new Error(res.error?.message || "Sent.dm dispatch failed");
+      }
+
+      setTestResults((prev) => ({
+        ...prev,
+        SENT_API_KEY: "success",
+        SENT_SENDER_ID: "success",
+      }));
+      toast.success(`Sent.dm test dispatch successful! ID: ${res.id}`);
+      setTestDialogOpen(false);
+    } catch (error: any) {
+      setTestResults((prev) => ({
+        ...prev,
+        SENT_API_KEY: "error",
+        SENT_SENDER_ID: "error",
+      }));
+      toast.error(`Sent.dm test failed: ${error.message}`);
+    } finally {
+      setTestingSecret(null);
+    }
+  };
 
   const testTwilioSecrets = async () => {
     if (!testPhone) {
@@ -626,6 +750,64 @@ export function SecretsManagement() {
                     </div>
                   ))}
 
+                  {category === "cpaas_sent" && (
+                    <Dialog open={testDialogOpen && testingSecret === "SENT"} onOpenChange={setTestDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            setTestingSecret("SENT");
+                            setTestDialogOpen(true);
+                          }}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Test Sent.dm OpenAPI v3 Configuration
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Test Sent.dm Global CPaaS Dispatch</DialogTitle>
+                          <DialogDescription>
+                            Enter a destination phone number in E.164 format (+1..., +234..., etc.) to dispatch a test message via Sent.dm v3.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="test-phone-sent">Phone Number (E.164)</Label>
+                            <Input
+                              id="test-phone-sent"
+                              placeholder="+12025550143 or +2348012345678"
+                              value={testPhone}
+                              onChange={(e) => setTestPhone(e.target.value)}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Works across all international destinations via Sent.dm unified gateway.
+                            </p>
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setTestDialogOpen(false)}>
+                            Cancel
+                          </Button>
+                          <Button onClick={testSentSecrets} disabled={testingSecret === "SENT"}>
+                            {testingSecret === "SENT" ? (
+                              <>
+                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                Dispathing via Sent.dm...
+                              </>
+                            ) : (
+                              <>
+                                <Globe className="w-4 h-4 mr-2" />
+                                Send Test via Sent.dm
+                              </>
+                            )}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+
                   {category === "sms" && (
                     <Dialog open={testDialogOpen && testingSecret === "TWILIO"} onOpenChange={setTestDialogOpen}>
                       <DialogTrigger asChild>
@@ -650,7 +832,7 @@ export function SecretsManagement() {
                             <Label htmlFor="test-phone">Phone Number</Label>
                             <Input
                               id="test-phone"
-                              placeholder={samples.phoneE164}
+                              placeholder="+12025550123"
                               value={testPhone}
                               onChange={(e) => setTestPhone(e.target.value)}
                             />

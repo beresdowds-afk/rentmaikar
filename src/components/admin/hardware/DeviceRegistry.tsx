@@ -12,7 +12,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, ShoppingCart, RefreshCw, Loader2, Info, Cpu, CreditCard as SimCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { useRegionSamples } from '@/hooks/useRegionSamples';
 
 interface Sim {
   id: string;
@@ -41,7 +40,6 @@ interface Device {
 }
 
 export const DeviceRegistry = () => {
-  const samples = useRegionSamples();
   const [sims, setSims] = useState<Sim[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
@@ -258,7 +256,7 @@ export const DeviceRegistry = () => {
                     </div>
                     <div>
                       <Label>MSISDN {buySource === 'manual' ? '' : '(optional)'}</Label>
-                      <Input value={buyMsisdn} onChange={e => setBuyMsisdn(e.target.value)} placeholder={samples.phoneE164} />
+                      <Input value={buyMsisdn} onChange={e => setBuyMsisdn(e.target.value)} placeholder="+1234…" />
                     </div>
                   </div>
                   {buySource === 'manual' && (

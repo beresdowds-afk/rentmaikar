@@ -2,7 +2,6 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Seo from '@/components/seo/Seo';
 import { MessagingPreferencesPanel } from '@/components/profile/MessagingPreferencesPanel';
-import { EmailPreferencesPanel } from '@/components/profile/EmailPreferencesPanel';
 import { PersonaNotificationPreference } from '@/components/profile/PersonaNotificationPreference';
 import { EventNotificationPreferencesPanel } from '@/components/notifications/EventNotificationPreferencesPanel';
 import { AgreementReminderPreferencesPanel } from '@/components/notifications/AgreementReminderPreferencesPanel';
@@ -33,7 +32,6 @@ export default function NotificationPreferencesPage() {
             </Button>
           </div>
 
-          <EmailPreferencesPanel />
           <EventNotificationPreferencesPanel />
           <AgreementReminderPreferencesPanel />
           <MessagingPreferencesPanel />

@@ -1,10 +1,6 @@
 import { useRegion } from "@/contexts/RegionContext";
 import { useRealtimeSound } from "@/hooks/useRealtimeSound";
-import {
-  isWithinRegionAlertHours,
-  regionPref,
-  regionSoundProfile,
-} from "@/lib/sound-settings";
+import { regionPref } from "@/lib/sound-settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -12,23 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { BellOff, Clock, Play, Volume2 } from "lucide-react";
-
-/** "9:00 AM – 9:00 PM" for a region's local alert window. */
-const hourLabel = (hour: number) => {
-  const suffix = hour >= 12 ? "PM" : "AM";
-  const h = hour % 12 === 0 ? 12 : hour % 12;
-  return `${h}:00 ${suffix}`;
-};
+import { BellOff, Play, Volume2 } from "lucide-react";
 
 /**
  * Installed-PWA audio preferences for the real-time sync worker.
  *
  * Everything is opt-in and stored per region so an operator running more than
- * one desk can keep, say, Nigeria loud and the US quiet. Each region also has
- * its own chime motif and local contact window, so alerts follow the region's
- * clock rather than the device's.
+ * one desk can keep, say, Nigeria loud and the US quiet.
  */
 export default function PWASettingsPanel() {
   const { availableRegions, country } = useRegion();
@@ -36,18 +22,14 @@ export default function PWASettingsPanel() {
     settings,
     permission,
     play,
-    withinAlertHours,
     setWorkerEnabled,
     setMuteWhenFocused,
-    setRespectQuietHours,
     setRegionEnabled,
     setRegionVolume,
     requestNotificationPermission,
   } = useRealtimeSound();
 
   const blocked = permission === "denied";
-  const activeProfile = regionSoundProfile(country);
-
 
   return (
     <Card>
@@ -113,47 +95,18 @@ export default function PWASettingsPanel() {
           />
         </div>
 
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Label htmlFor="quiet-hours">Follow regional alert hours</Label>
-            <p className="text-xs text-muted-foreground">
-              Chimes only ring inside each region's local contact window —{" "}
-              {hourLabel(activeProfile.startHour)} to {hourLabel(activeProfile.endHour)} in{" "}
-              {country}.
-            </p>
-          </div>
-          <Switch
-            id="quiet-hours"
-            checked={settings.respectQuietHours}
-            disabled={blocked || !settings.workerEnabled}
-            onCheckedChange={setRespectQuietHours}
-          />
-        </div>
-
-        {settings.workerEnabled && settings.respectQuietHours && !withinAlertHours && (
-          <Alert>
-            <Clock className="h-4 w-4" />
-            <AlertDescription>
-              {country} is outside its alert hours right now, so chimes are on hold until{" "}
-              {hourLabel(activeProfile.startHour)} local time.
-            </AlertDescription>
-          </Alert>
-        )}
-
         <Separator />
 
         <div className="space-y-4">
           {availableRegions.map((region) => {
             const pref = regionPref(settings, region.value);
-            const profile = regionSoundProfile(region.value);
             const disabled = blocked || !settings.workerEnabled;
-            const awake = isWithinRegionAlertHours(region.value);
             return (
               <div key={region.value} className="space-y-2 rounded-lg border p-3">
                 <div className="flex items-center justify-between gap-3">
                   <Label
                     htmlFor={`sound-${region.value}`}
-                    className="flex flex-wrap items-center gap-2 text-sm font-medium"
+                    className="flex items-center gap-2 text-sm font-medium"
                   >
                     <span>{region.flag}</span>
                     {region.label}
@@ -162,10 +115,6 @@ export default function PWASettingsPanel() {
                         (current)
                       </span>
                     )}
-                    <Badge variant={awake ? "secondary" : "outline"} className="font-normal">
-                      {hourLabel(profile.startHour)}–{hourLabel(profile.endHour)}
-                      {awake ? "" : " · quiet now"}
-                    </Badge>
                   </Label>
                   <Switch
                     id={`sound-${region.value}`}
@@ -174,7 +123,6 @@ export default function PWASettingsPanel() {
                     onCheckedChange={(v) => setRegionEnabled(region.value, v)}
                   />
                 </div>
-
                 <div className="flex items-center gap-3">
                   <Slider
                     aria-label={`${region.label} volume`}

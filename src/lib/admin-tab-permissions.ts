@@ -32,6 +32,7 @@ export const TAB_PERMISSION_MAP: Record<AdminTabKey, PermissionKey | null> = {
   // ERP (most infra tabs stay admin-only – omit them here)
   tracking: 'can_view_iot',
   assets: 'can_view_vehicles',
+  authorizations: 'can_view_vehicles',
   catalogue: 'can_view_vehicles',
   'pickup-locations': 'can_view_vehicles',
   'iot-monitoring': 'can_view_iot',

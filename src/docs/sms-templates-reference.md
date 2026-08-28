@@ -15,8 +15,8 @@
 | **STATUS** | Status handler | Active rental details |
 | **BALANCE** | Balance check | Outstanding balance summary |
 | **DOC** / **DOCS** | Document handler | Missing/pending doc count + upload link |
-| **HELP** / **INFO** | Help handler | `Reply STOP to unsubscribe. Msg&Data Rates May Apply.` |
-| **STOP** (+ STOPALL, OPTOUT, CANCEL, END, QUIT, UNSUBSCRIBE, REVOKE) | Opt-out handler | Disables SMS, sends confirmation |
+| **HELP** | Help handler | Full command list |
+| **STOP** | Opt-out handler | Disables SMS, sends confirmation |
 | **START** | Opt-in handler | Re-enables SMS notifications |
 | **LOCATION** | Location handler | Acknowledges location received |
 | **DONE** | Confirmation | "Thank you" acknowledgment |
@@ -38,13 +38,11 @@ const smsTemplates = {
   docStatus: (pending, missing) =>
     `Rentmaikar: Docs - ${missing} missing, ${pending} pending review. Upload at rentmaikar.lovable.app/driver/dashboard`,
 
-  // HELP/INFO — matches the A2P 10DLC campaign submission verbatim
   help: () =>
-    `Reply STOP to unsubscribe. Msg&Data Rates May Apply.`,
+    `Rentmaikar: Commands - PAY: Pay now, STATUS: Rental info, BALANCE: Check due, DOC: Upload docs, STOP: Opt out. Call +1-608-384-3932`,
 
-  // STOP — matches the A2P 10DLC campaign submission verbatim
   optOutConfirm: () =>
-    `You have successfully been unsubscribed. You will not receive any more messages from this number. Reply START to resubscribe.`,
+    `Rentmaikar: You've been opted out of SMS notifications. Reply START to re-subscribe.`,
 
   supportConnecting: () =>
     `Rentmaikar: Connecting you to support. An agent will respond shortly. Hours: 8AM-10PM daily.`,

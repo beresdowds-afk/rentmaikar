@@ -15,7 +15,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PhoneNumberField } from '@/components/ui/phone-number-field';
 import { Loader2, CheckCircle2, Info } from 'lucide-react';
 import { isStaffRole, homeForRole, type AppRole } from '@/lib/role-home';
-import { useRegionSamples } from '@/hooks/useRegionSamples';
 
 type Step = 'contact' | 'emergency' | 'license' | 'vehicle' | 'payment' | 'done';
 
@@ -34,7 +33,6 @@ const STEP_META: Record<Exclude<Step, 'done'>, {
 };
 
 const ProfileCompletionWizard = () => {
-  const samples = useRegionSamples();
   const navigate = useNavigate();
   const { user, userRole } = useAuth();
   const [params] = useSearchParams();
@@ -167,7 +165,7 @@ const ProfileCompletionWizard = () => {
           <div className="space-y-4">
             <div>
               <Label htmlFor="pcw-ec-name">Full name</Label>
-              <Input id="pcw-ec-name" value={ecName} onChange={(e) => setEcName(e.target.value)} placeholder={samples.name} />
+              <Input id="pcw-ec-name" value={ecName} onChange={(e) => setEcName(e.target.value)} placeholder="Jane Doe" />
             </div>
             <PhoneNumberField
               label="Phone number"

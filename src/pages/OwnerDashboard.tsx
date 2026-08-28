@@ -27,6 +27,7 @@ import { OwnerRentToOwnListing } from '@/components/owner/OwnerRentToOwnListing'
 import { VehiclePickupLocation } from '@/components/owner/VehiclePickupLocation';
 import { VehiclePhotoManager } from '@/components/owner/VehiclePhotoManager';
 import { VehicleVerificationAction } from '@/components/owner/VehicleVerificationAction';
+import { PublishVehicleButton } from '@/components/owner/PublishVehicleButton';
 
 import { AddVehicleDialog } from '@/components/owner/AddVehicleDialog';
 import VehicleSubmissionTracker, { VehicleSubmissionBadge } from '@/components/owner/VehicleSubmissionTracker';
@@ -547,8 +548,14 @@ export default function OwnerDashboard() {
                   <CardDescription>{vehicle.license_plate}</CardDescription>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <VehicleSubmissionBadge status={(vehicle as any).review_status} />
-                  <Badge variant="secondary" className="capitalize">{vehicle.status}</Badge>
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                    <PublishVehicleButton
+                      vehicle={vehicle as any}
+                      onPublished={() => queryClient.invalidateQueries({ queryKey: ['owner-vehicles'] })}
+                    />
+                    <VehicleSubmissionBadge status={(vehicle as any).review_status} />
+                    <Badge variant="secondary" className="capitalize">{vehicle.status}</Badge>
+                  </div>
                 </div>
               </div>
             </CardHeader>

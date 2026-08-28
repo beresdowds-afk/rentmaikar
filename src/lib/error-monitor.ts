@@ -85,11 +85,15 @@ export function reportError(
 
   // Console output for development
   if (import.meta.env.DEV) {
-    console.group(`[ErrorMonitor] ${severity.toUpperCase()}`);
-    console.error(report.message);
-    if (report.context) console.info("Context:", report.context);
-    if (report.metadata) console.info("Metadata:", report.metadata);
-    console.groupEnd();
+    if (severity === "low") {
+      console.debug(`[Telemetry] ${report.message}`, report.metadata || {});
+    } else {
+      console.group(`[ErrorMonitor] ${severity.toUpperCase()}`);
+      console.error(report.message);
+      if (report.context) console.info("Context:", report.context);
+      if (report.metadata) console.info("Metadata:", report.metadata);
+      console.groupEnd();
+    }
   }
 
   // Flush immediately for critical errors
@@ -128,22 +132,37 @@ export function initErrorMonitoring() {
     reportError(error, "high", "unhandledrejection");
   });
 
-  // Performance: long tasks (>50ms)
-  if ("PerformanceObserver" in window) {
+  // Performance: long tasks (>50ms) - tracked as non-blocking telemetry
+  if (typeof window !== "undefined" && "PerformanceObserver" in window) {
     try {
       const observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          if (entry.duration > 200) {
-            reportError(
-              `Long task detected: ${Math.round(entry.duration)}ms`,
-              "low",
-              "performance.longtask",
+          if (entry.duration > 350 && import.meta.env.DEV) {
+            console.debug(
+              `[Performance] Long task detected: ${Math.round(entry.duration)}ms`,
               { duration: entry.duration, startTime: entry.startTime }
             );
           }
         }
       });
-      observer.observe({ entryTypes: ["longtask"] });
+      // Defer observing until idle to prevent capturing browser module parsing
+      if ("requestIdleCallback" in window) {
+        window.requestIdleCallback(() => {
+          try {
+            observer.observe({ entryTypes: ["longtask"] });
+          } catch {
+            // Ignored if unsupported
+          }
+        });
+      } else {
+        setTimeout(() => {
+          try {
+            observer.observe({ entryTypes: ["longtask"] });
+          } catch {
+            // Ignored if unsupported
+          }
+        }, 1500);
+      }
     } catch {
       // longtask not supported in all browsers
     }

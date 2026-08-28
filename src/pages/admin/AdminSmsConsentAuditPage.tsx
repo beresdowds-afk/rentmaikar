@@ -14,7 +14,6 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Download, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useRegionSamples } from '@/hooks/useRegionSamples';
 import {
   fetchSmsConsentAudit,
   smsConsentRecordsToCsv,
@@ -31,7 +30,6 @@ import {
  * CSV or JSON for the Twilio/TCR resubmission evidence pack.
  */
 export default function AdminSmsConsentAuditPage() {
-  const samples = useRegionSamples();
   const [records, setRecords] = useState<SmsConsentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -111,7 +109,7 @@ export default function AdminSmsConsentAuditPage() {
               id="consentSearch"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={`${samples.phoneE164} or driver-registration`}
+              placeholder="+1555… or driver-registration"
             />
           </div>
           <div className="space-y-2">

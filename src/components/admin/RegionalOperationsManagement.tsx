@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useRegionalOperations } from "@/hooks/useRegionalOperations";
-import { useRegionSamples } from "@/hooks/useRegionSamples";
 import PersonaTemplateManagement from "@/components/admin/PersonaTemplateManagement";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ const ForwardingNumbersEditor = ({
   region: PlatformRegion; 
   onUpdate: (id: string, updates: { forwarding_sms?: string | null; forwarding_whatsapp?: string | null; forwarding_notes?: string | null }) => Promise<void>;
 }) => {
-  const samples = useRegionSamples();
   const [sms, setSms] = useState(region.forwarding_sms || "");
   const [whatsapp, setWhatsapp] = useState(region.forwarding_whatsapp || "");
   const [notes, setNotes] = useState(region.forwarding_notes || "");
@@ -52,18 +50,18 @@ const ForwardingNumbersEditor = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
           <Label className="text-[10px]">SMS Forwarding</Label>
-          <Input
-            placeholder={samples.phoneE164}
-            value={sms}
+          <Input 
+            placeholder="+1234567890" 
+            value={sms} 
             onChange={e => { setSms(e.target.value); setDirty(true); }}
             className="h-8 text-xs"
           />
         </div>
         <div>
           <Label className="text-[10px]">WhatsApp Forwarding</Label>
-          <Input
-            placeholder={samples.phoneE164}
-            value={whatsapp}
+          <Input 
+            placeholder="+1234567890" 
+            value={whatsapp} 
             onChange={e => { setWhatsapp(e.target.value); setDirty(true); }}
             className="h-8 text-xs"
           />
@@ -286,7 +284,7 @@ const RegionalOperationsManagement = () => {
                   <div><Label>Flag Emoji</Label><Input placeholder="🇺🇸" value={newCountry.flag} onChange={e => setNewCountry(p => ({ ...p, flag: e.target.value }))} /></div>
                   <div><Label>Currency Code *</Label><Input placeholder="USD" value={newCountry.currency_code} onChange={e => setNewCountry(p => ({ ...p, currency_code: e.target.value.toUpperCase() }))} /></div>
                   <div><Label>Currency Symbol</Label><Input placeholder="$" value={newCountry.currency_symbol} onChange={e => setNewCountry(p => ({ ...p, currency_symbol: e.target.value }))} /></div>
-                  <div><Label>Phone Prefix</Label><Input placeholder="+233" value={newCountry.phone_prefix} onChange={e => setNewCountry(p => ({ ...p, phone_prefix: e.target.value }))} /></div>
+                  <div><Label>Phone Prefix</Label><Input placeholder="+1" value={newCountry.phone_prefix} onChange={e => setNewCountry(p => ({ ...p, phone_prefix: e.target.value }))} /></div>
                   <div>
                     <Label>Payment Gateway</Label>
                     <Select value={newCountry.payment_gateway} onValueChange={v => setNewCountry(p => ({ ...p, payment_gateway: v }))}>

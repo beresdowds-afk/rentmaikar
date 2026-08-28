@@ -217,8 +217,9 @@ const whatsappUseCases = [
 ];
 
 const regionProviders = [
-  { region: "USA", sms: "Twilio", whatsapp: "Twilio", voice: "Twilio", flag: "🇺🇸", prefix: "+1" },
-  { region: "Nigeria", sms: "Termii", whatsapp: "Termii", voice: "Termii", flag: "🇳🇬", prefix: "+234" },
+  { region: "Global / Universal", sms: "Sent.dm (v3)", whatsapp: "Sent.dm (v3)", voice: "Twilio / Termii", rcs: "Sent.dm (v3)", flag: "🌐", prefix: "Any E.164" },
+  { region: "USA", sms: "Sent.dm / Twilio", whatsapp: "Sent.dm / Twilio", voice: "Twilio", rcs: "Sent.dm", flag: "🇺🇸", prefix: "+1" },
+  { region: "Nigeria", sms: "Sent.dm / Termii", whatsapp: "Sent.dm / Termii", voice: "Termii", rcs: "Sent.dm", flag: "🇳🇬", prefix: "+234" },
 ];
 
 const escalationLadder = [

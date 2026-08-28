@@ -27,7 +27,6 @@ import { resolvePostLoginDestination } from '@/lib/post-login-destination';
 import { isRestorablePath, readReturnTo, clearReturnTo } from '@/lib/return-to';
 import { logRegistrationEvent } from '@/lib/registration-audit';
 import { recordSmsConsentPair } from '@/lib/sms-consent';
-import { useRegionSamples } from '@/hooks/useRegionSamples';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -61,7 +60,6 @@ type SignupFormData = z.infer<typeof signupSchema>;
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
 const Auth = () => {
-  const samples = useRegionSamples();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -772,7 +770,7 @@ const Auth = () => {
                   <Input
                     id="signup-name"
                     type="text"
-                    placeholder={samples.name}
+                    placeholder="John Doe"
                     autoComplete="name"
                     autoFocus
                     {...signupForm.register('fullName')}

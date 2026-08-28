@@ -13,6 +13,7 @@ import BillingReconciliationPage from "@/pages/admin/BillingReconciliationPage";
 import TourStepConfigPage from "@/pages/admin/TourStepConfigPage";
 import TwilioTemplateManager from "@/components/admin/TwilioTemplateManager";
 import { AssetsRegistry } from "@/components/admin/AssetsRegistry";
+import { VehicleAuthorizationLogManagement } from "@/components/admin/VehicleAuthorizationLogManagement";
 import AdminVehicleCataloguePage from "@/pages/admin/AdminVehicleCataloguePage";
 import UserUuidAssignmentsPage from "@/pages/admin/UserUuidAssignmentsPage";
 import { CategoryPricing } from "@/components/admin/CategoryPricing";
@@ -20,6 +21,8 @@ import { VehicleCategoryYearSpecs } from "@/components/admin/VehicleCategoryYear
 
 import { SecretsManagement } from "@/components/admin/SecretsManagement";
 import { TechStackDocButton } from "@/components/admin/TechStackDocButton";
+import { CPaaSProviderSettings } from "@/components/admin/CPaaSProviderSettings";
+import { SentTestSendPanel } from "@/components/admin/SentTestSendPanel";
 import { TwilioTestSendPanel } from "@/components/admin/TwilioTestSendPanel";
 import { ElevenLabsTestPanel } from "@/components/admin/ElevenLabsTestPanel";
 import { PSPConfigChecklist } from "@/components/admin/PSPConfigChecklist";
@@ -451,6 +454,9 @@ const AdminDashboard = () => {
                 <a href="/admin/tour-analytics">Tour analytics</a>
               </Button>
               <Button asChild variant="outline" size="sm" className="justify-start">
+                <a href="/admin/authorizations">Rental authorizations log</a>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="justify-start">
                 <a href="/admin/vehicle-queue">Vehicle submission queue</a>
               </Button>
 
@@ -696,6 +702,7 @@ const AdminDashboard = () => {
                 </Card>
               )}
               {activeTab === 'assets' && <AssetsRegistry />}
+              {activeTab === 'authorizations' && <VehicleAuthorizationLogManagement />}
               {activeTab === 'catalogue' && <AdminVehicleCataloguePage embedded />}
               {activeTab === 'pickup-locations' && <VehiclePickupManagement />}
               {activeTab === 'iot-monitoring' && <IoTMonitoringHub />}
@@ -792,6 +799,8 @@ const AdminDashboard = () => {
                     <TechStackDocButton />
                   </div>
                   <PSPConfigChecklist />
+                  <CPaaSProviderSettings />
+                  <SentTestSendPanel />
                   <TwilioTestSendPanel />
                   <ElevenLabsTestPanel />
                   <SecretsManagement />

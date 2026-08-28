@@ -1,6 +1,4 @@
-import { useMemo, useState } from "react";
-import { useRegionSamples } from "@/hooks/useRegionSamples";
-import type { RegionSamples } from "@/lib/sample-data";
+import { useState } from "react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,7 +21,7 @@ interface Endpoint {
   headers?: { name: string; value: string; required: boolean }[];
 }
 
-const buildEndpoints = (samples: RegionSamples): Endpoint[] => [
+const endpoints: Endpoint[] = [
   // Authentication & Notifications
   {
     method: "POST",
@@ -32,7 +30,7 @@ const buildEndpoints = (samples: RegionSamples): Endpoint[] => [
     auth: true,
     category: "notifications",
     requestBody: `{
-  "recipientPhone": "${samples.phoneE164}",
+  "recipientPhone": "+1234567890",
   "notificationType": "payment_reminder",
   "channel": "sms",
   "amount": 150.00,
@@ -62,7 +60,7 @@ const buildEndpoints = (samples: RegionSamples): Endpoint[] => [
   "driverId": "uuid",
   "title": "Vehicle Collision Detected",
   "description": "Impact detected at 3.5G force",
-  "location": "${samples.address}"
+  "location": "123 Main St, Lagos"
 }`,
     responseBody: `{
   "success": true,
@@ -77,8 +75,8 @@ const buildEndpoints = (samples: RegionSamples): Endpoint[] => [
     auth: true,
     category: "notifications",
     requestBody: `{
-  "email": "${samples.email}",
-  "name": "${samples.name}",
+  "email": "user@example.com",
+  "name": "John Doe",
   "userType": "driver",
   "region": "USA"
 }`,
@@ -144,7 +142,7 @@ const buildEndpoints = (samples: RegionSamples): Endpoint[] => [
     category: "auth",
     requestBody: `{
   "action": "send_code",
-  "phone": "${samples.phoneE164}",
+  "phone": "+1234567890",
   "channel": "sms"
 }`,
     responseBody: `{
@@ -162,10 +160,10 @@ const buildEndpoints = (samples: RegionSamples): Endpoint[] => [
     requestBody: `{
   "orderId": "uuid",
   "ownerEmail": "owner@example.com",
-  "ownerPhone": "${samples.phoneE164}",
+  "ownerPhone": "+1234567890",
   "devicePrice": 25000,
   "currency": "NGN",
-  "shippingAddress": "${samples.address}",
+  "shippingAddress": "123 Lagos Street",
   "paymentMethod": "bank_transfer"
 }`,
     responseBody: `{
@@ -181,9 +179,9 @@ const buildEndpoints = (samples: RegionSamples): Endpoint[] => [
     category: "orders",
     requestBody: `{
   "email": "owner@example.com",
-  "phone": "${samples.phoneE164}",
+  "phone": "+1234567890",
   "trackingNumber": "TRK123456789",
-  "shippingAddress": "${samples.address}"
+  "shippingAddress": "123 Lagos Street"
 }`,
     responseBody: `{
   "success": true,
@@ -216,7 +214,7 @@ const buildEndpoints = (samples: RegionSamples): Endpoint[] => [
   "conversationId": "uuid",
   "messageContent": "Your vehicle is ready for pickup.",
   "channel": "sms",
-  "recipientPhone": "${samples.phoneE164}"
+  "recipientPhone": "+2348012345678"
 }`,
     responseBody: `{
   "success": true,
@@ -236,7 +234,7 @@ const buildEndpoints = (samples: RegionSamples): Endpoint[] => [
     auth: true,
     category: "communication",
     requestBody: `{
-  "recipientPhone": "${samples.phoneE164}",
+  "recipientPhone": "+2348012345678",
   "notificationType": "payment_reminder",
   "channel": "sms",
   "amount": 50000,
@@ -262,7 +260,7 @@ const buildEndpoints = (samples: RegionSamples): Endpoint[] => [
     category: "communication",
     requestBody: `{
   "sms": {
-    "from": "${samples.phoneE164}",
+    "from": "+2348012345678",
     "to": "RENTMAIKAR",
     "message": "I need roadside assistance",
     "type": "plain",
@@ -273,7 +271,7 @@ const buildEndpoints = (samples: RegionSamples): Endpoint[] => [
   "success": true,
   "conversationId": "uuid",
   "forwarded": true,
-  "forwardedTo": "${samples.phoneE164.slice(0, 4)}XXXXXXXXXX"
+  "forwardedTo": "+234XXXXXXXXXX"
 }`
   },
   {
@@ -283,8 +281,8 @@ const buildEndpoints = (samples: RegionSamples): Endpoint[] => [
     auth: false,
     category: "communication",
     requestBody: `{
-  "From": "${samples.phoneE164}",
-  "To": "${samples.phoneE164}",
+  "From": "+12025551234",
+  "To": "+18005551234",
   "Body": "When is my next payment due?",
   "MessageSid": "SM1234567890"
 }`,
@@ -292,7 +290,7 @@ const buildEndpoints = (samples: RegionSamples): Endpoint[] => [
   "success": true,
   "conversationId": "uuid",
   "forwarded": true,
-  "forwardedTo": "${samples.phoneE164.slice(0, 4)}XXXXXXXXXX"
+  "forwardedTo": "+1XXXXXXXXXX"
 }`
   }
 ];
@@ -484,15 +482,15 @@ const AuthenticationSection = () => {
             </TabsList>
             <TabsContent value="curl" className="space-y-3">
               <p className="text-sm text-muted-foreground">Authenticated request:</p>
-              <CodeBlock code={`curl https://api.rentmaikar.com/v1/vehicles \\
+              <CodeBlock code={`curl https://backend.rentmaikar.com/v1/vehicles \\
   -H "Authorization: Bearer rmk_live_your_key_here" \\
   -H "Content-Type: application/json"`} />
               <p className="text-sm text-muted-foreground">Rotate an API key (admin scope required):</p>
-              <CodeBlock code={`curl -X POST https://api.rentmaikar.com/v1/keys/KEY_ID/rotate \\
+              <CodeBlock code={`curl -X POST https://backend.rentmaikar.com/v1/keys/KEY_ID/rotate \\
   -H "Authorization: Bearer rmk_live_admin_key"`} />
             </TabsContent>
             <TabsContent value="js" className="space-y-3">
-              <CodeBlock code={`const res = await fetch("https://api.rentmaikar.com/v1/rentals", {
+              <CodeBlock code={`const res = await fetch("https://backend.rentmaikar.com/v1/rentals", {
   method: "POST",
   headers: {
     Authorization: \`Bearer \${process.env.RENTMAIKAR_API_KEY}\`,
@@ -514,7 +512,7 @@ const data = await res.json();`} />
               <CodeBlock code={`import os, uuid, requests
 
 r = requests.post(
-  "https://api.rentmaikar.com/v1/payments/charge",
+  "https://backend.rentmaikar.com/v1/payments/charge",
   headers={
     "Authorization": f"Bearer {os.environ['RENTMAIKAR_API_KEY']}",
     "Content-Type": "application/json",
@@ -622,8 +620,6 @@ print(r.json())`} />
 
 
 const ApiDocs = () => {
-  const samples = useRegionSamples();
-  const endpoints = useMemo(() => buildEndpoints(samples), [samples]);
   const [selectedCategory, setSelectedCategory] = useState("all");
 
   const filteredEndpoints = selectedCategory === "all" 

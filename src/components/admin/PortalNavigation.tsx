@@ -45,6 +45,7 @@ export const crmTabs: PortalTab[] = [
 export const erpTabs: PortalTab[] = [
   { value: "tracking", label: "Vehicle Tracking", icon: <Car className="h-4 w-4" /> },
   { value: "assets", label: "Assets Registry", icon: <ClipboardList className="h-4 w-4" />, dataTour: "admin-assets" },
+  { value: "authorizations", label: "Rental Authorizations", icon: <ShieldCheck className="h-4 w-4" /> },
   { value: "catalogue", label: "Vehicle Catalogue", icon: <Car className="h-4 w-4" /> },
   { value: "pickup-locations", label: "Pickup Locations", icon: <MapPin className="h-4 w-4" /> },
   { value: "iot-monitoring", label: "IoT Monitoring Hub", icon: <Radio className="h-4 w-4" /> },

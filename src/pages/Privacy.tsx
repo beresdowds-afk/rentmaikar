@@ -4,14 +4,9 @@ import Footer from "@/components/layout/Footer";
 import { Shield } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EMAIL_CONFIG } from "@/lib/email-config";
-import { usePublishedCompanyInfo } from "@/hooks/usePublishedCompanyInfo";
-
+import { EMAIL_CONFIG, COMPANY_INFO } from "@/lib/email-config";
 const Privacy = () => {
   const { country } = useRegion();
-  const { infoFor } = usePublishedCompanyInfo();
-  const usaInfo = infoFor("USA");
-  const nigeriaInfo = infoFor("Nigeria");
 
   const USAPrivacy = () => (
     <div className="prose prose-lg max-w-none space-y-8">
@@ -241,7 +236,7 @@ const Privacy = () => {
         <p className="text-muted-foreground">
           For privacy-related inquiries or to exercise your rights:<br />
           Email: {EMAIL_CONFIG.privacy}<br />
-          Phone: {usaInfo.phone}
+          Phone: {COMPANY_INFO.USA.phone}
         </p>
       </section>
     </div>
@@ -470,7 +465,7 @@ const Privacy = () => {
         <p className="text-muted-foreground">
           In compliance with NDPR, we have appointed a Data Protection Officer (DPO). For data protection enquiries:<br />
           Email: {EMAIL_CONFIG.dpo}<br />
-          Phone: {nigeriaInfo.phone}
+          Phone: +234 803 555 0123
         </p>
       </section>
 
@@ -511,8 +506,8 @@ const Privacy = () => {
         <p className="text-muted-foreground">
           For privacy-related enquiries or to exercise your rights:<br />
           Email: {EMAIL_CONFIG.privacy}<br />
-          Phone: {nigeriaInfo.phone}<br />
-          Address: {nigeriaInfo.companyName}{nigeriaInfo.fullAddress ? `, ${nigeriaInfo.fullAddress}` : ", Lagos, Nigeria"}
+          Phone: +234 803 555 0123<br />
+          Address: Rentmaikar Nigeria Limited, Lagos, Nigeria
         </p>
         <p className="text-muted-foreground mt-4">
           <strong>Regulatory Authority:</strong><br />

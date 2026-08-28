@@ -10,10 +10,10 @@ import { SMS_KEYWORDS, SMS_OPT_IN_TIMING } from "@/components/registration/sms-p
  * text and version shown to the user so the opt-in path is auditable.
  */
 
-export const SMS_DISCLOSURE_VERSION = "2026-08-23.v1";
+export const SMS_DISCLOSURE_VERSION = "2026-08-14.v1";
 
 /** Version of the keyword + timing program disclosure snapshot stored per consent row. */
-export const SMS_PROGRAM_VERSION = "2026-08-23.program.v1";
+export const SMS_PROGRAM_VERSION = "2026-08-14.program.v1";
 
 export type SmsConsentType = "service" | "marketing";
 

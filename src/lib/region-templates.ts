@@ -8,12 +8,13 @@
  */
 
 export interface RegionTemplateConfig {
-  country: string;              // "USA" | "Nigeria" | (string & {}) | "Ghana" | ...
+  country: string;              // "USA" | "Nigeria" | (string & {}) | "Ghana" | "Global" | ...
   currency: string;             // "USD" | "NGN" | (string & {}) | "GHS"
   currencySymbol: string;       // "$" | "₦" | "₵"
   phonePrefix: string;          // "+1" | "+234"
-  smsProvider: string;          // "twilio" | "termii" | ...
-  whatsappProvider: string;
+  smsProvider: "sent" | "twilio" | "termii" | string;
+  whatsappProvider: "sent" | "twilio" | "termii" | string;
+  rcsProvider?: "sent" | string;
   paymentGateway: string;       // "paypal" | "paystack" | ...
   supportHours?: string;        // "9am-9pm ET"
   whatsappNumber?: string;
@@ -154,6 +155,17 @@ export const auditTemplate = (
 };
 
 export const REGION_FIXTURES: Record<string, RegionTemplateConfig> = {
+  Global: {
+    country: "Global",
+    currency: "USD",
+    currencySymbol: "$",
+    phonePrefix: "+1",
+    smsProvider: "sent",
+    whatsappProvider: "sent",
+    rcsProvider: "sent",
+    paymentGateway: "stripe",
+    supportHours: "24/7 Global",
+  },
   USA: {
     country: "USA",
     currency: "USD",

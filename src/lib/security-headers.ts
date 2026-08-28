@@ -18,6 +18,9 @@ export const CSP_DIRECTIVES = {
   ],
   "connect-src": [
     "'self'",
+    "https://backend.rentmaikar.com",
+    "https://www.backend.rentmaikar.com",
+    "wss://backend.rentmaikar.com",
     "https://*.supabase.co",
     "wss://*.supabase.co",
     "https://api.paypal.com",
@@ -46,6 +49,12 @@ export const SECURITY_HEADERS: Record<string, string> = {
     "camera=(), microphone=(self), geolocation=(self), payment=(self)",
 };
 
+/** Allowed production frontend origins */
+export const ALLOWED_ORIGINS = [
+  "https://rentmaikar.com",
+  "https://www.rentmaikar.com",
+] as const;
+
 /** CORS headers for edge functions */
 export const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -53,6 +62,20 @@ export const CORS_HEADERS: Record<string, string> = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 };
+
+/** Build CORS headers dynamically based on the incoming request origin */
+export function getCorsHeaders(requestOrigin?: string | null): Record<string, string> {
+  const allowOrigin =
+    requestOrigin && (ALLOWED_ORIGINS as readonly string[]).includes(requestOrigin)
+      ? requestOrigin
+      : "https://rentmaikar.com";
+
+  return {
+    ...CORS_HEADERS,
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
 
 /** Merge all headers for edge function responses */
 export function getSecureResponseHeaders(): Record<string, string> {

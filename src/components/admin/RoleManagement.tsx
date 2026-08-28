@@ -1,5 +1,4 @@
 import { PhoneNumberInput } from '@/components/ui/phone-number-input';
-import { useRegionSamples } from '@/hooks/useRegionSamples';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -78,7 +77,6 @@ const actionLabels: Record<string, string> = {
 
 export function RoleManagement() {
   const { user } = useAuth();
-  const samples = useRegionSamples();
   // Admin assistants can read the roster (scoped by their granted
   // permissions at the database layer), but role mutations stay admin-only.
   const { isFullAdmin, isAssistant } = useAssistantPermissions();
@@ -136,7 +134,7 @@ export function RoleManagement() {
     if (!raw.trim()) return null;
     const cleaned = '+' + raw.replace(/[^\d]/g, '');
     if (!/^\+\d{8,15}$/.test(cleaned)) {
-      return `Enter a valid international number, e.g. ${samples.phoneE164}`;
+      return 'Enter a valid international number, e.g. +15551234567';
     }
     return null;
   };
@@ -1161,7 +1159,7 @@ export function RoleManagement() {
                     <p className="text-xs text-destructive">{phoneError}</p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      International format for your region, e.g. {samples.phoneE164}.
+                      International format, e.g. +15551234567 or +2348012345678.
                     </p>
                   )}
                 </div>

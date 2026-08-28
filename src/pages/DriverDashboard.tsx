@@ -63,7 +63,6 @@ import { TrainingComplianceBanner } from '@/components/dashboard/TrainingComplia
 import { RealtimeStatusCard } from '@/components/dashboard/RealtimeStatusCard';
 
 import { DriverOverviewTab } from '@/components/dashboard/DriverOverviewTab';
-import { RefereePickupGate } from '@/components/driver/RefereePickupGate';
 import { useNavigate } from 'react-router-dom';
 import {
   Car,
@@ -380,7 +379,6 @@ export default function DriverDashboard() {
 
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
-              <RefereePickupGate />
               <DriverOverviewTab onNavigateTab={setActiveTab} />
             </TabsContent>
 
@@ -554,47 +552,29 @@ export default function DriverDashboard() {
             {/* Vehicle Inspection Tab - Monthly for USA, Weekly for Nigeria */}
             <TabsContent value="inspection" className="space-y-6">
               <PortalGate portal="Inspection Report" require="verification">
-                {vehicle ? (
-                  <WeeklyInspectionReport
-                    vehicleId={vehicle.id}
-                    vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-                    ownerId={null}
-                    region={country}
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground py-8 text-center">
-                    No active vehicle assigned. Inspection reports unlock once a rental is active.
-                  </p>
-                )}
+                <WeeklyInspectionReport
+                  vehicleId={vehicle.id}
+                  vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                  ownerId={null}
+                  region={country}
+                />
               </PortalGate>
             </TabsContent>
 
             {/* Rideshare Profile Tab - Weekly for all */}
             <TabsContent value="rideshare-profile" className="space-y-6">
               <PortalGate portal="Rideshare Profile" require="documents">
-                {vehicle ? (
-                  <RideshareProfileUpload vehicleId={vehicle.id} />
-                ) : (
-                  <p className="text-sm text-muted-foreground py-8 text-center">
-                    No active vehicle assigned. Rideshare profile uploads unlock once a rental is active.
-                  </p>
-                )}
+                <RideshareProfileUpload vehicleId={vehicle.id} />
               </PortalGate>
             </TabsContent>
 
             {/* Incidents Tab */}
             <TabsContent value="incidents" className="space-y-6">
               <PortalGate portal="Report an Incident" require="documents">
-                {vehicle ? (
-                  <IncidentReportForm
-                    vehicleId={vehicle.id}
-                    vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground py-8 text-center">
-                    No active vehicle assigned. Incident reporting unlocks once a rental is active.
-                  </p>
-                )}
+                <IncidentReportForm
+                  vehicleId={vehicle.id}
+                  vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                />
               </PortalGate>
             </TabsContent>
 

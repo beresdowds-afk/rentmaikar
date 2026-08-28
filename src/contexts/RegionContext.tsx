@@ -340,7 +340,7 @@ useEffect(() => {
       // Owners / Drivers / Customers
       // ------------------------------------------------------------------
       if (!isAdminLike) {
-        let lockedCountry =
+        const lockedCountry =
           resolved?.value ??
           getStoredCountry() ??
           SAFE_DEFAULT;

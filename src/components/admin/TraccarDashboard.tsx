@@ -199,7 +199,7 @@ export function TraccarDashboard() {
           {status?.message ||
             (configured
               ? `Base URL: ${status?.base_url}. Devices and positions can be synced on demand.`
-              : "Add TRACCAR_BASE_URL and either TRACCAR_API_TOKEN or TRACCAR_EMAIL + TRACCAR_PASSWORD, then click Refresh.")}
+              : "Add TRACCAR_BASE_URL and either TRACCAR_TOKEN or TRACCAR_EMAIL + TRACCAR_PASSWORD, then click Refresh.")}
         </AlertDescription>
       </Alert>
 
@@ -399,7 +399,7 @@ export function TraccarDashboard() {
             </CardHeader>
             <CardContent className="text-sm space-y-2">
               <div><code>TRACCAR_BASE_URL</code> — e.g. <code>https://demo.traccar.org</code> or your self-hosted URL</div>
-              <div><code>TRACCAR_API_TOKEN</code> — recommended: personal API token (Bearer auth)</div>
+              <div><code>TRACCAR_TOKEN</code> — recommended: personal API token (Bearer auth)</div>
               <div className="text-muted-foreground">— or —</div>
               <div><code>TRACCAR_EMAIL</code> + <code>TRACCAR_PASSWORD</code> — Basic auth fallback</div>
               <div className="text-muted-foreground text-xs pt-2">
