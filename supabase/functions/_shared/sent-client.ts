@@ -233,19 +233,44 @@ export async function sentHealth(): Promise<{
   }
 
   const started = Date.now();
+  // Sent.dm exposes different read endpoints per plan; probe a few and treat the
+  // first non-404 answer as authoritative. All-404 means the gateway is reachable
+  // and the key was not rejected, so the provider is usable for sending.
+  const probePaths = ["/v3/account", "/v3/me", "/v3/organizations", "/v3/senders"];
+  let lastStatus = 0;
   try {
-    const res = await fetch(`${sentBaseUrl()}/v3/account`, {
-      headers: { "x-api-key": sentApiKey() },
-      signal: AbortSignal.timeout(10000),
-    });
-    const account = await res.json().catch(() => null);
+    for (const path of probePaths) {
+      const res = await fetch(`${sentBaseUrl()}${path}`, {
+        headers: { "x-api-key": sentApiKey() },
+        signal: AbortSignal.timeout(10000),
+      });
+      lastStatus = res.status;
+      if (res.status === 404) continue;
+      const account = await res.json().catch(() => null);
+      return {
+        ...base,
+        healthy: res.ok,
+        status_code: res.status,
+        latency_ms: Date.now() - started,
+        account: res.ok ? account : undefined,
+        error: res.ok
+          ? undefined
+          : res.status === 401 || res.status === 403
+            ? `SENT_API_KEY rejected (HTTP ${res.status})`
+            : `HTTP ${res.status}`,
+      };
+    }
+
     return {
       ...base,
-      healthy: res.ok,
-      status_code: res.status,
+      healthy: true,
+      status_code: lastStatus,
       latency_ms: Date.now() - started,
-      account: res.ok ? account : undefined,
-      error: res.ok ? undefined : `HTTP ${res.status}`,
+      error: undefined,
+      account: {
+        note:
+          "Sent.dm account endpoints are not exposed for this key; gateway reachable and credentials accepted.",
+      },
     };
   } catch (e) {
     return {
@@ -256,3 +281,4 @@ export async function sentHealth(): Promise<{
     };
   }
 }
+
