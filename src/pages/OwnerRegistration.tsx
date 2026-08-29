@@ -29,6 +29,7 @@ import { RegistrationErrorAlert } from "@/components/registration/RegistrationEr
 import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRegionSamples } from "@/hooks/useRegionSamples";
 import {
   ADDRESS_MAX,
   addressHint as buildAddressHint,
@@ -112,6 +113,7 @@ const years = Array.from({ length: 11 }, (_, i) => (currentYear - 10 + i).toStri
 const OwnerRegistration = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const samples = useRegionSamples();
   const { currencySymbol } = useRegion();
   const [currentCountry, setCurrentCountry] = useState<"usa" | "nigeria">("usa");
   const [submitError, setSubmitError] = useState<FriendlyRegistrationError | null>(null);
@@ -355,14 +357,14 @@ const OwnerRegistration = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" placeholder="John" autoComplete="given-name" autoFocus {...register("firstName")} />
+                    <Input id="firstName" placeholder={samples.firstName} autoComplete="given-name" autoFocus {...register("firstName")} />
                     {errors.firstName && (
                       <p className="text-destructive text-sm">{errors.firstName.message}</p>
                     )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" placeholder="Doe" autoComplete="family-name" {...register("lastName")} />
+                    <Input id="lastName" placeholder={samples.lastName} autoComplete="family-name" {...register("lastName")} />
                     {errors.lastName && (
                       <p className="text-destructive text-sm">{errors.lastName.message}</p>
                     )}
@@ -386,7 +388,7 @@ const OwnerRegistration = () => {
                         <Input
                           id="email"
                           type="email"
-                          placeholder="john@example.com"
+                          placeholder={samples.email}
                           className="pl-10"
                           autoComplete="email"
                           {...register("email")}
@@ -505,7 +507,7 @@ const OwnerRegistration = () => {
                   </div>
                   <Input
                     id="streetAddress"
-                    placeholder="Street address"
+                    placeholder={samples.address}
                     maxLength={ADDRESS_MAX + 50}
                     aria-invalid={ownerAddressHint?.tone === "error" || !!errors.streetAddress}
                     aria-describedby="streetAddress-hint"
@@ -533,8 +535,8 @@ const OwnerRegistration = () => {
 
 
                 <div className="space-y-2">
-                  <Label htmlFor="zipCode">ZIP / Postal Code</Label>
-                  <Input id="zipCode" placeholder="20001" {...register("zipCode")} />
+                  <Label htmlFor="zipCode">{samples.postalLabel}</Label>
+                  <Input id="zipCode" placeholder={samples.postalCode} {...register("zipCode")} />
                   {errors.zipCode && (
                     <p className="text-destructive text-sm">{errors.zipCode.message}</p>
                   )}

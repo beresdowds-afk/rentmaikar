@@ -28,6 +28,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePersonaEnabled } from "@/hooks/usePersonaEnabled";
 import { refereeDetailsRequired } from "@/lib/referee-requirements";
 import { useRefereeRequirement } from "@/hooks/useRefereeRequirement";
+import { useRegionSamples } from "@/hooks/useRegionSamples";
 
 import {
   ADDRESS_MIN,
@@ -162,6 +163,7 @@ const ridesharePlatforms = [
 const DriverRegistration = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const samples = useRegionSamples();
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState<FriendlyRegistrationError | null>(null);
   const [lastFormData, setLastFormData] = useState<DriverFormData | null>(null);
@@ -431,7 +433,7 @@ const DriverRegistration = () => {
                     <Label htmlFor="firstName">First Name</Label>
                     <Input
                       id="firstName"
-                      placeholder="John"
+                      placeholder={samples.firstName}
                       autoComplete="given-name"
                       autoFocus
                       {...register("firstName")}
@@ -444,7 +446,7 @@ const DriverRegistration = () => {
                     <Label htmlFor="lastName">Last Name</Label>
                     <Input
                       id="lastName"
-                      placeholder="Doe"
+                      placeholder={samples.lastName}
                       autoComplete="family-name"
                       {...register("lastName")}
                     />
@@ -471,7 +473,7 @@ const DriverRegistration = () => {
                         <Input
                           id="email"
                           type="email"
-                          placeholder="john@example.com"
+                          placeholder={samples.email}
                           className="pl-10"
                           autoComplete="email"
                           {...register("email")}
@@ -587,7 +589,7 @@ const DriverRegistration = () => {
                   </div>
                   <Input
                     id="streetAddress"
-                    placeholder="e.g. 24 Ademola Street, Ikeja"
+                    placeholder={`e.g. ${samples.address}`}
                     aria-invalid={addressHint?.tone === "error" || !!errors.streetAddress}
                     aria-describedby="streetAddress-hint"
                     maxLength={ADDRESS_MAX + 50}
@@ -617,10 +619,10 @@ const DriverRegistration = () => {
 
 
                 <div className="space-y-2">
-                  <Label htmlFor="zipCode">ZIP / Postal Code</Label>
+                  <Label htmlFor="zipCode">{samples.postalLabel}</Label>
                   <Input
                     id="zipCode"
-                    placeholder="20001"
+                    placeholder={samples.postalCode}
                     {...register("zipCode")}
                   />
                   {errors.zipCode && (
@@ -688,7 +690,7 @@ const DriverRegistration = () => {
                         <Label htmlFor={`referee${num}Name`}>Full Name</Label>
                         <Input
                           id={`referee${num}Name`}
-                          placeholder="Full name"
+                          placeholder={samples.name}
                           {...register(`referee${num}Name` as keyof DriverFormData)}
                         />
                         {errors[`referee${num}Name` as keyof typeof errors] && (
@@ -728,7 +730,7 @@ const DriverRegistration = () => {
                         </Label>
                         <Input
                           id={`referee${num}Address`}
-                          placeholder="Full residential address"
+                          placeholder={samples.address}
                           {...register(`referee${num}Address` as keyof DriverFormData)}
                         />
                         {errors[`referee${num}Address` as keyof typeof errors] && (
@@ -747,7 +749,7 @@ const DriverRegistration = () => {
                         <Input
                           id={`referee${num}Email`}
                           type="email"
-                          placeholder="referee@example.com"
+                          placeholder={samples.email}
                           {...register(`referee${num}Email` as keyof DriverFormData)}
                         />
                         {errors[`referee${num}Email` as keyof typeof errors] && (

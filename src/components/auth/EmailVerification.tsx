@@ -46,6 +46,10 @@ export const EmailVerification = ({
       const verified = !!data.user?.email_confirmed_at;
       if (cancelled) return;
       setIsEmailVerified(verified);
+      if (verified) {
+        // Keep the profile flag (used by portal gates) in step with auth.
+        await supabase.functions.invoke('sync-auth-identity', { body: {} });
+      }
       if (verified && autoSkipIfVerified) onVerified?.();
     };
     void check();
@@ -95,7 +99,9 @@ export const EmailVerification = ({
       if (error) throw error;
       if (currentUser?.email_confirmed_at) {
         setIsEmailVerified(true);
-        await supabase.from('profiles').update({ email_verified: true }).eq('user_id', currentUser.id);
+        // profiles.email_verified is guarded against self-updates, so the flag
+        // is synced from the auth layer server-side instead of written here.
+        await supabase.functions.invoke('sync-auth-identity', { body: {} });
         toast.success('Email verified successfully!');
         onVerified?.();
       } else {

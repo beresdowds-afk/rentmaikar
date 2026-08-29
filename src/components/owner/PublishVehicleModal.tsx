@@ -42,6 +42,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useRegionSamples } from '@/hooks/useRegionSamples';
 
 interface PublishVehicleModalProps {
   open: boolean;
@@ -101,6 +102,7 @@ export function PublishVehicleModal({
   onSuccess,
 }: PublishVehicleModalProps) {
   const { user } = useAuth();
+  const samples = useRegionSamples();
   const { country } = useRegion();
   const queryClient = useQueryClient();
 
@@ -533,7 +535,7 @@ export function PublishVehicleModal({
                   {useCustomCity ? (
                     <Input
                       id="publish-pickup-city"
-                      placeholder="e.g. Baltimore, MD or Lagos"
+                      placeholder={`e.g. ${samples.location || samples.city}`}
                       value={pickupCity}
                       onChange={(e) => setPickupCity(e.target.value)}
                       className="h-9 text-xs"
@@ -567,7 +569,7 @@ export function PublishVehicleModal({
                   </Label>
                   <Input
                     id="publish-pickup-location"
-                    placeholder="e.g. Main Fleet Depot, Downtown Hub, Lot 4"
+                    placeholder={`e.g. ${samples.landmark}`}
                     value={pickupLocationName}
                     onChange={(e) => setPickupLocationName(e.target.value)}
                     className="h-9 text-xs"
@@ -581,7 +583,7 @@ export function PublishVehicleModal({
                   </Label>
                   <Input
                     id="publish-pickup-address"
-                    placeholder="e.g. 1024 Pratt Street, Suite B / Plot 14 Admiralty Way, Lekki"
+                    placeholder={`e.g. ${samples.address}`}
                     value={pickupAddress}
                     onChange={(e) => setPickupAddress(e.target.value)}
                     className="h-9 text-xs"
