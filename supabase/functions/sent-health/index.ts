@@ -28,8 +28,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: isAdmin } = await supabase.rpc("has_admin_privilege");
-    if (!isAdmin) {
+    // Staff check: `is_admin()` resolves auth.uid() server-side. Fall back to a
+    // direct user_roles lookup so a missing/renamed RPC never masks a valid admin.
+    let isStaff = false;
+    const { data: adminFlag } = await supabase.rpc("is_admin");
+    if (adminFlag === true) {
+      isStaff = true;
+    } else {
+      const { data: roleRows } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      isStaff = (roleRows ?? []).some((r: { role: string }) =>
+        ["admin", "admin_assistant"].includes(r.role)
+      );
+    }
+
+    if (!isStaff) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { "Content-Type": "application/json", ...corsHeaders },

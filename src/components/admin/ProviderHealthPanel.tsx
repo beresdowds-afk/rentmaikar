@@ -7,7 +7,7 @@ import { Activity, AlertTriangle, CheckCircle2, Loader2, RefreshCw } from 'lucid
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 
-type ProviderKey = 'twilio' | 'termii' | 'resend';
+type ProviderKey = 'sent' | 'twilio' | 'termii' | 'resend';
 
 interface ProviderStat {
   provider: ProviderKey;
@@ -72,6 +72,7 @@ const useProviderHealth = () => {
       ]);
 
       const stats: Record<ProviderKey, ProviderStat> = {
+        sent: emptyStat('sent', 'Sent.dm (Global SMS / WhatsApp / RCS)'),
         twilio: emptyStat('twilio', 'Twilio (SMS / WhatsApp / Voice)'),
         termii: emptyStat('termii', 'Termii (Nigeria SMS)'),
         resend: emptyStat('resend', 'Resend (Email)'),
@@ -145,8 +146,37 @@ const useProviderHealth = () => {
   });
 };
 
+interface SentProbe {
+  configured: boolean;
+  healthy: boolean;
+  sandbox: boolean;
+  sender_id: string;
+  whatsapp_sender: string | null;
+  whatsapp_ready: boolean;
+  provider_whatsapp_configured?: boolean;
+  enabled_channels: string[];
+  latency_ms?: number;
+  error?: string;
+}
+
+/**
+ * Live readiness probe for Sent.dm. `functions.invoke` attaches the signed-in
+ * admin's session token, so the edge function authorises the caller correctly.
+ */
+const useSentProbe = () =>
+  useQuery({
+    queryKey: ['sent-health'],
+    refetchInterval: 120_000,
+    queryFn: async (): Promise<SentProbe> => {
+      const { data, error } = await supabase.functions.invoke('sent-health');
+      if (error) throw error;
+      return data as SentProbe;
+    },
+  });
+
 export const ProviderHealthPanel = () => {
   const { data, isLoading, refetch, isFetching } = useProviderHealth();
+  const sentProbe = useSentProbe();
 
   const health = (s: ProviderStat) => {
     const total = s.sent + s.failed + s.bounced;
@@ -166,10 +196,18 @@ export const ProviderHealthPanel = () => {
             Provider Health
           </CardTitle>
           <CardDescription>
-            Delivery, bounce and webhook errors across Twilio, Termii and Resend over the last {SINCE_HOURS} hours.
+            Delivery, bounce and webhook errors across Sent.dm, Twilio, Termii and Resend over the last {SINCE_HOURS} hours.
           </CardDescription>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            refetch();
+            sentProbe.refetch();
+          }}
+          disabled={isFetching}
+        >
           <RefreshCw className={`h-3.5 w-3.5 mr-1 ${isFetching ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
@@ -181,7 +219,57 @@ export const ProviderHealthPanel = () => {
           </div>
         ) : (
           <>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-border p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-medium">Sent.dm gateway readiness</span>
+                {sentProbe.isLoading ? (
+                  <Badge variant="secondary">Checking…</Badge>
+                ) : sentProbe.isError ? (
+                  <Badge variant="destructive">Probe failed</Badge>
+                ) : sentProbe.data?.healthy ? (
+                  <Badge>Connected</Badge>
+                ) : (
+                  <Badge variant="destructive">
+                    {sentProbe.data?.configured ? 'Unreachable' : 'Not configured'}
+                  </Badge>
+                )}
+              </div>
+              <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                <span>
+                  WhatsApp:{' '}
+                  <strong className={sentProbe.data?.whatsapp_ready ? 'text-foreground' : 'text-destructive'}>
+                    {sentProbe.data?.whatsapp_ready ? 'ready' : 'not ready'}
+                  </strong>
+                  {sentProbe.data?.whatsapp_sender ? ` · ${sentProbe.data.whatsapp_sender}` : ''}
+                  {sentProbe.data?.provider_whatsapp_configured === false
+                    ? ' · channel not provisioned at Sent.dm'
+                    : ''}
+                </span>
+                <span>
+                  Sender ID: <strong className="text-foreground">{sentProbe.data?.sender_id ?? '—'}</strong>
+                </span>
+                <span>
+                  Channels:{' '}
+                  <strong className="text-foreground">
+                    {sentProbe.data?.enabled_channels?.join(', ') || '—'}
+                  </strong>
+                </span>
+                <span>
+                  Mode:{' '}
+                  <strong className="text-foreground">
+                    {sentProbe.data?.sandbox ? 'sandbox' : 'live'}
+                  </strong>
+                  {typeof sentProbe.data?.latency_ms === 'number' ? ` · ${sentProbe.data.latency_ms}ms` : ''}
+                </span>
+                {(sentProbe.data?.error || sentProbe.isError) && (
+                  <span className="sm:col-span-2 text-destructive break-words">
+                    {sentProbe.data?.error ?? (sentProbe.error as Error)?.message}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {data?.stats.map((s) => {
                 const h = health(s);
                 return (
