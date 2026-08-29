@@ -402,6 +402,8 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
                 <Send className="mr-2 h-4 w-4" />
               )}
               Send {channel.toUpperCase()}
+              {bulk.length > 0 ? ` to ${reachable} recipient${reachable === 1 ? '' : 's'}` : ''}
+
             </Button>
             <Button
               variant="outline"
