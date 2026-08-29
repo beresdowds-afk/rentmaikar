@@ -761,6 +761,8 @@ const DriverRegistration = () => {
                   </div>
                 ))}
               </div>
+              )}
+
 
               {/* Requirements */}
               <div className="space-y-4 pt-4 border-t border-border">
