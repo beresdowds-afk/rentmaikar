@@ -168,7 +168,24 @@ export interface BulkProgress {
   completed: number;
   sent: number;
   failed: number;
+  failures?: { recipient: string; reason: string }[];
 }
+
+/** Outcome of a single composed send: whether the provider actually took it. */
+export interface SendOutcome {
+  /** The message row exists in the unified inbox thread. */
+  saved: boolean;
+  /** The channel provider accepted the message for delivery. */
+  delivered: boolean;
+  reason?: string;
+}
+
+/** inbox_conversations.region only accepts these two values. */
+const toConversationRegion = (country: string | undefined, phone: string): 'USA' | 'Nigeria' => {
+  if (country === 'USA') return 'USA';
+  if (country === 'Nigeria' || country === 'NGN' || country === 'NG') return 'Nigeria';
+  return phone.replace(/[^\d+]/g, '').startsWith('+234') ? 'Nigeria' : 'USA';
+};
 
 /**
  * Sends an outbound message on any channel, reusing the unified inbox as the
@@ -181,11 +198,15 @@ export const useSendComposedMessage = () => {
   const [isSending, setIsSending] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<BulkProgress | null>(null);
 
-  const send = async (input: SendComposedInput, opts?: { silent?: boolean }): Promise<boolean> => {
+  const send = async (
+    input: SendComposedInput,
+    opts?: { silent?: boolean },
+  ): Promise<SendOutcome> => {
     const silent = opts?.silent === true;
     const notifyError = (msg: string) => {
       if (!silent) toast.error(msg);
     };
+
 
     const body = input.body.trim();
     if (!body) {
