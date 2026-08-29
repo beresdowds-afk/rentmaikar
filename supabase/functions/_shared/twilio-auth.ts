@@ -5,8 +5,9 @@
 // Keys (SK...) with a secret — those authenticate as
 // Basic base64(apiKeySid:apiKeySecret) against the SAME account SID in the URL.
 //
-// `twilioRequest` tries the account auth token first and transparently falls
-// back to any configured API key credentials on a 401.
+// `twilioRequest` tries the configured API key credentials (SK...) first —
+// RentMaikar's approved credential pair — and falls back to the account
+// auth token only if the API key is rejected with a 401.
 
 export interface TwilioResult {
   ok: boolean;
@@ -20,15 +21,15 @@ function candidates(): Array<{ user: string; pass: string; label: string }> {
   const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";
   const list: Array<{ user: string; pass: string; label: string }> = [];
 
-  const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-  if (accountSid && authToken) {
-    list.push({ user: accountSid, pass: authToken, label: "auth_token" });
-  }
-
   const keySid = Deno.env.get("TWILIO_API_KEY_SID") ?? Deno.env.get("TWILIO_API_KEY");
   const keySecret = Deno.env.get("TWILIO_API_KEY_SECRET") ?? Deno.env.get("TWILIO_API_SECRET");
   if (keySid && keySecret && keySid.startsWith("SK")) {
     list.push({ user: keySid, pass: keySecret, label: "api_key" });
+  }
+
+  const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+  if (accountSid && authToken) {
+    list.push({ user: accountSid, pass: authToken, label: "auth_token" });
   }
 
   return list;
