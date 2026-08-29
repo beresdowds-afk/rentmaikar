@@ -121,8 +121,17 @@ export async function getForwardingDestination(
   }
   // Phone numbers are stored with display spacing — normalise to E.164.
   const digits = value.replace(/[^\d+]/g, "");
-  return digits.startsWith("+") ? digits : `+${digits}`;
+  const e164 = digits.startsWith("+") ? digits : `+${digits}`;
+
+  // Our own public aliases are not valid termination points — a message sent
+  // there would loop back into this webhook. Route to the master endpoint.
+  const ours = Object.values(RENTMAIKAR_NUMBERS) as string[];
+  if (ours.includes(e164) && e164 !== RENTMAIKAR_NUMBERS.masterEndpoint) {
+    return await getMasterEndpointFor(supabase, channel as CommsChannel);
+  }
+  return e164;
 }
+
 
 
 /** Build the TwiML used by the inbound-call forwarding webhook. */
