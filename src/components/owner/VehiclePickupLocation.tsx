@@ -236,7 +236,7 @@ export function VehiclePickupLocation() {
                             Full Street Address / Handover Point <span className="text-destructive font-bold">*</span>
                           </Label>
                           <Input 
-                            placeholder="Enter the full street address or depot"
+                            placeholder={`e.g. ${samples.address}`}
                             value={formData.pickup_address}
                             onChange={(e) => setFormData(prev => ({ ...prev, pickup_address: e.target.value }))}
                           />
@@ -245,7 +245,7 @@ export function VehiclePickupLocation() {
                         <div className="space-y-2">
                           <Label>Location Name / Landmark (Optional)</Label>
                           <Input 
-                            placeholder="e.g. Downtown Office, Airport Area, Main Street"
+                            placeholder={`e.g. ${samples.landmark}`}
                             value={formData.pickup_location}
                             onChange={(e) => setFormData(prev => ({ ...prev, pickup_location: e.target.value }))}
                           />

@@ -142,7 +142,7 @@ export function RefereePickupGate() {
                   <Label htmlFor={`gate-referee${idx}-name`}>Full Name</Label>
                   <Input
                     id={`gate-referee${idx}-name`}
-                    placeholder="Full name"
+                    placeholder={samples.name}
                     value={r.name}
                     onChange={(e) => update(idx, 'name')(e.target.value)}
                   />
@@ -169,7 +169,7 @@ export function RefereePickupGate() {
                   <Input
                     id={`gate-referee${idx}-email`}
                     type="email"
-                    placeholder="referee@example.com"
+                    placeholder={samples.email}
                     value={r.email}
                     onChange={(e) => update(idx, 'email')(e.target.value)}
                   />

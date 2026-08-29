@@ -355,14 +355,14 @@ const OwnerRegistration = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" placeholder="John" autoComplete="given-name" autoFocus {...register("firstName")} />
+                    <Input id="firstName" placeholder={samples.firstName} autoComplete="given-name" autoFocus {...register("firstName")} />
                     {errors.firstName && (
                       <p className="text-destructive text-sm">{errors.firstName.message}</p>
                     )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" placeholder="Doe" autoComplete="family-name" {...register("lastName")} />
+                    <Input id="lastName" placeholder={samples.lastName} autoComplete="family-name" {...register("lastName")} />
                     {errors.lastName && (
                       <p className="text-destructive text-sm">{errors.lastName.message}</p>
                     )}
@@ -386,7 +386,7 @@ const OwnerRegistration = () => {
                         <Input
                           id="email"
                           type="email"
-                          placeholder="john@example.com"
+                          placeholder={samples.email}
                           className="pl-10"
                           autoComplete="email"
                           {...register("email")}
@@ -505,7 +505,7 @@ const OwnerRegistration = () => {
                   </div>
                   <Input
                     id="streetAddress"
-                    placeholder="Street address"
+                    placeholder={samples.address}
                     maxLength={ADDRESS_MAX + 50}
                     aria-invalid={ownerAddressHint?.tone === "error" || !!errors.streetAddress}
                     aria-describedby="streetAddress-hint"
@@ -533,8 +533,8 @@ const OwnerRegistration = () => {
 
 
                 <div className="space-y-2">
-                  <Label htmlFor="zipCode">ZIP / Postal Code</Label>
-                  <Input id="zipCode" placeholder="20001" {...register("zipCode")} />
+                  <Label htmlFor="zipCode">{samples.postalLabel}</Label>
+                  <Input id="zipCode" placeholder={samples.postalCode} {...register("zipCode")} />
                   {errors.zipCode && (
                     <p className="text-destructive text-sm">{errors.zipCode.message}</p>
                   )}

@@ -231,7 +231,7 @@ export const OwnerWithdrawalPanel = () => {
                     type="email"
                     value={paypalEmail}
                     onChange={(e) => setPaypalEmail(e.target.value)}
-                    placeholder="you@example.com"
+                    placeholder={samples.email}
                   />
                 </div>
               )}
