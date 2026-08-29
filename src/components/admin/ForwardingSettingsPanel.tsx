@@ -90,6 +90,7 @@ const CHANNELS: { key: ChannelKey; label: string; description: string; outboundD
 export const ForwardingSettingsPanel = () => {
   const [config, setConfig] = useState<InboundConfig>(DEFAULTS);
   const [outbound, setOutbound] = useState<OutboundConfig>(OUTBOUND_DEFAULTS);
+  const [master, setMaster] = useState<MasterEndpoint>(MASTER_DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
@@ -98,23 +99,30 @@ export const ForwardingSettingsPanel = () => {
       const { data, error } = await supabase
         .from('platform_kv_settings')
         .select('key, value')
-        .in('key', [FORWARDING_CONFIG_KEY, OUTBOUND_CONFIG_KEY]);
+        .in('key', [FORWARDING_CONFIG_KEY, OUTBOUND_CONFIG_KEY, MASTER_ENDPOINT_KEY]);
       if (error) {
         toast.error('Could not load channel settings');
       } else {
         const rows = (data ?? []) as { key: string; value: unknown }[];
         const inb = rows.find((r) => r.key === FORWARDING_CONFIG_KEY)?.value as Partial<InboundConfig> | undefined;
         const out = rows.find((r) => r.key === OUTBOUND_CONFIG_KEY)?.value as Partial<Record<RegionKey, Partial<ForwardingConfig>>> | undefined;
+        const end = rows.find((r) => r.key === MASTER_ENDPOINT_KEY)?.value as Partial<MasterEndpoint> | string | undefined;
         setConfig({ ...DEFAULTS, ...(inb ?? {}) });
         setOutbound({
           USA: { ...ALL_ON, ...(out?.USA ?? {}) },
           Nigeria: { ...ALL_ON, ...(out?.Nigeria ?? {}) },
         });
+        if (typeof end === 'string') {
+          setMaster({ voice: end, sms: end, whatsapp: end });
+        } else if (end) {
+          setMaster({ ...MASTER_DEFAULTS, ...end });
+        }
       }
       setLoading(false);
     };
     load();
   }, []);
+
 
   const persist = async (key: string, value: unknown) => {
     const { error } = await supabase
