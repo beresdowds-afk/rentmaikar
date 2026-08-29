@@ -130,7 +130,7 @@ export const usePublicVehicle = (id?: string) =>
     queryFn: async () => {
       const { data, error } = await supabase
         .from("public_vehicle_listings")
-        .select("id, make, model, year, color, status, pickup_city, pickup_location, photo_urls, created_at")
+        .select(await selectColumns())
         .eq("id", id!)
         .maybeSingle();
       if (error) throw error;
