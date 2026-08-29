@@ -206,7 +206,7 @@ serve(async (req) => {
     }
 
     // 6. Webhook signature validation readiness
-    const baseUrl = `${supabaseUrl}/functions/v1`;
+    // baseUrl declared above in this diagnostics block
     checks.webhooks = {
       signatureValidationEnabled: Boolean(authToken),
       endpoints: {
