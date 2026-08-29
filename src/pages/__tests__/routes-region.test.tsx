@@ -64,6 +64,23 @@ vi.mock("@/integrations/supabase/client", () => {
 });
 
 // -----------------------------------------------------------------------------
+// Contact channels are admin-managed (Regional Contact Channels), so the test
+// supplies them instead of asserting numbers that no longer live in code.
+// -----------------------------------------------------------------------------
+vi.mock("@/lib/region-config", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/region-config")>(
+    "@/lib/region-config",
+  );
+  return {
+    ...actual,
+    contactOverrides: {
+      USA: { whatsappNumber: "+16085489220", smsNumber: "+16085489220", supportEmail: "support@rentmaikar.com" },
+      Nigeria: { whatsappNumber: "+2349163072576", smsNumber: "+2349163072576", supportEmail: "support@rentmaikar.com" },
+    },
+  };
+});
+
+// -----------------------------------------------------------------------------
 // Mock geolocation
 // -----------------------------------------------------------------------------
 vi.mock("@/lib/ip-geolocation", () => ({
@@ -149,8 +166,8 @@ beforeEach(() => {
 // -----------------------------------------------------------------------------
 describe("primary routes render region-specific tokens", () => {
   it.each<[Country, string]>([
-    ["USA", "124078589931"],
-    ["Nigeria", "12403930081"],
+    ["USA", "16085489220"],
+    ["Nigeria", "2349163072576"],
   ])(
     "HeroSection wires the %s WhatsApp number",
     (country, waNumber) => {
