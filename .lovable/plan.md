@@ -1,38 +1,32 @@
-# Recover and fix the recently identified issues
+# Bulk messaging reliability + non-USA delivery
 
-Four monitoring findings are open. All four are confirmed against the live database and current code.
+Both concerns are confirmed as real defects in the current code.
 
-## 1. Messaging Center can't start new threads outside the USA (high)
+## What I verified
 
-New conversations are created with region `NGN`, but the conversations table only accepts `USA` or `Nigeria`, so every new (non-existing-thread) send from a Nigeria-region admin fails with "Could not send the message" — including every recipient of a bulk blast.
+1. **Non-USA recipients cannot be messaged.** When the composer opens a new thread it writes the region as `NGN` for any non-USA country (`useMessageComposer.ts` line 237), but the conversations table only accepts `USA` or `Nigeria` (check constraint confirmed on the live database). Every new non-USA thread therefore fails at insert time and the recipient gets nothing — the toast just says "Could not send the message".
 
-Fix: map the region to the accepted value (`USA` / `Nigeria`) when creating the conversation, and surface the real database error text instead of the generic toast so future mismatches are visible.
+2. **Failed sends are reported as successful.** After the message row is saved, if the email/SMS/WhatsApp dispatch function returns an error, the send helper still returns `true`. In bulk mode that recipient is counted in the "sent" tally, so a blast can report "Sent to N recipients" when nothing was delivered. Individually it only shows a soft warning.
 
-## 2. Messaging Center reports success when delivery fails (medium)
+## Fixes
 
-When the email/SMS/WhatsApp send function returns an error, the composer still counts the recipient as sent, so a bulk blast can report "Sent to N recipients" while nothing was delivered.
+**Region mapping**
+- Map the composer country to the accepted values (`USA` / `Nigeria`) when creating a conversation, defaulting unknown countries to `Nigeria` only when the phone is Nigerian, otherwise `USA`.
+- Surface the actual database error text in the failure toast so any future value mismatch is visible instead of hidden behind a generic message.
 
-Fix: distinguish "saved to thread" from "delivered". Return a delivery outcome instead of a blanket success, count provider failures in the bulk progress counters, and show a per-recipient failure list in the final summary.
+**Honest delivery accounting**
+- Change the send helper to return a delivery outcome (`saved`, `delivered`, `failed`) with the provider error rather than a plain boolean.
+- Bulk counters: only count a recipient as sent when the provider accepted it; count provider failures as failed.
+- Final bulk summary lists the failed recipients and the reason, and the progress UI shows the failed count live.
+- Single sends show an error toast (not a soft warning) when the provider rejects, while keeping the thread record.
 
-## 3. WhatsApp car browsing is broken (high)
+## Verification after the change
 
-The WhatsApp bot queries `daily_rate`, `category`, `currency`, `region` and `city` from the vehicles table; none of those columns exist, so the CARS list, list-selection and vehicle-detail replies all fail with a Postgres error.
-
-Fix: rebuild those three queries against columns that exist (make, model, year, pickup_city, status, photo_urls) and derive pricing the same way the web app does:
-- year + region to tier via the category-year specs table
-- tier + region to price/currency via the category price table
-
-Region is derived from the vehicle's pickup city / owner profile, falling back to the messaging region. Vehicles with no resolvable tier show "Price on request" rather than erroring.
-
-## 4. Nigerian SMS OTP failing — Termii sender ID rejected (high)
-
-Termii rejects the deployed sender ID with `SENDER_ID_NOT_APPROVED`, so +234 phone sign-in codes never arrive. The same sender ID is used by referee notifications, expiry notifications and VoIP.
-
-Fix: move the sender ID to a single shared resolver with an approved default, and update the stored secret to the approved value. I need you to confirm which sender ID Termii has actually approved for the workspace (e.g. `Rentmaikar`) — I'll ask before changing the secret.
+- Compose to a Nigerian (+234) contact with no existing thread and confirm the conversation is created and the message dispatches.
+- Bulk send to a small mixed set including one deliberately unreachable recipient, and confirm the summary reports it as failed, not sent.
+- Build and typecheck.
 
 ## Technical notes
 
-- Files: `src/hooks/useMessageComposer.ts`, `src/components/admin/MessageComposer.tsx`, `supabase/functions/whatsapp-commands/index.ts`, `supabase/functions/_shared/sms-config.ts`, `supabase/functions/phone-otp-custom/index.ts`.
-- No schema migration needed: pricing tables (`vehicle_category_prices`, `vehicle_category_year_specs`) are already populated for USA and Nigeria.
-- `whatsapp-commands` and `phone-otp-custom` get redeployed after the edits.
-- Verification: build + typecheck, a Nigeria-region compose dry run, and a WhatsApp CARS command against the live function.
+- Files: `src/hooks/useMessageComposer.ts` (region mapping, outcome type, bulk tally) and `src/components/admin/MessageComposer.tsx` (progress and summary display).
+- No schema migration and no edge-function change; `send-email-reply` / `send-inbox-reply` already return `success: false` on provider failure.
