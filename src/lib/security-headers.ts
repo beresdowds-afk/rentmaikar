@@ -23,9 +23,14 @@ export const CSP_DIRECTIVES = {
 
     "https://*.supabase.co",
     "wss://*.supabase.co",
+    // Twilio Voice SDK (in-app call centre signalling + media)
+    "https://*.twilio.com",
+    "wss://*.twilio.com",
     "https://api.paypal.com",
     "https://api.paystack.co",
   ],
+  "media-src": ["'self'", "blob:", "mediastream:"],
+
   "frame-src": ["'self'", "https://www.paypal.com", "https://paystack.com"],
   "object-src": ["'none'"],
   "base-uri": ["'self'"],
