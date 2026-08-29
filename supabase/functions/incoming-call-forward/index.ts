@@ -67,11 +67,21 @@ serve(async (req: Request): Promise<Response> => {
       sender: from,
       region,
       provider_message_id: callSid,
-      metadata: { forwarding_enabled: enabled, forwarded: !!destination },
+      metadata: {
+        forwarding_enabled: enabled,
+        forwarded: !!destination,
+        // Preserve the customer's original number and the endpoint that
+        // actually handled the conversation.
+        customer_phone: from,
+        public_alias: to,
+        endpoint: destination,
+      },
     }).catch((e) => console.error("[incoming-call-forward] event log failed:", e));
 
-    // Present our own number as caller ID so carriers accept the bridged leg.
-    return xml(buildCallForwardTwiml(destination, to || null));
+    // Present a published RentMaikar number as caller ID (never the
+    // dial-out-only number, never the master endpoint).
+    return xml(buildCallForwardTwiml(destination, publicSenderFor("call", to)));
+
   } catch (error) {
     console.error("[incoming-call-forward] error:", error);
     return xml(
