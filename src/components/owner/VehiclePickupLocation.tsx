@@ -14,6 +14,7 @@ import { useRegion } from '@/contexts/RegionContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { PublishVehicleButton } from './PublishVehicleButton';
 import { toast } from 'sonner';
+import { useRegionSamples } from '@/hooks/useRegionSamples';
 
 interface Vehicle {
   id: string;
@@ -35,6 +36,7 @@ const nigeriaCities = ['Lagos', 'Abuja', 'Port Harcourt', 'Ibadan', 'Kano', 'Enu
 
 export function VehiclePickupLocation() {
   const { user } = useAuth();
+  const samples = useRegionSamples();
   const { country } = useRegion();
   const queryClient = useQueryClient();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);

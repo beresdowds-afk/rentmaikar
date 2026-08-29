@@ -42,6 +42,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useRegionSamples } from '@/hooks/useRegionSamples';
 
 interface PublishVehicleModalProps {
   open: boolean;
@@ -101,6 +102,7 @@ export function PublishVehicleModal({
   onSuccess,
 }: PublishVehicleModalProps) {
   const { user } = useAuth();
+  const samples = useRegionSamples();
   const { country } = useRegion();
   const queryClient = useQueryClient();
 

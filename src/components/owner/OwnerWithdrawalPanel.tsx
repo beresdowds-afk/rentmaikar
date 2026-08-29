@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Banknote, CheckCircle2, Clock, Loader2, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { WithdrawalAuthorizationGate } from "@/components/payments/WithdrawalAuthorizationGate";
+import { useRegionSamples } from '@/hooks/useRegionSamples';
 
 type PayoutAccount = {
   id: string;
@@ -67,6 +68,7 @@ const StatusIcon = ({ status }: { status: string }) =>
  */
 export const OwnerWithdrawalPanel = () => {
   const { user } = useAuth();
+  const samples = useRegionSamples();
   const { country } = useRegion();
   const currency = country === "Nigeria" ? "NGN" : "USD";
 

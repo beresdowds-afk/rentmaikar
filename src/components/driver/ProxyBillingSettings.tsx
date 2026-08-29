@@ -13,11 +13,13 @@ import { UserPlus, ShieldCheck, Send, CreditCard, Loader2, Info } from "lucide-r
 import { useRegion } from "@/contexts/RegionContext";
 import { ProxyStatusTimeline } from "@/components/proxy/ProxyStatusTimeline";
 import { ProxyNotificationPrefs } from "@/components/proxy/ProxyNotificationPrefs";
+import { useRegionSamples } from '@/hooks/useRegionSamples';
 
 interface Props { userId?: string }
 
 export function ProxyBillingSettings({ userId }: Props) {
   const { country } = useRegion();
+  const samples = useRegionSamples();
   const [proxy, setProxy] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({

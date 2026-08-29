@@ -10,6 +10,7 @@ import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 import { toast } from 'sonner';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { Lock, MapPin, ShieldCheck, Loader2, Users } from 'lucide-react';
+import { useRegionSamples } from '@/hooks/useRegionSamples';
 
 interface PickupDetails {
   has_rental: boolean;
@@ -36,6 +37,7 @@ const emptyReferee = (): RefereeForm => ({ name: '', phone: '', email: '' });
  */
 export function RefereePickupGate() {
   const { user } = useAuth();
+  const samples = useRegionSamples();
   const queryClient = useQueryClient();
   const [referees, setReferees] = useState<RefereeForm[]>([
     emptyReferee(),

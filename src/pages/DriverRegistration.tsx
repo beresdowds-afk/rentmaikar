@@ -163,6 +163,7 @@ const ridesharePlatforms = [
 const DriverRegistration = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const samples = useRegionSamples();
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState<FriendlyRegistrationError | null>(null);
   const [lastFormData, setLastFormData] = useState<DriverFormData | null>(null);

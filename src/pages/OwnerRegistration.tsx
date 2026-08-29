@@ -30,6 +30,7 @@ import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+import { useRegionSamples } from "@/hooks/useRegionSamples";
   ADDRESS_MAX,
   addressHint as buildAddressHint,
   optionalAddressSchema,
@@ -112,6 +113,7 @@ const years = Array.from({ length: 11 }, (_, i) => (currentYear - 10 + i).toStri
 const OwnerRegistration = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const samples = useRegionSamples();
   const { currencySymbol } = useRegion();
   const [currentCountry, setCurrentCountry] = useState<"usa" | "nigeria">("usa");
   const [submitError, setSubmitError] = useState<FriendlyRegistrationError | null>(null);
