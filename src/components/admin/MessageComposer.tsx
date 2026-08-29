@@ -142,7 +142,7 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
       return;
     }
 
-    const ok = await send({
+    const outcome = await send({
       channel,
       recipientUserId,
       recipientName,
@@ -151,11 +151,12 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
       subject,
       body,
     });
-    if (ok) {
+    if (outcome.delivered) {
       if (draftId) deleteDraft(draftId);
       reset();
       onSent?.();
     }
+
   };
 
 
