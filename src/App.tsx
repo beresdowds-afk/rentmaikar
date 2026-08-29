@@ -466,6 +466,14 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/admin/proximity-matching"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
+                        <AdminProximityMatchingPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/vehicle-queue"
                     element={
                       <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
@@ -473,6 +481,7 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+
                   <Route
                     path="/admin/vehicle-catalogue"
                     element={
