@@ -111,6 +111,41 @@ export const useRecipientSearch = (query: string) => {
   return { results, isSearching };
 };
 
+/** Bulk audience helper: pull every contact holding a given platform role. */
+export const useRoleRecipients = () => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchByRole = useCallback(async (role: string, limit = 500): Promise<RecipientOption[]> => {
+    setIsLoading(true);
+    try {
+      const { data: roleRows, error: roleError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', role as never)
+        .limit(limit);
+      if (roleError) throw roleError;
+      const ids = (roleRows || []).map((r) => r.user_id as string);
+      if (ids.length === 0) return [];
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email, phone')
+        .in('user_id', ids)
+        .limit(limit);
+      if (error) throw error;
+      return (data || []) as RecipientOption[];
+    } catch (err) {
+      console.error('Failed to load role recipients:', err);
+      toast.error('Could not load that audience');
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return { fetchByRole, isLoading };
+};
+
 export interface SendComposedInput {
   channel: ComposerChannel;
   recipientUserId?: string | null;
@@ -119,6 +154,20 @@ export interface SendComposedInput {
   phone?: string;
   subject?: string;
   body: string;
+}
+
+export interface BulkRecipient {
+  user_id?: string | null;
+  full_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+}
+
+export interface BulkProgress {
+  total: number;
+  completed: number;
+  sent: number;
+  failed: number;
 }
 
 /**
@@ -130,8 +179,10 @@ export const useSendComposedMessage = () => {
   const { user } = useAuth();
   const { country } = useRegion();
   const [isSending, setIsSending] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<BulkProgress | null>(null);
 
   const send = async (input: SendComposedInput): Promise<boolean> => {
+
     const body = input.body.trim();
     if (!body) {
       toast.error('Write a message first');
