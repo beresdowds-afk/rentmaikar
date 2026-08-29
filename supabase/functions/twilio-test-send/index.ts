@@ -126,6 +126,40 @@ serve(async (req) => {
         : undefined,
     };
 
+    // 2b. Per-number webhook audit — catches voice/SMS webhooks left pointing at
+    // stale hosts (e.g. staging.rentmaikar.com) instead of the backend functions.
+    const baseUrl = `${supabaseUrl}/functions/v1`;
+    const expectedVoice = `${baseUrl}/incoming-call-forward`;
+    const expectedSms = `${baseUrl}/twilio-webhook`;
+    const numberWebhooks = (nums.incoming_phone_numbers ?? []).map((n: any) => {
+      const voiceUrl: string = n.voice_url ?? "";
+      const smsUrl: string = n.sms_url ?? "";
+      const stale = (u: string) => !!u && !u.startsWith(baseUrl);
+      const problems: string[] = [];
+      if (!voiceUrl) problems.push("voice webhook not set");
+      else if (voiceUrl !== expectedVoice)
+        problems.push(stale(voiceUrl) ? `voice webhook points at foreign host: ${voiceUrl}` : `voice webhook is ${voiceUrl}`);
+      if (smsUrl && smsUrl !== expectedSms)
+        problems.push(stale(smsUrl) ? `sms webhook points at foreign host: ${smsUrl}` : `sms webhook is ${smsUrl}`);
+      return {
+        phoneNumber: n.phone_number as string,
+        sid: n.sid as string,
+        friendlyName: n.friendly_name ?? null,
+        voiceUrl,
+        smsUrl,
+        ok: problems.length === 0,
+        problems,
+      };
+    });
+    checks.numberWebhooks = {
+      ok: numRes.ok && numberWebhooks.every((n: { ok: boolean }) => n.ok),
+      expected: { voice: expectedVoice, sms: expectedSms },
+      numbers: numberWebhooks,
+      note: numberWebhooks.some((n: { ok: boolean }) => !n.ok)
+        ? "One or more numbers forward calls/SMS to a stale host (e.g. staging.rentmaikar.com). Use the fix-number-webhooks action to repoint them."
+        : undefined,
+    };
+
     // 3. Messaging service
     const msSid = Deno.env.get("TWILIO_MESSAGING_SERVICE_SID");
     if (msSid) {
