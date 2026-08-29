@@ -24,6 +24,8 @@ import {
   RENTMAIKAR_NUMBERS,
 } from "../_shared/comms-endpoints.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
+import { twilioCredentialsConfigured, twilioRequest } from "../_shared/twilio-auth.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
