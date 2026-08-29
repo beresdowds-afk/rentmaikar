@@ -61,7 +61,7 @@ serve(async (req) => {
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twimlAppSid = Deno.env.get("TWILIO_TWIML_APP_SID");
     const apiKeySid = Deno.env.get("TWILIO_API_KEY_SID") || Deno.env.get("TWILIO_API_KEY");
-    const apiKeySecret = Deno.env.get("TWILIO_API_SECRET") || Deno.env.get("TWILIO_API_KEY_SECRET");
+    const apiKeySecret = Deno.env.get("TWILIO_API_KEY_SECRET") || Deno.env.get("TWILIO_API_SECRET");
 
     const secrets = {
       TWILIO_ACCOUNT_SID: !!accountSid,
@@ -72,14 +72,16 @@ serve(async (req) => {
       TWILIO_PHONE_NUMBER: !!Deno.env.get("TWILIO_PHONE_NUMBER"),
     };
 
-    // Twilio REST accepts either AccountSid:AuthToken or ApiKeySid:ApiSecret.
+    // RentMaikar authenticates Twilio REST with the API key/secret pair first;
+    // the account auth token is only a fallback.
     const credentials: Array<{ label: string; header: string }> = [];
-    if (accountSid && authToken) {
-      credentials.push({ label: "TWILIO_AUTH_TOKEN", header: "Basic " + btoa(`${accountSid}:${authToken}`) });
-    }
     if (apiKeySid && apiKeySecret) {
       credentials.push({ label: "TWILIO_API_KEY_SID", header: "Basic " + btoa(`${apiKeySid}:${apiKeySecret}`) });
     }
+    if (accountSid && authToken) {
+      credentials.push({ label: "TWILIO_AUTH_TOKEN", header: "Basic " + btoa(`${accountSid}:${authToken}`) });
+    }
+
 
     if (!accountSid || !twimlAppSid || credentials.length === 0) {
       return json(200, {
@@ -125,7 +127,40 @@ serve(async (req) => {
       });
     }
 
+    // Create a dedicated RentMaikar TwiML App instead of repurposing an
+    // existing (e.g. Flex) application. The returned SID must be stored as
+    // TWILIO_TWIML_APP_SID.
+    if (action === "create") {
+      const createRes = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Applications.json`,
+        {
+          method: "POST",
+          headers: { Authorization: basicAuth, "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            FriendlyName: "RentMaikar Call Centre",
+            VoiceUrl: expected.voiceUrl,
+            VoiceMethod: "POST",
+            StatusCallback: expected.statusCallbackUrl,
+            StatusCallbackMethod: "POST",
+          }),
+        },
+      );
+      const createText = await createRes.text();
+      if (!createRes.ok) {
+        return json(200, { expected, secrets, twimlApp: null, matches: false, error: "Failed to create TwiML App", status: createRes.status, details: createText });
+      }
+      const created = JSON.parse(createText);
+      return json(200, {
+        expected,
+        secrets,
+        created: { sid: created.sid, friendlyName: created.friendly_name, voiceUrl: created.voice_url },
+        matches: true,
+        note: "Store this SID as TWILIO_TWIML_APP_SID.",
+      });
+    }
+
     if (action === "apply") {
+
       const applyRes = await fetch(base, {
         method: "POST",
         headers: { Authorization: basicAuth, "Content-Type": "application/x-www-form-urlencoded" },

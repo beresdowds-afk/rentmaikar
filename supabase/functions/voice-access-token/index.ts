@@ -41,7 +41,7 @@ serve(async (req) => {
 
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const apiKeySid = Deno.env.get("TWILIO_API_KEY_SID") || Deno.env.get("TWILIO_API_KEY");
-    const apiKeySecret = Deno.env.get("TWILIO_API_SECRET") || Deno.env.get("TWILIO_API_KEY_SECRET");
+    const apiKeySecret = Deno.env.get("TWILIO_API_KEY_SECRET") || Deno.env.get("TWILIO_API_SECRET");
     const twimlAppSid = Deno.env.get("TWILIO_TWIML_APP_SID");
 
     const missing = [

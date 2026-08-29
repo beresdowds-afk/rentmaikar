@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { verifyTwilioRequest } from "../_shared/twilio-signature.ts";
+import { verifyTwilioVoiceCallback } from "../_shared/twilio-callback-auth.ts";
 import {
   buildCallForwardTwiml,
   getForwardingDestination,
@@ -38,7 +38,7 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const form = await req.formData();
-    const denied = await verifyTwilioRequest(req, form);
+    const denied = await verifyTwilioVoiceCallback(req, form);
     if (denied) return denied;
 
     const supabase = createClient(
