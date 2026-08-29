@@ -172,9 +172,14 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
   }, []);
 
   const acceptIncoming = useCallback(() => {
-    incomingCall?.accept();
-    setIncomingCall(null);
+    void (async () => {
+      await ensureMediaPermissions();
+      await enableAudioDevices(deviceRef.current);
+      incomingCall?.accept();
+      setIncomingCall(null);
+    })();
   }, [incomingCall]);
+
 
   const rejectIncoming = useCallback(() => {
     incomingCall?.reject();
