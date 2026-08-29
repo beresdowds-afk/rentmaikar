@@ -155,16 +155,12 @@ function InsuranceCheckoutButton() {
   const submit = async () => {
     const key = getIdempotencyKey('insurance-checkout');
     const { supabase } = await import('@/integrations/supabase/client');
-    const trackOnboardingEvent = vi.fn();
-
-vi.mock("@/lib/onboarding-analytics", () => ({
-  trackOnboardingEvent,
-})); await import('@/lib/onboarding-analytics');
     trackOnboardingEvent('portal_cta_submitted', {
       role: 'owner',
       portal: 'insurance',
       idempotencyKey: key,
     });
+
     await runIdempotent(
       key,
       () =>
