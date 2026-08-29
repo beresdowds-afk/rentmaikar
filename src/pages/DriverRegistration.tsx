@@ -27,6 +27,8 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePersonaEnabled } from "@/hooks/usePersonaEnabled";
 import { refereeDetailsRequired } from "@/lib/referee-requirements";
+import { useRefereeRequirement } from "@/hooks/useRefereeRequirement";
+
 import {
   ADDRESS_MIN,
   ADDRESS_MAX,
