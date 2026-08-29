@@ -27,10 +27,7 @@ function candidates(): Array<{ user: string; pass: string; label: string }> {
     list.push({ user: keySid, pass: keySecret, label: "api_key" });
   }
 
-  const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-  if (accountSid && authToken) {
-    list.push({ user: accountSid, pass: authToken, label: "auth_token" });
-  }
+  // Auth token intentionally set aside per owner decision; API key only.
 
   return list;
 }
