@@ -140,7 +140,12 @@ serve(async (req: Request): Promise<Response> => {
         console.error(`[comms-test-console] twilio call failed [${res.status}]`, payload);
         const hint = res.status === 401
           ? "Twilio rejected the credentials (error 20003). Check TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET (primary), or TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN (fallback) for this account."
+          : payload.code === 21216 || payload.code === 21215
+          ? `Twilio geo permissions block calls to ${to}. Confirm the number is correct (Nigerian numbers start +234, e.g. +2349163072576 — +240 is Equatorial Guinea) and enable that country under Twilio Voice Geo Permissions.`
+          : payload.code === 21211 || payload.code === 21214
+          ? `${to} is not a dialable number. Re-enter it in full E.164 format including the correct country code.`
           : undefined;
+
         return json(
           {
             ok: false,
