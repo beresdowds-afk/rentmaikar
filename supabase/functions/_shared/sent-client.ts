@@ -149,29 +149,23 @@ export async function sendViaSent(req: SentSendRequest): Promise<SentSendResult>
       headers: {
         "Content-Type": "application/json",
         "x-api-key": sentApiKey(),
-        "x-idempotency-key": idempotencyKey,
-        ...(sandboxMode() ? { "x-sandbox": "true" } : {}),
+        // Sent.dm v3 expects the canonical Idempotency-Key header.
+        "Idempotency-Key": idempotencyKey.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 255),
       },
       body: JSON.stringify({
+        // v3 schema: { sandbox?, to: string[], channel: string[], template?, text? }
         to: [normalizeRecipient(req.channel, req.to)],
-        channel: req.channel,
+        channel: [req.channel],
+        sandbox: sandboxMode(),
         ...(req.text ? { text: req.text } : {}),
         ...(req.template
           ? {
               template: {
                 id: req.template.id,
-                language: req.template.language ?? "en_US",
                 parameters: req.template.parameters ?? {},
               },
             }
           : {}),
-        ...(req.channel !== "sms" && media.length ? { media: media.map((url) => ({ url })) } : {}),
-        sender_id: senderForChannel(req.channel, req.to, req.senderId),
-        metadata: {
-          ...(req.metadata ?? {}),
-          platform: "Rentmaikar",
-          dispatched_at: new Date().toISOString(),
-        },
       }),
       signal: AbortSignal.timeout(15000),
     });
@@ -179,20 +173,27 @@ export async function sendViaSent(req: SentSendRequest): Promise<SentSendResult>
     const data = await res.json().catch(() => ({} as Record<string, unknown>));
 
     if (!res.ok) {
+      const details = (data as any)?.error?.details;
       const message =
-        (data as any)?.error?.message ||
-        (data as any)?.message ||
-        `Sent.dm HTTP ${res.status}`;
+        [
+          (data as any)?.error?.message || (data as any)?.message ||
+            `Sent.dm HTTP ${res.status}`,
+          details ? JSON.stringify(details) : null,
+        ]
+          .filter(Boolean)
+          .join(" — ");
       return { ok: false, error: message, channel: req.channel };
     }
 
+    const recipient = (data as any)?.data?.recipients?.[0];
     return {
       ok: true,
-      messageId: (data as any).id ?? `sent_${Date.now()}`,
-      status: (data as any).status ?? "queued",
-      channel: req.channel,
+      messageId: recipient?.message_id ?? (data as any)?.id ?? `sent_${Date.now()}`,
+      status: (data as any)?.data?.status ?? (data as any)?.status ?? "queued",
+      channel: recipient?.channel ?? req.channel,
       sandbox: sandboxMode(),
     };
+
   } catch (e) {
     return {
       ok: false,
