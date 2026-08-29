@@ -144,6 +144,10 @@ vi.mock("@/contexts/AuthContext", () => {
   };
 });
 
+// Module-scope analytics mock (vi.mock is hoisted; it must not live in a component).
+const trackOnboardingEvent = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/onboarding-analytics', () => ({ trackOnboardingEvent }));
+
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() } }));
 
 import PortalRouteGuard from '@/components/onboarding/PortalRouteGuard';
