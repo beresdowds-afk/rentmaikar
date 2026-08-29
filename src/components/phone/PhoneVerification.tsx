@@ -48,10 +48,10 @@ export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerifi
   useEffect(() => {
     const loadRegions = async () => {
       const { data, error } = await (supabase as any)
-        .from('regions')
-        .select('id, region_name, iso2, is_active, phone_reference(country_name, calling_code)')
-        .eq('is_active', true)
-        .order('region_name');
+        .from('region_definitions')
+        .select('id, country_name, country_code, phone_prefix, status')
+        .eq('status', 'active')
+        .order('country_name');
 
       if (!error && data) {
         const mapped: Region[] = data.map((r: any) => ({
