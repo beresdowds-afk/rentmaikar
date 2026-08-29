@@ -329,7 +329,7 @@ const NumberWebhookAudit = ({
         {
           method: "POST",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "fix-number-webhooks", to: "+10000000000", channel: "sms" }),
+          body: JSON.stringify({ action: "fix-number-webhooks" }),
         },
       );
       const json = await res.json().catch(() => ({}));
