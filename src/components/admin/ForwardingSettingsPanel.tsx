@@ -238,7 +238,9 @@ export const ForwardingSettingsPanel = () => {
             <TabsList className="mb-4">
               <TabsTrigger value="inbound">Inbound forwarding</TabsTrigger>
               <TabsTrigger value="outbound">Outbound kill-switches</TabsTrigger>
+              <TabsTrigger value="endpoints">Endpoints</TabsTrigger>
             </TabsList>
+
 
             <TabsContent value="inbound" className="space-y-3">
               <div className="flex items-start justify-between gap-4 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
