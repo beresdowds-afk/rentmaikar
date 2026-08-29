@@ -12,6 +12,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { forwardInboundMessage, regionFromPhone } from "../_shared/forwarding.ts";
+import { parseTrace } from "../_shared/comms-correlation.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
 
 const corsHeaders = {
@@ -104,6 +105,9 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const region = regionFromPhone(from, to);
+    // A trace marker on an inbound message means this leg originated from one
+    // of our own relays — carry the correlation ID and hop count forward.
+    const inheritedTrace = parseTrace(body);
 
     await logMessagingEvent(supabase, {
       channel,
@@ -114,7 +118,13 @@ serve(async (req: Request): Promise<Response> => {
       sender: from,
       region,
       provider_message_id: messageId,
-      metadata: { customer_phone: from, public_alias: to, has_media: !!mediaUrl },
+      metadata: {
+        customer_phone: from,
+        public_alias: to,
+        has_media: !!mediaUrl,
+        correlation_id: inheritedTrace?.correlationId ?? null,
+        inbound_hop: inheritedTrace?.hop ?? 0,
+      },
     }).catch((e) => console.error("[sent-inbound] inbound log failed:", e));
 
     const forwarded = await forwardInboundMessage(supabase, {
@@ -123,6 +133,8 @@ serve(async (req: Request): Promise<Response> => {
       from,
       body: body || "(no text)",
       mediaUrl,
+      correlationId: inheritedTrace?.correlationId ?? null,
+      hop: inheritedTrace?.hop ?? null,
     });
 
     if (forwarded.forwarded) {
@@ -139,13 +151,23 @@ serve(async (req: Request): Promise<Response> => {
           customer_phone: from,
           public_alias: to,
           endpoint: forwarded.destination,
+          correlation_id: forwarded.correlationId,
+          hop: forwarded.hop,
+          max_hops: forwarded.maxHops,
         },
       }).catch((e) => console.error("[sent-inbound] forward log failed:", e));
     } else {
       console.log(`[sent-inbound] not forwarded: ${forwarded.reason}`);
     }
 
-    return json({ received: true, forwarded: forwarded.forwarded, reason: forwarded.reason });
+    return json({
+      received: true,
+      forwarded: forwarded.forwarded,
+      reason: forwarded.reason,
+      correlation_id: forwarded.correlationId,
+      hop: forwarded.hop,
+      max_hops: forwarded.maxHops,
+    });
   } catch (error) {
     console.error("[sent-inbound] error:", error);
     return json(

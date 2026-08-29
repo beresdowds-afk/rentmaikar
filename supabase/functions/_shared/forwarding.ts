@@ -13,7 +13,7 @@
 // ════════════════════════════════════════════════════════════
 
 import { sendViaSent } from "./sent-client.ts";
-import { evaluateHop, formatTrace, parseTrace } from "./comms-correlation.ts";
+import { evaluateHop, formatTrace } from "./comms-correlation.ts";
 import { twilioMessagingEnabled } from "./twilio-messaging-guard.ts";
 import {
   type CommsChannel,
