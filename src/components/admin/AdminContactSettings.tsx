@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { ForwardingSettingsPanel } from '@/components/admin/ForwardingSettingsPanel';
 import { ProviderHealthPanel } from '@/components/admin/ProviderHealthPanel';
+import { CommsTestConsolePanel } from '@/components/admin/CommsTestConsolePanel';
 import { ProviderAlertSettings } from '@/components/admin/ProviderAlertSettings';
 
 import { OutboundAuditLogPanel } from '@/components/admin/OutboundAuditLogPanel';
@@ -554,6 +555,8 @@ export const AdminContactSettings = () => {
       <ForwardingSettingsPanel />
 
       <ProviderHealthPanel />
+
+      <CommsTestConsolePanel />
 
       <ProviderAlertSettings />
 
