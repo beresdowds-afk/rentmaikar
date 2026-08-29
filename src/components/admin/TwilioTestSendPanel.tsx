@@ -180,9 +180,12 @@ export const TwilioTestSendPanel = () => {
           </Button>
         </div>
         {diag && (
-          <pre className="text-xs bg-muted/50 rounded p-3 overflow-auto max-h-80">
-            {JSON.stringify(diag, null, 2)}
-          </pre>
+          <>
+            <NumberWebhookAudit diag={diag} onRepaired={runDiagnostics} />
+            <pre className="text-xs bg-muted/50 rounded p-3 overflow-auto max-h-80">
+              {JSON.stringify(diag, null, 2)}
+            </pre>
+          </>
         )}
       </div>
 
