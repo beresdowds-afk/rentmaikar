@@ -66,7 +66,11 @@ function verifySentSignature(req: Request): { ok: boolean; reason?: string } {
 
 /**
  * POST /api/webhooks/sent
- * Inbound webhook receiver for Sent.dm delivery receipts & status callbacks
+ *
+ * Inbound receiver for Sent.dm customer messages and delivery receipts.
+ * Verified events are relayed to the `sent-inbound` routing function, which
+ * logs the customer's original number and dispatches the outbound leg to the
+ * Master Communications Endpoint. Relaying never blocks the 200 OK.
  */
 webhooksRouter.post("/sent", (req: Request, res: Response) => {
   const verification = verifySentSignature(req);
@@ -84,13 +88,41 @@ webhooksRouter.post("/sent", (req: Request, res: Response) => {
     console.warn("[Webhook][Sent.dm]", verification.reason);
   }
 
-  const event = Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString("utf8")) : req.body;
+  const rawBody = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : JSON.stringify(req.body);
+  const event = JSON.parse(rawBody);
 
   console.log("[Webhook][Sent.dm] Inbound event received:", event);
+
+  const routerUrl = process.env.SUPABASE_URL
+    ? `${process.env.SUPABASE_URL}/functions/v1/sent-inbound`
+    : null;
+
+  if (routerUrl) {
+    const signature =
+      (req.headers["x-sent-signature"] as string | undefined) ||
+      (req.headers["x-webhook-signature"] as string | undefined);
+    fetch(routerUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(signature ? { "x-sent-signature": signature } : {}),
+      },
+      body: rawBody,
+    })
+      .then(async (r) => {
+        if (!r.ok) {
+          console.error(`[Webhook][Sent.dm] Routing relay failed [${r.status}]:`, await r.text());
+        }
+      })
+      .catch((e) => console.error("[Webhook][Sent.dm] Routing relay error:", e));
+  } else {
+    console.warn("[Webhook][Sent.dm] SUPABASE_URL not set — event not relayed to router");
+  }
 
   // Acknowledge receipt immediately (200 OK)
   return res.status(200).json({ received: true, timestamp: new Date().toISOString() });
 });
+
 
 /**
  * POST /api/webhooks/twilio
