@@ -186,7 +186,7 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="recipient-search">Find a user</Label>
+            <Label htmlFor="recipient-search">Find users</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -201,32 +201,126 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
               <p className="text-xs text-muted-foreground">Searching…</p>
             )}
             {results.length > 0 && (
-              <div className="max-h-40 divide-y overflow-y-auto rounded-md border">
-                {results.map((r) => (
-                  <button
-                    key={r.user_id}
-                    type="button"
-                    className={cn(
-                      'w-full px-3 py-2 text-left text-sm hover:bg-muted/60',
-                      recipientUserId === r.user_id && 'bg-muted',
-                    )}
-                    onClick={() => {
-                      setRecipientUserId(r.user_id);
-                      setRecipientName(r.full_name || r.email || 'User');
-                      setEmail(r.email || '');
-                      setPhone(r.phone || '');
-                      setSearch('');
-                    }}
-                  >
-                    <span className="font-medium">{r.full_name || 'Unnamed user'}</span>
-                    <span className="block text-xs text-muted-foreground">
-                      {[r.email, r.phone].filter(Boolean).join(' · ') || 'No contact details'}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              <>
+                <div className="max-h-40 divide-y overflow-y-auto rounded-md border">
+                  {results.map((r) => (
+                    <div key={r.user_id} className="flex items-center gap-2 px-2 py-1">
+                      <button
+                        type="button"
+                        className={cn(
+                          'flex-1 rounded px-1 py-1 text-left text-sm hover:bg-muted/60',
+                          recipientUserId === r.user_id && 'bg-muted',
+                        )}
+                        onClick={() => {
+                          setRecipientUserId(r.user_id);
+                          setRecipientName(r.full_name || r.email || 'User');
+                          setEmail(r.email || '');
+                          setPhone(r.phone || '');
+                          setSearch('');
+                        }}
+                      >
+                        <span className="font-medium">{r.full_name || 'Unnamed user'}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {[r.email, r.phone].filter(Boolean).join(' · ') || 'No contact details'}
+                        </span>
+                      </button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => addRecipients([r])}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => addRecipients(results)}
+                >
+                  <Users className="mr-2 h-4 w-4" /> Add all {results.length} results
+                </Button>
+              </>
             )}
           </div>
+
+          <div className="space-y-2">
+            <Label>Bulk audience</Label>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                onValueChange={async (role) => {
+                  const people = await fetchByRole(role);
+                  addRecipients(people);
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[260px]">
+                  <SelectValue placeholder="Add everyone with a role…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {AUDIENCES.map((a) => (
+                    <SelectItem key={a.value} value={a.value}>
+                      {a.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {isLoadingAudience && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </div>
+          </div>
+
+          {bulk.length > 0 && (
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium">
+                  {bulk.length} selected ·{' '}
+                  <span className="text-muted-foreground">
+                    {reachable} reachable by {channel.toUpperCase()}
+                  </span>
+                </p>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setBulk([])}>
+                  Clear all
+                </Button>
+              </div>
+              <ScrollArea className="max-h-32">
+                <div className="flex flex-wrap gap-2 pr-2">
+                  {bulk.map((r) => {
+                    const ok = channel === 'email' ? !!r.email : !!r.phone;
+                    return (
+                      <Badge
+                        key={r.user_id}
+                        variant={ok ? 'secondary' : 'outline'}
+                        className={cn('gap-1', !ok && 'text-muted-foreground line-through')}
+                      >
+                        {r.full_name || r.email || r.phone || 'User'}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${r.full_name || 'recipient'}`}
+                          onClick={() =>
+                            setBulk((prev) => prev.filter((p) => p.user_id !== r.user_id))
+                          }
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+              {bulkProgress && isSending && (
+                <div className="space-y-1">
+                  <Progress value={(bulkProgress.completed / bulkProgress.total) * 100} />
+                  <p className="text-xs text-muted-foreground">
+                    {bulkProgress.completed}/{bulkProgress.total} processed · {bulkProgress.sent}{' '}
+                    sent · {bulkProgress.failed} failed
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
