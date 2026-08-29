@@ -18,9 +18,9 @@ export const CSP_DIRECTIVES = {
   ],
   "connect-src": [
     "'self'",
-    "https://backend.rentmaikar.com",
-    "https://www.backend.rentmaikar.com",
-    "wss://backend.rentmaikar.com",
+    "https://staging.rentmaikar.com",
+    "wss://staging.rentmaikar.com",
+
     "https://*.supabase.co",
     "wss://*.supabase.co",
     "https://api.paypal.com",
