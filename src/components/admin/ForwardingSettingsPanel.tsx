@@ -342,7 +342,61 @@ export const ForwardingSettingsPanel = () => {
                 switch, so re-enable SMS before users can sign in by OTP in that region.
               </p>
             </TabsContent>
+
+            <TabsContent value="endpoints" className="space-y-5">
+              <div className="rounded-lg border border-border p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-sm">Master Communications Endpoint</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Public numbers are customer-facing aliases only. Providers hand every inbound conversation to the
+                  RentMaikar router, which stores the customer's original number and dispatches its own outbound leg to
+                  these endpoints. Nothing is carrier-forwarded.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {(['voice', 'sms', 'whatsapp'] as const).map((ch) => (
+                    <div key={ch} className="space-y-1.5">
+                      <Label htmlFor={`master-${ch}`} className="text-xs capitalize">{ch}</Label>
+                      <Input
+                        id={`master-${ch}`}
+                        value={master[ch]}
+                        inputMode="tel"
+                        placeholder="+2349163072576"
+                        onChange={(e) => setMaster({ ...master, [ch]: e.target.value })}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <Button size="sm" onClick={saveMaster} disabled={savingKey === 'master'}>
+                  {savingKey === 'master' && <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />}
+                  Save endpoints
+                </Button>
+              </div>
+
+              <div className="rounded-lg border border-border p-3 space-y-2">
+                <span className="font-medium text-sm">Public number registry</span>
+                {PUBLIC_NUMBERS.map((n) => (
+                  <div key={n.number} className="flex items-start justify-between gap-3 rounded-md border border-border/70 p-2.5">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-mono">{n.number}</span>
+                        <Badge variant={n.published ? 'default' : 'destructive'} className="text-[10px]">
+                          {n.published ? 'Published' : 'Internal only'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{n.role}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{n.provider}</span>
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground">
+                  Twilio carries voice only. SMS and WhatsApp route through Sent.dm (Termii for Nigeria).
+                </p>
+              </div>
+            </TabsContent>
           </Tabs>
+
         )}
       </CardContent>
     </Card>
