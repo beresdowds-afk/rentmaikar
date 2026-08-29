@@ -95,23 +95,23 @@ const buildDriverSchema = (detailsRequired: boolean, refereesRequired: boolean) 
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
   rideshareApproval: z.array(z.string()).min(1, "Select at least one platform"),
   hasDriverLicense: z.boolean().refine(val => val, "Driver license is required"),
-  // Referee 1 — phones must be E.164; the DB enforces this with a trigger, so
-  // validate here to surface an inline error instead of a failed submission.
-  // Home address and email are conditionally required.
-  referee1Name: z.string().min(2, "Referee 1 name is required").max(100, "Name too long"),
-  referee1Phone: refereePhone("Referee 1"),
+  // Referees — only mandatory while the admin keeps the referee requirement on.
+  // Phones must be E.164; the DB enforces this with a trigger.
+  referee1Name: refereeName("Referee 1"),
+  referee1Phone: refereePhoneField("Referee 1"),
   referee1Address: refereeAddress("Referee 1"),
   referee1Email: refereeEmail("Referee 1"),
   // Referee 2
-  referee2Name: z.string().min(2, "Referee 2 name is required").max(100, "Name too long"),
-  referee2Phone: refereePhone("Referee 2"),
+  referee2Name: refereeName("Referee 2"),
+  referee2Phone: refereePhoneField("Referee 2"),
   referee2Address: refereeAddress("Referee 2"),
   referee2Email: refereeEmail("Referee 2"),
   // Referee 3
-  referee3Name: z.string().min(2, "Referee 3 name is required").max(100, "Name too long"),
-  referee3Phone: refereePhone("Referee 3"),
+  referee3Name: refereeName("Referee 3"),
+  referee3Phone: refereePhoneField("Referee 3"),
   referee3Address: refereeAddress("Referee 3"),
   referee3Email: refereeEmail("Referee 3"),
+
 
   // Security deposit acknowledgment
   securityDepositAcknowledged: z.boolean().refine(val => val, "You must acknowledge the security deposit requirement"),
