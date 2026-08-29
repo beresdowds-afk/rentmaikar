@@ -8,7 +8,11 @@ import { regionSampleData, type RegionSamples } from "@/lib/sample-data";
  * the selected region changes.
  */
 export function useRegionSamples(): RegionSamples {
-  const { country, availableRegions, phonePrefix } = useRegion();
+  const region = useRegion();
+  const { country, phonePrefix } = region;
+  // Some surfaces (and tests) provide a partial region context; never assume
+  // the region list has loaded.
+  const availableRegions = region.availableRegions ?? [];
   return useMemo(() => {
     const selected =
       availableRegions.find((r) => r.value === country) ??
