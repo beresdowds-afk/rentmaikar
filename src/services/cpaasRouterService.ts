@@ -21,7 +21,8 @@ const STORAGE_KEY = "rentmaikar_cpaas_config";
 const DEFAULT_CONFIG: CPaaSConfig = {
   primaryProvider: "sent",
   enableFailover: true,
-  fallbackProvider: "twilio",
+  // Twilio is voice-only (no messaging approval) — messaging failover is Sent.
+  fallbackProvider: "sent",
   sandboxMode: true,
   defaultSenderId: "Rentmaikar",
   channelRouting: {
@@ -112,13 +113,10 @@ export class CPaaSRouterService {
     }
 
     // Auto geo-routing logic:
-    // If Sent is available, it handles global SMS/WhatsApp/RCS uniformly
-    // Otherwise fallback: +1 -> Twilio, +234 -> Termii, other -> Sent
+    // Twilio is approved for VoIP voice only — never route messaging to it.
+    // +234 -> Termii, everything else -> Sent (global).
     if (destinationPhone.startsWith("+234")) {
       return "termii";
-    }
-    if (destinationPhone.startsWith("+1")) {
-      return "twilio";
     }
     return "sent";
   }
@@ -185,7 +183,8 @@ export class CPaaSRouterService {
 
   private getFallbackProvider(current: CPaaSProvider, destinationPhone: string): CPaaSProvider {
     if (current === "sent") {
-      return destinationPhone.startsWith("+234") ? "termii" : "twilio";
+      // Twilio is voice-only; messaging fallback for Nigeria is Termii.
+      return destinationPhone.startsWith("+234") ? "termii" : "sent";
     }
     return "sent"; // Sent acts as universal global fallback
   }

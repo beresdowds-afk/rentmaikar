@@ -459,9 +459,19 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // ─── TWILIO (USA / Default) ───
+    // Twilio is approved for VoIP voice only — messaging (SMS/WhatsApp) is NOT
+    // approved. USA messaging must go through Sent.dm. Keep the flag below
+    // false unless/until Twilio messaging is explicitly approved.
+    const twilioMessagingEnabled = (Deno.env.get("TWILIO_MESSAGING_ENABLED") ?? "false").toLowerCase() === "true";
+    if (!twilioMessagingEnabled) {
+      throw new Error(
+        "Twilio messaging is not enabled (voice-only approval). USA SMS/WhatsApp must route via Sent.dm.",
+      );
+    }
+
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-    
+
     if (!accountSid || !authToken) {
       console.error("Twilio credentials not configured");
       throw new Error("SMS service not configured");

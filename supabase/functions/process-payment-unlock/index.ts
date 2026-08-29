@@ -9,6 +9,7 @@ import {
   paymentReceiptEmail,
 } from "../_shared/email-templates.ts";
 import { requireCronSecretAsync } from "../_shared/cron-auth.ts";
+import { twilioMessagingEnabled } from "../_shared/twilio-messaging-guard.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
 
 const corsHeaders = {
@@ -37,6 +38,11 @@ const sendWhatsAppMessage = async (to: string, message: string) => {
   const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
   const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
   const fromNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
+
+  if (!twilioMessagingEnabled()) {
+    console.warn("Twilio messaging disabled (voice-only approval) — skipping");
+    return null;
+  }
 
   if (!accountSid || !authToken || !fromNumber) {
     console.error("Twilio credentials not configured");

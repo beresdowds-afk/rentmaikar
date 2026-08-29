@@ -10,6 +10,7 @@ import {
 } from "../_shared/whatsapp-templates.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { verifyTwilioRequestRaw } from "../_shared/twilio-signature.ts";
+import { assertTwilioMessagingEnabled } from "../_shared/twilio-messaging-guard.ts";
 import { isOptedOut, setOptOut, isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
 import { recordKeywordConsent } from "../_shared/sms-consent-audit.ts";
 import {
@@ -329,6 +330,7 @@ const sendWhatsAppRaw = async (to: string, message: string): Promise<{ provider:
   const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
   const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
   const fromNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
+  assertTwilioMessagingEnabled();
   if (!accountSid || !authToken || !fromNumber) throw new Error("Twilio credentials not configured");
 
   const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
