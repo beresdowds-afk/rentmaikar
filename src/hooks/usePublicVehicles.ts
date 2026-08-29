@@ -11,7 +11,9 @@ export interface PublicVehicleRow {
   color: string | null;
   status: string | null;
   pickup_city: string | null;
-  pickup_location: string | null;
+  /** Only returned for signed-in users; anonymous visitors see the city only. */
+  pickup_location?: string | null;
+
   photo_urls: string[] | null;
   created_at: string;
 }
@@ -50,9 +52,19 @@ const classifyError = (error: any): CatalogueError => {
   return { kind: "unknown", message: msg };
 };
 
+/** Columns readable by everyone; `pickup_location` is restricted to signed-in users. */
+const PUBLIC_COLUMNS = "id, make, model, year, color, status, pickup_city, photo_urls, created_at";
+const AUTHED_COLUMNS = `${PUBLIC_COLUMNS}, pickup_location`;
+
+const selectColumns = async () => {
+  const { data } = await supabase.auth.getSession();
+  return data.session ? AUTHED_COLUMNS : PUBLIC_COLUMNS;
+};
+
 /**
  * Paginated public catalogue feed. Reads the `public_vehicle_listings` view,
  * which only exposes non-sensitive fields for vehicles that are available/active.
+ * Anonymous visitors never receive the exact pickup location.
  */
 export const usePublicVehicles = (filters: PublicVehicleFilters) => {
   const query = useInfiniteQuery({
@@ -64,7 +76,8 @@ export const usePublicVehicles = (filters: PublicVehicleFilters) => {
 
       let q = supabase
         .from("public_vehicle_listings")
-        .select("id, make, model, year, color, status, pickup_city, pickup_location, photo_urls, created_at", {
+        .select(await selectColumns(), {
+
           count: "exact",
         })
         .order("created_at", { ascending: false })
@@ -119,7 +132,7 @@ export const usePublicVehicle = (id?: string) =>
     queryFn: async () => {
       const { data, error } = await supabase
         .from("public_vehicle_listings")
-        .select("id, make, model, year, color, status, pickup_city, pickup_location, photo_urls, created_at")
+        .select(await selectColumns())
         .eq("id", id!)
         .maybeSingle();
       if (error) throw error;
