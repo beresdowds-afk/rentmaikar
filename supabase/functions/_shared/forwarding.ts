@@ -1,13 +1,25 @@
 // ════════════════════════════════════════════════════════════
-// Unified inbound forwarding engine
+// Unified inbound forwarding engine — the RentMaikar routing layer
 //
-// Forwards inbound customer communications (call / SMS / WhatsApp / email)
-// to the human destinations configured per region in `contact_settings`
-// (with `platform_regions.forwarding_sms|forwarding_whatsapp` as fallback).
+// Public numbers are customer-facing aliases. Providers (Twilio for voice,
+// Sent.dm for SMS/WhatsApp) deliver the inbound leg to this backend, which
+// then dispatches its OWN outbound leg to the regional destination in
+// `contact_settings` (falling back to `platform_regions.forwarding_*` and
+// finally the global Master Communications Endpoint). Messaging is never
+// carrier-forwarded.
 //
 // Master on/off switches live in `platform_kv_settings` under the
 // `forwarding_config` key so admins can toggle each channel at runtime.
 // ════════════════════════════════════════════════════════════
+
+import { sendViaSent } from "./sent-client.ts";
+import { twilioMessagingEnabled } from "./twilio-messaging-guard.ts";
+import {
+  type CommsChannel,
+  getMasterEndpointFor,
+  publicSenderFor,
+} from "./comms-endpoints.ts";
+
 
 // deno-lint-ignore no-explicit-any
 type Supa = any;
