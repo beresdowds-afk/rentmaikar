@@ -310,15 +310,30 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
                   })}
                 </div>
               </ScrollArea>
-              {bulkProgress && isSending && (
+              {bulkProgress && (
                 <div className="space-y-1">
-                  <Progress value={(bulkProgress.completed / bulkProgress.total) * 100} />
+                  {isSending && (
+                    <Progress value={(bulkProgress.completed / bulkProgress.total) * 100} />
+                  )}
                   <p className="text-xs text-muted-foreground">
-                    {bulkProgress.completed}/{bulkProgress.total} processed · {bulkProgress.sent}{' '}
-                    sent · {bulkProgress.failed} failed
+                    {bulkProgress.completed}/{bulkProgress.total} processed ·{' '}
+                    {bulkProgress.sent} delivered ·{' '}
+                    <span className={bulkProgress.failed > 0 ? 'text-destructive' : undefined}>
+                      {bulkProgress.failed} failed
+                    </span>
                   </p>
+                  {!isSending && !!bulkProgress.failures?.length && (
+                    <ul className="max-h-24 space-y-0.5 overflow-y-auto text-xs text-destructive">
+                      {bulkProgress.failures.map((f, i) => (
+                        <li key={`${f.recipient}-${i}`}>
+                          {f.recipient}: {f.reason}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
+
             </div>
           )}
 
