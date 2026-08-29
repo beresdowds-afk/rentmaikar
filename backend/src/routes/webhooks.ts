@@ -1,14 +1,85 @@
 import { Router, Request, Response } from "express";
+import crypto from "crypto";
 
 export const webhooksRouter = Router();
+
+const SENT_WEBHOOK_SECRET = process.env.SENT_WEBHOOK_SECRET || "";
+
+/**
+ * Verify a Sent.dm webhook signature.
+ *
+ * Sent.dm may sign using one of these common patterns:
+ * 1. `x-sent-signature` or `x-webhook-signature` equals the raw secret (token mode)
+ * 2. Header is a hex HMAC-SHA256 of the raw request body
+ * 3. Stripe-style `t=<timestamp>,v1=<hex>` where v1 is HMAC-SHA256 of body
+ *
+ * If no secret is configured, the request is accepted but logged as unverified.
+ */
+function verifySentSignature(req: Request): { ok: boolean; reason?: string } {
+  const signature =
+    (req.headers["x-sent-signature"] as string | undefined) ||
+    (req.headers["x-webhook-signature"] as string | undefined);
+
+  if (!SENT_WEBHOOK_SECRET) {
+    return { ok: true, reason: "SENT_WEBHOOK_SECRET not configured; accepting unverified" };
+  }
+
+  if (!signature) {
+    return { ok: false, reason: "Missing signature header" };
+  }
+
+  const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
+
+  // Token mode: header equals secret
+  if (signature === SENT_WEBHOOK_SECRET) {
+    return { ok: true };
+  }
+
+  const expectedHmac = crypto
+    .createHmac("sha256", SENT_WEBHOOK_SECRET)
+    .update(rawBody)
+    .digest("hex");
+
+  // Plain hex HMAC mode
+  if (signature === expectedHmac) {
+    return { ok: true };
+  }
+
+  // Stripe-style `t=...,v1=...` mode
+  const parts = signature.split(",").reduce<Record<string, string>>((acc, part) => {
+    const [key, value] = part.split("=");
+    if (key && value) acc[key.trim()] = value.trim();
+    return acc;
+  }, {});
+
+  if (parts.v1 && parts.v1 === expectedHmac) {
+    return { ok: true };
+  }
+
+  return { ok: false, reason: "Signature mismatch" };
+}
 
 /**
  * POST /api/webhooks/sent
  * Inbound webhook receiver for Sent.dm delivery receipts & status callbacks
  */
 webhooksRouter.post("/sent", (req: Request, res: Response) => {
-  const signature = req.headers["x-sent-signature"] || req.headers["x-webhook-signature"];
-  const event = req.body;
+  const verification = verifySentSignature(req);
+
+  if (!verification.ok) {
+    console.error("[Webhook][Sent.dm] Signature verification failed:", verification.reason);
+    return res.status(401).json({
+      received: false,
+      error: "Invalid signature",
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  if (verification.reason) {
+    console.warn("[Webhook][Sent.dm]", verification.reason);
+  }
+
+  const event = Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString("utf8")) : req.body;
 
   console.log("[Webhook][Sent.dm] Inbound event received:", event);
 

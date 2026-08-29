@@ -18,14 +18,16 @@ app.use(cors({
   origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : "*",
   credentials: true,
 }));
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("combined"));
 
 // API Route Registration
+// Webhooks need the raw body to verify signatures, so mount before express.json()
+app.use("/api/webhooks", express.raw({ type: "application/json" }), webhooksRouter);
+app.use(express.json());
+
 app.use("/api/health", healthRouter);
 app.use("/api/cpaas", cpaasRouter);
-app.use("/api/webhooks", webhooksRouter);
 
 // Global 404 Handler
 app.use((req, res) => {
