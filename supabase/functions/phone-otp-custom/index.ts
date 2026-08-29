@@ -92,8 +92,22 @@ async function sendSms(to: string, body: string) {
     await sendViaTermii(to, body);
     return "termii";
   }
-  await sendViaTwilio(to, body);
-  return "twilio";
+  // Twilio is approved for VoIP voice only — SMS goes via Sent.dm.
+  // (The legacy sendViaTwilio path stays below for when/if messaging approval lands.)
+  if (twilioMessagingEnabled()) {
+    await sendViaTwilio(to, body);
+    return "twilio";
+  }
+  const sent = await sendViaSent({
+    to,
+    channel: "sms",
+    text: body,
+    metadata: { notification_type: "phone_otp" },
+  });
+  if (!sent.ok) {
+    throw new Error(`Could not send the SMS (Sent.dm: ${sent.error ?? "unavailable"})`);
+  }
+  return "sent";
 }
 
 /** Resolve an existing auth user for this phone, via profiles first then auth. */
