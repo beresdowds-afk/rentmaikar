@@ -57,11 +57,20 @@ async function requireAdmin(req: Request) {
   if (userErr || !userRes?.user) return { error: json({ error: "Unauthorized" }, 401) };
 
   const admin = createClient(supabaseUrl, serviceKey);
-  const { data: isAdmin } = await admin.rpc("has_role", {
-    _user_id: userRes.user.id,
-    _role: "admin",
-  });
-  if (!isAdmin) return { error: json({ error: "Admin role required" }, 403) };
+  // `is_admin()` resolves auth.uid() server-side; fall back to a direct
+  // user_roles lookup so a renamed RPC never locks a genuine admin out.
+  let isStaff = false;
+  const { data: adminFlag } = await userClient.rpc("is_admin");
+  if (adminFlag === true) {
+    isStaff = true;
+  } else {
+    const { data: roleRows } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userRes.user.id);
+    isStaff = (roleRows ?? []).some((r: { role: string }) => r.role === "admin");
+  }
+  if (!isStaff) return { error: json({ error: "Admin role required" }, 403) };
 
   return { user: userRes.user, admin };
 }
