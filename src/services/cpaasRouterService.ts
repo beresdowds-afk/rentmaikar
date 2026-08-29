@@ -21,7 +21,8 @@ const STORAGE_KEY = "rentmaikar_cpaas_config";
 const DEFAULT_CONFIG: CPaaSConfig = {
   primaryProvider: "sent",
   enableFailover: true,
-  fallbackProvider: "twilio",
+  // Twilio is voice-only (no messaging approval) — messaging failover is Sent.
+  fallbackProvider: "sent",
   sandboxMode: true,
   defaultSenderId: "Rentmaikar",
   channelRouting: {
