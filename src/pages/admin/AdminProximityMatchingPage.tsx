@@ -58,9 +58,11 @@ const AdminProximityMatchingPage = () => {
   return (
     <div className="container mx-auto space-y-6 px-4 py-8">
       <Seo
+        path="/admin/proximity-matching"
         title="Vehicle & Driver Proximity Matching | Admin"
         description="Match vehicles to nearby drivers and drivers to nearby vehicles within a configurable radius, bounded by city limits."
       />
+
 
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Proximity matching</h1>
