@@ -1,6 +1,17 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { Loader2, Mail, MessageSquare, Phone, Save, Search, Send, Trash2 } from 'lucide-react';
+import {
+  Loader2,
+  Mail,
+  MessageSquare,
+  Phone,
+  Save,
+  Search,
+  Send,
+  Trash2,
+  Users,
+  X,
+} from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -20,9 +32,11 @@ import { useCannedReplies } from '@/hooks/useCannedReplies';
 import {
   useMessageDrafts,
   useRecipientSearch,
+  useRoleRecipients,
   useSendComposedMessage,
   type ComposerChannel,
   type ComposerDraft,
+  type RecipientOption,
 } from '@/hooks/useMessageComposer';
 
 const CHANNELS: { value: ComposerChannel; label: string; icon: typeof Mail }[] = [
@@ -31,9 +45,21 @@ const CHANNELS: { value: ComposerChannel; label: string; icon: typeof Mail }[] =
   { value: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
 ];
 
+const AUDIENCES: { value: string; label: string }[] = [
+  { value: 'driver', label: 'All drivers' },
+  { value: 'owner', label: 'All vehicle owners' },
+  { value: 'admin', label: 'All admins' },
+  { value: 'admin_assistant', label: 'All admin assistants' },
+  { value: 'legal_support', label: 'Legal support staff' },
+  { value: 'iot_support', label: 'IoT support staff' },
+  { value: 'vehicle_support', label: 'Vehicle support staff' },
+  { value: 'insurance_support', label: 'Insurance support staff' },
+];
+
 /**
  * Outbound composer for the messaging center — one form for email, SMS and
  * WhatsApp. Everything sent here lands in the same unified conversation thread.
+ * Recipients can be a single contact or a bulk audience pulled from the database.
  */
 export function MessageComposer({ onSent }: { onSent?: () => void }) {
   const [channel, setChannel] = useState<ComposerChannel>('email');
@@ -45,16 +71,31 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
   const [body, setBody] = useState('');
   const [draftId, setDraftId] = useState<string | undefined>();
   const [search, setSearch] = useState('');
+  const [bulk, setBulk] = useState<RecipientOption[]>([]);
 
   const { results, isSearching } = useRecipientSearch(search);
   const { drafts, saveDraft, deleteDraft } = useMessageDrafts();
-  const { send, isSending } = useSendComposedMessage();
+  const { send, sendBulk, isSending, bulkProgress } = useSendComposedMessage();
+  const { fetchByRole, isLoading: isLoadingAudience } = useRoleRecipients();
   const { replies } = useCannedReplies();
 
   const channelReplies = useMemo(
     () => replies.filter((r) => r.is_active && (!r.channel || r.channel === channel)),
     [replies, channel],
   );
+
+  const reachable = useMemo(
+    () => bulk.filter((r) => (channel === 'email' ? !!r.email : !!r.phone)).length,
+    [bulk, channel],
+  );
+
+  const addRecipients = (people: RecipientOption[]) => {
+    setBulk((prev) => {
+      const map = new Map(prev.map((p) => [p.user_id, p]));
+      people.forEach((p) => map.set(p.user_id, p));
+      return Array.from(map.values());
+    });
+  };
 
   const reset = () => {
     setRecipientUserId(null);
@@ -65,6 +106,7 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
     setBody('');
     setDraftId(undefined);
     setSearch('');
+    setBulk([]);
   };
 
   const currentDraft = () => ({
@@ -90,6 +132,16 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
   };
 
   const handleSend = async () => {
+    if (bulk.length > 0) {
+      const result = await sendBulk(bulk, { channel, subject, body });
+      if (result.sent > 0) {
+        if (draftId) deleteDraft(draftId);
+        reset();
+        onSent?.();
+      }
+      return;
+    }
+
     const ok = await send({
       channel,
       recipientUserId,
@@ -105,6 +157,7 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
       onSent?.();
     }
   };
+
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
