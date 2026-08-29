@@ -303,13 +303,28 @@ export const useSendComposedMessage = () => {
       const { data, error } = dispatch;
       if (error || data?.success === false) {
         console.error('Dispatch failed:', error || data);
+        const payload = data as
+          | { error?: string; suppressed?: boolean; reason?: string }
+          | null;
+        // A suppressed send is a policy outcome, not a provider rejection —
+        // say so plainly so admins don't chase a phantom provider fault.
+        const suppressedReason =
+          payload?.suppressed || payload?.reason
+            ? payload?.reason === 'recipient_opted_out'
+              ? 'Recipient has opted out of messaging (replied STOP). They must text START to resume.'
+              : payload?.reason === 'outbound_paused'
+                ? 'Outbound messaging is paused for this channel/region in Contact Settings.'
+                : payload?.reason
+            : null;
         const reason =
-          (data as { error?: string } | null)?.error ||
+          suppressedReason ||
+          payload?.error ||
           (error as { message?: string } | null)?.message ||
           'Provider rejected the message';
         notifyError(`Saved to the thread, but delivery failed: ${reason}`);
         return { saved: true, delivered: false, reason };
       }
+
 
       if (!silent) toast.success(`Message sent via ${input.channel.toUpperCase()}`);
       return { saved: true, delivered: true };

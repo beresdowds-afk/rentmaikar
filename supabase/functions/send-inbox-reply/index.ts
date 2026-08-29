@@ -124,7 +124,14 @@ serve(async (req) => {
     if (await isOptedOut(recipientPhone, channel === "whatsapp" ? "whatsapp" : "sms")) {
       console.log(`[opt-out] Suppressed inbox reply to ${recipientPhone}`);
       return new Response(
-        JSON.stringify({ success: false, suppressed: true, reason: "recipient_opted_out" }),
+        JSON.stringify({
+          success: false,
+          suppressed: true,
+          reason: "recipient_opted_out",
+          error:
+            "Recipient has opted out of messaging (STOP). They must reply START before we can message them again.",
+        }),
+
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -223,6 +230,16 @@ serve(async (req) => {
       console.log("Message sent via Termii:", messageSid);
     } else {
       // ─── TWILIO (USA / Default) ───
+      // Twilio is approved for VOICE only. Messaging stays behind an explicit
+      // opt-in switch so a Sent.dm failure never silently re-routes SMS/WhatsApp
+      // through an unapproved carrier path.
+      const twilioMessagingEnabled =
+        (Deno.env.get("TWILIO_MESSAGING_ENABLED") ?? "false").toLowerCase() === "true";
+      if (!twilioMessagingEnabled) {
+        throw new Error(
+          "Sent.dm could not deliver this message and Twilio messaging is disabled (voice-only approval). Check the Sent provider health panel.",
+        );
+      }
       const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
       const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
       const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
@@ -230,6 +247,7 @@ serve(async (req) => {
       if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
         throw new Error("Twilio credentials not configured");
       }
+
 
       let toNumber = recipientPhone;
       // Use forwarding number as "from" if configured, otherwise default provider number
