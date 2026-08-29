@@ -127,7 +127,7 @@ serve(async (req) => {
     };
 
     // 2b. Per-number webhook audit — catches voice/SMS webhooks left pointing at
-    // stale hosts (e.g. staging.rentmaikar.com) instead of the backend functions.
+    // stale/foreign hosts instead of the Supabase edge functions that handle them.
     const baseUrl = `${supabaseUrl}/functions/v1`;
     const expectedVoice = `${baseUrl}/incoming-call-forward`;
     const expectedSms = `${baseUrl}/twilio-webhook`;
@@ -156,7 +156,7 @@ serve(async (req) => {
       expected: { voice: expectedVoice, sms: expectedSms },
       numbers: numberWebhooks,
       note: numberWebhooks.some((n: { ok: boolean }) => !n.ok)
-        ? "One or more numbers forward calls/SMS to a stale host (e.g. staging.rentmaikar.com). Use the fix-number-webhooks action to repoint them."
+        ? "One or more numbers forward calls/SMS to a host that does not handle them. Use the fix-number-webhooks action to repoint them."
         : undefined,
     };
 
@@ -264,7 +264,7 @@ serve(async (req) => {
 
   // ---------- POST {action:"fix-number-webhooks"} ----------
   // Repoints every owned number's voice/SMS webhooks at the backend functions,
-  // undoing stale forwards (e.g. staging.rentmaikar.com).
+  // undoing forwards to hosts that do not handle them.
   if (body?.action === "fix-number-webhooks") {
     const baseUrl = `${supabaseUrl}/functions/v1`;
     const listRes = await fetch(

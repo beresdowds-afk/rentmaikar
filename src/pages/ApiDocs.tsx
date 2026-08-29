@@ -482,15 +482,15 @@ const AuthenticationSection = () => {
             </TabsList>
             <TabsContent value="curl" className="space-y-3">
               <p className="text-sm text-muted-foreground">Authenticated request:</p>
-              <CodeBlock code={`curl https://backend.rentmaikar.com/v1/vehicles \\
+              <CodeBlock code={`curl https://staging.rentmaikar.com/v1/vehicles \\
   -H "Authorization: Bearer rmk_live_your_key_here" \\
   -H "Content-Type: application/json"`} />
               <p className="text-sm text-muted-foreground">Rotate an API key (admin scope required):</p>
-              <CodeBlock code={`curl -X POST https://backend.rentmaikar.com/v1/keys/KEY_ID/rotate \\
+              <CodeBlock code={`curl -X POST https://staging.rentmaikar.com/v1/keys/KEY_ID/rotate \\
   -H "Authorization: Bearer rmk_live_admin_key"`} />
             </TabsContent>
             <TabsContent value="js" className="space-y-3">
-              <CodeBlock code={`const res = await fetch("https://backend.rentmaikar.com/v1/rentals", {
+              <CodeBlock code={`const res = await fetch("https://staging.rentmaikar.com/v1/rentals", {
   method: "POST",
   headers: {
     Authorization: \`Bearer \${process.env.RENTMAIKAR_API_KEY}\`,
@@ -512,7 +512,7 @@ const data = await res.json();`} />
               <CodeBlock code={`import os, uuid, requests
 
 r = requests.post(
-  "https://backend.rentmaikar.com/v1/payments/charge",
+  "https://staging.rentmaikar.com/v1/payments/charge",
   headers={
     "Authorization": f"Bearer {os.environ['RENTMAIKAR_API_KEY']}",
     "Content-Type": "application/json",

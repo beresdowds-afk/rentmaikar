@@ -1,13 +1,17 @@
 steps:
   # 1. Build the multi-stage container image using the root Dockerfile
+  #    VITE_API_BASE_URL points the frontend at the canonical backend API host.
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
+      - '--build-arg'
+      - 'VITE_API_BASE_URL=https://staging.rentmaikar.com'
       - '-t'
       - 'gcr.io/$PROJECT_ID/rentmaikar:$COMMIT_SHA'
       - '-t'
       - 'gcr.io/$PROJECT_ID/rentmaikar:latest'
       - '.'
+
 
   # 2. Push the built container image to Google Container / Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
