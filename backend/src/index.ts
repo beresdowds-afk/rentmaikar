@@ -12,10 +12,21 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+/** Canonical public backend base URL (API host). */
+const PUBLIC_BACKEND_URL = process.env.PUBLIC_BACKEND_URL || "https://staging.rentmaikar.com";
+
+/** Production frontend origins allowed to call this API. */
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://rentmaikar.com",
+  "https://www.rentmaikar.com",
+];
+
 // Security and middleware configuration
 app.use(helmet());
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : "*",
+  origin: process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
+    : DEFAULT_ALLOWED_ORIGINS,
   credentials: true,
 }));
 app.use(express.urlencoded({ extended: true }));
