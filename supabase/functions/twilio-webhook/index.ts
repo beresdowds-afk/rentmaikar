@@ -5,6 +5,7 @@ import { verifyTwilioRequestRaw } from "../_shared/twilio-signature.ts";
 import { isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
 import { maybeAutoReply } from "../_shared/auto-reply.ts";
 import { forwardInboundMessage } from "../_shared/forwarding.ts";
+import { parseTrace } from "../_shared/comms-correlation.ts";
 
 
 
@@ -447,6 +448,9 @@ serve(async (req) => {
       from: cleanFrom,
       body: parsed.content || `(${parsed.type} message)`,
       mediaUrl: (mediaMetadata.media_url as string | undefined) || null,
+      // Inherit the trace when this inbound leg is one of our own relays.
+      correlationId: parseTrace(parsed.content)?.correlationId ?? null,
+      hop: parseTrace(parsed.content)?.hop ?? null,
     });
     if (forwardResult.forwarded) {
       await logMessagingEvent(supabase, {
@@ -465,6 +469,9 @@ serve(async (req) => {
           public_alias: cleanTo,
           endpoint: forwardResult.destination,
           forwarded_from: cleanFrom,
+          correlation_id: forwardResult.correlationId,
+          hop: forwardResult.hop,
+          max_hops: forwardResult.maxHops,
         },
       });
     }

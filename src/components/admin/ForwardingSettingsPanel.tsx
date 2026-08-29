@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 export const FORWARDING_CONFIG_KEY = 'forwarding_config';
 export const OUTBOUND_CONFIG_KEY = 'outbound_channel_config';
 export const MASTER_ENDPOINT_KEY = 'master_communications_endpoint';
+export const LOOP_POLICY_KEY = 'comms_loop_policy';
 
 export interface ForwardingConfig {
   call: boolean;
@@ -31,6 +32,13 @@ interface MasterEndpoint {
   sms: string;
   whatsapp: string;
 }
+
+interface LoopPolicy {
+  enabled: boolean;
+  max_hops: number;
+}
+
+const LOOP_DEFAULTS: LoopPolicy = { enabled: true, max_hops: 3 };
 
 const MASTER_DEFAULTS: MasterEndpoint = {
   voice: '+2349163072576',
@@ -91,6 +99,7 @@ export const ForwardingSettingsPanel = () => {
   const [config, setConfig] = useState<InboundConfig>(DEFAULTS);
   const [outbound, setOutbound] = useState<OutboundConfig>(OUTBOUND_DEFAULTS);
   const [master, setMaster] = useState<MasterEndpoint>(MASTER_DEFAULTS);
+  const [loopPolicy, setLoopPolicy] = useState<LoopPolicy>(LOOP_DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
@@ -99,7 +108,7 @@ export const ForwardingSettingsPanel = () => {
       const { data, error } = await supabase
         .from('platform_kv_settings')
         .select('key, value')
-        .in('key', [FORWARDING_CONFIG_KEY, OUTBOUND_CONFIG_KEY, MASTER_ENDPOINT_KEY]);
+        .in('key', [FORWARDING_CONFIG_KEY, OUTBOUND_CONFIG_KEY, MASTER_ENDPOINT_KEY, LOOP_POLICY_KEY]);
       if (error) {
         toast.error('Could not load channel settings');
       } else {
@@ -117,6 +126,8 @@ export const ForwardingSettingsPanel = () => {
         } else if (end) {
           setMaster({ ...MASTER_DEFAULTS, ...end });
         }
+        const loop = rows.find((r) => r.key === LOOP_POLICY_KEY)?.value as Partial<LoopPolicy> | undefined;
+        if (loop) setLoopPolicy({ ...LOOP_DEFAULTS, ...loop });
       }
       setLoading(false);
     };
@@ -206,6 +217,20 @@ export const ForwardingSettingsPanel = () => {
     }
     setMaster(next);
     toast.success('Master Communications Endpoint updated');
+  };
+
+  const saveLoopPolicy = async (next: LoopPolicy) => {
+    const hops = Math.min(Math.max(Math.floor(next.max_hops || 0), 1), 10);
+    const value: LoopPolicy = { enabled: next.enabled, max_hops: hops };
+    setSavingKey('loop');
+    const error = await persist(LOOP_POLICY_KEY, value);
+    setSavingKey(null);
+    if (error) {
+      toast.error('Failed to save the loop policy');
+      return;
+    }
+    setLoopPolicy(value);
+    toast.success(`Loop policy saved — max ${hops} hop${hops === 1 ? '' : 's'}`);
   };
 
   const pausedCount = REGIONS.reduce(
@@ -372,6 +397,42 @@ export const ForwardingSettingsPanel = () => {
                   {savingKey === 'master' && <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />}
                   Save endpoints
                 </Button>
+              </div>
+
+              <div className="rounded-lg border border-border p-3 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <span className="font-medium text-sm">Alias loop protection</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Every relayed message carries an end-to-end correlation ID and hop counter. When a relay lands back
+                      on one of our aliases the trace is recognised, the hop count increases, and the message is dropped
+                      once the ceiling is reached.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={loopPolicy.enabled}
+                    disabled={savingKey === 'loop'}
+                    onCheckedChange={(v) => saveLoopPolicy({ ...loopPolicy, enabled: v })}
+                  />
+                </div>
+                <div className="flex items-end gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="loop-max-hops" className="text-xs">Maximum hops</Label>
+                    <Input
+                      id="loop-max-hops"
+                      type="number"
+                      min={1}
+                      max={10}
+                      className="w-28"
+                      value={loopPolicy.max_hops}
+                      onChange={(e) => setLoopPolicy({ ...loopPolicy, max_hops: Number(e.target.value) })}
+                    />
+                  </div>
+                  <Button size="sm" onClick={() => saveLoopPolicy(loopPolicy)} disabled={savingKey === 'loop'}>
+                    {savingKey === 'loop' && <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />}
+                    Save policy
+                  </Button>
+                </div>
               </div>
 
               <div className="rounded-lg border border-border p-3 space-y-2">
