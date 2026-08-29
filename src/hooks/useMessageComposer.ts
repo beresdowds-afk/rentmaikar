@@ -1,0 +1,248 @@
+import { useCallback, useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRegion } from '@/contexts/RegionContext';
+import { toast } from 'sonner';
+
+export type ComposerChannel = 'email' | 'sms' | 'whatsapp';
+
+export interface RecipientOption {
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
+export interface ComposerDraft {
+  id: string;
+  channel: ComposerChannel;
+  recipientUserId: string | null;
+  recipientName: string;
+  email: string;
+  phone: string;
+  subject: string;
+  body: string;
+  savedAt: string;
+}
+
+const DRAFT_KEY = 'rentmaikar_message_drafts';
+
+const readDrafts = (): ComposerDraft[] => {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as ComposerDraft[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeDrafts = (drafts: ComposerDraft[]) => {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts.slice(0, 50)));
+  } catch {
+    /* storage unavailable — drafts are best effort */
+  }
+};
+
+/** Local, per-device drafts for the messaging center composer. */
+export const useMessageDrafts = () => {
+  const [drafts, setDrafts] = useState<ComposerDraft[]>([]);
+
+  useEffect(() => {
+    setDrafts(readDrafts());
+  }, []);
+
+  const saveDraft = useCallback((draft: Omit<ComposerDraft, 'id' | 'savedAt'> & { id?: string }) => {
+    const entry: ComposerDraft = {
+      ...draft,
+      id: draft.id || crypto.randomUUID(),
+      savedAt: new Date().toISOString(),
+    };
+    setDrafts((prev) => {
+      const next = [entry, ...prev.filter((d) => d.id !== entry.id)];
+      writeDrafts(next);
+      return next;
+    });
+    return entry;
+  }, []);
+
+  const deleteDraft = useCallback((id: string) => {
+    setDrafts((prev) => {
+      const next = prev.filter((d) => d.id !== id);
+      writeDrafts(next);
+      return next;
+    });
+  }, []);
+
+  return { drafts, saveDraft, deleteDraft };
+};
+
+/** Search platform users so staff can pick a recipient instead of typing raw contacts. */
+export const useRecipientSearch = (query: string) => {
+  const [results, setResults] = useState<RecipientOption[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setResults([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      const like = `%${q.replace(/[%,]/g, '')}%`;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email, phone')
+        .or(`full_name.ilike.${like},email.ilike.${like},phone.ilike.${like}`)
+        .limit(10);
+      if (cancelled) return;
+      if (error) console.error('Recipient search failed:', error);
+      setResults((data || []) as RecipientOption[]);
+      setIsSearching(false);
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query]);
+
+  return { results, isSearching };
+};
+
+export interface SendComposedInput {
+  channel: ComposerChannel;
+  recipientUserId?: string | null;
+  recipientName?: string;
+  email?: string;
+  phone?: string;
+  subject?: string;
+  body: string;
+}
+
+/**
+ * Sends an outbound message on any channel, reusing the unified inbox as the
+ * single store: it finds or creates the conversation, records the message, then
+ * dispatches through the channel's edge function so replies thread back.
+ */
+export const useSendComposedMessage = () => {
+  const { user } = useAuth();
+  const { country } = useRegion();
+  const [isSending, setIsSending] = useState(false);
+
+  const send = async (input: SendComposedInput): Promise<boolean> => {
+    const body = input.body.trim();
+    if (!body) {
+      toast.error('Write a message first');
+      return false;
+    }
+    const email = input.email?.trim() || '';
+    const phone = input.phone?.trim() || '';
+    if (input.channel === 'email' && !email) {
+      toast.error('An email address is required');
+      return false;
+    }
+    if (input.channel !== 'email' && !phone) {
+      toast.error('A phone number is required');
+      return false;
+    }
+
+    setIsSending(true);
+    try {
+      // ── Find an existing live conversation for this contact + channel ──
+      let query = supabase
+        .from('inbox_conversations')
+        .select('id')
+        .eq('channel', input.channel)
+        .is('archived_at', null)
+        .order('last_message_at', { ascending: false })
+        .limit(1);
+
+      if (input.recipientUserId) query = query.eq('user_id', input.recipientUserId);
+      else if (input.channel === 'email') query = query.eq('user_email', email);
+      else query = query.eq('user_phone', phone);
+
+      const { data: existing } = await query.maybeSingle();
+      let conversationId = existing?.id as string | undefined;
+
+      if (!conversationId) {
+        const { data: created, error: createError } = await supabase
+          .from('inbox_conversations')
+          .insert({
+            user_id: input.recipientUserId || null,
+            user_name: input.recipientName || null,
+            user_email: email || null,
+            user_phone: phone || null,
+            channel: input.channel,
+            subject: input.subject?.trim() || 'Message from Rentmaikar',
+            status: 'pending',
+            priority: 'normal',
+            region: country === 'USA' ? 'USA' : 'NGN',
+          })
+          .select('id')
+          .single();
+        if (createError) throw createError;
+        conversationId = created.id as string;
+      }
+
+      const { error: messageError } = await supabase.from('inbox_messages').insert({
+        conversation_id: conversationId,
+        sender_type: 'admin',
+        sender_id: user?.id ?? null,
+        sender_name: 'Rentmaikar Support',
+        content: body,
+        channel: input.channel,
+        is_read: true,
+      });
+      if (messageError) throw messageError;
+
+      await supabase
+        .from('inbox_conversations')
+        .update({ last_message_at: new Date().toISOString(), status: 'pending' })
+        .eq('id', conversationId);
+
+      // ── Dispatch on the wire ──
+      if (input.channel === 'email') {
+        const { data, error } = await supabase.functions.invoke('send-email-reply', {
+          body: {
+            conversationId,
+            messageContent: body,
+            recipientEmail: email,
+            subject: input.subject?.trim() || undefined,
+          },
+        });
+        if (error || data?.success === false) {
+          console.error('Email dispatch failed:', error || data);
+          toast.warning('Message saved to the thread, but email delivery failed');
+          return true;
+        }
+      } else {
+        const { data, error } = await supabase.functions.invoke('send-inbox-reply', {
+          body: {
+            conversationId,
+            messageContent: body,
+            channel: input.channel,
+            recipientPhone: phone,
+          },
+        });
+        if (error || data?.success === false) {
+          console.error('Message dispatch failed:', error || data);
+          toast.warning('Message saved to the thread, but delivery failed');
+          return true;
+        }
+      }
+
+      toast.success(`Message sent via ${input.channel.toUpperCase()}`);
+      return true;
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      toast.error('Could not send the message');
+      return false;
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  return { send, isSending };
+};
