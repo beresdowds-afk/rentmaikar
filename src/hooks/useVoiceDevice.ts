@@ -117,6 +117,7 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
 
       await device.register();
       deviceRef.current = device;
+      await enableAudioDevices(device);
       setStatus("ready");
       return true;
     } catch (e) {
@@ -130,6 +131,15 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
     async (to: string, params?: Record<string, string>) => {
       const ready = deviceRef.current ? true : await initialize();
       if (!ready || !deviceRef.current) return false;
+
+      // Always (re)acquire mic + speaker access right before dialling.
+      const micOk = await ensureMediaPermissions();
+      if (!micOk) {
+        setError("Microphone access is required for in-app calls.");
+        setStatus("unavailable");
+        return false;
+      }
+      await enableAudioDevices(deviceRef.current);
 
       setStatus("connecting");
       setError(null);
@@ -145,6 +155,7 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
     },
     [attachCall, initialize],
   );
+
 
   const hangUp = useCallback(() => {
     callRef.current?.disconnect();
