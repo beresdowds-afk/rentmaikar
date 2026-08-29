@@ -451,16 +451,24 @@ serve(async (req) => {
     if (forwardResult.forwarded) {
       await logMessagingEvent(supabase, {
         channel,
-        provider: "twilio",
+        provider: forwardResult.provider ?? "sent",
         event_type: "forwarded",
         direction: "outbound",
         sender: cleanTo,
         region,
         provider_message_id: messageSid,
         conversation_id: conversationId,
-        metadata: { forwarded_from: cleanFrom },
+        metadata: {
+          // Original customer number preserved; replies go out from the
+          // public US sender, never the master endpoint.
+          customer_phone: cleanFrom,
+          public_alias: cleanTo,
+          endpoint: forwardResult.destination,
+          forwarded_from: cleanFrom,
+        },
       });
     }
+
 
 
     // Log inbound messaging event
