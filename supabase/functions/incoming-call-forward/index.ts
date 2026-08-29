@@ -7,7 +7,9 @@ import {
   isForwardingEnabled,
   regionFromPhone,
 } from "../_shared/forwarding.ts";
+import { publicSenderFor } from "../_shared/comms-endpoints.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
