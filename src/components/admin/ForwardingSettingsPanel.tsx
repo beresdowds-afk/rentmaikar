@@ -183,10 +183,36 @@ export const ForwardingSettingsPanel = () => {
     toast.success(`All outbound channels paused for ${region}`);
   };
 
+  const saveMaster = async () => {
+    const normalise = (v: string) => {
+      const digits = v.replace(/[^\d+]/g, '');
+      return digits.startsWith('+') ? digits : `+${digits}`;
+    };
+    const next: MasterEndpoint = {
+      voice: normalise(master.voice),
+      sms: normalise(master.sms),
+      whatsapp: normalise(master.whatsapp),
+    };
+    if (Object.values(next).some((n) => n.length < 8)) {
+      toast.error('Enter each endpoint in full international format');
+      return;
+    }
+    setSavingKey('master');
+    const error = await persist(MASTER_ENDPOINT_KEY, next);
+    setSavingKey(null);
+    if (error) {
+      toast.error('Failed to save the master endpoint');
+      return;
+    }
+    setMaster(next);
+    toast.success('Master Communications Endpoint updated');
+  };
+
   const pausedCount = REGIONS.reduce(
     (acc, r) => acc + CHANNELS.filter((c) => outbound[r][c.key] === false).length,
     0,
   );
+
 
   return (
     <Card>
