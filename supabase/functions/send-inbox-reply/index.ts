@@ -124,7 +124,14 @@ serve(async (req) => {
     if (await isOptedOut(recipientPhone, channel === "whatsapp" ? "whatsapp" : "sms")) {
       console.log(`[opt-out] Suppressed inbox reply to ${recipientPhone}`);
       return new Response(
-        JSON.stringify({ success: false, suppressed: true, reason: "recipient_opted_out" }),
+        JSON.stringify({
+          success: false,
+          suppressed: true,
+          reason: "recipient_opted_out",
+          error:
+            "Recipient has opted out of messaging (STOP). They must reply START before we can message them again.",
+        }),
+
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
