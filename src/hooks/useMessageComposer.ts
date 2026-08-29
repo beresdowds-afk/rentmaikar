@@ -351,36 +351,53 @@ export const useSendComposedMessage = () => {
 
     let sent = 0;
     let failed = 0;
+    const failures: { recipient: string; reason: string }[] = [];
 
     // Sequential dispatch keeps us inside provider rate limits.
     for (const recipient of usable) {
-      const ok = await send(
+      const label =
+        recipient.full_name || recipient.email || recipient.phone || 'Unknown recipient';
+      const outcome = await send(
         {
           ...input,
           recipientUserId: recipient.user_id || null,
-          recipientName: recipient.full_name || recipient.email || recipient.phone || 'User',
+          recipientName: label,
           email: recipient.email || '',
           phone: recipient.phone || '',
         },
         { silent: true },
       );
-      if (ok) sent += 1;
-      else failed += 1;
-      setBulkProgress({ total: usable.length, completed: sent + failed, sent, failed });
+      // Only a provider-accepted message counts as sent.
+      if (outcome.delivered) {
+        sent += 1;
+      } else {
+        failed += 1;
+        failures.push({ recipient: label, reason: outcome.reason || 'Delivery failed' });
+      }
+      setBulkProgress({ total: usable.length, completed: sent + failed, sent, failed, failures });
     }
 
     setIsSending(false);
 
     if (failed === 0) {
       toast.success(
-        `Sent to ${sent} recipient${sent === 1 ? '' : 's'} via ${input.channel.toUpperCase()}` +
+        `Delivered to ${sent} recipient${sent === 1 ? '' : 's'} via ${input.channel.toUpperCase()}` +
           (skipped ? ` · ${skipped} skipped (missing contact)` : ''),
       );
     } else {
-      toast.warning(`Sent ${sent}, failed ${failed}${skipped ? `, skipped ${skipped}` : ''}`);
+      toast.error(
+        `Delivered ${sent}, failed ${failed}${skipped ? `, skipped ${skipped}` : ''}`,
+        {
+          description: failures
+            .slice(0, 5)
+            .map((f) => `${f.recipient}: ${f.reason}`)
+            .join('\n') + (failures.length > 5 ? `\n+${failures.length - 5} more` : ''),
+        },
+      );
     }
 
-    return { total: usable.length, completed: sent + failed, sent, failed };
+    return { total: usable.length, completed: sent + failed, sent, failed, failures };
+
   };
   return { send, sendBulk, isSending, bulkProgress };
 
