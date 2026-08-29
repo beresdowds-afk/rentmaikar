@@ -180,9 +180,12 @@ export const TwilioTestSendPanel = () => {
           </Button>
         </div>
         {diag && (
-          <pre className="text-xs bg-muted/50 rounded p-3 overflow-auto max-h-80">
-            {JSON.stringify(diag, null, 2)}
-          </pre>
+          <>
+            <NumberWebhookAudit diag={diag} onRepaired={runDiagnostics} />
+            <pre className="text-xs bg-muted/50 rounded p-3 overflow-auto max-h-80">
+              {JSON.stringify(diag, null, 2)}
+            </pre>
+          </>
         )}
       </div>
 
@@ -291,6 +294,81 @@ export const TwilioTestSendPanel = () => {
         </Card>
       )}
     </Card>
+  );
+};
+
+interface NumberWebhookInfo {
+  phoneNumber: string;
+  ok: boolean;
+  problems: string[];
+  voiceUrl?: string;
+}
+
+const NumberWebhookAudit = ({
+  diag,
+  onRepaired,
+}: {
+  diag: Record<string, unknown>;
+  onRepaired: () => void;
+}) => {
+  const [fixing, setFixing] = useState(false);
+  const checks = (diag as { checks?: Record<string, any> }).checks;
+  const audit = checks?.numberWebhooks;
+  if (!audit) return null;
+  const numbers: NumberWebhookInfo[] = audit.numbers ?? [];
+  const bad = numbers.filter((n) => !n.ok);
+
+  const repair = async () => {
+    setFixing(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Not signed in");
+      const res = await fetch(
+        `https://bwvocmhcledbwqlpcswp.functions.supabase.co/twilio-test-send`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "fix-number-webhooks" }),
+        },
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+      if (json.success) toast.success("Number webhooks repointed to the live backend");
+      else toast.error("Some numbers failed to update — check diagnostics");
+      onRepaired();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setFixing(false);
+    }
+  };
+
+  return (
+    <Alert variant={bad.length ? "destructive" : "default"}>
+      <AlertDescription className="space-y-2">
+        {bad.length ? (
+          <>
+            <p className="font-medium">
+              {bad.length} number{bad.length > 1 ? "s" : ""} forward calls/SMS to a stale host:
+            </p>
+            <ul className="list-disc pl-5 text-xs space-y-1">
+              {bad.map((n) => (
+                <li key={n.phoneNumber}>
+                  <span className="font-mono">{n.phoneNumber}</span> — {n.problems.join("; ")}
+                </li>
+              ))}
+            </ul>
+            <Button size="sm" variant="outline" onClick={repair} disabled={fixing} className="mt-1">
+              {fixing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Repoint all numbers to live backend
+            </Button>
+          </>
+        ) : (
+          <p className="text-sm">All owned numbers point their voice/SMS webhooks at the live backend.</p>
+        )}
+      </AlertDescription>
+    </Alert>
   );
 };
 

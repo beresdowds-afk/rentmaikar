@@ -126,6 +126,40 @@ serve(async (req) => {
         : undefined,
     };
 
+    // 2b. Per-number webhook audit — catches voice/SMS webhooks left pointing at
+    // stale hosts (e.g. staging.rentmaikar.com) instead of the backend functions.
+    const baseUrl = `${supabaseUrl}/functions/v1`;
+    const expectedVoice = `${baseUrl}/incoming-call-forward`;
+    const expectedSms = `${baseUrl}/twilio-webhook`;
+    const numberWebhooks = (nums.incoming_phone_numbers ?? []).map((n: any) => {
+      const voiceUrl: string = n.voice_url ?? "";
+      const smsUrl: string = n.sms_url ?? "";
+      const stale = (u: string) => !!u && !u.startsWith(baseUrl);
+      const problems: string[] = [];
+      if (!voiceUrl) problems.push("voice webhook not set");
+      else if (voiceUrl !== expectedVoice)
+        problems.push(stale(voiceUrl) ? `voice webhook points at foreign host: ${voiceUrl}` : `voice webhook is ${voiceUrl}`);
+      if (smsUrl && smsUrl !== expectedSms)
+        problems.push(stale(smsUrl) ? `sms webhook points at foreign host: ${smsUrl}` : `sms webhook is ${smsUrl}`);
+      return {
+        phoneNumber: n.phone_number as string,
+        sid: n.sid as string,
+        friendlyName: n.friendly_name ?? null,
+        voiceUrl,
+        smsUrl,
+        ok: problems.length === 0,
+        problems,
+      };
+    });
+    checks.numberWebhooks = {
+      ok: numRes.ok && numberWebhooks.every((n: { ok: boolean }) => n.ok),
+      expected: { voice: expectedVoice, sms: expectedSms },
+      numbers: numberWebhooks,
+      note: numberWebhooks.some((n: { ok: boolean }) => !n.ok)
+        ? "One or more numbers forward calls/SMS to a stale host (e.g. staging.rentmaikar.com). Use the fix-number-webhooks action to repoint them."
+        : undefined,
+    };
+
     // 3. Messaging service
     const msSid = Deno.env.get("TWILIO_MESSAGING_SERVICE_SID");
     if (msSid) {
@@ -221,11 +255,67 @@ serve(async (req) => {
     return json({ error: "Method not allowed" }, 405);
   }
 
-  let body: TestSendRequest;
+  let body: TestSendRequest & { action?: string };
   try {
-    body = (await req.json()) as TestSendRequest;
+    body = (await req.json()) as TestSendRequest & { action?: string };
   } catch {
     return json({ error: "Invalid JSON body" }, 400);
+  }
+
+  // ---------- POST {action:"fix-number-webhooks"} ----------
+  // Repoints every owned number's voice/SMS webhooks at the backend functions,
+  // undoing stale forwards (e.g. staging.rentmaikar.com).
+  if (body?.action === "fix-number-webhooks") {
+    const baseUrl = `${supabaseUrl}/functions/v1`;
+    const listRes = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/IncomingPhoneNumbers.json?PageSize=50`,
+      { headers: { Authorization: twilioAuth } },
+    );
+    const list = await listRes.json().catch(() => ({}));
+    if (!listRes.ok) {
+      return json({ error: "Failed to list phone numbers", status: listRes.status, twilio: list }, listRes.status);
+    }
+    const results: Array<Record<string, unknown>> = [];
+    for (const n of list.incoming_phone_numbers ?? []) {
+      const params = new URLSearchParams({
+        VoiceUrl: `${baseUrl}/incoming-call-forward`,
+        VoiceMethod: "POST",
+        SmsUrl: `${baseUrl}/twilio-webhook`,
+        SmsMethod: "POST",
+        StatusCallback: `${baseUrl}/twilio-webhook`,
+        StatusCallbackMethod: "POST",
+      });
+      const upRes = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/IncomingPhoneNumbers/${n.sid}.json`,
+        {
+          method: "POST",
+          headers: { Authorization: twilioAuth, "Content-Type": "application/x-www-form-urlencoded" },
+          body: params,
+        },
+      );
+      const upBody = await upRes.json().catch(() => ({}));
+      results.push({
+        phoneNumber: n.phone_number,
+        sid: n.sid,
+        ok: upRes.ok,
+        previousVoiceUrl: n.voice_url ?? null,
+        voiceUrl: upBody.voice_url ?? null,
+        smsUrl: upBody.sms_url ?? null,
+        error: upRes.ok ? undefined : upBody.message ?? `HTTP ${upRes.status}`,
+      });
+    }
+    try {
+      await admin.from("messaging_events").insert({
+        event_type: "number_webhooks_repair",
+        channel: "voip",
+        provider: "twilio",
+        status: results.every((r) => r.ok) ? "sent" : "failed",
+        metadata: { initiated_by: user.id, results },
+      });
+    } catch (e) {
+      console.warn("messaging_events insert failed", e);
+    }
+    return json({ success: results.every((r) => r.ok), results });
   }
 
   if (!body?.to || !isValidE164(body.to)) {
