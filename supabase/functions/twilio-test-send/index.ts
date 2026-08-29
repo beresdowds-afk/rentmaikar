@@ -225,10 +225,26 @@ serve(async (req) => {
       checks.apiKey = { ok: false, error: "TWILIO_API_KEY_SID not set" };
     }
 
-    // 6. Webhook signature validation readiness
+    // 6. Webhook signature validation readiness.
+    // Inbound webhooks (voice/SMS) are verified with the ACCOUNT AUTH TOKEN —
+    // API keys cannot validate X-Twilio-Signature. A stale token makes every
+    // inbound call fail with "an application error has occurred".
+    let authTokenValid: boolean | null = null;
+    if (authToken) {
+      const atRes = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}.json`,
+        { headers: { Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}` } },
+      );
+      authTokenValid = atRes.ok;
+    }
     // baseUrl declared above in this diagnostics block
     checks.webhooks = {
       signatureValidationEnabled: Boolean(authToken),
+      authTokenValid,
+      note: authTokenValid === false
+        ? "TWILIO_AUTH_TOKEN is stale — inbound call/SMS webhooks will be rejected (403) and callers hear an application error."
+        : undefined,
+
       endpoints: {
         incomingMessages: `${baseUrl}/twilio-webhook`,
         whatsappCommands: `${baseUrl}/whatsapp-commands`,
