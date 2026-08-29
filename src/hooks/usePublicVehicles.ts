@@ -11,7 +11,9 @@ export interface PublicVehicleRow {
   color: string | null;
   status: string | null;
   pickup_city: string | null;
-  pickup_location: string | null;
+  /** Only returned for signed-in users; anonymous visitors see the city only. */
+  pickup_location?: string | null;
+
   photo_urls: string[] | null;
   created_at: string;
 }
