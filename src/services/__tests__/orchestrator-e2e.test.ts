@@ -5,6 +5,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     from: vi.fn(() => ({
       insert: vi.fn().mockResolvedValue({ data: [{ id: "row-1" }], error: null }),
     })),
+    functions: { invoke: vi.fn().mockResolvedValue({ data: null, error: null }) },
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
   },
 }));
@@ -32,6 +33,7 @@ describe("Orchestrator E2E: Traccar → MQTT → Plugin → vehicle_analytics_ev
     pluginManager.register(testPlugin);
     pluginManager.resetCallCounts();
     (supabase.from as unknown as { mockClear: () => void }).mockClear?.();
+    (supabase.functions.invoke as unknown as { mockClear: () => void }).mockClear?.();
   });
 
   it("Traccar event updates state and fans out to plugins", async () => {
@@ -54,7 +56,12 @@ describe("Orchestrator E2E: Traccar → MQTT → Plugin → vehicle_analytics_ev
     const state = orchestrator.getVehicleState(vehicleId);
     expect(state?.battery).toBe(10);
     expect(state?.temperature).toBe(110);
-    expect(supabase.from).toHaveBeenCalledWith("vehicle_analytics_events");
+    // Analytics persistence is server-authoritative: the browser forwards the
+    // raw event to the telemetry-ingest edge function.
+    expect(supabase.functions.invoke).toHaveBeenCalledWith(
+      "telemetry-ingest",
+      expect.objectContaining({ body: expect.anything() }),
+    );
   });
 
   it("Disabled plugin does not process events; re-enabled resumes", async () => {

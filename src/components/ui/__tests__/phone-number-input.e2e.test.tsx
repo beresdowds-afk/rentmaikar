@@ -10,6 +10,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { parsePhoneNumberFromString, isValidPhoneNumber } from 'libphonenumber-js';
 import { PhoneNumberInput } from '@/components/ui/phone-number-input';
+import { TestProviders } from '@/test/providers';
 
 
 
@@ -77,7 +78,7 @@ const CASES = [
   // Baseline countries.
   { country: 'US' as const, national: '2125551234', expected: '+12125551234' },
   { country: 'NG' as const, national: '8012345678', expected: '+2348012345678' },
-  { country: 'GB' as const, national: '7911123456', expected: '+447911123456' },
+  { country: 'GB' as const, national: '7400123456', expected: '+447400123456' },
   // Extra countries — cover EU, LATAM, APAC, MEA.
   { country: 'DE' as const, national: '15112345678', expected: '+4915112345678' },
   { country: 'IN' as const, national: '9876543210', expected: '+919876543210' },
@@ -91,12 +92,14 @@ describe('Region-aware IDD phone input (E2E)', () => {
     it(`formats ${country} numbers to E.164 and remains dial-ready`, () => {
       const onChange = vi.fn();
       const { unmount } = render(
+        <TestProviders>
         <PhoneNumberInput
           defaultCountry={country}
           value=""
           onChange={onChange}
           placeholder={`Enter ${country} number`}
-        />,
+        />
+        </TestProviders>,
       );
 
       const input = screen.getByPlaceholderText(`Enter ${country} number`) as HTMLInputElement;

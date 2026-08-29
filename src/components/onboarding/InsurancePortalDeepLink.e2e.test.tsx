@@ -147,6 +147,7 @@ vi.mock("@/contexts/AuthContext", () => {
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() } }));
 
 import PortalRouteGuard from '@/components/onboarding/PortalRouteGuard';
+import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 
 // Minimal insurance checkout that mirrors what the real portal does:
 // calls `subscribe-to-plan` with an Idempotency-Key body so repeated taps
@@ -155,16 +156,12 @@ function InsuranceCheckoutButton() {
   const submit = async () => {
     const key = getIdempotencyKey('insurance-checkout');
     const { supabase } = await import('@/integrations/supabase/client');
-    const trackOnboardingEvent = vi.fn();
-
-vi.mock("@/lib/onboarding-analytics", () => ({
-  trackOnboardingEvent,
-})); await import('@/lib/onboarding-analytics');
     trackOnboardingEvent('portal_cta_submitted', {
       role: 'owner',
       portal: 'insurance',
       idempotencyKey: key,
     });
+
     await runIdempotent(
       key,
       () =>

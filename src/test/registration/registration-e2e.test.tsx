@@ -40,6 +40,12 @@ vi.mock("@/integrations/supabase/client", () => ({
       select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
     }),
     rpc: (...args: unknown[]) => rpc(...args),
+    channel: () => {
+      const ch: any = { on: () => ch, subscribe: () => ch, unsubscribe: () => Promise.resolve("ok") };
+      return ch;
+    },
+    removeChannel: () => Promise.resolve("ok"),
+    functions: { invoke: async () => ({ data: null, error: null }) },
   },
 }));
 

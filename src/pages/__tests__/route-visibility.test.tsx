@@ -6,12 +6,16 @@ import { MemoryRouter, Routes, Route } from "react-router-dom";
 
 const authState: {
   user: any;
+  session: any;
+  twoFactorStatus: any;
   isLoading: boolean;
   userRole: any;
   isRoleLoading: boolean;
   twoFactorVerified: boolean;
 } = {
   user: null,
+  session: null,
+  twoFactorStatus: null,
   isLoading: false,
   userRole: null,
   isRoleLoading: false,
@@ -24,6 +28,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 }));
 
 vi.mock("@/integrations/supabase/client", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chain: any = {
     select: () => chain, eq: () => chain, in: () => chain, order: () => chain,
     limit: () => chain, maybeSingle: async () => ({ data: null, error: null }),
@@ -56,16 +61,27 @@ vi.mock("@/components/layout/Header", () => ({ default: () => <header data-testi
 vi.mock("@/components/layout/Footer", () => ({ default: () => <footer data-testid="footer" /> }));
 
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { TestProviders } from "@/test/providers";
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
 
 // ---- Helpers ------------------------------------------------------------
 
 const setAuth = (patch: Partial<typeof authState>) => Object.assign(authState, patch);
-const resetAuth = () => setAuth({ user: null, isLoading: false, userRole: null, isRoleLoading: false, twoFactorVerified: false });
+const resetAuth = () =>
+  setAuth({
+    user: null,
+    session: null,
+    twoFactorStatus: null,
+    isLoading: false,
+    userRole: null,
+    isRoleLoading: false,
+    twoFactorVerified: false,
+  });
 
 const renderAt = (initial: string, ui: React.ReactNode) =>
   render(
+    <TestProviders>
     <MemoryRouter initialEntries={[initial]}>
       <Routes>
         <Route path="/auth" element={<div>SIGN IN PAGE</div>} />
@@ -75,6 +91,7 @@ const renderAt = (initial: string, ui: React.ReactNode) =>
         {ui}
       </Routes>
     </MemoryRouter>
+    </TestProviders>
   );
 
 beforeEach(() => {
@@ -133,6 +150,7 @@ describe("ProtectedRoute allows the correct role and redirects wrong roles", () 
   it("admin sees /admin/audit-log", () => {
     setAuth({
       user: { id: "u1" },
+      session: { access_token: "t" },
       userRole: "admin",
       twoFactorVerified: true,
     });
@@ -153,6 +171,7 @@ describe("ProtectedRoute allows the correct role and redirects wrong roles", () 
   it("driver hitting admin route is redirected to their own dashboard, not stuck on /auth", () => {
     setAuth({
       user: { id: "u1" },
+      session: { access_token: "t" },
       userRole: "driver",
       twoFactorVerified: true,
     });
@@ -174,6 +193,8 @@ describe("ProtectedRoute allows the correct role and redirects wrong roles", () 
   it("session without 2FA verification is bounced to /auth", () => {
     setAuth({
       user: { id: "u1" },
+      session: { access_token: "t" },
+      twoFactorStatus: { requires_2fa: true },
       userRole: "admin",
       twoFactorVerified: false,
     });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { useEffect } from "react";
 import { RegionProvider, useRegion, type Country } from "@/contexts/RegionContext";
@@ -37,6 +37,8 @@ vi.mock("@/integrations/supabase/client", () => {
   return {
     supabase: {
       from: vi.fn(() => chain),
+      rpc: vi.fn(async () => ({ data: null, error: null })),
+      functions: { invoke: vi.fn(async () => ({ data: null, error: null })) },
 
       // ----- Realtime -----
       channel: vi.fn(() => realtimeChannel),
@@ -57,6 +59,23 @@ vi.mock("@/integrations/supabase/client", () => {
           },
         })),
       },
+    },
+  };
+});
+
+// -----------------------------------------------------------------------------
+// Contact channels are admin-managed (Regional Contact Channels), so the test
+// supplies them instead of asserting numbers that no longer live in code.
+// -----------------------------------------------------------------------------
+vi.mock("@/lib/region-config", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/region-config")>(
+    "@/lib/region-config",
+  );
+  return {
+    ...actual,
+    contactOverrides: {
+      USA: { whatsappNumber: "+16085489220", smsNumber: "+16085489220", supportEmail: "support@rentmaikar.com" },
+      Nigeria: { whatsappNumber: "+2349163072576", smsNumber: "+2349163072576", supportEmail: "support@rentmaikar.com" },
     },
   };
 });
@@ -95,6 +114,7 @@ vi.mock("@/contexts/UserTypeContext", () => ({
 import HeroSection from "@/components/home/HeroSection";
 import CTASection from "@/components/home/CTASection";
 import RegionSwitcher from "@/components/home/RegionSwitcher";
+import { TestProviders } from "@/test/providers";
 
 // -----------------------------------------------------------------------------
 // Helper
@@ -124,6 +144,7 @@ const mount = (
   ui: React.ReactNode
 ) =>
   render(
+    <TestProviders>
     <MemoryRouter>
       <RegionProvider>
         <ForceCountry country={country}>
@@ -131,6 +152,7 @@ const mount = (
         </ForceCountry>
       </RegionProvider>
     </MemoryRouter>
+    </TestProviders>
   );
 
 beforeEach(() => {
@@ -144,18 +166,17 @@ beforeEach(() => {
 // -----------------------------------------------------------------------------
 describe("primary routes render region-specific tokens", () => {
   it.each<[Country, string]>([
-    ["USA", "124078589931"],
-    ["Nigeria", "12403930081"],
+    ["USA", "16085489220"],
+    ["Nigeria", "2349163072576"],
   ])(
     "HeroSection wires the %s WhatsApp number",
-    (country, waNumber) => {
+    async (country, waNumber) => {
       mount(country, <HeroSection />);
 
-      const waLink = document.querySelector(
-        `a[href*="wa.me/${waNumber}"]`
+      // Region selection resolves against the allow-list asynchronously.
+      await waitFor(() =>
+        expect(document.querySelector(`a[href*="wa.me/${waNumber}"]`)).not.toBeNull(),
       );
-
-      expect(waLink).not.toBeNull();
     }
   );
 
