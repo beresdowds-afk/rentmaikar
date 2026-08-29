@@ -13,6 +13,7 @@
 // ════════════════════════════════════════════════════════════
 
 import { sendViaSent } from "./sent-client.ts";
+import { evaluateHop, formatTrace, parseTrace } from "./comms-correlation.ts";
 import { twilioMessagingEnabled } from "./twilio-messaging-guard.ts";
 import {
   type CommsChannel,
@@ -20,6 +21,8 @@ import {
   publicSenderFor,
   RENTMAIKAR_NUMBERS,
 } from "./comms-endpoints.ts";
+
+export { evaluateHop, formatTrace, getLoopPolicy, LOOP_POLICY_KEY, parseTrace, stripTrace } from "./comms-correlation.ts";
 
 
 
@@ -260,14 +263,28 @@ export async function forwardInboundMessage(
 
     if (sent.ok) {
       console.log(`[forwarding] ${args.channel} forwarded to master endpoint via Sent.dm`);
-      return { forwarded: true, destination, provider: "sent" };
+      return {
+        forwarded: true,
+        destination,
+        provider: "sent",
+        correlationId: decision.correlationId,
+        hop: decision.hop,
+        maxHops: decision.maxHops,
+      };
     }
 
     console.error(`[forwarding] Sent.dm forward failed: ${sent.error ?? "unknown"}`);
 
     // ─── Twilio fallback (blocked unless messaging approval is granted) ───
     if (!twilioMessagingEnabled()) {
-      return { forwarded: false, reason: `sent_failed:${sent.error ?? "unknown"}`, destination };
+      return {
+        forwarded: false,
+        reason: `sent_failed:${sent.error ?? "unknown"}`,
+        destination,
+        correlationId: decision.correlationId,
+        hop: decision.hop,
+        maxHops: decision.maxHops,
+      };
     }
 
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
@@ -303,7 +320,14 @@ export async function forwardInboundMessage(
       console.error(`[forwarding] ${args.channel} forward failed [${res.status}]: ${detail}`);
       return { forwarded: false, reason: `provider_error_${res.status}`, destination };
     }
-    return { forwarded: true, destination, provider: "twilio" };
+    return {
+      forwarded: true,
+      destination,
+      provider: "twilio",
+      correlationId: decision.correlationId,
+      hop: decision.hop,
+      maxHops: decision.maxHops,
+    };
   } catch (e) {
     console.error("[forwarding] unexpected error forwarding message:", e);
     return { forwarded: false, reason: "exception" };
