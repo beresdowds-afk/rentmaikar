@@ -51,19 +51,30 @@ const refereePhone = (label: string) =>
     }, `Enter ${label}'s phone with country code, e.g. +2348012345678`);
 
 /**
- * Referee address/email are conditionally required — see
- * `refereeDetailsRequired()`. `detailsRequired` is driven by the admin's
- * identity-gating switch plus the application type.
+ * Referee fields are conditionally required.
+ *
+ * `refereesRequired` is the admin switch (`driver_referee_requirement`): when
+ * off, every referee field is optional and the section is hidden so drivers
+ * register freely. `detailsRequired` additionally demands address/email —
+ * see `refereeDetailsRequired()`.
  */
-const buildDriverSchema = (detailsRequired: boolean) => {
+const buildDriverSchema = (detailsRequired: boolean, refereesRequired: boolean) => {
+  const optionalText = (max: number) => z.string().max(max, "Too long").optional().or(z.literal(""));
+  const refereeName = (label: string) =>
+    refereesRequired
+      ? z.string().min(2, `${label} name is required`).max(100, "Name too long")
+      : optionalText(100);
+  const refereePhoneField = (label: string) =>
+    refereesRequired ? refereePhone(label) : optionalText(20);
   const refereeAddress = (label: string) =>
-    detailsRequired
+    detailsRequired && refereesRequired
       ? z.string().min(5, `${label} home address is required`).max(200, "Address too long")
-      : z.string().max(200, "Address too long").optional().or(z.literal(""));
+      : optionalText(200);
   const refereeEmail = (label: string) =>
-    detailsRequired
+    detailsRequired && refereesRequired
       ? z.string().min(1, `${label} email is required`).email("Invalid email address").max(255)
       : z.string().email("Invalid email address").max(255).optional().or(z.literal(""));
+
 
   return z.object({
   firstName: z.string().min(2, "First name is required").max(50, "First name too long"),
