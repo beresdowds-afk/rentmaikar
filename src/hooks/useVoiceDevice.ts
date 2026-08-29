@@ -1,7 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Call, Device } from "@twilio/voice-sdk";
 import { supabase } from "@/integrations/supabase/client";
-import { ensureMediaPermissions } from "@/lib/media-permissions";
+import { ensureMediaPermissions, unlockAudioOutput } from "@/lib/media-permissions";
+
+/** Route mic + speakers to the active default devices for a Twilio Device. */
+async function enableAudioDevices(device: Device | null) {
+  await unlockAudioOutput();
+  const audio = device?.audio as
+    | {
+        speakerDevices?: { set: (ids: string | string[]) => Promise<void> | void };
+        ringtoneDevices?: { set: (ids: string | string[]) => Promise<void> | void };
+        setInputDevice?: (id: string) => Promise<void>;
+        isOutputSelectionSupported?: boolean;
+      }
+    | undefined;
+  if (!audio) return;
+  try {
+    if (audio.isOutputSelectionSupported) {
+      await audio.speakerDevices?.set("default");
+      await audio.ringtoneDevices?.set("default");
+    }
+    await audio.setInputDevice?.("default");
+  } catch {
+    // Fall back to browser defaults when the platform blocks device selection.
+  }
+}
+
 
 export type VoiceDeviceStatus =
   | "idle"
