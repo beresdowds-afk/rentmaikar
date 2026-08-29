@@ -8,6 +8,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireInternal } from "../_shared/guard.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
+import { twilioMessagingEnabled } from "../_shared/twilio-messaging-guard.ts";
 
 interface AlertPayload {
   alert_type: string;
@@ -96,7 +97,7 @@ Deno.serve(async (req) => {
           }),
         });
         smsResults.push({ to: p.phone, provider: "termii", status: r.status });
-      } else if (twilioSid && twilioToken && twilioFrom) {
+      } else if (twilioMessagingEnabled() && twilioSid && twilioToken && twilioFrom) {
         const r = await fetch(
           `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
           {

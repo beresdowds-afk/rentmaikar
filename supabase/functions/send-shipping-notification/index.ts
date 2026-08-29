@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
+import { twilioMessagingEnabled } from "../_shared/twilio-messaging-guard.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -126,7 +127,7 @@ const handler = async (req: Request): Promise<Response> => {
         const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
         const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
 
-        if (twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
+        if (twilioMessagingEnabled() && twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
           const smsMessage = `Rentmaikar: Your IoT tracking device has been shipped! Tracking #: ${trackingNumber}. Check your email for details.`;
 
           const twilioResponse = await fetch(

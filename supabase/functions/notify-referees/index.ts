@@ -12,6 +12,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { logPipelineEvent } from "../_shared/pipeline-events.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
+import { twilioMessagingEnabled } from "../_shared/twilio-messaging-guard.ts";
 
 const Body = z.object({
   application_id: z.string().uuid(),
@@ -107,7 +108,7 @@ async function sendTwilio(to: string, body: string, channel: "sms" | "whatsapp")
     return { channel, provider: "twilio", ok: false, skipped: true };
   }
 
-  if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) {
+  if (!twilioMessagingEnabled() || !TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) {
     return { channel, provider: "twilio", ok: false, skipped: true };
   }
   const from = channel === "whatsapp" ? TWILIO_WA_FROM! : TWILIO_FROM;

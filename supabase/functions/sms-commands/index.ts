@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { preloadTemplates, templateFromCache } from "../_shared/message-templates.ts";
 import { isOptedOut, setOptOut, isStopKeyword, isStartKeyword } from "../_shared/opt-out.ts";
+import { assertTwilioMessagingEnabled } from "../_shared/twilio-messaging-guard.ts";
 import { recordKeywordConsent } from "../_shared/sms-consent-audit.ts";
 
 import {
@@ -353,6 +354,7 @@ const sendSMS = async (
       // ─── Twilio (USA / Default) ───
       const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
       const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+      assertTwilioMessagingEnabled();
       if (!accountSid || !authToken) throw new Error("Twilio SMS not configured");
 
       const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
