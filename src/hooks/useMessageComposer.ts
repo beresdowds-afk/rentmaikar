@@ -181,23 +181,28 @@ export const useSendComposedMessage = () => {
   const [isSending, setIsSending] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<BulkProgress | null>(null);
 
-  const send = async (input: SendComposedInput): Promise<boolean> => {
+  const send = async (input: SendComposedInput, opts?: { silent?: boolean }): Promise<boolean> => {
+    const silent = opts?.silent === true;
+    const notifyError = (msg: string) => {
+      if (!silent) toast.error(msg);
+    };
 
     const body = input.body.trim();
     if (!body) {
-      toast.error('Write a message first');
+      notifyError('Write a message first');
       return false;
     }
     const email = input.email?.trim() || '';
     const phone = input.phone?.trim() || '';
     if (input.channel === 'email' && !email) {
-      toast.error('An email address is required');
+      notifyError('An email address is required');
       return false;
     }
     if (input.channel !== 'email' && !phone) {
-      toast.error('A phone number is required');
+      notifyError('A phone number is required');
       return false;
     }
+
 
     setIsSending(true);
     try {
