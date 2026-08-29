@@ -665,7 +665,8 @@ const DriverRegistration = () => {
                 )}
               </div>
 
-              {/* Referees Section */}
+              {/* Referees Section — hidden while the admin keeps referees optional */}
+              {refereesRequired && (
               <div className="space-y-4 pt-4 border-t border-border">
                 <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <User className="w-5 h-5 text-accent" />
@@ -677,6 +678,7 @@ const DriverRegistration = () => {
                   {refereeDetailsMandatory ? "also required for identity verification" : "optional"}.
 
                 </p>
+
 
                 {[1, 2, 3].map((num) => (
                   <div key={num} className="p-4 rounded-lg border border-border space-y-3">
