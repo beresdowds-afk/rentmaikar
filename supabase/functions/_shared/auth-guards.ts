@@ -87,3 +87,25 @@ export async function requireRole(
   }
   return auth;
 }
+
+/**
+ * Allow either an internal service-role caller (other edge functions, crons)
+ * OR a signed-in user holding one of `roles`. Outbound messaging endpoints are
+ * invoked both ways: by background jobs with the service key, and directly from
+ * the admin Messaging Center with the staff member's JWT.
+ */
+export async function requireServiceRoleOrRole(
+  req: Request,
+  roles: string[],
+): Promise<{ userId: string | null; token: string | null } | Response> {
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const authHeader = req.headers.get("Authorization") || "";
+  if (
+    serviceKey &&
+    authHeader.startsWith("Bearer ") &&
+    authHeader.slice(7) === serviceKey
+  ) {
+    return { userId: null, token: null };
+  }
+  return await requireRole(req, roles);
+}

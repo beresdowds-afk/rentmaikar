@@ -56,7 +56,7 @@ import { RentToOwnManagement } from "@/components/admin/RentToOwnManagement";
 import { FAQManagement } from "@/components/admin/FAQManagement";
 import { PolicyManagement } from "@/components/admin/PolicyManagement";
 import { LegalAgreementTemplateManagement } from "@/components/admin/LegalAgreementTemplateManagement";
-import { AdminUnifiedInbox } from "@/components/admin/AdminUnifiedInbox";
+import { MessagingCenter } from "@/components/admin/MessagingCenter";
 import { AdminContactSettings } from "@/components/admin/AdminContactSettings";
 import { AdminSupportTaskManagement } from "@/components/admin/AdminSupportTaskManagement";
 import { AdminTaskPortal } from "@/components/admin/portal/AdminTaskPortal";
@@ -529,7 +529,7 @@ const AdminDashboard = () => {
           {portalView === 'support' && (
             <div className="space-y-6">
               {activeTab === 'task-portal' && <AdminTaskPortal />}
-              {activeTab === 'inbox' && <AdminUnifiedInbox />}
+              {activeTab === 'inbox' && <MessagingCenter />}
               {activeTab === 'call-center' && <CallCenterPage />}
               {activeTab === 'contacts' && <AdminContactSettings />}
               {activeTab === 'support-tasks' && <AdminSupportTaskManagement />}
