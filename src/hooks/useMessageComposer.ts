@@ -358,8 +358,6 @@ export const useSendComposedMessage = () => {
 
     return { total: usable.length, completed: sent + failed, sent, failed };
   };
+  return { send, sendBulk, isSending, bulkProgress };
 
-
-
-  return { send, isSending };
 };
