@@ -61,7 +61,7 @@ serve(async (req) => {
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twimlAppSid = Deno.env.get("TWILIO_TWIML_APP_SID");
     const apiKeySid = Deno.env.get("TWILIO_API_KEY_SID") || Deno.env.get("TWILIO_API_KEY");
-    const apiKeySecret = Deno.env.get("TWILIO_API_KEY_SECRET") || (Deno.env.get("TWILIO_API_KEY_SECRET") || Deno.env.get("TWILIO_API_SECRET"));
+    const apiKeySecret = Deno.env.get("TWILIO_API_KEY_SECRET") || Deno.env.get("TWILIO_API_SECRET");
 
     const secrets = {
       TWILIO_ACCOUNT_SID: !!accountSid,

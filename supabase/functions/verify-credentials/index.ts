@@ -71,7 +71,7 @@ const CHECKS: Check[] = [
       const pairs: Array<[string, string, string]> = [];
       if (env("TWILIO_AUTH_TOKEN")) pairs.push([sid, env("TWILIO_AUTH_TOKEN"), "account auth token"]);
       const keySid = env("TWILIO_API_KEY_SID") || env("TWILIO_API_KEY");
-      const keySecret = env("TWILIO_API_SECRET") || env("TWILIO_API_KEY_SECRET");
+      const keySecret = env("TWILIO_API_KEY_SECRET") || env("TWILIO_API_SECRET");
       if (keySid && keySecret) pairs.push([keySid, keySecret, "API key/secret"]);
       if (!pairs.length) return { status: "not_configured", message: "No Twilio auth token or API key pair is set." };
 
