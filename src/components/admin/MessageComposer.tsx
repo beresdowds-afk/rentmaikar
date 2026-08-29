@@ -1,0 +1,323 @@
+import { useMemo, useState } from 'react';
+import { format } from 'date-fns';
+import { Loader2, Mail, MessageSquare, Phone, Save, Search, Send, Trash2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+import { useCannedReplies } from '@/hooks/useCannedReplies';
+import {
+  useMessageDrafts,
+  useRecipientSearch,
+  useSendComposedMessage,
+  type ComposerChannel,
+  type ComposerDraft,
+} from '@/hooks/useMessageComposer';
+
+const CHANNELS: { value: ComposerChannel; label: string; icon: typeof Mail }[] = [
+  { value: 'email', label: 'Email', icon: Mail },
+  { value: 'sms', label: 'SMS', icon: Phone },
+  { value: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
+];
+
+/**
+ * Outbound composer for the messaging center — one form for email, SMS and
+ * WhatsApp. Everything sent here lands in the same unified conversation thread.
+ */
+export function MessageComposer({ onSent }: { onSent?: () => void }) {
+  const [channel, setChannel] = useState<ComposerChannel>('email');
+  const [recipientUserId, setRecipientUserId] = useState<string | null>(null);
+  const [recipientName, setRecipientName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [draftId, setDraftId] = useState<string | undefined>();
+  const [search, setSearch] = useState('');
+
+  const { results, isSearching } = useRecipientSearch(search);
+  const { drafts, saveDraft, deleteDraft } = useMessageDrafts();
+  const { send, isSending } = useSendComposedMessage();
+  const { replies } = useCannedReplies();
+
+  const channelReplies = useMemo(
+    () => replies.filter((r) => r.is_active && (!r.channel || r.channel === channel)),
+    [replies, channel],
+  );
+
+  const reset = () => {
+    setRecipientUserId(null);
+    setRecipientName('');
+    setEmail('');
+    setPhone('');
+    setSubject('');
+    setBody('');
+    setDraftId(undefined);
+    setSearch('');
+  };
+
+  const currentDraft = () => ({
+    id: draftId,
+    channel,
+    recipientUserId,
+    recipientName,
+    email,
+    phone,
+    subject,
+    body,
+  });
+
+  const loadDraft = (d: ComposerDraft) => {
+    setChannel(d.channel);
+    setRecipientUserId(d.recipientUserId);
+    setRecipientName(d.recipientName);
+    setEmail(d.email);
+    setPhone(d.phone);
+    setSubject(d.subject);
+    setBody(d.body);
+    setDraftId(d.id);
+  };
+
+  const handleSend = async () => {
+    const ok = await send({
+      channel,
+      recipientUserId,
+      recipientName,
+      email,
+      phone,
+      subject,
+      body,
+    });
+    if (ok) {
+      if (draftId) deleteDraft(draftId);
+      reset();
+      onSent?.();
+    }
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Send className="h-5 w-5 text-primary" /> New message
+          </CardTitle>
+          <CardDescription>
+            Draft and send on any channel. Replies thread back into the unified inbox.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {CHANNELS.map(({ value, label, icon: Icon }) => (
+              <Button
+                key={value}
+                type="button"
+                size="sm"
+                variant={channel === value ? 'default' : 'outline'}
+                onClick={() => setChannel(value)}
+              >
+                <Icon className="mr-2 h-4 w-4" /> {label}
+              </Button>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="recipient-search">Find a user</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="recipient-search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name, email or phone"
+                className="pl-9"
+              />
+            </div>
+            {isSearching && (
+              <p className="text-xs text-muted-foreground">Searching…</p>
+            )}
+            {results.length > 0 && (
+              <div className="max-h-40 divide-y overflow-y-auto rounded-md border">
+                {results.map((r) => (
+                  <button
+                    key={r.user_id}
+                    type="button"
+                    className={cn(
+                      'w-full px-3 py-2 text-left text-sm hover:bg-muted/60',
+                      recipientUserId === r.user_id && 'bg-muted',
+                    )}
+                    onClick={() => {
+                      setRecipientUserId(r.user_id);
+                      setRecipientName(r.full_name || r.email || 'User');
+                      setEmail(r.email || '');
+                      setPhone(r.phone || '');
+                      setSearch('');
+                    }}
+                  >
+                    <span className="font-medium">{r.full_name || 'Unnamed user'}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {[r.email, r.phone].filter(Boolean).join(' · ') || 'No contact details'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="compose-email">Email address</Label>
+              <Input
+                id="compose-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="driver@example.com"
+                disabled={channel !== 'email'}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="compose-phone">Phone number</Label>
+              <Input
+                id="compose-phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+2348012345678"
+                disabled={channel === 'email'}
+              />
+            </div>
+          </div>
+
+          {channel === 'email' && (
+            <div className="space-y-2">
+              <Label htmlFor="compose-subject">Subject</Label>
+              <Input
+                id="compose-subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Message from Rentmaikar"
+              />
+            </div>
+          )}
+
+          {channelReplies.length > 0 && (
+            <div className="space-y-2">
+              <Label>Insert a saved reply</Label>
+              <Select onValueChange={(id) => {
+                const reply = channelReplies.find((r) => r.id === id);
+                if (reply) setBody((prev) => (prev ? `${prev}\n\n${reply.body}` : reply.body));
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {channelReplies.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="compose-body">Message</Label>
+            <Textarea
+              id="compose-body"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Write your message…"
+              className="min-h-[160px]"
+            />
+            <p className="text-xs text-muted-foreground">{body.length} characters</p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handleSend} disabled={isSending || !body.trim()}>
+              {isSending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              Send {channel.toUpperCase()}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const saved = saveDraft(currentDraft());
+                setDraftId(saved.id);
+              }}
+              disabled={!body.trim()}
+            >
+              <Save className="mr-2 h-4 w-4" /> Save draft
+            </Button>
+            <Button variant="ghost" onClick={reset}>
+              Clear
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Drafts</CardTitle>
+          <CardDescription>Saved on this device.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <ScrollArea className="h-[420px]">
+            {drafts.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">No saved drafts.</p>
+            ) : (
+              <div className="divide-y">
+                {drafts.map((d) => (
+                  <div key={d.id} className="flex items-start gap-2 p-3">
+                    <button
+                      type="button"
+                      className="flex-1 text-left"
+                      onClick={() => loadDraft(d)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="h-5 text-[10px] uppercase">
+                          {d.channel}
+                        </Badge>
+                        <span className="truncate text-sm font-medium">
+                          {d.recipientName || d.email || d.phone || 'No recipient'}
+                        </span>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{d.body}</p>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {format(new Date(d.savedAt), 'MMM d, HH:mm')}
+                      </p>
+                    </button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => deleteDraft(d.id)}
+                      aria-label="Delete draft"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default MessageComposer;
