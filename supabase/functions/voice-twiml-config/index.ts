@@ -72,14 +72,16 @@ serve(async (req) => {
       TWILIO_PHONE_NUMBER: !!Deno.env.get("TWILIO_PHONE_NUMBER"),
     };
 
-    // Twilio REST accepts either AccountSid:AuthToken or ApiKeySid:ApiSecret.
+    // RentMaikar authenticates Twilio REST with the API key/secret pair first;
+    // the account auth token is only a fallback.
     const credentials: Array<{ label: string; header: string }> = [];
-    if (accountSid && authToken) {
-      credentials.push({ label: "TWILIO_AUTH_TOKEN", header: "Basic " + btoa(`${accountSid}:${authToken}`) });
-    }
     if (apiKeySid && apiKeySecret) {
       credentials.push({ label: "TWILIO_API_KEY_SID", header: "Basic " + btoa(`${apiKeySid}:${apiKeySecret}`) });
     }
+    if (accountSid && authToken) {
+      credentials.push({ label: "TWILIO_AUTH_TOKEN", header: "Basic " + btoa(`${accountSid}:${authToken}`) });
+    }
+
 
     if (!accountSid || !twimlAppSid || credentials.length === 0) {
       return json(200, {
