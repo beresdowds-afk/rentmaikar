@@ -65,10 +65,16 @@ serve(async (req) => {
 
   const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
   const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-  if (!accountSid || !authToken) {
+  // RentMaikar authenticates Twilio REST with the API key/secret pair.
+  const apiKeySid = Deno.env.get("TWILIO_API_KEY_SID") || Deno.env.get("TWILIO_API_KEY");
+  const apiKeySecret = Deno.env.get("TWILIO_API_KEY_SECRET") || Deno.env.get("TWILIO_API_SECRET");
+  if (!accountSid || (!apiKeySid && !authToken)) {
     return json({ error: "Twilio credentials not configured" }, 500);
   }
-  const twilioAuth = `Basic ${btoa(`${accountSid}:${authToken}`)}`;
+  const twilioAuth = apiKeySid && apiKeySecret
+    ? `Basic ${btoa(`${apiKeySid}:${apiKeySecret}`)}`
+    : `Basic ${btoa(`${accountSid}:${authToken}`)}`;
+
 
   // ---------- GET ?diagnostics=1 : verify configuration without sending ----------
   if (req.method === "GET" && new URL(req.url).searchParams.get("diagnostics")) {
