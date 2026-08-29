@@ -4,8 +4,13 @@ import crypto from "crypto";
 export const webhooksRouter = Router();
 
 const SENT_WEBHOOK_SECRET = process.env.SENT_WEBHOOK_SECRET || "";
+const PUBLIC_BACKEND_URL = process.env.PUBLIC_BACKEND_URL || "https://staging.rentmaikar.com";
 
 /**
+ * Canonical Sent.dm webhook URL:
+ * `${PUBLIC_BACKEND_URL}/api/webhooks/sent`
+ * (default: https://staging.rentmaikar.com/api/webhooks/sent)
+ *
  * Verify a Sent.dm webhook signature.
  *
  * Sent.dm may sign using one of these common patterns:
