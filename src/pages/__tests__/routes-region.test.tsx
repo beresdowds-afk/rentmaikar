@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { useEffect } from "react";
 import { RegionProvider, useRegion, type Country } from "@/contexts/RegionContext";
@@ -170,14 +170,13 @@ describe("primary routes render region-specific tokens", () => {
     ["Nigeria", "2349163072576"],
   ])(
     "HeroSection wires the %s WhatsApp number",
-    (country, waNumber) => {
+    async (country, waNumber) => {
       mount(country, <HeroSection />);
 
-      const waLink = document.querySelector(
-        `a[href*="wa.me/${waNumber}"]`
+      // Region selection resolves against the allow-list asynchronously.
+      await waitFor(() =>
+        expect(document.querySelector(`a[href*="wa.me/${waNumber}"]`)).not.toBeNull(),
       );
-
-      expect(waLink).not.toBeNull();
     }
   );
 
