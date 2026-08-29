@@ -139,7 +139,7 @@ serve(async (req: Request): Promise<Response> => {
       if (!res.ok) {
         console.error(`[comms-test-console] twilio call failed [${res.status}]`, payload);
         const hint = res.status === 401
-          ? "Twilio rejected the credentials (error 20003). Check TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN, or set TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET for this account."
+          ? "Twilio rejected the credentials (error 20003). Check TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET (primary), or TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN (fallback) for this account."
           : undefined;
         return json(
           {
