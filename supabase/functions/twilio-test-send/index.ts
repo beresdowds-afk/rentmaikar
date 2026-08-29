@@ -264,7 +264,7 @@ serve(async (req) => {
 
   // ---------- POST {action:"fix-number-webhooks"} ----------
   // Repoints every owned number's voice/SMS webhooks at the backend functions,
-  // undoing stale forwards (e.g. staging.rentmaikar.com).
+  // undoing forwards to hosts that do not handle them.
   if (body?.action === "fix-number-webhooks") {
     const baseUrl = `${supabaseUrl}/functions/v1`;
     const listRes = await fetch(
