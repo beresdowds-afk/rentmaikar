@@ -78,7 +78,7 @@ serve(async (req: Request): Promise<Response> => {
     const body = await req.json().catch(() => ({}));
     const channel = String(body.channel ?? "sms").toLowerCase() as TestChannel;
     const to = String(body.to ?? "").trim();
-    const dryRun = body.dry_run !== false ? body.dry_run === true : false;
+    const dryRun = body.dry_run === true;
     const message = String(
       body.message ?? "RentMaikar routing test — no action needed.",
     ).slice(0, 480);
