@@ -56,16 +56,15 @@ export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerifi
       if (!error && data) {
         const mapped: Region[] = data.map((r: any) => ({
           id: r.id,
-          iso2: r.iso2,
-          region_name: r.region_name,
-          country_name: r.phone_reference?.country_name ?? r.region_name,
-          calling_code: r.phone_reference?.calling_code ?? '',
-          is_active: r.is_active,
+          iso2: (r.country_code ?? '').toUpperCase(),
+          region_name: r.country_name,
+          country_name: r.country_name,
+          calling_code: r.phone_prefix ?? '',
+          is_active: true,
         }));
         setRegions(mapped);
-        if (mapped.length && !selectedRegion) {
-          setSelectedRegion(mapped[0].iso2);
-        }
+        // The country picker on the phone input stays fully international;
+        // this list is only a shortcut for the platform's live regions.
       }
     };
     loadRegions();
