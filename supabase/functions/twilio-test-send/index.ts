@@ -43,9 +43,23 @@ async function requireAdmin(req: Request) {
     _user_id: userRes.user.id,
     _role: "admin",
   });
-  if (roleErr || !isAdmin) {
+  if (roleErr) console.error("[twilio-test-send] has_role rpc failed:", roleErr.message);
+  let allowed = !!isAdmin;
+  if (!allowed) {
+    // Fallback: direct role lookup keeps admin diagnostics reachable if the
+    // RPC is unavailable through the Data API.
+    const { data: roleRow } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userRes.user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+    allowed = !!roleRow;
+  }
+  if (!allowed) {
     return { error: json({ error: "Admin role required" }, 403) };
   }
+
   return { user: userRes.user, admin, supabaseUrl };
 }
 
