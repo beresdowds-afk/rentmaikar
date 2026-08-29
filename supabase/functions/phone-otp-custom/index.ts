@@ -5,6 +5,8 @@
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendViaSent } from "../_shared/sent-client.ts";
+import { twilioMessagingEnabled } from "../_shared/twilio-messaging-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
