@@ -37,6 +37,8 @@ vi.mock("@/integrations/supabase/client", () => {
   return {
     supabase: {
       from: vi.fn(() => chain),
+      rpc: vi.fn(async () => ({ data: null, error: null })),
+      functions: { invoke: vi.fn(async () => ({ data: null, error: null })) },
 
       // ----- Realtime -----
       channel: vi.fn(() => realtimeChannel),
@@ -95,6 +97,7 @@ vi.mock("@/contexts/UserTypeContext", () => ({
 import HeroSection from "@/components/home/HeroSection";
 import CTASection from "@/components/home/CTASection";
 import RegionSwitcher from "@/components/home/RegionSwitcher";
+import { TestProviders } from "@/test/providers";
 
 // -----------------------------------------------------------------------------
 // Helper
@@ -124,6 +127,7 @@ const mount = (
   ui: React.ReactNode
 ) =>
   render(
+    <TestProviders>
     <MemoryRouter>
       <RegionProvider>
         <ForceCountry country={country}>
@@ -131,6 +135,7 @@ const mount = (
         </ForceCountry>
       </RegionProvider>
     </MemoryRouter>
+    </TestProviders>
   );
 
 beforeEach(() => {
