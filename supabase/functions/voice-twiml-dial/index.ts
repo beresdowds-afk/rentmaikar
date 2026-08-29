@@ -5,7 +5,7 @@
 // It answers with TwiML that bridges the browser leg to its destination.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { verifyTwilioRequest } from "../_shared/twilio-signature.ts";
+import { verifyTwilioVoiceCallback } from "../_shared/twilio-callback-auth.ts";
 
 const xmlHeaders = { "Content-Type": "text/xml; charset=utf-8" };
 
@@ -29,7 +29,7 @@ serve(async (req) => {
 
   try {
     const form = await req.formData();
-    const denied = await verifyTwilioRequest(req, form);
+    const denied = await verifyTwilioVoiceCallback(req, form);
     if (denied) return denied;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
