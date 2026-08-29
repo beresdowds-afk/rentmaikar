@@ -169,13 +169,18 @@ const DriverRegistration = () => {
   const alreadySignedIn = !!user;
 
   // Referee address/email are only mandatory while the admin keeps identity
-  // (Persona) gating switched on for an application type that needs vetting.
+  // (Persona) gating switched on for an application type that needs vetting,
+  // and referees themselves are only mandatory while the admin's referee
+  // requirement switch is on.
   const { enabled: personaEnabled } = usePersonaEnabled();
-  const refereeDetailsMandatory = refereeDetailsRequired(personaEnabled, "driver");
+  const { required: refereesRequired } = useRefereeRequirement();
+  const refereeDetailsMandatory =
+    refereesRequired && refereeDetailsRequired(personaEnabled, "driver");
   const driverSchema = useMemo(
-    () => buildDriverSchema(refereeDetailsMandatory),
-    [refereeDetailsMandatory],
+    () => buildDriverSchema(refereeDetailsMandatory, refereesRequired),
+    [refereeDetailsMandatory, refereesRequired],
   );
+
 
   const {
     register,
