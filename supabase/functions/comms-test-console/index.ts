@@ -24,6 +24,8 @@ import {
   RENTMAIKAR_NUMBERS,
 } from "../_shared/comms-endpoints.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
+import { twilioCredentialsConfigured, twilioRequest } from "../_shared/twilio-auth.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -123,9 +125,7 @@ serve(async (req: Request): Promise<Response> => {
 
     // ─── Voice test call (Twilio — voice only) ───
     if (channel === "call") {
-      const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
-      const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-      if (!accountSid || !authToken) {
+      if (!twilioCredentialsConfigured()) {
         return json({ ok: false, routing, error: "Twilio voice credentials are not configured" }, 400);
       }
       const twiml =
@@ -134,25 +134,25 @@ serve(async (req: Request): Promise<Response> => {
         }</Say></Response>`;
 
       const params = new URLSearchParams({ To: to, From: sender, Twiml: twiml });
-      const res = await fetch(
-        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: "Basic " + btoa(`${accountSid}:${authToken}`),
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: params.toString(),
-        },
-      );
-      const payload = await res.json().catch(() => ({}));
+      const res = await twilioRequest("/Calls.json", { method: "POST", body: params });
+      const payload = res.payload as { sid?: string; status?: string; message?: string; code?: number };
       if (!res.ok) {
         console.error(`[comms-test-console] twilio call failed [${res.status}]`, payload);
+        const hint = res.status === 401
+          ? "Twilio rejected the credentials (error 20003). Check TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN, or set TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET for this account."
+          : undefined;
         return json(
-          { ok: false, routing, status: res.status, error: payload.message ?? "Twilio call failed" },
+          {
+            ok: false,
+            routing,
+            status: res.status,
+            credential_tried: res.credential,
+            error: [payload.message ?? "Twilio call failed", hint].filter(Boolean).join(" — "),
+          },
           res.status,
         );
       }
+
 
       await logMessagingEvent(supabase, {
         channel: "voip",
