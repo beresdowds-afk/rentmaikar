@@ -27,6 +27,8 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePersonaEnabled } from "@/hooks/usePersonaEnabled";
 import { refereeDetailsRequired } from "@/lib/referee-requirements";
+import { useRefereeRequirement } from "@/hooks/useRefereeRequirement";
+
 import {
   ADDRESS_MIN,
   ADDRESS_MAX,
@@ -40,6 +42,13 @@ const toE164 = (v: string) => {
   return t.startsWith("+") ? t.replace(/\s+/g, "") : `+${t.replace(/[^\d]/g, "")}`;
 };
 
+/** E.164 for supplied values, null when the (optional) field was left blank. */
+const optionalE164 = (v?: string) => {
+  const t = (v || "").trim();
+  return t ? toE164(t) : null;
+};
+
+
 const refereePhone = (label: string) =>
   z
     .string()
@@ -51,19 +60,30 @@ const refereePhone = (label: string) =>
     }, `Enter ${label}'s phone with country code, e.g. +2348012345678`);
 
 /**
- * Referee address/email are conditionally required — see
- * `refereeDetailsRequired()`. `detailsRequired` is driven by the admin's
- * identity-gating switch plus the application type.
+ * Referee fields are conditionally required.
+ *
+ * `refereesRequired` is the admin switch (`driver_referee_requirement`): when
+ * off, every referee field is optional and the section is hidden so drivers
+ * register freely. `detailsRequired` additionally demands address/email —
+ * see `refereeDetailsRequired()`.
  */
-const buildDriverSchema = (detailsRequired: boolean) => {
+const buildDriverSchema = (detailsRequired: boolean, refereesRequired: boolean) => {
+  const optionalText = (max: number) => z.string().max(max, "Too long").optional().or(z.literal(""));
+  const refereeName = (label: string) =>
+    refereesRequired
+      ? z.string().min(2, `${label} name is required`).max(100, "Name too long")
+      : optionalText(100);
+  const refereePhoneField = (label: string) =>
+    refereesRequired ? refereePhone(label) : optionalText(20);
   const refereeAddress = (label: string) =>
-    detailsRequired
+    detailsRequired && refereesRequired
       ? z.string().min(5, `${label} home address is required`).max(200, "Address too long")
-      : z.string().max(200, "Address too long").optional().or(z.literal(""));
+      : optionalText(200);
   const refereeEmail = (label: string) =>
-    detailsRequired
+    detailsRequired && refereesRequired
       ? z.string().min(1, `${label} email is required`).email("Invalid email address").max(255)
       : z.string().email("Invalid email address").max(255).optional().or(z.literal(""));
+
 
   return z.object({
   firstName: z.string().min(2, "First name is required").max(50, "First name too long"),
@@ -84,23 +104,23 @@ const buildDriverSchema = (detailsRequired: boolean) => {
   zipCode: z.string().min(3, "ZIP/Postal code is required").max(10, "ZIP code too long"),
   rideshareApproval: z.array(z.string()).min(1, "Select at least one platform"),
   hasDriverLicense: z.boolean().refine(val => val, "Driver license is required"),
-  // Referee 1 — phones must be E.164; the DB enforces this with a trigger, so
-  // validate here to surface an inline error instead of a failed submission.
-  // Home address and email are conditionally required.
-  referee1Name: z.string().min(2, "Referee 1 name is required").max(100, "Name too long"),
-  referee1Phone: refereePhone("Referee 1"),
+  // Referees — only mandatory while the admin keeps the referee requirement on.
+  // Phones must be E.164; the DB enforces this with a trigger.
+  referee1Name: refereeName("Referee 1"),
+  referee1Phone: refereePhoneField("Referee 1"),
   referee1Address: refereeAddress("Referee 1"),
   referee1Email: refereeEmail("Referee 1"),
   // Referee 2
-  referee2Name: z.string().min(2, "Referee 2 name is required").max(100, "Name too long"),
-  referee2Phone: refereePhone("Referee 2"),
+  referee2Name: refereeName("Referee 2"),
+  referee2Phone: refereePhoneField("Referee 2"),
   referee2Address: refereeAddress("Referee 2"),
   referee2Email: refereeEmail("Referee 2"),
   // Referee 3
-  referee3Name: z.string().min(2, "Referee 3 name is required").max(100, "Name too long"),
-  referee3Phone: refereePhone("Referee 3"),
+  referee3Name: refereeName("Referee 3"),
+  referee3Phone: refereePhoneField("Referee 3"),
   referee3Address: refereeAddress("Referee 3"),
   referee3Email: refereeEmail("Referee 3"),
+
 
   // Security deposit acknowledgment
   securityDepositAcknowledged: z.boolean().refine(val => val, "You must acknowledge the security deposit requirement"),
@@ -151,13 +171,18 @@ const DriverRegistration = () => {
   const alreadySignedIn = !!user;
 
   // Referee address/email are only mandatory while the admin keeps identity
-  // (Persona) gating switched on for an application type that needs vetting.
+  // (Persona) gating switched on for an application type that needs vetting,
+  // and referees themselves are only mandatory while the admin's referee
+  // requirement switch is on.
   const { enabled: personaEnabled } = usePersonaEnabled();
-  const refereeDetailsMandatory = refereeDetailsRequired(personaEnabled, "driver");
+  const { required: refereesRequired } = useRefereeRequirement();
+  const refereeDetailsMandatory =
+    refereesRequired && refereeDetailsRequired(personaEnabled, "driver");
   const driverSchema = useMemo(
-    () => buildDriverSchema(refereeDetailsMandatory),
-    [refereeDetailsMandatory],
+    () => buildDriverSchema(refereeDetailsMandatory, refereesRequired),
+    [refereeDetailsMandatory, refereesRequired],
   );
+
 
   const {
     register,
@@ -278,18 +303,19 @@ const DriverRegistration = () => {
         region: data.country === 'usa' ? 'usa' : 'nigeria',
         rideshare_platforms: data.rideshareApproval,
         has_driver_license: data.hasDriverLicense,
-        referee1_name: data.referee1Name,
-        referee1_phone: toE164(data.referee1Phone),
+        referee1_name: data.referee1Name || null,
+        referee1_phone: optionalE164(data.referee1Phone),
         referee1_address: data.referee1Address || null,
         referee1_email: data.referee1Email || null,
-        referee2_name: data.referee2Name,
-        referee2_phone: toE164(data.referee2Phone),
+        referee2_name: data.referee2Name || null,
+        referee2_phone: optionalE164(data.referee2Phone),
         referee2_address: data.referee2Address || null,
         referee2_email: data.referee2Email || null,
-        referee3_name: data.referee3Name,
-        referee3_phone: toE164(data.referee3Phone),
+        referee3_name: data.referee3Name || null,
+        referee3_phone: optionalE164(data.referee3Phone),
         referee3_address: data.referee3Address || null,
         referee3_email: data.referee3Email || null,
+
 
         security_deposit_acknowledged: data.securityDepositAcknowledged,
         agreed_terms: data.agreeTerms,
@@ -639,7 +665,8 @@ const DriverRegistration = () => {
                 )}
               </div>
 
-              {/* Referees Section */}
+              {/* Referees Section — hidden while the admin keeps referees optional */}
+              {refereesRequired && (
               <div className="space-y-4 pt-4 border-t border-border">
                 <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <User className="w-5 h-5 text-accent" />
@@ -651,6 +678,7 @@ const DriverRegistration = () => {
                   {refereeDetailsMandatory ? "also required for identity verification" : "optional"}.
 
                 </p>
+
 
                 {[1, 2, 3].map((num) => (
                   <div key={num} className="p-4 rounded-lg border border-border space-y-3">
@@ -733,6 +761,8 @@ const DriverRegistration = () => {
                   </div>
                 ))}
               </div>
+              )}
+
 
               {/* Requirements */}
               <div className="space-y-4 pt-4 border-t border-border">
