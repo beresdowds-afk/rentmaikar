@@ -29,8 +29,8 @@ import { RegistrationErrorAlert } from "@/components/registration/RegistrationEr
 import { useCategoryYearSpecs } from "@/hooks/useCategoryYearSpecs";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/AuthContext";
-import {
 import { useRegionSamples } from "@/hooks/useRegionSamples";
+import {
   ADDRESS_MAX,
   addressHint as buildAddressHint,
   optionalAddressSchema,
