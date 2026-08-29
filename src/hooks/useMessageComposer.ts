@@ -211,18 +211,19 @@ export const useSendComposedMessage = () => {
     const body = input.body.trim();
     if (!body) {
       notifyError('Write a message first');
-      return false;
+      return { saved: false, delivered: false, reason: 'Empty message' };
     }
     const email = input.email?.trim() || '';
     const phone = input.phone?.trim() || '';
     if (input.channel === 'email' && !email) {
       notifyError('An email address is required');
-      return false;
+      return { saved: false, delivered: false, reason: 'Missing email address' };
     }
     if (input.channel !== 'email' && !phone) {
       notifyError('A phone number is required');
-      return false;
+      return { saved: false, delivered: false, reason: 'Missing phone number' };
     }
+
 
 
     setIsSending(true);
