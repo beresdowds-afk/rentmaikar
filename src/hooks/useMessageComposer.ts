@@ -168,7 +168,24 @@ export interface BulkProgress {
   completed: number;
   sent: number;
   failed: number;
+  failures?: { recipient: string; reason: string }[];
 }
+
+/** Outcome of a single composed send: whether the provider actually took it. */
+export interface SendOutcome {
+  /** The message row exists in the unified inbox thread. */
+  saved: boolean;
+  /** The channel provider accepted the message for delivery. */
+  delivered: boolean;
+  reason?: string;
+}
+
+/** inbox_conversations.region only accepts these two values. */
+const toConversationRegion = (country: string | undefined, phone: string): 'USA' | 'Nigeria' => {
+  if (country === 'USA') return 'USA';
+  if (country === 'Nigeria' || country === 'NGN' || country === 'NG') return 'Nigeria';
+  return phone.replace(/[^\d+]/g, '').startsWith('+234') ? 'Nigeria' : 'USA';
+};
 
 /**
  * Sends an outbound message on any channel, reusing the unified inbox as the
@@ -181,27 +198,32 @@ export const useSendComposedMessage = () => {
   const [isSending, setIsSending] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<BulkProgress | null>(null);
 
-  const send = async (input: SendComposedInput, opts?: { silent?: boolean }): Promise<boolean> => {
+  const send = async (
+    input: SendComposedInput,
+    opts?: { silent?: boolean },
+  ): Promise<SendOutcome> => {
     const silent = opts?.silent === true;
     const notifyError = (msg: string) => {
       if (!silent) toast.error(msg);
     };
 
+
     const body = input.body.trim();
     if (!body) {
       notifyError('Write a message first');
-      return false;
+      return { saved: false, delivered: false, reason: 'Empty message' };
     }
     const email = input.email?.trim() || '';
     const phone = input.phone?.trim() || '';
     if (input.channel === 'email' && !email) {
       notifyError('An email address is required');
-      return false;
+      return { saved: false, delivered: false, reason: 'Missing email address' };
     }
     if (input.channel !== 'email' && !phone) {
       notifyError('A phone number is required');
-      return false;
+      return { saved: false, delivered: false, reason: 'Missing phone number' };
     }
+
 
 
     setIsSending(true);
@@ -234,7 +256,7 @@ export const useSendComposedMessage = () => {
             subject: input.subject?.trim() || 'Message from Rentmaikar',
             status: 'pending',
             priority: 'normal',
-            region: country === 'USA' ? 'USA' : 'NGN',
+            region: toConversationRegion(country, phone),
           })
           .select('id')
           .single();
@@ -259,46 +281,48 @@ export const useSendComposedMessage = () => {
         .eq('id', conversationId);
 
       // ── Dispatch on the wire ──
-      if (input.channel === 'email') {
-        const { data, error } = await supabase.functions.invoke('send-email-reply', {
-          body: {
-            conversationId,
-            messageContent: body,
-            recipientEmail: email,
-            subject: input.subject?.trim() || undefined,
-          },
-        });
-        if (error || data?.success === false) {
-          console.error('Email dispatch failed:', error || data);
-          if (!silent) toast.warning('Message saved to the thread, but email delivery failed');
-          return true;
-        }
-      } else {
-        const { data, error } = await supabase.functions.invoke('send-inbox-reply', {
-          body: {
-            conversationId,
-            messageContent: body,
-            channel: input.channel,
-            recipientPhone: phone,
-          },
-        });
-        if (error || data?.success === false) {
-          console.error('Message dispatch failed:', error || data);
-          if (!silent) toast.warning('Message saved to the thread, but delivery failed');
-          return true;
-        }
+      const dispatch =
+        input.channel === 'email'
+          ? await supabase.functions.invoke('send-email-reply', {
+              body: {
+                conversationId,
+                messageContent: body,
+                recipientEmail: email,
+                subject: input.subject?.trim() || undefined,
+              },
+            })
+          : await supabase.functions.invoke('send-inbox-reply', {
+              body: {
+                conversationId,
+                messageContent: body,
+                channel: input.channel,
+                recipientPhone: phone,
+              },
+            });
+
+      const { data, error } = dispatch;
+      if (error || data?.success === false) {
+        console.error('Dispatch failed:', error || data);
+        const reason =
+          (data as { error?: string } | null)?.error ||
+          (error as { message?: string } | null)?.message ||
+          'Provider rejected the message';
+        notifyError(`Saved to the thread, but delivery failed: ${reason}`);
+        return { saved: true, delivered: false, reason };
       }
 
       if (!silent) toast.success(`Message sent via ${input.channel.toUpperCase()}`);
-      return true;
+      return { saved: true, delivered: true };
     } catch (err) {
       console.error('Failed to send message:', err);
-      notifyError('Could not send the message');
-      return false;
+      const reason = err instanceof Error ? err.message : 'Unknown error';
+      notifyError(`Could not send the message: ${reason}`);
+      return { saved: false, delivered: false, reason };
     } finally {
       if (!silent) setIsSending(false);
     }
   };
+
 
   /**
    * Fan a single composed message out to many recipients, one thread each, so
@@ -327,36 +351,53 @@ export const useSendComposedMessage = () => {
 
     let sent = 0;
     let failed = 0;
+    const failures: { recipient: string; reason: string }[] = [];
 
     // Sequential dispatch keeps us inside provider rate limits.
     for (const recipient of usable) {
-      const ok = await send(
+      const label =
+        recipient.full_name || recipient.email || recipient.phone || 'Unknown recipient';
+      const outcome = await send(
         {
           ...input,
           recipientUserId: recipient.user_id || null,
-          recipientName: recipient.full_name || recipient.email || recipient.phone || 'User',
+          recipientName: label,
           email: recipient.email || '',
           phone: recipient.phone || '',
         },
         { silent: true },
       );
-      if (ok) sent += 1;
-      else failed += 1;
-      setBulkProgress({ total: usable.length, completed: sent + failed, sent, failed });
+      // Only a provider-accepted message counts as sent.
+      if (outcome.delivered) {
+        sent += 1;
+      } else {
+        failed += 1;
+        failures.push({ recipient: label, reason: outcome.reason || 'Delivery failed' });
+      }
+      setBulkProgress({ total: usable.length, completed: sent + failed, sent, failed, failures });
     }
 
     setIsSending(false);
 
     if (failed === 0) {
       toast.success(
-        `Sent to ${sent} recipient${sent === 1 ? '' : 's'} via ${input.channel.toUpperCase()}` +
+        `Delivered to ${sent} recipient${sent === 1 ? '' : 's'} via ${input.channel.toUpperCase()}` +
           (skipped ? ` · ${skipped} skipped (missing contact)` : ''),
       );
     } else {
-      toast.warning(`Sent ${sent}, failed ${failed}${skipped ? `, skipped ${skipped}` : ''}`);
+      toast.error(
+        `Delivered ${sent}, failed ${failed}${skipped ? `, skipped ${skipped}` : ''}`,
+        {
+          description: failures
+            .slice(0, 5)
+            .map((f) => `${f.recipient}: ${f.reason}`)
+            .join('\n') + (failures.length > 5 ? `\n+${failures.length - 5} more` : ''),
+        },
+      );
     }
 
-    return { total: usable.length, completed: sent + failed, sent, failed };
+    return { total: usable.length, completed: sent + failed, sent, failed, failures };
+
   };
   return { send, sendBulk, isSending, bulkProgress };
 
