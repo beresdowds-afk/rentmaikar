@@ -41,3 +41,27 @@ export async function ensureMediaPermissions(options?: { silent?: boolean }): Pr
     return false;
   }
 }
+
+let sharedAudioContext: AudioContext | null = null;
+
+/**
+ * Keep a resumed AudioContext alive so speaker output is unlocked for the
+ * whole duration of an in-app call (iOS/Safari suspend audio otherwise).
+ */
+export async function unlockAudioOutput(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  try {
+    const AC =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return false;
+    if (!sharedAudioContext || sharedAudioContext.state === "closed") {
+      sharedAudioContext = new AC();
+    }
+    if (sharedAudioContext.state === "suspended") await sharedAudioContext.resume();
+    return sharedAudioContext.state === "running";
+  } catch {
+    return false;
+  }
+}
+
