@@ -2,13 +2,17 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, PhoneForwarded, MessageSquare, Mail, Phone, PowerOff, Send } from 'lucide-react';
+import { Loader2, PhoneForwarded, MessageSquare, Mail, Phone, PowerOff, Send, Globe } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export const FORWARDING_CONFIG_KEY = 'forwarding_config';
 export const OUTBOUND_CONFIG_KEY = 'outbound_channel_config';
+export const MASTER_ENDPOINT_KEY = 'master_communications_endpoint';
 
 export interface ForwardingConfig {
   call: boolean;
@@ -22,6 +26,26 @@ interface InboundConfig extends ForwardingConfig {
   link_outbound?: boolean;
 }
 
+interface MasterEndpoint {
+  voice: string;
+  sms: string;
+  whatsapp: string;
+}
+
+const MASTER_DEFAULTS: MasterEndpoint = {
+  voice: '+2349163072576',
+  sms: '+2349163072576',
+  whatsapp: '+2349163072576',
+};
+
+/** Customer-facing aliases — these are never termination points. */
+const PUBLIC_NUMBERS: { number: string; role: string; provider: string; published: boolean }[] = [
+  { number: '+1 608 384 3932', role: 'USA contact — voice & SMS', provider: 'Twilio (voice) / Sent (SMS)', published: true },
+  { number: '+1 380 600 3018', role: 'USA dial-out only — never publish', provider: 'Twilio', published: false },
+  { number: '+1 608 548 9220', role: 'USA messaging & WhatsApp', provider: 'Sent.dm', published: true },
+  { number: '+234 916 307 2576', role: 'Master Communications Endpoint', provider: 'Sent.dm / Twilio voice', published: true },
+];
+
 type ChannelKey = keyof ForwardingConfig;
 type RegionKey = 'USA' | 'Nigeria';
 type OutboundConfig = Record<RegionKey, ForwardingConfig>;
@@ -30,6 +54,7 @@ const DEFAULTS: ForwardingConfig = { call: false, sms: false, whatsapp: false, e
 const ALL_ON: ForwardingConfig = { call: true, sms: true, whatsapp: true, email: true };
 const OUTBOUND_DEFAULTS: OutboundConfig = { USA: { ...ALL_ON }, Nigeria: { ...ALL_ON } };
 const REGIONS: RegionKey[] = ['USA', 'Nigeria'];
+
 
 const CHANNELS: { key: ChannelKey; label: string; description: string; outboundDescription: string; Icon: typeof Phone }[] = [
   {
