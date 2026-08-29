@@ -256,7 +256,7 @@ export const useSendComposedMessage = () => {
             subject: input.subject?.trim() || 'Message from Rentmaikar',
             status: 'pending',
             priority: 'normal',
-            region: country === 'USA' ? 'USA' : 'NGN',
+            region: toConversationRegion(country, phone),
           })
           .select('id')
           .single();
@@ -281,46 +281,48 @@ export const useSendComposedMessage = () => {
         .eq('id', conversationId);
 
       // ── Dispatch on the wire ──
-      if (input.channel === 'email') {
-        const { data, error } = await supabase.functions.invoke('send-email-reply', {
-          body: {
-            conversationId,
-            messageContent: body,
-            recipientEmail: email,
-            subject: input.subject?.trim() || undefined,
-          },
-        });
-        if (error || data?.success === false) {
-          console.error('Email dispatch failed:', error || data);
-          if (!silent) toast.warning('Message saved to the thread, but email delivery failed');
-          return true;
-        }
-      } else {
-        const { data, error } = await supabase.functions.invoke('send-inbox-reply', {
-          body: {
-            conversationId,
-            messageContent: body,
-            channel: input.channel,
-            recipientPhone: phone,
-          },
-        });
-        if (error || data?.success === false) {
-          console.error('Message dispatch failed:', error || data);
-          if (!silent) toast.warning('Message saved to the thread, but delivery failed');
-          return true;
-        }
+      const dispatch =
+        input.channel === 'email'
+          ? await supabase.functions.invoke('send-email-reply', {
+              body: {
+                conversationId,
+                messageContent: body,
+                recipientEmail: email,
+                subject: input.subject?.trim() || undefined,
+              },
+            })
+          : await supabase.functions.invoke('send-inbox-reply', {
+              body: {
+                conversationId,
+                messageContent: body,
+                channel: input.channel,
+                recipientPhone: phone,
+              },
+            });
+
+      const { data, error } = dispatch;
+      if (error || data?.success === false) {
+        console.error('Dispatch failed:', error || data);
+        const reason =
+          (data as { error?: string } | null)?.error ||
+          (error as { message?: string } | null)?.message ||
+          'Provider rejected the message';
+        notifyError(`Saved to the thread, but delivery failed: ${reason}`);
+        return { saved: true, delivered: false, reason };
       }
 
       if (!silent) toast.success(`Message sent via ${input.channel.toUpperCase()}`);
-      return true;
+      return { saved: true, delivered: true };
     } catch (err) {
       console.error('Failed to send message:', err);
-      notifyError('Could not send the message');
-      return false;
+      const reason = err instanceof Error ? err.message : 'Unknown error';
+      notifyError(`Could not send the message: ${reason}`);
+      return { saved: false, delivered: false, reason };
     } finally {
       if (!silent) setIsSending(false);
     }
   };
+
 
   /**
    * Fan a single composed message out to many recipients, one thread each, so
