@@ -270,7 +270,7 @@ export const useSendComposedMessage = () => {
         });
         if (error || data?.success === false) {
           console.error('Email dispatch failed:', error || data);
-          toast.warning('Message saved to the thread, but email delivery failed');
+          if (!silent) toast.warning('Message saved to the thread, but email delivery failed');
           return true;
         }
       } else {
@@ -284,21 +284,80 @@ export const useSendComposedMessage = () => {
         });
         if (error || data?.success === false) {
           console.error('Message dispatch failed:', error || data);
-          toast.warning('Message saved to the thread, but delivery failed');
+          if (!silent) toast.warning('Message saved to the thread, but delivery failed');
           return true;
         }
       }
 
-      toast.success(`Message sent via ${input.channel.toUpperCase()}`);
+      if (!silent) toast.success(`Message sent via ${input.channel.toUpperCase()}`);
       return true;
     } catch (err) {
       console.error('Failed to send message:', err);
-      toast.error('Could not send the message');
+      notifyError('Could not send the message');
       return false;
     } finally {
-      setIsSending(false);
+      if (!silent) setIsSending(false);
     }
   };
 
-  return { send, isSending };
+  /**
+   * Fan a single composed message out to many recipients, one thread each, so
+   * every reply still lands in its own unified-inbox conversation.
+   */
+  const sendBulk = async (
+    recipients: BulkRecipient[],
+    input: Omit<SendComposedInput, 'recipientUserId' | 'recipientName' | 'email' | 'phone'>,
+  ): Promise<BulkProgress> => {
+    const usable = recipients.filter((r) =>
+      input.channel === 'email' ? !!r.email?.trim() : !!r.phone?.trim(),
+    );
+    const skipped = recipients.length - usable.length;
+
+    if (usable.length === 0) {
+      toast.error(
+        input.channel === 'email'
+          ? 'None of the selected contacts have an email address'
+          : 'None of the selected contacts have a phone number',
+      );
+      return { total: recipients.length, completed: 0, sent: 0, failed: recipients.length };
+    }
+
+    setIsSending(true);
+    setBulkProgress({ total: usable.length, completed: 0, sent: 0, failed: 0 });
+
+    let sent = 0;
+    let failed = 0;
+
+    // Sequential dispatch keeps us inside provider rate limits.
+    for (const recipient of usable) {
+      const ok = await send(
+        {
+          ...input,
+          recipientUserId: recipient.user_id || null,
+          recipientName: recipient.full_name || recipient.email || recipient.phone || 'User',
+          email: recipient.email || '',
+          phone: recipient.phone || '',
+        },
+        { silent: true },
+      );
+      if (ok) sent += 1;
+      else failed += 1;
+      setBulkProgress({ total: usable.length, completed: sent + failed, sent, failed });
+    }
+
+    setIsSending(false);
+
+    if (failed === 0) {
+      toast.success(
+        `Sent to ${sent} recipient${sent === 1 ? '' : 's'} via ${input.channel.toUpperCase()}` +
+          (skipped ? ` · ${skipped} skipped (missing contact)` : ''),
+      );
+    } else {
+      toast.warning(`Sent ${sent}, failed ${failed}${skipped ? `, skipped ${skipped}` : ''}`);
+    }
+
+    return { total: usable.length, completed: sent + failed, sent, failed };
+  };
+  return { send, sendBulk, isSending, bulkProgress };
+
 };
