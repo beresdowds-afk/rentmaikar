@@ -40,6 +40,13 @@ const toE164 = (v: string) => {
   return t.startsWith("+") ? t.replace(/\s+/g, "") : `+${t.replace(/[^\d]/g, "")}`;
 };
 
+/** E.164 for supplied values, null when the (optional) field was left blank. */
+const optionalE164 = (v?: string) => {
+  const t = (v || "").trim();
+  return t ? toE164(t) : null;
+};
+
+
 const refereePhone = (label: string) =>
   z
     .string()
