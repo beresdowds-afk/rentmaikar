@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { requireServiceRole } from "../_shared/auth-guards.ts";
+import { requireServiceRoleOrRole } from "../_shared/auth-guards.ts";
 import { whatchimp } from "../_shared/whatchimp-client.ts";
 import { manychat } from "../_shared/manychat-client.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
@@ -17,8 +17,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-  const _authError = requireServiceRole(req);
-  if (_authError) return _authError;
+  const _auth = await requireServiceRoleOrRole(req, ["admin","admin_assistant","legal_support","iot_support","vehicle_support","insurance_support"]);
+  if (_auth instanceof Response) return _auth;
 
 
   try {
