@@ -46,6 +46,7 @@ services:
       - SENT_SENDER_ID=${SENT_SENDER_ID:-Rentmaikar}
       - SENT_WHATSAPP_NUMBER=${SENT_WHATSAPP_NUMBER:-}
       - SENT_WEBHOOK_SECRET=${SENT_WEBHOOK_SECRET:-}
+      - SENT_WEBHOOK_URL=${SENT_WEBHOOK_URL:-https://staging.rentmaikar.com/api/webhooks/sent}
       - SENT_SANDBOX_MODE=${SENT_SANDBOX_MODE:-true}
       # Telephony & Carriers
       - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}

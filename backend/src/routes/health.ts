@@ -14,9 +14,11 @@ healthRouter.get("/", (req: Request, res: Response) => {
 });
 
 healthRouter.get("/diagnostics", (req: Request, res: Response) => {
+  const publicBackendUrl = process.env.PUBLIC_BACKEND_URL || "https://staging.rentmaikar.com";
   res.json({
     cpaas_gateway: {
       sent_dm: Boolean(process.env.SENT_API_KEY),
+      sent_webhook_url: process.env.SENT_WEBHOOK_URL || `${publicBackendUrl}/api/webhooks/sent`,
       twilio: Boolean(process.env.TWILIO_ACCOUNT_SID),
       termii: Boolean(process.env.TERMII_API_KEY),
     },
