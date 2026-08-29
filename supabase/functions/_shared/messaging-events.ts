@@ -3,7 +3,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 export type MessagingChannel = "sms" | "whatsapp" | "email" | "voip" | "push";
-export type MessagingProvider = "twilio" | "termii" | "resend";
+export type MessagingProvider = "twilio" | "termii" | "resend" | "sent";
 export type MessagingDirection = "inbound" | "outbound";
 
 export type MessagingEventType =
