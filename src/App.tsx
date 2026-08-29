@@ -96,6 +96,7 @@ const AdminVehicleImportsPage = lazy(() => import("./pages/admin/AdminVehicleImp
 const HologramDeviceDetailPage = lazy(() => import("./pages/admin/HologramDeviceDetailPage"));
 const AdminNotificationRetryPage = lazy(() => import("./pages/admin/AdminNotificationRetryPage"));
 const AdminSmsConsentAuditPage = lazy(() => import("./pages/admin/AdminSmsConsentAuditPage"));
+const MessagingCenterPage = lazy(() => import("./pages/admin/MessagingCenterPage"));
 
 const AdminVehicleQueuePage = lazy(() => import("./pages/admin/AdminVehicleQueuePage"));
 const UserUuidAssignmentsPage = lazy(() => import("./pages/admin/UserUuidAssignmentsPage"));
@@ -501,6 +502,14 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <AdminNotificationRetryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/messaging"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
+                        <MessagingCenterPage />
                       </ProtectedRoute>
                     }
                   />
