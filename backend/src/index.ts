@@ -51,5 +51,6 @@ app.use((req, res) => {
 // Server boot
 app.listen(PORT, () => {
   console.log(`🚀 Rentmaikar Backend API Gateway running on port ${PORT}`);
+  console.log(`🌐 Public backend URL: ${PUBLIC_BACKEND_URL}`);
   console.log(`📡 Environment: ${process.env.NODE_ENV || "development"}`);
 });
