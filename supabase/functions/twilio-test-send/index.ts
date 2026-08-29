@@ -296,7 +296,14 @@ serve(async (req) => {
       return json({ error: "Failed to list phone numbers", status: listRes.status, twilio: list }, listRes.status);
     }
     const results: Array<Record<string, unknown>> = [];
+    // Optional filter so a single number can be repaired without touching the
+    // dial-out-only number or any Studio Flow it is attached to.
+    const onlyNumbers = Array.isArray((body as { phoneNumbers?: string[] }).phoneNumbers)
+      ? (body as { phoneNumbers: string[] }).phoneNumbers.map((p) => p.trim())
+      : null;
     for (const n of list.incoming_phone_numbers ?? []) {
+      if (onlyNumbers && !onlyNumbers.includes(n.phone_number)) continue;
+
       const params = new URLSearchParams({
         VoiceUrl: `${baseUrl}/incoming-call-forward`,
         VoiceMethod: "POST",
