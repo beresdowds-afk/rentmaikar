@@ -99,6 +99,8 @@ const AdminSmsConsentAuditPage = lazy(() => import("./pages/admin/AdminSmsConsen
 const MessagingCenterPage = lazy(() => import("./pages/admin/MessagingCenterPage"));
 
 const AdminVehicleQueuePage = lazy(() => import("./pages/admin/AdminVehicleQueuePage"));
+const AdminProximityMatchingPage = lazy(() => import("./pages/admin/AdminProximityMatchingPage"));
+
 const UserUuidAssignmentsPage = lazy(() => import("./pages/admin/UserUuidAssignmentsPage"));
 const TraccarCommandAuditPage = lazy(() => import("./pages/admin/TraccarCommandAuditPage"));
 const OnboardingDiagnosticsPage = lazy(() => import("./pages/admin/OnboardingDiagnosticsPage"));
