@@ -211,6 +211,8 @@ export async function sentHealth(): Promise<{
   sender_id: string;
   whatsapp_sender: string | null;
   whatsapp_ready: boolean;
+  /** Whether Sent.dm itself reports the WhatsApp channel as provisioned. */
+  provider_whatsapp_configured?: boolean;
   enabled_channels: SentChannel[];
   latency_ms?: number;
   account?: unknown;
@@ -247,8 +249,11 @@ export async function sentHealth(): Promise<{
       lastStatus = res.status;
       if (res.status === 404) continue;
       const account = await res.json().catch(() => null);
+      const providerWa = (account as any)?.data?.channels?.whatsapp?.configured;
       return {
         ...base,
+        provider_whatsapp_configured:
+          typeof providerWa === "boolean" ? providerWa : undefined,
         healthy: res.ok,
         status_code: res.status,
         latency_ms: Date.now() - started,

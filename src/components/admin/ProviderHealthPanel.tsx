@@ -153,6 +153,7 @@ interface SentProbe {
   sender_id: string;
   whatsapp_sender: string | null;
   whatsapp_ready: boolean;
+  provider_whatsapp_configured?: boolean;
   enabled_channels: string[];
   latency_ms?: number;
   error?: string;
@@ -240,6 +241,9 @@ export const ProviderHealthPanel = () => {
                     {sentProbe.data?.whatsapp_ready ? 'ready' : 'not ready'}
                   </strong>
                   {sentProbe.data?.whatsapp_sender ? ` · ${sentProbe.data.whatsapp_sender}` : ''}
+                  {sentProbe.data?.provider_whatsapp_configured === false
+                    ? ' · channel not provisioned at Sent.dm'
+                    : ''}
                 </span>
                 <span>
                   Sender ID: <strong className="text-foreground">{sentProbe.data?.sender_id ?? '—'}</strong>
