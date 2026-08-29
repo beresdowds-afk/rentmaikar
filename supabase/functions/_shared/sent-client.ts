@@ -93,9 +93,17 @@ export function sentWhatsappSender(): string {
   );
 }
 
-function senderForChannel(channel: SentChannel, override?: string): string {
+function senderForChannel(channel: SentChannel, recipient?: string, override?: string): string {
   if (override) return override;
   if (channel === "whatsapp") return sentWhatsappSender() || sentSenderId();
+  // US carriers reject alphanumeric sender IDs — use the numeric sender.
+  if (recipient && normalizeRecipient("sms", recipient).startsWith("+1")) {
+    return (
+      Deno.env.get("SENT_SMS_NUMBER") ||
+      Deno.env.get("SENT_WHATSAPP_NUMBER") ||
+      sentSenderId()
+    );
+  }
   return sentSenderId();
 }
 
@@ -158,7 +166,7 @@ export async function sendViaSent(req: SentSendRequest): Promise<SentSendResult>
             }
           : {}),
         ...(req.channel !== "sms" && media.length ? { media: media.map((url) => ({ url })) } : {}),
-        sender_id: senderForChannel(req.channel, req.senderId),
+        sender_id: senderForChannel(req.channel, req.to, req.senderId),
         metadata: {
           ...(req.metadata ?? {}),
           platform: "Rentmaikar",
