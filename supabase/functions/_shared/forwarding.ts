@@ -101,12 +101,17 @@ export async function getForwardingDestination(
     value = (regionRows?.[0]?.[column] as string | undefined)?.trim() || null;
   }
 
-  if (!value) return null;
-  if (channel === "email") return value;
+  if (channel === "email") return value ?? null;
+
+  // Final fallback: the global Master Communications Endpoint.
+  if (!value) {
+    return await getMasterEndpointFor(supabase, channel as CommsChannel);
+  }
   // Phone numbers are stored with display spacing — normalise to E.164.
   const digits = value.replace(/[^\d+]/g, "");
   return digits.startsWith("+") ? digits : `+${digits}`;
 }
+
 
 /** Build the TwiML used by the inbound-call forwarding webhook. */
 export function buildCallForwardTwiml(destination: string | null, callerId?: string | null): string {
