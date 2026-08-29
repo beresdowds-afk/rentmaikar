@@ -9,6 +9,7 @@ export default function MessagingCenterPage() {
       <Seo
         title="Messaging Center | Rentmaikar Admin"
         description="Draft, send, respond to and review email, SMS and WhatsApp messages from one place."
+        path="/admin/messaging"
       />
       <header className="space-y-1">
         <h1 className="flex items-center gap-2 text-2xl font-bold">
