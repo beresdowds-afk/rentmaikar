@@ -144,13 +144,10 @@ vi.mock("@/contexts/AuthContext", () => {
   };
 });
 
-// Module-scope analytics mock (vi.mock is hoisted; it must not live in a component).
-const trackOnboardingEvent = vi.hoisted(() => vi.fn());
-vi.mock('@/lib/onboarding-analytics', () => ({ trackOnboardingEvent }));
-
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() } }));
 
 import PortalRouteGuard from '@/components/onboarding/PortalRouteGuard';
+import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 
 // Minimal insurance checkout that mirrors what the real portal does:
 // calls `subscribe-to-plan` with an Idempotency-Key body so repeated taps
