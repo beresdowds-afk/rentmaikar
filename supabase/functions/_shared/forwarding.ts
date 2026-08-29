@@ -1,13 +1,27 @@
 // ════════════════════════════════════════════════════════════
-// Unified inbound forwarding engine
+// Unified inbound forwarding engine — the RentMaikar routing layer
 //
-// Forwards inbound customer communications (call / SMS / WhatsApp / email)
-// to the human destinations configured per region in `contact_settings`
-// (with `platform_regions.forwarding_sms|forwarding_whatsapp` as fallback).
+// Public numbers are customer-facing aliases. Providers (Twilio for voice,
+// Sent.dm for SMS/WhatsApp) deliver the inbound leg to this backend, which
+// then dispatches its OWN outbound leg to the regional destination in
+// `contact_settings` (falling back to `platform_regions.forwarding_*` and
+// finally the global Master Communications Endpoint). Messaging is never
+// carrier-forwarded.
 //
 // Master on/off switches live in `platform_kv_settings` under the
 // `forwarding_config` key so admins can toggle each channel at runtime.
 // ════════════════════════════════════════════════════════════
+
+import { sendViaSent } from "./sent-client.ts";
+import { twilioMessagingEnabled } from "./twilio-messaging-guard.ts";
+import {
+  type CommsChannel,
+  getMasterEndpointFor,
+  publicSenderFor,
+  RENTMAIKAR_NUMBERS,
+} from "./comms-endpoints.ts";
+
+
 
 // deno-lint-ignore no-explicit-any
 type Supa = any;
@@ -101,12 +115,26 @@ export async function getForwardingDestination(
     value = (regionRows?.[0]?.[column] as string | undefined)?.trim() || null;
   }
 
-  if (!value) return null;
-  if (channel === "email") return value;
+  if (channel === "email") return value ?? null;
+
+  // Final fallback: the global Master Communications Endpoint.
+  if (!value) {
+    return await getMasterEndpointFor(supabase, channel as CommsChannel);
+  }
   // Phone numbers are stored with display spacing — normalise to E.164.
   const digits = value.replace(/[^\d+]/g, "");
-  return digits.startsWith("+") ? digits : `+${digits}`;
+  const e164 = digits.startsWith("+") ? digits : `+${digits}`;
+
+  // Our own public aliases are not valid termination points — a message sent
+  // there would loop back into this webhook. Route to the master endpoint.
+  const ours = Object.values(RENTMAIKAR_NUMBERS) as string[];
+  if (ours.includes(e164) && e164 !== RENTMAIKAR_NUMBERS.masterEndpoint) {
+    return await getMasterEndpointFor(supabase, channel as CommsChannel);
+  }
+  return e164;
 }
+
+
 
 /** Build the TwiML used by the inbound-call forwarding webhook. */
 export function buildCallForwardTwiml(destination: string | null, callerId?: string | null): string {
@@ -141,13 +169,20 @@ interface ForwardMessageArgs {
 }
 
 /**
- * Forward an inbound SMS / WhatsApp message to the configured staff number.
+ * Forward an inbound SMS / WhatsApp message to the Master Communications
+ * Endpoint (or the region's configured destination).
+ *
+ * This is an application-level outbound leg dispatched by the backend — NOT
+ * carrier forwarding. The customer's original number is preserved in the
+ * message envelope and in `messaging_events` so replies can be sent from the
+ * correct public US sender. Sent.dm is the messaging provider; Twilio is
+ * voice-only unless messaging approval is explicitly enabled.
  * Never throws — forwarding must not break inbound ingestion.
  */
 export async function forwardInboundMessage(
   supabase: Supa,
   args: ForwardMessageArgs,
-): Promise<{ forwarded: boolean; reason?: string }> {
+): Promise<{ forwarded: boolean; reason?: string; destination?: string; provider?: string }> {
   try {
     if (!(await isForwardingEnabled(supabase, args.channel))) {
       return { forwarded: false, reason: "disabled" };
@@ -160,23 +195,51 @@ export async function forwardInboundMessage(
       return { forwarded: false, reason: "loop_guard" };
     }
 
+    const isWa = args.channel === "whatsapp";
+    const label = args.senderName ? `${args.senderName} (${cleanFrom})` : cleanFrom;
+    const text = `[Forwarded ${isWa ? "WhatsApp" : "SMS"} from ${label}]\n${args.body || "(no text)"}`
+      .slice(0, 1500);
+
+    // ─── Outbound leg via Sent.dm (global messaging default) ───
+    const sent = await sendViaSent({
+      to: destination,
+      channel: isWa ? "whatsapp" : "sms",
+      text,
+      senderId: publicSenderFor(isWa ? "whatsapp" : "sms"),
+      ...(args.mediaUrl ? { mediaUrls: [args.mediaUrl] } : {}),
+      metadata: {
+        purpose: "inbound_forward",
+        customer_phone: cleanFrom,
+        endpoint: destination,
+        region: normaliseRegion(args.region),
+      },
+    });
+
+    if (sent.ok) {
+      console.log(`[forwarding] ${args.channel} forwarded to master endpoint via Sent.dm`);
+      return { forwarded: true, destination, provider: "sent" };
+    }
+
+    console.error(`[forwarding] Sent.dm forward failed: ${sent.error ?? "unknown"}`);
+
+    // ─── Twilio fallback (blocked unless messaging approval is granted) ───
+    if (!twilioMessagingEnabled()) {
+      return { forwarded: false, reason: `sent_failed:${sent.error ?? "unknown"}`, destination };
+    }
+
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twilioNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
     const whatsappNumber = Deno.env.get("TWILIO_WHATSAPP_NUMBER") || twilioNumber;
     if (!accountSid || !authToken) return { forwarded: false, reason: "twilio_not_configured" };
 
-    const isWa = args.channel === "whatsapp";
     const fromNumber = isWa ? `whatsapp:${whatsappNumber}` : twilioNumber;
     if (!fromNumber) return { forwarded: false, reason: "no_sender_number" };
-
-    const label = args.senderName ? `${args.senderName} (${cleanFrom})` : cleanFrom;
-    const text = `[Forwarded ${isWa ? "WhatsApp" : "SMS"} from ${label}]\n${args.body || "(no text)"}`;
 
     const params = new URLSearchParams({
       To: isWa ? `whatsapp:${destination}` : destination,
       From: fromNumber,
-      Body: text.slice(0, 1500),
+      Body: text,
     });
     if (args.mediaUrl) params.append("MediaUrl", args.mediaUrl);
 
@@ -195,14 +258,14 @@ export async function forwardInboundMessage(
     if (!res.ok) {
       const detail = await res.text();
       console.error(`[forwarding] ${args.channel} forward failed [${res.status}]: ${detail}`);
-      return { forwarded: false, reason: `provider_error_${res.status}` };
+      return { forwarded: false, reason: `provider_error_${res.status}`, destination };
     }
-    console.log(`[forwarding] ${args.channel} message forwarded to configured destination`);
-    return { forwarded: true };
+    return { forwarded: true, destination, provider: "twilio" };
   } catch (e) {
     console.error("[forwarding] unexpected error forwarding message:", e);
     return { forwarded: false, reason: "exception" };
   }
+
 }
 
 interface ForwardEmailArgs {

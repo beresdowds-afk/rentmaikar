@@ -2,13 +2,17 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, PhoneForwarded, MessageSquare, Mail, Phone, PowerOff, Send } from 'lucide-react';
+import { Loader2, PhoneForwarded, MessageSquare, Mail, Phone, PowerOff, Send, Globe } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export const FORWARDING_CONFIG_KEY = 'forwarding_config';
 export const OUTBOUND_CONFIG_KEY = 'outbound_channel_config';
+export const MASTER_ENDPOINT_KEY = 'master_communications_endpoint';
 
 export interface ForwardingConfig {
   call: boolean;
@@ -22,6 +26,26 @@ interface InboundConfig extends ForwardingConfig {
   link_outbound?: boolean;
 }
 
+interface MasterEndpoint {
+  voice: string;
+  sms: string;
+  whatsapp: string;
+}
+
+const MASTER_DEFAULTS: MasterEndpoint = {
+  voice: '+2349163072576',
+  sms: '+2349163072576',
+  whatsapp: '+2349163072576',
+};
+
+/** Customer-facing aliases — these are never termination points. */
+const PUBLIC_NUMBERS: { number: string; role: string; provider: string; published: boolean }[] = [
+  { number: '+1 608 384 3932', role: 'USA contact — voice & SMS', provider: 'Twilio (voice) / Sent (SMS)', published: true },
+  { number: '+1 380 600 3018', role: 'USA dial-out only — never publish', provider: 'Twilio', published: false },
+  { number: '+1 608 548 9220', role: 'USA messaging & WhatsApp', provider: 'Sent.dm', published: true },
+  { number: '+234 916 307 2576', role: 'Master Communications Endpoint', provider: 'Sent.dm / Twilio voice', published: true },
+];
+
 type ChannelKey = keyof ForwardingConfig;
 type RegionKey = 'USA' | 'Nigeria';
 type OutboundConfig = Record<RegionKey, ForwardingConfig>;
@@ -30,6 +54,7 @@ const DEFAULTS: ForwardingConfig = { call: false, sms: false, whatsapp: false, e
 const ALL_ON: ForwardingConfig = { call: true, sms: true, whatsapp: true, email: true };
 const OUTBOUND_DEFAULTS: OutboundConfig = { USA: { ...ALL_ON }, Nigeria: { ...ALL_ON } };
 const REGIONS: RegionKey[] = ['USA', 'Nigeria'];
+
 
 const CHANNELS: { key: ChannelKey; label: string; description: string; outboundDescription: string; Icon: typeof Phone }[] = [
   {
@@ -65,6 +90,7 @@ const CHANNELS: { key: ChannelKey; label: string; description: string; outboundD
 export const ForwardingSettingsPanel = () => {
   const [config, setConfig] = useState<InboundConfig>(DEFAULTS);
   const [outbound, setOutbound] = useState<OutboundConfig>(OUTBOUND_DEFAULTS);
+  const [master, setMaster] = useState<MasterEndpoint>(MASTER_DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
@@ -73,23 +99,30 @@ export const ForwardingSettingsPanel = () => {
       const { data, error } = await supabase
         .from('platform_kv_settings')
         .select('key, value')
-        .in('key', [FORWARDING_CONFIG_KEY, OUTBOUND_CONFIG_KEY]);
+        .in('key', [FORWARDING_CONFIG_KEY, OUTBOUND_CONFIG_KEY, MASTER_ENDPOINT_KEY]);
       if (error) {
         toast.error('Could not load channel settings');
       } else {
         const rows = (data ?? []) as { key: string; value: unknown }[];
         const inb = rows.find((r) => r.key === FORWARDING_CONFIG_KEY)?.value as Partial<InboundConfig> | undefined;
         const out = rows.find((r) => r.key === OUTBOUND_CONFIG_KEY)?.value as Partial<Record<RegionKey, Partial<ForwardingConfig>>> | undefined;
+        const end = rows.find((r) => r.key === MASTER_ENDPOINT_KEY)?.value as Partial<MasterEndpoint> | string | undefined;
         setConfig({ ...DEFAULTS, ...(inb ?? {}) });
         setOutbound({
           USA: { ...ALL_ON, ...(out?.USA ?? {}) },
           Nigeria: { ...ALL_ON, ...(out?.Nigeria ?? {}) },
         });
+        if (typeof end === 'string') {
+          setMaster({ voice: end, sms: end, whatsapp: end });
+        } else if (end) {
+          setMaster({ ...MASTER_DEFAULTS, ...end });
+        }
       }
       setLoading(false);
     };
     load();
   }, []);
+
 
   const persist = async (key: string, value: unknown) => {
     const { error } = await supabase
@@ -150,10 +183,36 @@ export const ForwardingSettingsPanel = () => {
     toast.success(`All outbound channels paused for ${region}`);
   };
 
+  const saveMaster = async () => {
+    const normalise = (v: string) => {
+      const digits = v.replace(/[^\d+]/g, '');
+      return digits.startsWith('+') ? digits : `+${digits}`;
+    };
+    const next: MasterEndpoint = {
+      voice: normalise(master.voice),
+      sms: normalise(master.sms),
+      whatsapp: normalise(master.whatsapp),
+    };
+    if (Object.values(next).some((n) => n.length < 8)) {
+      toast.error('Enter each endpoint in full international format');
+      return;
+    }
+    setSavingKey('master');
+    const error = await persist(MASTER_ENDPOINT_KEY, next);
+    setSavingKey(null);
+    if (error) {
+      toast.error('Failed to save the master endpoint');
+      return;
+    }
+    setMaster(next);
+    toast.success('Master Communications Endpoint updated');
+  };
+
   const pausedCount = REGIONS.reduce(
     (acc, r) => acc + CHANNELS.filter((c) => outbound[r][c.key] === false).length,
     0,
   );
+
 
   return (
     <Card>
@@ -179,7 +238,9 @@ export const ForwardingSettingsPanel = () => {
             <TabsList className="mb-4">
               <TabsTrigger value="inbound">Inbound forwarding</TabsTrigger>
               <TabsTrigger value="outbound">Outbound kill-switches</TabsTrigger>
+              <TabsTrigger value="endpoints">Endpoints</TabsTrigger>
             </TabsList>
+
 
             <TabsContent value="inbound" className="space-y-3">
               <div className="flex items-start justify-between gap-4 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
@@ -281,7 +342,61 @@ export const ForwardingSettingsPanel = () => {
                 switch, so re-enable SMS before users can sign in by OTP in that region.
               </p>
             </TabsContent>
+
+            <TabsContent value="endpoints" className="space-y-5">
+              <div className="rounded-lg border border-border p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-sm">Master Communications Endpoint</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Public numbers are customer-facing aliases only. Providers hand every inbound conversation to the
+                  RentMaikar router, which stores the customer's original number and dispatches its own outbound leg to
+                  these endpoints. Nothing is carrier-forwarded.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {(['voice', 'sms', 'whatsapp'] as const).map((ch) => (
+                    <div key={ch} className="space-y-1.5">
+                      <Label htmlFor={`master-${ch}`} className="text-xs capitalize">{ch}</Label>
+                      <Input
+                        id={`master-${ch}`}
+                        value={master[ch]}
+                        inputMode="tel"
+                        placeholder="+2349163072576"
+                        onChange={(e) => setMaster({ ...master, [ch]: e.target.value })}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <Button size="sm" onClick={saveMaster} disabled={savingKey === 'master'}>
+                  {savingKey === 'master' && <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />}
+                  Save endpoints
+                </Button>
+              </div>
+
+              <div className="rounded-lg border border-border p-3 space-y-2">
+                <span className="font-medium text-sm">Public number registry</span>
+                {PUBLIC_NUMBERS.map((n) => (
+                  <div key={n.number} className="flex items-start justify-between gap-3 rounded-md border border-border/70 p-2.5">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-mono">{n.number}</span>
+                        <Badge variant={n.published ? 'default' : 'destructive'} className="text-[10px]">
+                          {n.published ? 'Published' : 'Internal only'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{n.role}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{n.provider}</span>
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground">
+                  Twilio carries voice only. SMS and WhatsApp route through Sent.dm (Termii for Nigeria).
+                </p>
+              </div>
+            </TabsContent>
           </Tabs>
+
         )}
       </CardContent>
     </Card>
