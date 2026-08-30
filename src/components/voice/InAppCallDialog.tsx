@@ -65,6 +65,9 @@ export function InAppCallDialog({
     toggleMute,
     toggleSpeakerphone,
     selectOutputRoute,
+    preferences,
+    setAutoSwitchToHeadset,
+    headsetConnected,
     reinitializeAudio,
     initialize,
   } = useVoiceDevice();
@@ -189,6 +192,19 @@ export function InAppCallDialog({
               </Button>
             </div>
           )}
+
+          <label className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>
+              Auto-switch to headset
+              {headsetConnected ? " · headset connected" : ""}
+            </span>
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={preferences.autoSwitchToHeadset}
+              onChange={(e) => setAutoSwitchToHeadset(e.target.checked)}
+            />
+          </label>
 
           <Button
             variant="link"
