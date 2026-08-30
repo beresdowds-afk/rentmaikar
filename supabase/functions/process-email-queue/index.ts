@@ -9,6 +9,8 @@ async function getSendLovableEmail() {
   return sendLovableEmailFn
 }
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { resendSendEmail } from '../_shared/resend-gateway.ts'
+
 
 const MAX_RETRIES = 5
 const DEFAULT_BATCH_SIZE = 10
