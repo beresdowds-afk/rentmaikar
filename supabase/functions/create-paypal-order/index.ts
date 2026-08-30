@@ -2,6 +2,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { requireAuthenticatedUser } from "../_shared/auth-guards.ts";
+import { appPath } from "../_shared/app-url.ts";
 import { resolvePaymentContext } from "../_shared/resolve-payment-context.ts";
 import { claimIdempotencyKey, completeIdempotencyKey, duplicateResponse, resolveIdempotencyKey } from "../_shared/payment-idempotency.ts";
 import { describeError, getPayPalConfig, PayPalError, payPalRequest,
@@ -116,8 +117,8 @@ Deno.serve(async (req) => {
             brand_name: "Rentmaikar",
             landing_page: "NO_PREFERENCE",
             user_action: "PAY_NOW",
-            return_url: `${Deno.env.get("APP_URL") ?? ""}/payment/success`,
-            cancel_url: `${Deno.env.get("APP_URL") ?? ""}/payment/cancel`,
+            return_url: appPath("payment/success"),
+            cancel_url: appPath("payment/cancel"),
           },
         },
       });
