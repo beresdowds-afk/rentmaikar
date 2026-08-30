@@ -107,6 +107,92 @@ export default function AdminEmailDeliveryPage() {
     },
   });
 
+  // Unfiltered 24h window so the summary cards never depend on the active tab.
+  const { data: recentAll } = useQuery({
+    queryKey: ["email-send-log-24h"],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("email_send_log")
+        .select("status")
+        .gte("created_at", since)
+        .limit(2000);
+      if (error) throw error;
+      return (data ?? []) as { status: string }[];
+    },
+  });
+
+  // Live queue depths (queued + dead-lettered) straight from the queues.
+  const { data: queueStats } = useQuery({
+    queryKey: ["email-queue-stats"],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("email_queue_stats");
+      if (error) throw error;
+      return (data ?? {}) as QueueStats;
+    },
+  });
+
+  const { data: dlqRetries } = useQuery({
+    queryKey: ["email-dlq-retry-state"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("email_dlq_retry_state")
+        .select("id, queue_name, message_key, recipient_email, template_name, attempts, last_error, next_attempt_at, paused")
+        .order("updated_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as DlqRetryRow[];
+    },
+  });
+
+  const { data: providerAlerts } = useQuery({
+    queryKey: ["email-provider-alerts"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("email_provider_alerts")
+        .select("id, function_name, status, recipient_email, subject, provider_response, created_at")
+        .is("acknowledged_at", null)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []) as ProviderAlertRow[];
+    },
+  });
+
+  const [retrying, setRetrying] = useState(false);
+
+  const runDlqRetry = async () => {
+    setRetrying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reprocess-email-dlq", { body: {} });
+      if (error) throw error;
+      const res = data as { requeued?: number; paused?: number; skipped?: boolean } | null;
+      if (res?.skipped) toast.info("A retry sweep is already running.");
+      else toast.success(`Requeued ${res?.requeued ?? 0} message(s); ${res?.paused ?? 0} paused.`);
+      queryClient.invalidateQueries({ queryKey: ["email-queue-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["email-dlq-retry-state"] });
+      queryClient.invalidateQueries({ queryKey: ["email-send-log"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Retry sweep failed");
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  const acknowledgeAlert = async (id: string) => {
+    const { error } = await supabase
+      .from("email_provider_alerts")
+      .update({ acknowledged_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) toast.error(error.message);
+    else queryClient.invalidateQueries({ queryKey: ["email-provider-alerts"] });
+  };
+
+
   // Realtime: refresh as soon as the queue worker or webhooks write outcomes.
   useEffect(() => {
     const channel = supabase
