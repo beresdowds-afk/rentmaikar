@@ -287,7 +287,124 @@ export default function AdminEmailDeliveryPage() {
             <CardTitle className="text-2xl">{stats.suppressed}</CardTitle>
           </CardHeader>
         </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1.5">
+              <Loader2 className="h-4 w-4" /> In queue (now)
+            </CardDescription>
+            <CardTitle className="text-2xl">{stats.queued}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1.5">
+              <MailX className="h-4 w-4" /> Dead-letter (now)
+            </CardDescription>
+            <CardTitle className="text-2xl">{stats.dlqQueued}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1.5">
+              <Activity className="h-4 w-4" /> DLQ events (24h)
+            </CardDescription>
+            <CardTitle className="text-2xl">{stats.dlq}</CardTitle>
+          </CardHeader>
+        </Card>
       </div>
+
+      {(providerAlerts ?? []).length > 0 && (
+        <Card className="border-destructive/40">
+          <CardHeader>
+            <CardTitle className="text-base text-destructive">
+              Provider authorization failures
+            </CardTitle>
+            <CardDescription>
+              Resend rejected these sends with 401/403 — the key or sender domain needs attention.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {(providerAlerts ?? []).map((a) => (
+                <li key={a.id} className="rounded-lg border p-3 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary" className="bg-destructive/15 text-destructive">
+                      {a.status}
+                    </Badge>
+                    <Badge variant="outline">{a.function_name}</Badge>
+                    <span className="min-w-0 flex-1 truncate">{a.recipient_email ?? "—"}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {new Date(a.created_at).toLocaleString()}
+                    </span>
+                    <Button size="sm" variant="ghost" onClick={() => acknowledgeAlert(a.id)}>
+                      Acknowledge
+                    </Button>
+                  </div>
+                  {a.subject && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">Subject: {a.subject}</p>
+                  )}
+                  {a.provider_response && (
+                    <div className="mt-1 break-words rounded bg-destructive/10 p-2 text-[11px] text-destructive">
+                      {a.provider_response.slice(0, 400)}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader className="gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Dead-letter retries</CardTitle>
+              <CardDescription>
+                Automatic exponential-backoff retries. Entries pause after 5 attempts and alert the
+                team.
+              </CardDescription>
+            </div>
+            <Button size="sm" onClick={runDlqRetry} disabled={retrying}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${retrying ? "animate-spin" : ""}`} />
+              Retry now
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {(dlqRetries ?? []).length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              No dead-letter retries recorded.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {(dlqRetries ?? []).map((d) => (
+                <li key={d.id} className="rounded-lg border p-3 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      variant="secondary"
+                      className={d.paused ? "bg-destructive/15 text-destructive" : "bg-muted"}
+                    >
+                      {d.paused ? "paused" : `attempt ${d.attempts}`}
+                    </Badge>
+                    <Badge variant="outline">{d.template_name ?? d.queue_name}</Badge>
+                    <span className="min-w-0 flex-1 truncate">{d.recipient_email ?? "—"}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      next {new Date(d.next_attempt_at).toLocaleString()}
+                    </span>
+                  </div>
+                  {d.last_error && (
+                    <div className="mt-1 break-words rounded bg-muted p-2 text-[11px]">
+                      {d.last_error}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
 
       <Card>
         <CardHeader className="gap-3">
