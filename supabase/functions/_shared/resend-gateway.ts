@@ -11,6 +11,8 @@
  * Lovable connector gateway (same path `process-email-queue` already uses).
  */
 
+import { reportResendAuthFailure } from "./email-alerts.ts";
+
 const RESEND_DIRECT_URL = "https://api.resend.com";
 const RESEND_GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
 
