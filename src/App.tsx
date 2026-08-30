@@ -96,6 +96,7 @@ const AdminVehicleImportsPage = lazy(() => import("./pages/admin/AdminVehicleImp
 const HologramDeviceDetailPage = lazy(() => import("./pages/admin/HologramDeviceDetailPage"));
 const AdminNotificationRetryPage = lazy(() => import("./pages/admin/AdminNotificationRetryPage"));
 const AdminSmsConsentAuditPage = lazy(() => import("./pages/admin/AdminSmsConsentAuditPage"));
+const AdminEmailDeliveryPage = lazy(() => import("./pages/admin/AdminEmailDeliveryPage"));
 const MessagingCenterPage = lazy(() => import("./pages/admin/MessagingCenterPage"));
 
 const AdminVehicleQueuePage = lazy(() => import("./pages/admin/AdminVehicleQueuePage"));
