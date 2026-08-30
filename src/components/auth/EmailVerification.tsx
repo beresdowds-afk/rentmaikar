@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { idempotencyHeaders, resetEmailIdempotencyKey } from '@/lib/email-idempotency';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,6 +67,7 @@ export const EmailVerification = ({
     if (!emailOverride) {
       const { data, error } = await supabase.functions.invoke('send-verification-email', {
         body: { redirect_to: target },
+        headers: idempotencyHeaders('email_verification', email),
       });
       if (!error) {
         const res = data as { already_verified?: boolean } | null;
@@ -76,6 +78,7 @@ export const EmailVerification = ({
           return;
         }
         setLastSentAt(new Date());
+        resetEmailIdempotencyKey('email_verification', email);
         toast.success('Verification email sent via Resend. Check your inbox.');
         return;
       }
