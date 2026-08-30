@@ -54,9 +54,59 @@ export function resendHeaders(key?: string | null): Record<string, string> {
 }
 
 /**
- * Optional verified-sender override. While the branded sender domain is still
- * pending DNS verification, `RESEND_FALLBACK_FROM` keeps sends deliverable.
+ * The only domain verified for sending in Resend. Anything sent from an
+ * unverified domain (e.g. `@rentmaikar.com`, `@mail.rentmaikar.com`) is
+ * rejected with `403 domain is not verified`, which is why outbound email was
+ * failing. Overridable with `RESEND_SENDING_DOMAIN`.
+ */
+export function resendSendingDomain(): string {
+  return Deno.env.get("RESEND_SENDING_DOMAIN") || "notify.rentmaikar.com";
+}
+
+/** Split `Name <local@domain>` (or a bare address) into its parts. */
+function parseAddress(value: string): { name?: string; local: string; domain: string } | null {
+  const match = value.match(/^\s*(?:"?([^"<]*?)"?\s*)?<?([^<>@\s]+)@([^<>@\s]+?)>?\s*$/);
+  if (!match) return null;
+  return { name: match[1]?.trim() || undefined, local: match[2], domain: match[3] };
+}
+
+/**
+ * Rewrites a sender onto the verified sending domain, preserving the display
+ * name and mailbox. `RESEND_FALLBACK_FROM` still wins when explicitly set.
  */
 export function resendFrom(from: string): string {
-  return Deno.env.get("RESEND_FALLBACK_FROM") || from;
+  const override = Deno.env.get("RESEND_FALLBACK_FROM");
+  const candidate = override || from;
+  const parsed = parseAddress(candidate);
+  if (!parsed) return candidate;
+  const domain = resendSendingDomain();
+  if (parsed.domain.toLowerCase() === domain.toLowerCase()) return candidate;
+  const address = `${parsed.local}@${domain}`;
+  return parsed.name ? `${parsed.name} <${address}>` : address;
 }
+
+type ResendBody = Record<string, unknown> & { from?: string; reply_to?: string | string[] };
+
+/**
+ * Single transport for every outbound Resend email. Normalises the sender onto
+ * the verified domain and keeps the original address as `reply_to` so replies
+ * still reach the human mailbox.
+ */
+export function resendSendEmail(body: ResendBody, key?: string | null): Promise<Response> {
+  const apiKey = key ?? Deno.env.get("RESEND_API_KEY") ?? "";
+  const originalFrom = typeof body.from === "string" ? body.from : "";
+  const from = originalFrom ? resendFrom(originalFrom) : originalFrom;
+  const replyTo = body.reply_to ??
+    (originalFrom && from !== originalFrom ? originalFrom : undefined);
+
+  return fetch(resendEmailsUrl(apiKey), {
+    method: "POST",
+    headers: resendHeaders(apiKey),
+    body: JSON.stringify({
+      ...body,
+      ...(from ? { from } : {}),
+      ...(replyTo ? { reply_to: replyTo } : {}),
+    }),
+  });
+}
+
