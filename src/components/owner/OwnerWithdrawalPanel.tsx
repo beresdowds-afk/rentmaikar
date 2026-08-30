@@ -14,6 +14,7 @@ import { Banknote, CheckCircle2, Clock, Loader2, RefreshCw, ShieldCheck, XCircle
 import { toast } from "sonner";
 import { WithdrawalAuthorizationGate } from "@/components/payments/WithdrawalAuthorizationGate";
 import { useRegionSamples } from '@/hooks/useRegionSamples';
+import { readEdgeError } from "@/lib/edge-invoke";
 
 type PayoutAccount = {
   id: string;
@@ -85,6 +86,23 @@ export const OwnerWithdrawalPanel = () => {
   const [accountNumber, setAccountNumber] = useState("");
   const [paypalEmail, setPaypalEmail] = useState("");
   const [savingAccount, setSavingAccount] = useState(false);
+  // Payout provider readiness — a missing provider key is the single biggest
+  // cause of "withdrawal failed" with no explanation.
+  const [providerReady, setProviderReady] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.functions.invoke("get-psp-config").then(({ data }) => {
+      if (cancelled || !data) return;
+      const cfg = data as { paystack?: { configured?: boolean }; paypal?: { configured?: boolean } };
+      setProviderReady(
+        currency === "NGN" ? !!cfg.paystack?.configured : !!cfg.paypal?.configured,
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currency]);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -128,7 +146,7 @@ export const OwnerWithdrawalPanel = () => {
         const { data, error } = await supabase.functions.invoke("create-paystack-recipient", {
           body: { bankCode, accountNumber, currency: "NGN", countryCode: "NG", makeDefault: accounts.length === 0 },
         });
-        if (error) throw error;
+        if (error) throw new Error(await readEdgeError(error, "Could not save payout account"));
         if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
       } else {
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(paypalEmail)) throw new Error("Enter a valid PayPal email");
@@ -162,7 +180,7 @@ export const OwnerWithdrawalPanel = () => {
       const { data, error } = await supabase.functions.invoke(fn, {
         body: { amount: numericAmount, payoutAccountId: selected.id, authorizationId },
       });
-      if (error) throw error;
+      if (error) throw new Error(await readEdgeError(error, "Withdrawal failed"));
       const err = (data as { error?: string })?.error;
       if (err) throw new Error(err);
       toast.success("Withdrawal submitted — funds are on their way.");
@@ -198,6 +216,17 @@ export const OwnerWithdrawalPanel = () => {
             <p className="text-sm text-muted-foreground">Available balance</p>
             <p className="text-3xl font-bold text-green-600">{money(balance, currency)}</p>
           </div>
+
+          {providerReady === false && (
+            <Alert variant="destructive">
+              <AlertTitle>Payouts are temporarily unavailable</AlertTitle>
+              <AlertDescription>
+                {currency === "NGN"
+                  ? "Bank transfers are not configured yet. Our team has been notified — your balance stays safe until payouts are re-enabled."
+                  : "PayPal payouts are not configured yet. Our team has been notified — your balance stays safe until payouts are re-enabled."}
+              </AlertDescription>
+            </Alert>
+          )}
 
           {accounts.length === 0 ? (
             <div className="space-y-3">
