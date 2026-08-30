@@ -1,5 +1,6 @@
 // Initiates a subscription checkout for a plan (Paystack for NGN, PayPal for USD).
 // Driver/user identity is ALWAYS derived from JWT. Enforces eligibility & insurance-requires-training rule.
+import { appPath, appUrl as appBaseUrl } from "../_shared/app-url.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
@@ -120,7 +121,7 @@ Deno.serve(async (req) => {
 
       const reference = `sub_${crypto.randomUUID().replace(/-/g, "")}`;
       const amountMinor = toMinorUnits(Number(plan.price));
-      const appUrl = Deno.env.get("APP_URL") ?? "https://rentmaikar.com";
+      const appUrl = appBaseUrl();
       const returnUrl = callback_url ?? `${appUrl}/subscriptions/success`;
 
       const paymentId = await createSubscriptionPayment(supa, {
@@ -238,8 +239,8 @@ Deno.serve(async (req) => {
       if (!tokRes.ok) return json({ error: "PayPal token error", details: await tokRes.text() }, 502);
       const { access_token } = await tokRes.json();
 
-      const returnBase = callback_url ?? `${Deno.env.get("APP_URL") ?? ""}/subscriptions/success`;
-      const cancelBase = `${Deno.env.get("APP_URL") ?? ""}/subscriptions`;
+      const returnBase = callback_url ?? appPath("subscriptions/success");
+      const cancelBase = appPath("subscriptions");
 
       const orderRes = await fetch(`${base}/v2/checkout/orders`, {
         method: "POST",

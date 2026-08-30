@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
+import { readEdgeError } from "@/lib/edge-invoke";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useRegion } from "@/contexts/RegionContext";
@@ -79,7 +80,11 @@ export function PayPalCheckout({
         });
 
         if (error || captureData?.status !== "COMPLETED") {
-          throw new Error(error?.message ?? captureData?.error ?? "PayPal capture failed");
+          throw new Error(
+            error
+              ? await readEdgeError(error, "PayPal capture failed")
+              : (captureData?.error ?? "PayPal capture failed"),
+          );
         }
 
         toast.success("Payment completed via PayPal", {

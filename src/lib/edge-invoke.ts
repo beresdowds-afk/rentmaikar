@@ -38,3 +38,38 @@ export async function invokeEdge<T = unknown>(
   inflight.set(key, run);
   return run as Promise<EdgeResult<T>>;
 }
+
+/**
+ * Extract the real failure message from a Supabase functions error.
+ *
+ * `supabase.functions.invoke` collapses every non-2xx into the opaque
+ * "Edge Function returned a non-2xx status code", which hid actionable
+ * payment/withdrawal errors ("Paystack not configured", "Amount exceeds
+ * available balance") from users. This reads the response body instead.
+ */
+export async function readEdgeError(error: unknown, fallback = "Request failed"): Promise<string> {
+  const ctx = (error as { context?: Response } | null)?.context;
+  if (ctx && typeof ctx.text === "function") {
+    try {
+      const raw = await ctx.clone().text();
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as { error?: unknown; message?: string };
+          const err = parsed.error;
+          if (typeof err === "string" && err.trim()) return err;
+          if (err && typeof err === "object") {
+            const flat = Object.values(err as Record<string, unknown>).flat().filter(Boolean);
+            if (flat.length) return flat.join(", ");
+          }
+          if (parsed.message) return parsed.message;
+        } catch {
+          return raw.slice(0, 300);
+        }
+      }
+    } catch {
+      // fall through to the generic message
+    }
+  }
+  const msg = (error as { message?: string } | null)?.message;
+  return msg && !/non-2xx status code/i.test(msg) ? msg : fallback;
+}
