@@ -8,8 +8,15 @@ import {
   MicPermissionState,
   resolveAudioOutput,
   unlockAudioOutput,
+  watchAudioDevices,
   watchMicPermission,
 } from "@/lib/media-permissions";
+import {
+  AudioPreferences,
+  DEFAULT_AUDIO_PREFERENCES,
+  loadAudioPreferences,
+  saveAudioPreferences,
+} from "@/lib/audio-preferences";
 import { logAudioEvent, setDiagnosticsCallId } from "@/lib/audio-diagnostics";
 
 interface TwilioAudioHelper {
@@ -88,6 +95,12 @@ interface UseVoiceDeviceResult {
   setMuted: (muted: boolean) => void;
   toggleSpeakerphone: () => Promise<void>;
   selectOutputRoute: (route: AudioOutputRoute) => Promise<void>;
+  /** Saved routing/mute preferences, restored automatically on every call. */
+  preferences: AudioPreferences;
+  /** Turn automatic headset/Bluetooth switching on or off (persisted). */
+  setAutoSwitchToHeadset: (enabled: boolean) => void;
+  /** True when a headset/Bluetooth output is currently connected. */
+  headsetConnected: boolean;
   /** Re-request permissions and re-apply audio routing after a failure. */
   reinitializeAudio: () => Promise<boolean>;
   acceptIncoming: () => void;
@@ -97,6 +110,7 @@ interface UseVoiceDeviceResult {
 export function useVoiceDevice(): UseVoiceDeviceResult {
   const deviceRef = useRef<Device | null>(null);
   const callRef = useRef<Call | null>(null);
+  const prefsRef = useRef<AudioPreferences>(DEFAULT_AUDIO_PREFERENCES);
   const routeRef = useRef<AudioOutputRoute>("default");
   const [status, setStatus] = useState<VoiceDeviceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +119,20 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
   const [micPermission, setMicPermission] = useState<MicPermissionState>("unknown");
   const [outputRoute, setOutputRoute] = useState<AudioOutputRoute>("default");
   const [outputLabel, setOutputLabel] = useState("System default");
+  const [preferences, setPreferences] = useState<AudioPreferences>(DEFAULT_AUDIO_PREFERENCES);
+  const [headsetConnected, setHeadsetConnected] = useState(false);
+
+  // Restore the user's saved routing/mute choice for this device.
+  useEffect(() => {
+    const stored = loadAudioPreferences();
+    prefsRef.current = stored;
+    routeRef.current = stored.route;
+    setPreferences(stored);
+    setOutputRoute(stored.route);
+    logAudioEvent("routing", `Restored saved audio route "${stored.route}"`, {
+      detail: { muted: stored.muted, autoSwitchToHeadset: stored.autoSwitchToHeadset },
+    });
+  }, []);
 
   // Keep permission state fresh, including out-of-band browser setting changes.
   useEffect(() => {
