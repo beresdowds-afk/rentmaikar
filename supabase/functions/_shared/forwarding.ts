@@ -16,12 +16,12 @@ import { sendViaSent } from "./sent-client.ts";
 import { evaluateHop, formatTrace } from "./comms-correlation.ts";
 import { twilioMessagingEnabled } from "./twilio-messaging-guard.ts";
 import {
-import { resendEmailsUrl, resendHeaders } from "./resend-gateway.ts";
   type CommsChannel,
   getMasterEndpointFor,
   publicSenderFor,
   RENTMAIKAR_NUMBERS,
 } from "./comms-endpoints.ts";
+import { resendEmailsUrl, resendHeaders } from "./resend-gateway.ts";
 
 export { evaluateHop, formatTrace, getLoopPolicy, LOOP_POLICY_KEY, parseTrace, stripTrace } from "./comms-correlation.ts";
 

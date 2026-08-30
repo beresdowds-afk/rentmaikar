@@ -6,7 +6,6 @@ import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { outboundPausedResponse } from "../_shared/channel-guard.ts";
 import { logOutboundDecision } from "../_shared/outbound-audit.ts";
 import {
-import { resendEmailsUrl, resendHeaders } from "../_shared/resend-gateway.ts";
   welcomeDriverEmail,
   welcomeOwnerEmail,
   otpEmail,
@@ -51,6 +50,7 @@ import { resendEmailsUrl, resendHeaders } from "../_shared/resend-gateway.ts";
   eventNotificationEmail,
 
 } from "../_shared/email-templates.ts";
+import { resendEmailsUrl, resendHeaders } from "../_shared/resend-gateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
