@@ -222,16 +222,20 @@ export default function AdminEmailDeliveryPage() {
   }, [queryClient]);
 
   const stats = useMemo(() => {
-    const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
-    const recent = (rows ?? []).filter((r) => new Date(r.created_at).getTime() >= dayAgo);
-    const by = (s: string) => recent.filter((r) => r.status === s).length;
+    const by = (s: string) => (recentAll ?? []).filter((r) => r.status === s).length;
     return {
       sent: by("sent") + by("delivered"),
       pending: by("pending"),
       failed: by("failed") + by("bounced"),
+      dlq: by("dlq"),
       suppressed: (suppressed ?? []).length,
+      queued:
+        (queueStats?.auth_emails ?? 0) + (queueStats?.transactional_emails ?? 0),
+      dlqQueued:
+        (queueStats?.auth_emails_dlq ?? 0) + (queueStats?.transactional_emails_dlq ?? 0),
     };
-  }, [rows, suppressed]);
+  }, [recentAll, suppressed, queueStats]);
+
 
   return (
     <div className="container mx-auto max-w-6xl space-y-6 p-4 md:p-8">
