@@ -111,10 +111,13 @@ Deno.serve(async (req) => {
 
     if (send.error) {
       console.error("send-outbound-email failed", send.error);
+      await releaseEmailIdempotency(supa, "email_verification", claim.key);
       return json({ error: "Verification email could not be sent right now." }, 502);
     }
 
-    return json({ ok: true, sent: true, provider: "resend", to: user.email });
+    const result = { ok: true, sent: true, provider: "resend", to: user.email };
+    await recordEmailIdempotencyResult(supa, "email_verification", claim.key, result);
+    return json(result);
   } catch (e) {
     console.error("send-verification-email error", e);
     return json({ error: (e as Error).message }, 500);
