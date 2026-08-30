@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { idempotencyHeaders } from "@/lib/idempotency";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { readEdgeError } from "@/lib/edge-invoke";
 import { toast } from "sonner";
 
 interface PaystackCheckoutProps {
@@ -52,7 +53,8 @@ export function PaystackCheckout({
         body: { amount, currency, rentalId, vehicleId, driverId, paymentFrequency, description, channels },
         headers: idempotencyHeaders("charge.paystack", { amount, currency, rentalId, vehicleId, driverId }),
       });
-      if (error || !data?.reference) throw new Error(error?.message ?? data?.error ?? "Init failed");
+      if (error) throw new Error(await readEdgeError(error, "Could not start the payment"));
+      if (!data?.reference) throw new Error(data?.error ?? "Could not start the payment");
 
       const PaystackPop = await loadPaystack();
       const popup = new PaystackPop();
