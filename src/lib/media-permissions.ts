@@ -197,3 +197,39 @@ export async function resolveAudioOutput(route: AudioOutputRoute): Promise<Audio
 
   return result;
 }
+
+/** True when the device label looks like a wired headset or Bluetooth audio device. */
+export function isHeadsetDevice(device: Pick<MediaDeviceInfo, "label">): boolean {
+  return matches(device.label ?? "", [...BLUETOOTH_HINTS, "headphone", "earbud", "wired"]);
+}
+
+/** First connected headset/Bluetooth output, if any. */
+export async function findHeadsetOutput(): Promise<MediaDeviceInfo | null> {
+  const outputs = await listAudioOutputs();
+  return outputs.find(isHeadsetDevice) ?? null;
+}
+
+/**
+ * Watch for audio devices being plugged in or removed (headset, Bluetooth).
+ * Fires with the connected headset (or null when it disappears) so an active
+ * call can move its output automatically.
+ */
+export function watchAudioDevices(
+  onChange: (headset: MediaDeviceInfo | null) => void,
+): () => void {
+  if (typeof window === "undefined" || !navigator.mediaDevices?.addEventListener) return () => {};
+  let previousId: string | null = null;
+  const handler = async () => {
+    const headset = await findHeadsetOutput();
+    const id = headset?.deviceId ?? null;
+    if (id === previousId) return;
+    previousId = id;
+    logAudioEvent("device", headset ? `Headset connected: ${headset.label}` : "Headset disconnected", {
+      detail: { deviceId: id },
+    });
+    onChange(headset);
+  };
+  navigator.mediaDevices.addEventListener("devicechange", handler);
+  void handler();
+  return () => navigator.mediaDevices.removeEventListener?.("devicechange", handler);
+}
