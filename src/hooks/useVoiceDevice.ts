@@ -1,31 +1,61 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Call, Device } from "@twilio/voice-sdk";
 import { supabase } from "@/integrations/supabase/client";
-import { ensureMediaPermissions, unlockAudioOutput } from "@/lib/media-permissions";
+import {
+  AudioOutputRoute,
+  ensureMediaPermissions,
+  getMicPermissionState,
+  MicPermissionState,
+  resolveAudioOutput,
+  unlockAudioOutput,
+  watchMicPermission,
+} from "@/lib/media-permissions";
+import { logAudioEvent, setDiagnosticsCallId } from "@/lib/audio-diagnostics";
 
-/** Route mic + speakers to the active default devices for a Twilio Device. */
-async function enableAudioDevices(device: Device | null) {
-  await unlockAudioOutput();
-  const audio = device?.audio as
-    | {
-        speakerDevices?: { set: (ids: string | string[]) => Promise<void> | void };
-        ringtoneDevices?: { set: (ids: string | string[]) => Promise<void> | void };
-        setInputDevice?: (id: string) => Promise<void>;
-        isOutputSelectionSupported?: boolean;
-      }
-    | undefined;
-  if (!audio) return;
-  try {
-    if (audio.isOutputSelectionSupported) {
-      await audio.speakerDevices?.set("default");
-      await audio.ringtoneDevices?.set("default");
-    }
-    await audio.setInputDevice?.("default");
-  } catch {
-    // Fall back to browser defaults when the platform blocks device selection.
-  }
+interface TwilioAudioHelper {
+  speakerDevices?: { set: (ids: string | string[]) => Promise<void> | void };
+  ringtoneDevices?: { set: (ids: string | string[]) => Promise<void> | void };
+  setInputDevice?: (id: string) => Promise<void>;
+  isOutputSelectionSupported?: boolean;
 }
 
+/**
+ * Route mic + speakers for a Twilio Device, explicitly selecting the requested
+ * output (speaker / earpiece / Bluetooth) before the call connects.
+ */
+async function enableAudioDevices(
+  device: Device | null,
+  route: AudioOutputRoute = "default",
+): Promise<boolean> {
+  await unlockAudioOutput();
+  const target = await resolveAudioOutput(route);
+  const audio = device?.audio as TwilioAudioHelper | undefined;
+  if (!audio) return false;
+  let ok = true;
+  try {
+    if (audio.isOutputSelectionSupported) {
+      await audio.speakerDevices?.set(target.deviceId);
+      await audio.ringtoneDevices?.set(target.deviceId);
+      logAudioEvent("routing", `Speaker + ringtone set to ${target.label}`, {
+        detail: { route, deviceId: target.deviceId },
+      });
+    } else {
+      logAudioEvent("routing", "Output selection unsupported — using OS audio route", {
+        level: "warn",
+        detail: { route },
+      });
+    }
+    await audio.setInputDevice?.("default");
+    logAudioEvent("device", "Microphone input set to default device");
+  } catch (e) {
+    ok = false;
+    logAudioEvent("routing", "Audio device setup failed", {
+      level: "error",
+      detail: { reason: e instanceof Error ? e.message : String(e), route },
+    });
+  }
+  return ok;
+}
 
 export type VoiceDeviceStatus =
   | "idle"
@@ -40,12 +70,26 @@ interface UseVoiceDeviceResult {
   error: string | null;
   isMuted: boolean;
   incomingCall: Call | null;
+  /** Live microphone permission state, updated when the user changes it. */
+  micPermission: MicPermissionState;
+  /** True when the user denied the microphone and calls cannot run. */
+  permissionBlocked: boolean;
+  /** Currently requested audio output route. */
+  outputRoute: AudioOutputRoute;
+  isSpeakerphone: boolean;
+  /** Human-readable label of the active output device. */
+  outputLabel: string;
   /** Registers the browser as a WebRTC client. Safe to call repeatedly. */
   initialize: () => Promise<boolean>;
   /** `support`, a `+E.164` number, or `client:user_<uuid>`. */
   startCall: (to: string, params?: Record<string, string>) => Promise<boolean>;
   hangUp: () => void;
   toggleMute: () => void;
+  setMuted: (muted: boolean) => void;
+  toggleSpeakerphone: () => Promise<void>;
+  selectOutputRoute: (route: AudioOutputRoute) => Promise<void>;
+  /** Re-request permissions and re-apply audio routing after a failure. */
+  reinitializeAudio: () => Promise<boolean>;
   acceptIncoming: () => void;
   rejectIncoming: () => void;
 }
@@ -53,27 +97,76 @@ interface UseVoiceDeviceResult {
 export function useVoiceDevice(): UseVoiceDeviceResult {
   const deviceRef = useRef<Device | null>(null);
   const callRef = useRef<Call | null>(null);
+  const routeRef = useRef<AudioOutputRoute>("default");
   const [status, setStatus] = useState<VoiceDeviceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
+  const [micPermission, setMicPermission] = useState<MicPermissionState>("unknown");
+  const [outputRoute, setOutputRoute] = useState<AudioOutputRoute>("default");
+  const [outputLabel, setOutputLabel] = useState("System default");
+
+  // Keep permission state fresh, including out-of-band browser setting changes.
+  useEffect(() => {
+    void getMicPermissionState().then(setMicPermission);
+    const stop = watchMicPermission((state) => {
+      setMicPermission(state);
+      if (state === "denied") {
+        setError("Microphone access was blocked. Calls cannot use your audio.");
+        setStatus((prev) => (prev === "on-call" || prev === "connecting" ? prev : "unavailable"));
+      } else if (state === "granted") {
+        setError(null);
+        // Permission restored mid-session — re-apply routing automatically.
+        void applyAudio(routeRef.current);
+      }
+    });
+    return stop;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const applyAudio = useCallback(async (route: AudioOutputRoute) => {
+    const target = await resolveAudioOutput(route);
+    setOutputLabel(target.label);
+    if (deviceRef.current) await enableAudioDevices(deviceRef.current, route);
+    return target;
+  }, []);
 
   const attachCall = useCallback((call: Call) => {
     callRef.current = call;
     setIsMuted(false);
-    call.on("accept", () => setStatus("on-call"));
+    setDiagnosticsCallId(
+      (call as unknown as { parameters?: { CallSid?: string } }).parameters?.CallSid ??
+        `local-${Date.now()}`,
+    );
+    logAudioEvent("call", "Call attached");
+    call.on("accept", () => {
+      setStatus("on-call");
+      logAudioEvent("call", "Call accepted");
+      // Re-assert routing at connect time: some platforms reset the sink.
+      void enableAudioDevices(deviceRef.current, routeRef.current);
+    });
+    call.on("mute", (muted: boolean) => {
+      setIsMuted(muted);
+      logAudioEvent("device", `Microphone ${muted ? "muted" : "unmuted"}`);
+    });
     call.on("disconnect", () => {
       callRef.current = null;
       setStatus(deviceRef.current ? "ready" : "idle");
+      logAudioEvent("call", "Call disconnected");
+      setDiagnosticsCallId(null);
     });
     call.on("cancel", () => {
       callRef.current = null;
       setStatus(deviceRef.current ? "ready" : "idle");
+      logAudioEvent("call", "Call cancelled");
+      setDiagnosticsCallId(null);
     });
     call.on("error", (e: { message?: string }) => {
       setError(e?.message ?? "Call failed");
       callRef.current = null;
       setStatus(deviceRef.current ? "ready" : "idle");
+      logAudioEvent("call", e?.message ?? "Call failed", { level: "error" });
+      setDiagnosticsCallId(null);
     });
   }, []);
 
@@ -83,6 +176,7 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
     setError(null);
 
     const micOk = await ensureMediaPermissions();
+    setMicPermission(await getMicPermissionState());
     if (!micOk) {
       setError("Microphone access is required for in-app calls.");
       setStatus("unavailable");
@@ -105,7 +199,10 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
         logLevel: "error" as never,
       });
 
-      device.on("error", (e: { message?: string }) => setError(e?.message ?? "Calling error"));
+      device.on("error", (e: { message?: string }) => {
+        setError(e?.message ?? "Calling error");
+        logAudioEvent("call", e?.message ?? "Calling error", { level: "error" });
+      });
       device.on("incoming", (call: Call) => {
         setIncomingCall(call);
         attachCall(call);
@@ -117,15 +214,35 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
 
       await device.register();
       deviceRef.current = device;
-      await enableAudioDevices(device);
+      await applyAudio(routeRef.current);
       setStatus("ready");
+      logAudioEvent("device", "Voice device registered");
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not register for calls.");
       setStatus("unavailable");
+      logAudioEvent("device", "Voice device registration failed", { level: "error" });
       return false;
     }
-  }, [attachCall]);
+  }, [attachCall, applyAudio]);
+
+  const reinitializeAudio = useCallback(async () => {
+    logAudioEvent("device", "Reinitializing audio devices");
+    const micOk = await ensureMediaPermissions();
+    setMicPermission(await getMicPermissionState());
+    if (!micOk) {
+      setError("Microphone access is required for in-app calls.");
+      setStatus((prev) => (prev === "on-call" ? prev : "unavailable"));
+      return false;
+    }
+    setError(null);
+    const ok = deviceRef.current
+      ? await enableAudioDevices(deviceRef.current, routeRef.current)
+      : await initialize();
+    await applyAudio(routeRef.current);
+    if (ok && status === "unavailable") setStatus(deviceRef.current ? "ready" : "idle");
+    return ok;
+  }, [applyAudio, initialize, status]);
 
   const startCall = useCallback(
     async (to: string, params?: Record<string, string>) => {
@@ -134,12 +251,20 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
 
       // Always (re)acquire mic + speaker access right before dialling.
       const micOk = await ensureMediaPermissions();
+      setMicPermission(await getMicPermissionState());
       if (!micOk) {
         setError("Microphone access is required for in-app calls.");
         setStatus("unavailable");
         return false;
       }
-      await enableAudioDevices(deviceRef.current);
+      // Explicitly select the output route before connecting; retry once when
+      // the device setup fails (permissions may have just changed).
+      const routed = await enableAudioDevices(deviceRef.current, routeRef.current);
+      if (!routed) {
+        logAudioEvent("routing", "Retrying audio setup before dialling", { level: "warn" });
+        await enableAudioDevices(deviceRef.current, routeRef.current);
+      }
+      await applyAudio(routeRef.current);
 
       setStatus("connecting");
       setError(null);
@@ -150,36 +275,62 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not place the call.");
         setStatus("ready");
+        logAudioEvent("call", "Outbound call failed", { level: "error" });
         return false;
       }
     },
-    [attachCall, initialize],
+    [applyAudio, attachCall, initialize],
   );
-
 
   const hangUp = useCallback(() => {
     callRef.current?.disconnect();
     callRef.current = null;
     setStatus(deviceRef.current ? "ready" : "idle");
+    setDiagnosticsCallId(null);
+  }, []);
+
+  const setMuted = useCallback((muted: boolean) => {
+    const call = callRef.current;
+    if (!call) return;
+    call.mute(muted);
+    setIsMuted(call.isMuted());
+    logAudioEvent("device", `Mute set to ${muted}`);
   }, []);
 
   const toggleMute = useCallback(() => {
     const call = callRef.current;
     if (!call) return;
-    const next = !call.isMuted();
-    call.mute(next);
-    setIsMuted(next);
-  }, []);
+    setMuted(!call.isMuted());
+  }, [setMuted]);
+
+  const selectOutputRoute = useCallback(
+    async (route: AudioOutputRoute) => {
+      routeRef.current = route;
+      setOutputRoute(route);
+      logAudioEvent("routing", `Output route requested: ${route}`);
+      await applyAudio(route);
+    },
+    [applyAudio],
+  );
+
+  const toggleSpeakerphone = useCallback(async () => {
+    const next: AudioOutputRoute = routeRef.current === "speaker" ? "earpiece" : "speaker";
+    await selectOutputRoute(next);
+  }, [selectOutputRoute]);
 
   const acceptIncoming = useCallback(() => {
     void (async () => {
-      await ensureMediaPermissions();
-      await enableAudioDevices(deviceRef.current);
+      const micOk = await ensureMediaPermissions();
+      setMicPermission(await getMicPermissionState());
+      if (!micOk) {
+        setError("Microphone access is required to answer calls.");
+        return;
+      }
+      await enableAudioDevices(deviceRef.current, routeRef.current);
       incomingCall?.accept();
       setIncomingCall(null);
     })();
   }, [incomingCall]);
-
 
   const rejectIncoming = useCallback(() => {
     incomingCall?.reject();
@@ -192,6 +343,7 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
       callRef.current?.disconnect();
       deviceRef.current?.destroy();
       deviceRef.current = null;
+      setDiagnosticsCallId(null);
     };
   }, []);
 
@@ -200,10 +352,19 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
     error,
     isMuted,
     incomingCall,
+    micPermission,
+    permissionBlocked: micPermission === "denied" || micPermission === "unsupported",
+    outputRoute,
+    isSpeakerphone: outputRoute === "speaker",
+    outputLabel,
     initialize,
     startCall,
     hangUp,
     toggleMute,
+    setMuted,
+    toggleSpeakerphone,
+    selectOutputRoute,
+    reinitializeAudio,
     acceptIncoming,
     rejectIncoming,
   };
