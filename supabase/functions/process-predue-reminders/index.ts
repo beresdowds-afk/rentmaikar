@@ -14,7 +14,7 @@ import {
 } from "../_shared/email-templates.ts";
 import { requireCronSecret } from "../_shared/cron-auth.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
-import { resendEmailsUrl, resendHeaders } from "../_shared/resend-gateway.ts";
+import { resendSendEmail } from "../_shared/resend-gateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -100,16 +100,12 @@ const sendEmail = async (to: string, subject: string, html: string) => {
   }
 
   try {
-    const response = await fetch(resendEmailsUrl(resendApiKey), {
-      method: "POST",
-      headers: resendHeaders(resendApiKey),
-      body: JSON.stringify({
+    const response = await resendSendEmail({
         from: "Rentmaikar <noreply@rentmaikar.com>",
         to: [to],
         subject,
         html,
-      }),
-    });
+      }, resendApiKey);
 
     if (!response.ok) {
       const error = await response.text();

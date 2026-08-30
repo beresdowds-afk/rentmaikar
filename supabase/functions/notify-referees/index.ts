@@ -13,7 +13,7 @@ import { z } from "https://esm.sh/zod@3.23.8";
 import { logPipelineEvent } from "../_shared/pipeline-events.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
 import { twilioMessagingEnabled } from "../_shared/twilio-messaging-guard.ts";
-import { resendEmailsUrl, resendHeaders } from "../_shared/resend-gateway.ts";
+import { resendSendEmail } from "../_shared/resend-gateway.ts";
 
 const Body = z.object({
   application_id: z.string().uuid(),
@@ -89,14 +89,10 @@ async function sendEmail(to: string, name: string, driverName: string, link: str
     </div>`;
   const t0 = Date.now();
   const res = await withRetry(async () => {
-    const r = await fetch(resendEmailsUrl(RESEND_API_KEY), {
-      method: "POST",
-      headers: resendHeaders(RESEND_API_KEY),
-      body: JSON.stringify({
+    const r = await resendSendEmail({
         from: "Rentmaikar Verification <verify@rentmaikar.com>",
         to: [to], subject: `Confidential referee attestation for ${driverName}`, html,
-      }),
-    });
+      }, RESEND_API_KEY);
     const txt = r.ok ? "" : await r.text().catch(() => "");
     return { ok: r.ok, status: r.status, error: txt.slice(0, 300) };
   });

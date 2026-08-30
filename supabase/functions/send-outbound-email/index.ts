@@ -50,7 +50,7 @@ import {
   eventNotificationEmail,
 
 } from "../_shared/email-templates.ts";
-import { resendEmailsUrl, resendHeaders } from "../_shared/resend-gateway.ts";
+import { resendSendEmail } from "../_shared/resend-gateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -171,11 +171,7 @@ async function sendViaResend(
   if (text) body.text = text;
   if (tags) body.tags = tags;
 
-  const res = await fetch(resendEmailsUrl(apiKey), {
-      method: "POST",
-      headers: resendHeaders(apiKey),
-      body: JSON.stringify(body),
-  });
+  const res = await resendSendEmail(body, apiKey);
 
   if (!res.ok) {
     const errText = await res.text();
