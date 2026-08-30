@@ -28,7 +28,31 @@ type SuppressedRow = {
   created_at: string;
 };
 
-const STATUS_TABS = ["all", "pending", "sent", "failed", "bounced", "complained", "suppressed"] as const;
+const STATUS_TABS = ["all", "pending", "sent", "failed", "dlq", "bounced", "complained", "suppressed"] as const;
+
+type QueueStats = Record<string, number>;
+
+type DlqRetryRow = {
+  id: string;
+  queue_name: string;
+  message_key: string;
+  recipient_email: string | null;
+  template_name: string | null;
+  attempts: number;
+  last_error: string | null;
+  next_attempt_at: string;
+  paused: boolean;
+};
+
+type ProviderAlertRow = {
+  id: string;
+  function_name: string;
+  status: number;
+  recipient_email: string | null;
+  subject: string | null;
+  provider_response: string | null;
+  created_at: string;
+};
 
 const statusVariant = (status: string) => {
   switch (status) {
