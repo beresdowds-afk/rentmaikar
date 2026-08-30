@@ -112,6 +112,7 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
   const callRef = useRef<Call | null>(null);
   const prefsRef = useRef<AudioPreferences>(DEFAULT_AUDIO_PREFERENCES);
   const routeRef = useRef<AudioOutputRoute>("default");
+  const previousRouteRef = useRef<AudioOutputRoute | null>(null);
   const [status, setStatus] = useState<VoiceDeviceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
@@ -161,7 +162,16 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
 
   const attachCall = useCallback((call: Call) => {
     callRef.current = call;
-    setIsMuted(false);
+    // Restore the saved mute state for this device.
+    const savedMuted = prefsRef.current.muted;
+    if (savedMuted) {
+      try {
+        call.mute(true);
+      } catch {
+        // Call not connected yet — re-applied on "accept" below.
+      }
+    }
+    setIsMuted(savedMuted);
     setDiagnosticsCallId(
       (call as unknown as { parameters?: { CallSid?: string } }).parameters?.CallSid ??
         `local-${Date.now()}`,
@@ -172,6 +182,11 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
       logAudioEvent("call", "Call accepted");
       // Re-assert routing at connect time: some platforms reset the sink.
       void enableAudioDevices(deviceRef.current, routeRef.current);
+      if (prefsRef.current.muted) {
+        call.mute(true);
+        setIsMuted(true);
+        logAudioEvent("device", "Restored saved mute state");
+      }
     });
     call.on("mute", (muted: boolean) => {
       setIsMuted(muted);
@@ -321,8 +336,11 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
     const call = callRef.current;
     if (!call) return;
     call.mute(muted);
-    setIsMuted(call.isMuted());
-    logAudioEvent("device", `Mute set to ${muted}`);
+    const applied = call.isMuted();
+    setIsMuted(applied);
+    setPreferences(saveAudioPreferences({ muted: applied }));
+    prefsRef.current = { ...prefsRef.current, muted: applied };
+    logAudioEvent("device", `Mute set to ${applied}`);
   }, []);
 
   const toggleMute = useCallback(() => {
@@ -335,6 +353,8 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
     async (route: AudioOutputRoute) => {
       routeRef.current = route;
       setOutputRoute(route);
+      setPreferences(saveAudioPreferences({ route }));
+      prefsRef.current = { ...prefsRef.current, route };
       logAudioEvent("routing", `Output route requested: ${route}`);
       await applyAudio(route);
     },
@@ -366,6 +386,40 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
     callRef.current = null;
   }, [incomingCall]);
 
+  const setAutoSwitchToHeadset = useCallback((enabled: boolean) => {
+    prefsRef.current = { ...prefsRef.current, autoSwitchToHeadset: enabled };
+    setPreferences(saveAudioPreferences({ autoSwitchToHeadset: enabled }));
+    logAudioEvent("routing", `Automatic headset switching ${enabled ? "enabled" : "disabled"}`);
+  }, []);
+
+  // Headset / Bluetooth hot-plug: move the output automatically, even mid-call.
+  useEffect(() => {
+    const stop = watchAudioDevices((headset) => {
+      setHeadsetConnected(!!headset);
+      if (!prefsRef.current.autoSwitchToHeadset) return;
+      if (headset) {
+        if (routeRef.current === "bluetooth") {
+          void applyAudio("bluetooth");
+          return;
+        }
+        // Remember where to fall back to when the headset is unplugged.
+        previousRouteRef.current = routeRef.current;
+        routeRef.current = "bluetooth";
+        setOutputRoute("bluetooth");
+        logAudioEvent("routing", `Switching output to headset: ${headset.label}`);
+        void applyAudio("bluetooth");
+      } else if (routeRef.current === "bluetooth") {
+        const fallback = previousRouteRef.current ?? "default";
+        previousRouteRef.current = null;
+        routeRef.current = fallback;
+        setOutputRoute(fallback);
+        logAudioEvent("routing", `Headset removed — falling back to "${fallback}"`);
+        void applyAudio(fallback);
+      }
+    });
+    return stop;
+  }, [applyAudio]);
+
   useEffect(() => {
     return () => {
       callRef.current?.disconnect();
@@ -385,6 +439,9 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
     outputRoute,
     isSpeakerphone: outputRoute === "speaker",
     outputLabel,
+    preferences,
+    setAutoSwitchToHeadset,
+    headsetConnected,
     initialize,
     startCall,
     hangUp,
