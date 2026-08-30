@@ -3,6 +3,12 @@
 // user's own email address, so it cannot be used to spam arbitrary inboxes.
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  claimEmailIdempotency,
+  readIdempotencyKey,
+  recordEmailIdempotencyResult,
+  releaseEmailIdempotency,
+} from "../_shared/email-idempotency.ts";
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
@@ -37,6 +43,21 @@ Deno.serve(async (req) => {
       ? body.redirect_to
       : (Deno.env.get("SITE_URL") ?? "https://rentmaikar.com");
 
+    // Idempotency: repeated clicks carrying the same Idempotency-Key replay the
+    // original outcome instead of queueing a second verification email.
+    const idemKey = readIdempotencyKey(req);
+    const claim = await claimEmailIdempotency(
+      supa,
+      "email_verification",
+      idemKey,
+      user.email,
+    );
+    if (!claim.fresh) {
+      return json(
+        claim.response ?? { ok: true, sent: false, duplicate: true, to: user.email },
+      );
+    }
+
     // Simple per-user cooldown using the existing email log.
     const since = new Date(Date.now() - RESEND_COOLDOWN_SECONDS * 1000).toISOString();
     const { count } = await supa
@@ -46,6 +67,7 @@ Deno.serve(async (req) => {
       .eq("template", "email_verification")
       .gte("created_at", since);
     if ((count ?? 0) > 0) {
+      await releaseEmailIdempotency(supa, "email_verification", claim.key);
       return json({ error: "Please wait a moment before requesting another email." }, 429);
     }
 
@@ -56,6 +78,7 @@ Deno.serve(async (req) => {
     });
     if (linkErr || !link?.properties?.action_link) {
       console.error("generateLink failed", linkErr);
+      await releaseEmailIdempotency(supa, "email_verification", claim.key);
       return json({ error: "Could not create verification link" }, 500);
     }
 
@@ -88,10 +111,13 @@ Deno.serve(async (req) => {
 
     if (send.error) {
       console.error("send-outbound-email failed", send.error);
+      await releaseEmailIdempotency(supa, "email_verification", claim.key);
       return json({ error: "Verification email could not be sent right now." }, 502);
     }
 
-    return json({ ok: true, sent: true, provider: "resend", to: user.email });
+    const result = { ok: true, sent: true, provider: "resend", to: user.email };
+    await recordEmailIdempotencyResult(supa, "email_verification", claim.key, result);
+    return json(result);
   } catch (e) {
     console.error("send-verification-email error", e);
     return json({ error: (e as Error).message }, 500);

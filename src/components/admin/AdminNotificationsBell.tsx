@@ -79,7 +79,7 @@ export function AdminNotificationsBell() {
       .from("admin_notifications")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(30);
+      .limit(100);
     if (error) toast.error(error.message);
     else setItems((data ?? []) as AdminNotification[]);
     setLoading(false);
@@ -103,7 +103,7 @@ export function AdminNotificationsBell() {
         },
         (payload) => {
           const row = payload.new as AdminNotification;
-          setItems((prev) => [row, ...prev].slice(0, 30));
+          setItems((prev) => [row, ...prev].slice(0, 100));
           toast(row.title, { description: row.body ?? undefined });
         },
       )
@@ -159,7 +159,9 @@ export function AdminNotificationsBell() {
             Mark all read
           </Button>
         </div>
-        <ScrollArea className="max-h-[400px]">
+        {/* Fixed height (not max-h): the Radix scroll viewport only scrolls
+            when its container has a resolved height. */}
+        <ScrollArea className="h-[400px] max-h-[60vh]">
           {loading && items.length === 0 && (
             <div className="p-6 text-center text-sm text-muted-foreground">
               <Loader2 className="mx-auto mb-2 h-4 w-4 animate-spin" /> Loading…

@@ -19,6 +19,8 @@ project_id = "bwvocmhcledbwqlpcswp"
     verify_jwt = false
   [functions.email-webhook]
     verify_jwt = false
+  [functions.resend-events]
+    verify_jwt = false
   [functions.emqx-monitoring]
     verify_jwt = false
   [functions.enforce-call-in-geofence]

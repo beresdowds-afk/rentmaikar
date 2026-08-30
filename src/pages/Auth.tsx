@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
+import { idempotencyHeaders, resetEmailIdempotencyKey } from '@/lib/email-idempotency';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -372,6 +373,7 @@ const Auth = () => {
         // mailer, so reset links reliably reach the inbox.
         const { error } = await supabase.functions.invoke('send-password-reset', {
           body: { email: normalized, redirectOrigin: window.location.origin },
+          headers: idempotencyHeaders('password_reset', normalized),
         });
         // Log outcome server-side without revealing it to the caller.
         await supabase.rpc('log_auth_event', {
@@ -540,8 +542,10 @@ const Auth = () => {
                   if (!target) throw new Error('Enter your email first.');
                   const { error } = await supabase.functions.invoke('send-password-reset', {
                     body: { email: target, redirectOrigin: window.location.origin },
+                    headers: idempotencyHeaders('password_reset', target),
                   });
                   if (error) throw error;
+                  resetEmailIdempotencyKey('password_reset', target);
                   toast.success('Reset email sent again. Check your inbox and spam folder.');
                 }}
               />
