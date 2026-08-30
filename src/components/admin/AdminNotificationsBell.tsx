@@ -103,7 +103,7 @@ export function AdminNotificationsBell() {
         },
         (payload) => {
           const row = payload.new as AdminNotification;
-          setItems((prev) => [row, ...prev].slice(0, 30));
+          setItems((prev) => [row, ...prev].slice(0, 100));
           toast(row.title, { description: row.body ?? undefined });
         },
       )
