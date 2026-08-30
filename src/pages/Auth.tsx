@@ -22,6 +22,7 @@ import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
 import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
 import { PasswordInput } from '@/components/ui/password-input';
 import { EmailVerification } from '@/components/auth/EmailVerification';
+import { ResendButton } from '@/components/auth/ResendButton';
 import { ROLE_HOME, ROLE_ONBOARDING, isStaffRole, type AppRole } from '@/lib/role-home';
 import { resolvePostLoginDestination } from '@/lib/post-login-destination';
 import { isRestorablePath, readReturnTo, clearReturnTo } from '@/lib/return-to';
