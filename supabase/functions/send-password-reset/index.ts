@@ -6,6 +6,10 @@
 // Always responds `{ ok: true }` so it can never be used to enumerate accounts.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  claimEmailIdempotency,
+  readIdempotencyKey,
+} from "../_shared/email-idempotency.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
