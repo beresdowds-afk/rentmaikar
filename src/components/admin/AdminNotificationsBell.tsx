@@ -79,7 +79,7 @@ export function AdminNotificationsBell() {
       .from("admin_notifications")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(30);
+      .limit(100);
     if (error) toast.error(error.message);
     else setItems((data ?? []) as AdminNotification[]);
     setLoading(false);
