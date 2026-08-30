@@ -87,26 +87,54 @@ export function resendFrom(from: string): string {
 
 type ResendBody = Record<string, unknown> & { from?: string; reply_to?: string | string[] };
 
+/** Best-effort caller name (`supabase/functions/<name>/index.ts`) for alerts. */
+function callerFunctionName(): string {
+  const stack = new Error().stack ?? "";
+  const match = stack.match(/functions\/([A-Za-z0-9_-]+)\/[^/]+\.ts/);
+  return match?.[1] ?? Deno.env.get("SB_FUNCTION_NAME") ?? "unknown-function";
+}
+
 /**
  * Single transport for every outbound Resend email. Normalises the sender onto
  * the verified domain and keeps the original address as `reply_to` so replies
- * still reach the human mailbox.
+ * still reach the human mailbox. A 401/403 from Resend is terminal, so it is
+ * alerted to the team with the failing recipient and payload excerpt.
  */
-export function resendSendEmail(body: ResendBody, key?: string | null): Promise<Response> {
+export async function resendSendEmail(body: ResendBody, key?: string | null): Promise<Response> {
   const apiKey = key ?? Deno.env.get("RESEND_API_KEY") ?? "";
   const originalFrom = typeof body.from === "string" ? body.from : "";
   const from = originalFrom ? resendFrom(originalFrom) : originalFrom;
   const replyTo = body.reply_to ??
     (originalFrom && from !== originalFrom ? originalFrom : undefined);
+  const caller = callerFunctionName();
 
-  return fetch(resendEmailsUrl(apiKey), {
+  const payload = {
+    ...body,
+    ...(from ? { from } : {}),
+    ...(replyTo ? { reply_to: replyTo } : {}),
+  };
+
+  const res = await fetch(resendEmailsUrl(apiKey), {
     method: "POST",
     headers: resendHeaders(apiKey),
-    body: JSON.stringify({
-      ...body,
-      ...(from ? { from } : {}),
-      ...(replyTo ? { reply_to: replyTo } : {}),
-    }),
+    body: JSON.stringify(payload),
   });
+
+  if (res.status === 401 || res.status === 403) {
+    // Clone so the caller can still read the body itself.
+    const detail = await res.clone().text().catch(() => "");
+    const to = Array.isArray(body.to) ? body.to[0] : body.to;
+    await reportResendAuthFailure({
+      functionName: caller,
+      status: res.status,
+      recipient: typeof to === "string" ? to : null,
+      subject: typeof body.subject === "string" ? body.subject : null,
+      payload,
+      providerResponse: detail,
+    });
+  }
+
+  return res;
 }
+
 
