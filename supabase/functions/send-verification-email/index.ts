@@ -43,6 +43,21 @@ Deno.serve(async (req) => {
       ? body.redirect_to
       : (Deno.env.get("SITE_URL") ?? "https://rentmaikar.com");
 
+    // Idempotency: repeated clicks carrying the same Idempotency-Key replay the
+    // original outcome instead of queueing a second verification email.
+    const idemKey = readIdempotencyKey(req);
+    const claim = await claimEmailIdempotency(
+      supa,
+      "email_verification",
+      idemKey,
+      user.email,
+    );
+    if (!claim.fresh) {
+      return json(
+        claim.response ?? { ok: true, sent: false, duplicate: true, to: user.email },
+      );
+    }
+
     // Simple per-user cooldown using the existing email log.
     const since = new Date(Date.now() - RESEND_COOLDOWN_SECONDS * 1000).toISOString();
     const { count } = await supa
