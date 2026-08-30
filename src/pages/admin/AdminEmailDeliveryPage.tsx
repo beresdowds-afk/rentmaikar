@@ -28,7 +28,31 @@ type SuppressedRow = {
   created_at: string;
 };
 
-const STATUS_TABS = ["all", "pending", "sent", "failed", "bounced", "complained", "suppressed"] as const;
+const STATUS_TABS = ["all", "pending", "sent", "failed", "dlq", "bounced", "complained", "suppressed"] as const;
+
+type QueueStats = Record<string, number>;
+
+type DlqRetryRow = {
+  id: string;
+  queue_name: string;
+  message_key: string;
+  recipient_email: string | null;
+  template_name: string | null;
+  attempts: number;
+  last_error: string | null;
+  next_attempt_at: string;
+  paused: boolean;
+};
+
+type ProviderAlertRow = {
+  id: string;
+  function_name: string;
+  status: number;
+  recipient_email: string | null;
+  subject: string | null;
+  provider_response: string | null;
+  created_at: string;
+};
 
 const statusVariant = (status: string) => {
   switch (status) {
@@ -83,6 +107,92 @@ export default function AdminEmailDeliveryPage() {
     },
   });
 
+  // Unfiltered 24h window so the summary cards never depend on the active tab.
+  const { data: recentAll } = useQuery({
+    queryKey: ["email-send-log-24h"],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("email_send_log")
+        .select("status")
+        .gte("created_at", since)
+        .limit(2000);
+      if (error) throw error;
+      return (data ?? []) as { status: string }[];
+    },
+  });
+
+  // Live queue depths (queued + dead-lettered) straight from the queues.
+  const { data: queueStats } = useQuery({
+    queryKey: ["email-queue-stats"],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("email_queue_stats");
+      if (error) throw error;
+      return (data ?? {}) as QueueStats;
+    },
+  });
+
+  const { data: dlqRetries } = useQuery({
+    queryKey: ["email-dlq-retry-state"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("email_dlq_retry_state")
+        .select("id, queue_name, message_key, recipient_email, template_name, attempts, last_error, next_attempt_at, paused")
+        .order("updated_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as DlqRetryRow[];
+    },
+  });
+
+  const { data: providerAlerts } = useQuery({
+    queryKey: ["email-provider-alerts"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("email_provider_alerts")
+        .select("id, function_name, status, recipient_email, subject, provider_response, created_at")
+        .is("acknowledged_at", null)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []) as ProviderAlertRow[];
+    },
+  });
+
+  const [retrying, setRetrying] = useState(false);
+
+  const runDlqRetry = async () => {
+    setRetrying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reprocess-email-dlq", { body: {} });
+      if (error) throw error;
+      const res = data as { requeued?: number; paused?: number; skipped?: boolean } | null;
+      if (res?.skipped) toast.info("A retry sweep is already running.");
+      else toast.success(`Requeued ${res?.requeued ?? 0} message(s); ${res?.paused ?? 0} paused.`);
+      queryClient.invalidateQueries({ queryKey: ["email-queue-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["email-dlq-retry-state"] });
+      queryClient.invalidateQueries({ queryKey: ["email-send-log"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Retry sweep failed");
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  const acknowledgeAlert = async (id: string) => {
+    const { error } = await supabase
+      .from("email_provider_alerts")
+      .update({ acknowledged_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) toast.error(error.message);
+    else queryClient.invalidateQueries({ queryKey: ["email-provider-alerts"] });
+  };
+
+
   // Realtime: refresh as soon as the queue worker or webhooks write outcomes.
   useEffect(() => {
     const channel = supabase
@@ -112,16 +222,20 @@ export default function AdminEmailDeliveryPage() {
   }, [queryClient]);
 
   const stats = useMemo(() => {
-    const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
-    const recent = (rows ?? []).filter((r) => new Date(r.created_at).getTime() >= dayAgo);
-    const by = (s: string) => recent.filter((r) => r.status === s).length;
+    const by = (s: string) => (recentAll ?? []).filter((r) => r.status === s).length;
     return {
       sent: by("sent") + by("delivered"),
       pending: by("pending"),
       failed: by("failed") + by("bounced"),
+      dlq: by("dlq"),
       suppressed: (suppressed ?? []).length,
+      queued:
+        (queueStats?.auth_emails ?? 0) + (queueStats?.transactional_emails ?? 0),
+      dlqQueued:
+        (queueStats?.auth_emails_dlq ?? 0) + (queueStats?.transactional_emails_dlq ?? 0),
     };
-  }, [rows, suppressed]);
+  }, [recentAll, suppressed, queueStats]);
+
 
   return (
     <div className="container mx-auto max-w-6xl space-y-6 p-4 md:p-8">
@@ -173,7 +287,124 @@ export default function AdminEmailDeliveryPage() {
             <CardTitle className="text-2xl">{stats.suppressed}</CardTitle>
           </CardHeader>
         </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1.5">
+              <Loader2 className="h-4 w-4" /> In queue (now)
+            </CardDescription>
+            <CardTitle className="text-2xl">{stats.queued}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1.5">
+              <MailX className="h-4 w-4" /> Dead-letter (now)
+            </CardDescription>
+            <CardTitle className="text-2xl">{stats.dlqQueued}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1.5">
+              <Activity className="h-4 w-4" /> DLQ events (24h)
+            </CardDescription>
+            <CardTitle className="text-2xl">{stats.dlq}</CardTitle>
+          </CardHeader>
+        </Card>
       </div>
+
+      {(providerAlerts ?? []).length > 0 && (
+        <Card className="border-destructive/40">
+          <CardHeader>
+            <CardTitle className="text-base text-destructive">
+              Provider authorization failures
+            </CardTitle>
+            <CardDescription>
+              Resend rejected these sends with 401/403 — the key or sender domain needs attention.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {(providerAlerts ?? []).map((a) => (
+                <li key={a.id} className="rounded-lg border p-3 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary" className="bg-destructive/15 text-destructive">
+                      {a.status}
+                    </Badge>
+                    <Badge variant="outline">{a.function_name}</Badge>
+                    <span className="min-w-0 flex-1 truncate">{a.recipient_email ?? "—"}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {new Date(a.created_at).toLocaleString()}
+                    </span>
+                    <Button size="sm" variant="ghost" onClick={() => acknowledgeAlert(a.id)}>
+                      Acknowledge
+                    </Button>
+                  </div>
+                  {a.subject && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">Subject: {a.subject}</p>
+                  )}
+                  {a.provider_response && (
+                    <div className="mt-1 break-words rounded bg-destructive/10 p-2 text-[11px] text-destructive">
+                      {a.provider_response.slice(0, 400)}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader className="gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Dead-letter retries</CardTitle>
+              <CardDescription>
+                Automatic exponential-backoff retries. Entries pause after 5 attempts and alert the
+                team.
+              </CardDescription>
+            </div>
+            <Button size="sm" onClick={runDlqRetry} disabled={retrying}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${retrying ? "animate-spin" : ""}`} />
+              Retry now
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {(dlqRetries ?? []).length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              No dead-letter retries recorded.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {(dlqRetries ?? []).map((d) => (
+                <li key={d.id} className="rounded-lg border p-3 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      variant="secondary"
+                      className={d.paused ? "bg-destructive/15 text-destructive" : "bg-muted"}
+                    >
+                      {d.paused ? "paused" : `attempt ${d.attempts}`}
+                    </Badge>
+                    <Badge variant="outline">{d.template_name ?? d.queue_name}</Badge>
+                    <span className="min-w-0 flex-1 truncate">{d.recipient_email ?? "—"}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      next {new Date(d.next_attempt_at).toLocaleString()}
+                    </span>
+                  </div>
+                  {d.last_error && (
+                    <div className="mt-1 break-words rounded bg-muted p-2 text-[11px]">
+                      {d.last_error}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
 
       <Card>
         <CardHeader className="gap-3">

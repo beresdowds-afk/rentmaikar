@@ -22,6 +22,7 @@ import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
 import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
 import { PasswordInput } from '@/components/ui/password-input';
 import { EmailVerification } from '@/components/auth/EmailVerification';
+import { ResendButton } from '@/components/auth/ResendButton';
 import { ROLE_HOME, ROLE_ONBOARDING, isStaffRole, type AppRole } from '@/lib/role-home';
 import { resolvePostLoginDestination } from '@/lib/post-login-destination';
 import { isRestorablePath, readReturnTo, clearReturnTo } from '@/lib/return-to';
@@ -529,10 +530,26 @@ const Auth = () => {
                   ⏱ The reset link expires in <strong>1 hour</strong>. If it expires, request a new one from this page.
                 </p>
               </div>
+              <ResendButton
+                channel="email"
+                identifier={forgotPasswordForm.getValues('email')}
+                label="Resend reset email"
+                className="w-full"
+                onResend={async () => {
+                  const target = forgotPasswordForm.getValues('email').trim().toLowerCase();
+                  if (!target) throw new Error('Enter your email first.');
+                  const { error } = await supabase.functions.invoke('send-password-reset', {
+                    body: { email: target, redirectOrigin: window.location.origin },
+                  });
+                  if (error) throw error;
+                  toast.success('Reset email sent again. Check your inbox and spam folder.');
+                }}
+              />
               <p className="text-xs text-muted-foreground text-center">
-                Didn't receive the email? Check your spam folder, then try again in a minute.
+                Didn't receive the email? Check your spam folder, then resend.
               </p>
             </CardContent>
+
           ) : (
             <form onSubmit={forgotPasswordForm.handleSubmit(handleForgotPassword)}>
               <CardContent className="space-y-4">

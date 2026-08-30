@@ -1834,6 +1834,54 @@ export type Database = {
         }
         Relationships: []
       }
+      email_dlq_retry_state: {
+        Row: {
+          alerted_at: string | null
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          message_key: string
+          next_attempt_at: string
+          paused: boolean
+          queue_name: string
+          recipient_email: string | null
+          resolved_at: string | null
+          template_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          alerted_at?: string | null
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          message_key: string
+          next_attempt_at?: string
+          paused?: boolean
+          queue_name: string
+          recipient_email?: string | null
+          resolved_at?: string | null
+          template_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alerted_at?: string | null
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          message_key?: string
+          next_attempt_at?: string
+          paused?: boolean
+          queue_name?: string
+          recipient_email?: string | null
+          resolved_at?: string | null
+          template_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_logs: {
         Row: {
           category: string
@@ -1948,6 +1996,45 @@ export type Database = {
           opened_at?: string
           recipient?: string
           user_agent?: string | null
+        }
+        Relationships: []
+      }
+      email_provider_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string
+          function_name: string
+          id: string
+          payload_excerpt: Json | null
+          provider_response: string | null
+          recipient_email: string | null
+          status: number
+          subject: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          function_name: string
+          id?: string
+          payload_excerpt?: Json | null
+          provider_response?: string | null
+          recipient_email?: string | null
+          status: number
+          subject?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          function_name?: string
+          id?: string
+          payload_excerpt?: Json | null
+          provider_response?: string | null
+          recipient_email?: string | null
+          status?: number
+          subject?: string | null
         }
         Relationships: []
       }
@@ -12261,6 +12348,7 @@ export type Database = {
         Returns: undefined
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
+      email_queue_stats: { Args: never; Returns: Json }
       email_signup_status: { Args: { _email: string }; Returns: Json }
       emit_owner_vehicle_notification: {
         Args: {
