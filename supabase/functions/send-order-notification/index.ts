@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
+import { resendSendEmail } from "../_shared/resend-gateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -77,13 +78,7 @@ const handler = async (req: Request): Promise<Response> => {
     const safePaymentMethod = escapeHtml(paymentMethod);
 
     // Send email via Resend API
-    const emailResponse = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${resendApiKey}`,
-      },
-      body: JSON.stringify({
+    const emailResponse = await resendSendEmail({
         from: "Rentmaikar <notifications@resend.dev>",
         to: ["admin@rentmaikar.com"],
         subject: `🆕 New IoT Device Order - Payment Verification Required`,
@@ -105,8 +100,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
           </div>
         `,
-      }),
-    });
+      }, resendApiKey);
 
     const emailResult = await emailResponse.json();
     console.log("Email sent:", emailResult);

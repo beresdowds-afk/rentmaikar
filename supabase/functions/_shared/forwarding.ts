@@ -21,6 +21,7 @@ import {
   publicSenderFor,
   RENTMAIKAR_NUMBERS,
 } from "./comms-endpoints.ts";
+import { resendSendEmail } from "./resend-gateway.ts";
 
 export { evaluateHop, formatTrace, getLoopPolicy, LOOP_POLICY_KEY, parseTrace, stripTrace } from "./comms-correlation.ts";
 
@@ -367,20 +368,13 @@ export async function forwardInboundEmail(
       `<p style="color:#64748b;font-size:12px">Forwarded from <strong>${label}</strong></p><hr/>` +
       (args.htmlBody || `<pre style="white-space:pre-wrap;font-family:inherit">${args.body}</pre>`);
 
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const res = await resendSendEmail({
         from: "Rentmaikar Inbox <noreply@rentmaikar.com>",
         to: [destination],
         reply_to: args.fromAddress,
         subject: `[Fwd] ${args.subject || "(no subject)"}`,
         html,
-      }),
-    });
+      }, apiKey);
 
     if (!res.ok) {
       const detail = await res.text();

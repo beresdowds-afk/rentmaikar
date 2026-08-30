@@ -11,6 +11,7 @@ import {
 import { requireCronSecretAsync } from "../_shared/cron-auth.ts";
 import { twilioMessagingEnabled } from "../_shared/twilio-messaging-guard.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
+import { resendSendEmail } from "../_shared/resend-gateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -74,19 +75,12 @@ const sendEmail = async (to: string, subject: string, html: string) => {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   if (!resendApiKey) return null;
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+  const response = await resendSendEmail({
       from: "Rentmaikar <noreply@rentmaikar.com>",
       to: [to],
       subject,
       html,
-    }),
-  });
+    }, resendApiKey);
 
   return response.json();
 };

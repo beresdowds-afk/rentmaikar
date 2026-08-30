@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
+import { resendSendEmail } from "../_shared/resend-gateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -331,19 +332,12 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     // Send email using Resend API directly
-    const emailResponse = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const emailResponse = await resendSendEmail({
         from: "Rentmaikar <onboarding@resend.dev>",
         to: [email],
         subject: `🎉 Welcome to Rentmaikar - Your ${userType.charAt(0).toUpperCase() + userType.slice(1)} Account is Approved!`,
         html: emailHtml,
-      }),
-    });
+      }, resendApiKey);
 
     const responseData = await emailResponse.json();
 

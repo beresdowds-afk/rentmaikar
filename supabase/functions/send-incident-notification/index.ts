@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
+import { resendSendEmail } from "../_shared/resend-gateway.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -69,19 +70,12 @@ const sendEmailNotification = async (
   }
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
+    const response = await resendSendEmail({
         from: formatSenderEmail('support'),
         to: [to],
         subject,
         html,
-      }),
-    });
+      }, RESEND_API_KEY);
 
     const result = await response.json();
     console.log('[IncidentNotification] Email sent:', result);

@@ -3,6 +3,7 @@ import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
 import { twilioMessagingEnabled } from "../_shared/twilio-messaging-guard.ts";
+import { resendSendEmail } from "../_shared/resend-gateway.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -44,13 +45,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Send email via Resend API
-    const emailResponse = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${resendApiKey}`,
-      },
-      body: JSON.stringify({
+    const emailResponse = await resendSendEmail({
         from: formatSenderEmail('noreply'),
         to: [email],
         subject: "Your IoT Device Has Been Shipped! 📦",
@@ -114,8 +109,7 @@ const handler = async (req: Request): Promise<Response> => {
           </body>
           </html>
         `,
-      }),
-    });
+      }, resendApiKey);
 
     const emailResult = await emailResponse.json();
     console.log("Shipping notification sent:", emailResult);
