@@ -159,7 +159,9 @@ export function AdminNotificationsBell() {
             Mark all read
           </Button>
         </div>
-        <ScrollArea className="max-h-[400px]">
+        {/* Fixed height (not max-h): the Radix scroll viewport only scrolls
+            when its container has a resolved height. */}
+        <ScrollArea className="h-[400px] max-h-[60vh]">
           {loading && items.length === 0 && (
             <div className="p-6 text-center text-sm text-muted-foreground">
               <Loader2 className="mx-auto mb-2 h-4 w-4 animate-spin" /> Loading…
