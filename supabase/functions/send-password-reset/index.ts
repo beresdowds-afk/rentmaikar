@@ -36,6 +36,16 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // Idempotency: a replayed click (same Idempotency-Key) must not trigger a
+    // second reset email. Response is always the neutral { ok: true }.
+    const claim = await claimEmailIdempotency(
+      admin,
+      "password_reset",
+      readIdempotencyKey(req),
+      email,
+    );
+    if (!claim.fresh) return ok();
+
     // Server-side rate limit: 3 reset emails per address per 15 minutes.
     const { data: allowed } = await admin.rpc("check_auth_rate_limit", {
       _identifier: `reset:${email}`,
