@@ -78,6 +78,7 @@ Deno.serve(async (req) => {
     });
     if (linkErr || !link?.properties?.action_link) {
       console.error("generateLink failed", linkErr);
+      await releaseEmailIdempotency(supa, "email_verification", claim.key);
       return json({ error: "Could not create verification link" }, 500);
     }
 
