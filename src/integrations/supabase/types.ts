@@ -1882,6 +1882,36 @@ export type Database = {
         }
         Relationships: []
       }
+      email_idempotency_keys: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          idempotency_key: string
+          purpose: string
+          recipient: string | null
+          response: Json | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          idempotency_key: string
+          purpose: string
+          recipient?: string | null
+          response?: Json | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          idempotency_key?: string
+          purpose?: string
+          recipient?: string | null
+          response?: Json | null
+        }
+        Relationships: []
+      }
       email_logs: {
         Row: {
           category: string
