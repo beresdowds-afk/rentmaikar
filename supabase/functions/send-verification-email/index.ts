@@ -67,6 +67,7 @@ Deno.serve(async (req) => {
       .eq("template", "email_verification")
       .gte("created_at", since);
     if ((count ?? 0) > 0) {
+      await releaseEmailIdempotency(supa, "email_verification", claim.key);
       return json({ error: "Please wait a moment before requesting another email." }, 429);
     }
 
