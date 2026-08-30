@@ -16,6 +16,7 @@ import { sendViaSent } from "./sent-client.ts";
 import { evaluateHop, formatTrace } from "./comms-correlation.ts";
 import { twilioMessagingEnabled } from "./twilio-messaging-guard.ts";
 import {
+import { resendEmailsUrl, resendHeaders } from "./resend-gateway.ts";
   type CommsChannel,
   getMasterEndpointFor,
   publicSenderFor,
@@ -367,12 +368,9 @@ export async function forwardInboundEmail(
       `<p style="color:#64748b;font-size:12px">Forwarded from <strong>${label}</strong></p><hr/>` +
       (args.htmlBody || `<pre style="white-space:pre-wrap;font-family:inherit">${args.body}</pre>`);
 
-    const res = await fetch("https://api.resend.com/emails", {
+    const res = await fetch(resendEmailsUrl(apiKey), {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: resendHeaders(apiKey),
       body: JSON.stringify({
         from: "Rentmaikar Inbox <noreply@rentmaikar.com>",
         to: [destination],

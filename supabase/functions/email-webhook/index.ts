@@ -4,6 +4,7 @@ import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import { maybeAutoReply } from "../_shared/auto-reply.ts";
 import { forwardInboundEmail } from "../_shared/forwarding.ts";
+import { resendEmailsUrl, resendHeaders } from "../_shared/resend-gateway.ts";
 
 
 
@@ -833,13 +834,10 @@ serve(async (req) => {
           const fromType = finalCategory === "legal" ? "legal" :
             finalCategory === "payment_query" ? "payments" : "support";
 
-          const ackResponse = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${RESEND_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
+          const ackResponse = await fetch(resendEmailsUrl(RESEND_API_KEY), {
+      method: "POST",
+      headers: resendHeaders(RESEND_API_KEY),
+      body: JSON.stringify({
               from: formatSenderEmail(fromType as keyof typeof EMAIL_CONFIG),
               to: [senderAddress],
               subject: ack.subject,

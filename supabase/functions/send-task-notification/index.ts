@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
+import { resendEmailsUrl, resendHeaders } from "../_shared/resend-gateway.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -201,12 +202,9 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     // Send email notification
-    const emailResponse = await fetch("https://api.resend.com/emails", {
+    const emailResponse = await fetch(resendEmailsUrl(resendApiKey), {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: resendHeaders(resendApiKey),
       body: JSON.stringify({
         from: formatSenderEmail('support'),
         to: [staffEmail],

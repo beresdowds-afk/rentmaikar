@@ -3,6 +3,7 @@ import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
 import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
 import { twilioMessagingEnabled } from "../_shared/twilio-messaging-guard.ts";
+import { resendEmailsUrl, resendHeaders } from "../_shared/resend-gateway.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -44,12 +45,9 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Send email via Resend API
-    const emailResponse = await fetch("https://api.resend.com/emails", {
+    const emailResponse = await fetch(resendEmailsUrl(resendApiKey), {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${resendApiKey}`,
-      },
+      headers: resendHeaders(resendApiKey),
       body: JSON.stringify({
         from: formatSenderEmail('noreply'),
         to: [email],

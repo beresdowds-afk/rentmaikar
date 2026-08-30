@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireCronSecret } from "../_shared/cron-auth.ts";
+import { resendEmailsUrl, resendHeaders } from "../_shared/resend-gateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,9 +38,9 @@ const sendEmail = async (to: string, subject: string, html: string) => {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   if (!resendApiKey) return null;
   try {
-    const response = await fetch("https://api.resend.com/emails", {
+    const response = await fetch(resendEmailsUrl(resendApiKey), {
       method: "POST",
-      headers: { "Authorization": `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+      headers: resendHeaders(resendApiKey),
       body: JSON.stringify({ from: "Rentmaikar <noreply@rentmaikar.com>", to: [to], subject, html }),
     });
     return response.ok ? response.json() : null;

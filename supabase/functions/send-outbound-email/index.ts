@@ -6,6 +6,7 @@ import { requireServiceRole } from "../_shared/auth-guards.ts";
 import { outboundPausedResponse } from "../_shared/channel-guard.ts";
 import { logOutboundDecision } from "../_shared/outbound-audit.ts";
 import {
+import { resendEmailsUrl, resendHeaders } from "../_shared/resend-gateway.ts";
   welcomeDriverEmail,
   welcomeOwnerEmail,
   otpEmail,
@@ -170,13 +171,10 @@ async function sendViaResend(
   if (text) body.text = text;
   if (tags) body.tags = tags;
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+  const res = await fetch(resendEmailsUrl(apiKey), {
+      method: "POST",
+      headers: resendHeaders(apiKey),
+      body: JSON.stringify(body),
   });
 
   if (!res.ok) {

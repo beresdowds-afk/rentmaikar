@@ -13,6 +13,7 @@ import { z } from "https://esm.sh/zod@3.23.8";
 import { logPipelineEvent } from "../_shared/pipeline-events.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
 import { twilioMessagingEnabled } from "../_shared/twilio-messaging-guard.ts";
+import { resendEmailsUrl, resendHeaders } from "../_shared/resend-gateway.ts";
 
 const Body = z.object({
   application_id: z.string().uuid(),
@@ -88,9 +89,9 @@ async function sendEmail(to: string, name: string, driverName: string, link: str
     </div>`;
   const t0 = Date.now();
   const res = await withRetry(async () => {
-    const r = await fetch("https://api.resend.com/emails", {
+    const r = await fetch(resendEmailsUrl(RESEND_API_KEY), {
       method: "POST",
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      headers: resendHeaders(RESEND_API_KEY),
       body: JSON.stringify({
         from: "Rentmaikar Verification <verify@rentmaikar.com>",
         to: [to], subject: `Confidential referee attestation for ${driverName}`, html,

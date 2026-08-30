@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRoleOrRole } from "../_shared/auth-guards.ts";
 import { outboundPausedResponse } from "../_shared/channel-guard.ts";
 import { logOutboundDecision } from "../_shared/outbound-audit.ts";
+import { resendEmailsUrl, resendHeaders } from "../_shared/resend-gateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -90,12 +91,9 @@ serve(async (req) => {
     console.log(`Sending email to ${recipientEmail} from ${supportConfig.email}`);
 
     // Send email using Resend API directly
-    const emailResponse = await fetch("https://api.resend.com/emails", {
+    const emailResponse = await fetch(resendEmailsUrl(RESEND_API_KEY), {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: resendHeaders(RESEND_API_KEY),
       body: JSON.stringify({
         from: fromEmail,
         to: [recipientEmail],

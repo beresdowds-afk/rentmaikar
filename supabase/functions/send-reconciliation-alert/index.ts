@@ -9,6 +9,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireInternal } from "../_shared/guard.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
 import { twilioMessagingEnabled } from "../_shared/twilio-messaging-guard.ts";
+import { resendEmailsUrl, resendHeaders } from "../_shared/resend-gateway.ts";
 
 interface AlertPayload {
   alert_type: string;
@@ -58,10 +59,10 @@ Deno.serve(async (req) => {
     for (const p of profiles ?? []) {
       if (!p.email) continue;
       try {
-        const r = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
-          body: JSON.stringify({
+        const r = await fetch(resendEmailsUrl(resendKey), {
+      method: "POST",
+      headers: resendHeaders(resendKey),
+      body: JSON.stringify({
             from: "Rentmaikar Alerts <alerts@rentmaikar.com>",
             to: [p.email],
             subject,
