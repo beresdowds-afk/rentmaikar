@@ -32,11 +32,9 @@ Deno.test("routes connector keys through the Lovable gateway", () => {
   assertEquals(resendEmailsUrl("re_abc123"), "https://api.resend.com/emails");
   assertEquals(
     resendEmailsUrl("conn_abc123"),
-    "https://connector-gateway.lovable.dev/emails".replace(
-      "/emails",
-      "",
-    ) + "/resend/emails",
+    "https://connector-gateway.lovable.dev/resend/emails",
   );
+
   const direct = resendHeaders("re_abc123");
   assertEquals(direct.Authorization, "Bearer re_abc123");
   const gateway = resendHeaders("conn_abc123");
