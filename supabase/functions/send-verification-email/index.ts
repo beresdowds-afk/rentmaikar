@@ -3,6 +3,12 @@
 // user's own email address, so it cannot be used to spam arbitrary inboxes.
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  claimEmailIdempotency,
+  readIdempotencyKey,
+  recordEmailIdempotencyResult,
+  releaseEmailIdempotency,
+} from "../_shared/email-idempotency.ts";
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
