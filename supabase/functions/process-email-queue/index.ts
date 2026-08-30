@@ -87,21 +87,14 @@ async function sendViaResend(payload: Record<string, unknown>): Promise<void> {
     throw new Error('Resend fallback not configured (missing RESEND_API_KEY or LOVABLE_API_KEY)')
   }
 
-  const res = await fetch(`${RESEND_GATEWAY_URL}/emails`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      'X-Connection-Api-Key': resendKey,
-    },
-    body: JSON.stringify({
-      from: Deno.env.get('RESEND_FALLBACK_FROM') || payload.from,
-      to: [payload.to],
-      subject: payload.subject,
-      html: payload.html,
-      ...(payload.text ? { text: payload.text } : {}),
-    }),
-  })
+  const res = await resendSendEmail({
+    from: String(payload.from ?? 'Rentmaikar <noreply@rentmaikar.com>'),
+    to: [payload.to],
+    subject: payload.subject,
+    html: payload.html,
+    ...(payload.text ? { text: payload.text } : {}),
+  }, resendKey)
+
 
   if (!res.ok) {
     const bodyText = await res.text()
