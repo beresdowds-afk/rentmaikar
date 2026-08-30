@@ -4,7 +4,7 @@
 // message left the queue and was logged as `sent`. Requires service-role
 // credentials; skipped automatically when they are not present (e.g. local
 // runs without secrets).
-import "https://deno.land/std@0.224.0/dotenv/load.ts";
+
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
