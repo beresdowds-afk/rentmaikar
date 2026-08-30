@@ -67,10 +67,15 @@ export function resendSendingDomain(): string {
 
 /** Split `Name <local@domain>` (or a bare address) into its parts. */
 function parseAddress(value: string): { name?: string; local: string; domain: string } | null {
-  const match = value.match(/^\s*(?:"?([^"<]*?)"?\s*)?<?([^<>@\s]+)@([^<>@\s]+?)>?\s*$/);
-  if (!match) return null;
-  return { name: match[1]?.trim() || undefined, local: match[2], domain: match[3] };
+  const angled = value.match(/^\s*(?:"?([^"<]*?)"?\s*)?<([^<>@\s]+)@([^<>@\s]+)>\s*$/);
+  if (angled) {
+    return { name: angled[1]?.trim() || undefined, local: angled[2], domain: angled[3] };
+  }
+  const bare = value.match(/^\s*([^<>@\s]+)@([^<>@\s]+)\s*$/);
+  if (!bare) return null;
+  return { local: bare[1], domain: bare[2] };
 }
+
 
 /**
  * Rewrites a sender onto the verified sending domain, preserving the display
