@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { useVoiceDevice } from "@/hooks/useVoiceDevice";
 import { useRegion } from "@/contexts/RegionContext";
-import { useRegionCompanyInfo } from "@/hooks/useRegionCompanyInfo";
+import { usePublishedCompanyInfo } from "@/hooks/usePublishedCompanyInfo";
 import { AudioDiagnosticsPanel } from "@/components/voice/AudioDiagnosticsPanel";
 
 interface InAppCallDialogProps {
@@ -51,7 +51,7 @@ export function InAppCallDialog({
   title,
 }: InAppCallDialogProps) {
   const { country } = useRegion();
-  const companyInfo = useRegionCompanyInfo?.();
+  const { infoFor } = usePublishedCompanyInfo();
   const {
     status,
     error,
@@ -97,10 +97,7 @@ export function InAppCallDialog({
     setRetrying(false);
   };
 
-  const supportPhone =
-    (companyInfo as { phone?: string; supportPhone?: string } | undefined)?.supportPhone ??
-    (companyInfo as { phone?: string } | undefined)?.phone ??
-    null;
+  const supportPhone = infoFor(country)?.phoneRaw || infoFor(country)?.phone || null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
