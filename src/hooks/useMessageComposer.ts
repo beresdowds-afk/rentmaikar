@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
 import { toast } from 'sonner';
 import { renderPlaceholders, type PlaceholderValues } from '@/lib/reply-placeholders';
+import { looksLikeOtpMessage, OTP_IN_APP_BLOCK_MESSAGE } from '@/lib/otp-guard';
 
 /**
  * Placeholder values we can resolve straight from the composer form. Anything
@@ -263,6 +264,11 @@ export const useSendComposedMessage = () => {
 
     // ── In-app messaging: stored in the user's app inbox + web push ──
     if (input.channel === 'in_app') {
+      // Never deliver one-time passcodes to an already-authenticated surface.
+      if (looksLikeOtpMessage(body) || looksLikeOtpMessage(renderedSubject)) {
+        notifyError(OTP_IN_APP_BLOCK_MESSAGE);
+        return { saved: false, delivered: false, reason: OTP_IN_APP_BLOCK_MESSAGE };
+      }
       setIsSending(true);
       try {
         const { data, error } = await supabase.functions.invoke('send-in-app-message', {

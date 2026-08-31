@@ -12,6 +12,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { requireAdminCaller } from "../_shared/guard.ts";
 import { sendWebPushToUser, webPushConfigured } from "../_shared/web-push.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
+import { looksLikeOtpMessage, OTP_IN_APP_BLOCK_MESSAGE } from "../_shared/otp-guard.ts";
 
 const Body = z.object({
   recipient_ids: z.array(z.string().uuid()).min(1).max(500),
@@ -41,6 +42,14 @@ Deno.serve(async (req) => {
       return json({ error: parsed.error.flatten().fieldErrors }, 400);
     }
     const { recipient_ids, subject, body, category, link_url, metadata, notify } = parsed.data;
+
+    // Hard block: OTP / 2FA codes must never travel over the in-app channel.
+    if (
+      looksLikeOtpMessage(body, category) ||
+      looksLikeOtpMessage(subject, category)
+    ) {
+      return json({ ok: false, error: OTP_IN_APP_BLOCK_MESSAGE }, 400);
+    }
 
     const supa = createClient(
       Deno.env.get("SUPABASE_URL")!,
