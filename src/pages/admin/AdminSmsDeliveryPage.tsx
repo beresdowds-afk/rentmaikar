@@ -160,6 +160,10 @@ export default function AdminSmsDeliveryPage() {
         ))}
       </div>
 
+      <LiveSmsTestPanel onSent={load} />
+
+
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
