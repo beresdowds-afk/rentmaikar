@@ -1,5 +1,7 @@
 import { MessageSquare } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Seo from '@/components/seo/Seo';
+import { Button } from '@/components/ui/button';
 import { MessagingCenter } from '@/components/admin/MessagingCenter';
 
 /** Standalone route for the central messaging center. */
