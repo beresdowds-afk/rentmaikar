@@ -60,7 +60,7 @@ const AdminProximityMatchingPage = () => {
       <Seo
         path="/admin/proximity-matching"
         title="Vehicle & Driver Proximity Matching | Admin"
-        description="Match vehicles to nearby drivers and drivers to nearby vehicles within a configurable radius, bounded by city limits."
+        description="Match provisioned, matching-ready vehicles to nearby drivers and drivers to nearby vehicles within a configurable radius, bounded by city limits."
       />
 
 
@@ -127,7 +127,7 @@ const AdminProximityMatchingPage = () => {
           <Card>
             <CardHeader>
               <CardTitle>Drivers within {radius} miles of each pickup location</CardTitle>
-              <CardDescription>{vehicleRows.length} vehicles</CardDescription>
+              <CardDescription>{vehicleRows.length} provisioned vehicles (ready for matching)</CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               {isLoading ? (

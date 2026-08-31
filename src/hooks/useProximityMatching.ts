@@ -110,11 +110,26 @@ const matches = (a: Resolved, b: Resolved, radiusMiles: number) => {
 };
 
 const fetchProximityData = async () => {
+  // The provisioned vehicles list (IoT auto-provisioning) is the source of truth:
+  // only vehicles that passed provisioning and are ready for matching participate.
+  const { data: readyRows, error: readyError } = await supabase
+    .from("iot_provisioning_state")
+    .select("vehicle_id")
+    .eq("stage", "ready");
+  if (readyError) throw readyError;
+
+  const readyVehicleIds = Array.from(
+    new Set((readyRows ?? []).map((r) => r.vehicle_id).filter(Boolean) as string[]),
+  );
+
   const [vehiclesRes, rolesRes] = await Promise.all([
-    supabase
-      .from("vehicles")
-      .select("id, make, model, year, status, is_public, pickup_city, pickup_location, pickup_address, owner_id")
-      .order("created_at", { ascending: false }),
+    readyVehicleIds.length
+      ? supabase
+          .from("vehicles")
+          .select("id, make, model, year, status, is_public, pickup_city, pickup_location, pickup_address, owner_id")
+          .in("id", readyVehicleIds)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null } as const),
     supabase.from("user_roles").select("user_id").eq("role", "driver"),
   ]);
 
@@ -133,8 +148,13 @@ const fetchProximityData = async () => {
     drivers = (data ?? []) as ProximityDriver[];
   }
 
-  return { vehicles: (vehiclesRes.data ?? []) as ProximityVehicle[], drivers };
+  return {
+    vehicles: (vehiclesRes.data ?? []) as ProximityVehicle[],
+    drivers,
+    readyVehicleCount: readyVehicleIds.length,
+  };
 };
+
 
 export const useProximityMatching = (radiusMiles: number = PROXIMITY_DEFAULT_RADIUS_MILES) => {
   const query = useQuery({
@@ -193,5 +213,6 @@ export const useProximityMatching = (radiusMiles: number = PROXIMITY_DEFAULT_RAD
     ...query,
     vehiclesWithDrivers,
     driversWithVehicles,
+    readyVehicleCount: query.data?.readyVehicleCount ?? 0,
   };
 };
