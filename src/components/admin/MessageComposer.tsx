@@ -412,7 +412,7 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
           )}
 
           <UseCaseDraftPicker
-            channel={channel}
+            channel={channel === 'in_app' ? 'email' : channel}
             placeholderValues={livePlaceholders}
             onApply={({ body: draftBody, subject: draftSubject }) => {
               setBody(draftBody);
