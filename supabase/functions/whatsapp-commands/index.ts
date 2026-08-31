@@ -1416,21 +1416,25 @@ const handler = async (req: Request): Promise<Response> => {
         // Interactive vehicle list with selection flow
         const { data: vehicles } = await supabase
           .from("vehicles")
-          .select("id, make, model, year, category, daily_rate, currency, city")
+          .select("id, make, model, year, color, pickup_city")
           .eq("status", "available")
-          .eq("region", region === "NIGERIA" ? "nigeria" : "usa")
-          .order("daily_rate", { ascending: true })
+          .eq("is_public", true)
+          .order("year", { ascending: false })
           .limit(10);
 
         if (vehicles && vehicles.length > 0) {
-          const vehicleLines = vehicles.map((v, i) => {
-            const curr = v.currency === "NGN" ? "₦" : "$";
-            return [
+          const vehicleLines: string[] = [];
+          for (let i = 0; i < vehicles.length; i++) {
+            const v = vehicles[i];
+            const pricing = await resolveVehiclePricing(supabase, v.year, region);
+            const curr = pricing?.currencySymbol ?? "$";
+            vehicleLines.push([
               `${i + 1}️⃣ *${v.year} ${v.make} ${v.model}*`,
-              `   ${v.category || "Standard"} • ${curr}${v.daily_rate}/day`,
-              v.city ? `   📍 ${v.city}` : "",
-            ].filter(Boolean).join("\n");
-          });
+              `   ${pricing?.label ?? "Standard"}${pricing ? ` • ${curr}${pricing.daily.toLocaleString()}/day` : ""}`,
+              v.pickup_city ? `   📍 ${v.pickup_city}` : "",
+            ].filter(Boolean).join("\n"));
+          }
+
 
           responseMessage = [
             `🚗 *Available Vehicles (${vehicles.length})*`,
