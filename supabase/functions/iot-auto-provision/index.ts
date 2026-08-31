@@ -227,6 +227,7 @@ Deno.serve(async (req) => {
             .limit(1);
           const candidate = available?.[0];
           if (!candidate) {
+            console.log("no_device_available", v.id);
             await upsertState(supa, v.id, { stage: "awaiting_device", last_error: "No enabled device available" });
             continue;
           }
@@ -242,7 +243,11 @@ Deno.serve(async (req) => {
             .is("vehicle_id", null)
             .select("id")
             .maybeSingle();
-          if (linkErr || !linkedRow) continue; // lost the race, retry next run
+          if (linkErr || !linkedRow) {
+            console.error("device_link_failed", v.id, candidate.id, linkErr?.message ?? "no row returned");
+            errors.push({ step: "link_device", vehicle_id: v.id, device_id: candidate.id, message: linkErr?.message ?? "no row returned" });
+            continue; // lost the race or blocked; retry next run
+          }
           deviceId = linkedRow.id;
           counters.vehicles_linked += 1;
         }
