@@ -7,6 +7,8 @@ import { CannedRepliesManager } from '@/components/admin/CannedRepliesManager';
 import TwilioTemplateManager from '@/components/admin/TwilioTemplateManager';
 import { InboxNotificationSettings } from '@/components/admin/InboxNotificationSettings';
 import OutboundDeliveryLogPanel from '@/components/admin/OutboundDeliveryLogPanel';
+import { useAssistantPermissions } from '@/hooks/useAssistantPermissions';
+
 
 
 /**
@@ -16,6 +18,9 @@ import OutboundDeliveryLogPanel from '@/components/admin/OutboundDeliveryLogPane
  */
 export function MessagingCenter() {
   const [tab, setTab] = useState('inbox');
+  const { isFullAdmin, perms, loading } = useAssistantPermissions();
+  // Full admins always compose; assistants need the send-communications grant.
+  const canCompose = loading || isFullAdmin || !!perms?.can_send_communications;
 
   return (
     <Tabs value={tab} onValueChange={setTab} className="space-y-4">
@@ -23,9 +28,11 @@ export function MessagingCenter() {
         <TabsTrigger value="inbox" className="gap-2">
           <Inbox className="h-4 w-4" /> Inbox
         </TabsTrigger>
-        <TabsTrigger value="compose" className="gap-2">
-          <PenSquare className="h-4 w-4" /> Compose
-        </TabsTrigger>
+        {canCompose && (
+          <TabsTrigger value="compose" className="gap-2">
+            <PenSquare className="h-4 w-4" /> Compose
+          </TabsTrigger>
+        )}
         <TabsTrigger value="templates" className="gap-2">
           <FileText className="h-4 w-4" /> Templates
         </TabsTrigger>
@@ -41,9 +48,12 @@ export function MessagingCenter() {
         <AdminUnifiedInbox />
       </TabsContent>
 
-      <TabsContent value="compose" className="mt-0">
-        <MessageComposer onSent={() => setTab('inbox')} />
-      </TabsContent>
+      {canCompose && (
+        <TabsContent value="compose" className="mt-0">
+          <MessageComposer onSent={() => setTab('inbox')} />
+        </TabsContent>
+      )}
+
 
       <TabsContent value="templates" className="mt-0 space-y-6">
         <CannedRepliesManager />
