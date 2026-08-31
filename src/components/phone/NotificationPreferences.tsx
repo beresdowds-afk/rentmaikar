@@ -47,11 +47,6 @@ export const NotificationPreferences = ({ phoneVerified = false }: NotificationP
   const handleChannelChange = async (value: string) => {
     const channel = value as 'none' | 'sms' | 'whatsapp';
 
-    if ((channel === 'sms' || channel === 'whatsapp') && !phoneVerified) {
-      toast.error('Please verify your phone number first');
-      return;
-    }
-
     setIsSaving(true);
     try {
       const { error } = await supabase
@@ -136,13 +131,13 @@ export const NotificationPreferences = ({ phoneVerified = false }: NotificationP
               <span className="text-sm font-medium text-foreground">Email only</span>
             </label>
 
-            <label className={`flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors ${!phoneVerified ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/40'}`}>
-              <RadioGroupItem value="sms" id="ch-sms" disabled={!phoneVerified} />
+            <label className="flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors hover:bg-muted/40">
+              <RadioGroupItem value="sms" id="ch-sms" />
               <span className="text-sm font-medium text-foreground">SMS</span>
             </label>
 
-            <label className={`flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors ${!phoneVerified ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/40'}`}>
-              <RadioGroupItem value="whatsapp" id="ch-whatsapp" disabled={!phoneVerified} />
+            <label className="flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors hover:bg-muted/40">
+              <RadioGroupItem value="whatsapp" id="ch-whatsapp" />
               <span className="text-sm font-medium text-foreground">WhatsApp</span>
             </label>
           </RadioGroup>
@@ -152,7 +147,8 @@ export const NotificationPreferences = ({ phoneVerified = false }: NotificationP
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Verify your phone number to enable SMS or WhatsApp as a second channel.
+              SMS and WhatsApp work without phone verification. Verification is only required
+              before owners can withdraw earnings.
             </AlertDescription>
           </Alert>
         )}
