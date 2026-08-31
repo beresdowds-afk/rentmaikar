@@ -1499,22 +1499,21 @@ const handler = async (req: Request): Promise<Response> => {
               // Fetch full vehicle details
               const { data: vehicle } = await supabase
                 .from("vehicles")
-                .select("id, make, model, year, category, daily_rate, currency, city, description")
+                .select("id, make, model, year, color, pickup_city")
                 .eq("id", selectedVehicle.id)
                 .single();
 
               if (vehicle) {
-                const curr = vehicle.currency === "NGN" ? "₦" : "$";
-                const weeklyRate = vehicle.daily_rate * 7;
+                const pricing = await resolveVehiclePricing(supabase, vehicle.year, region);
+                const curr = pricing?.currencySymbol ?? "$";
                 responseMessage = [
                   `🚗 *${vehicle.year} ${vehicle.make} ${vehicle.model}*`,
                   ``,
                   `📋 *Vehicle Details*`,
-                  `• Category: ${vehicle.category || "Standard"}`,
-                  `• Daily Rate: ${curr}${vehicle.daily_rate.toLocaleString()}/day`,
-                  `• Weekly Rate: ${curr}${weeklyRate.toLocaleString()}/week`,
-                  vehicle.city ? `• Location: 📍 ${vehicle.city}` : "",
-                  vehicle.description ? `• Info: ${vehicle.description}` : "",
+                  `• Category: ${pricing?.label ?? "Standard"}`,
+                  pricing ? `• Daily Rate: ${curr}${pricing.daily.toLocaleString()}/day` : "",
+                  pricing ? `• Weekly Rate: ${curr}${pricing.weekly.toLocaleString()}/week` : "",
+                  vehicle.pickup_city ? `• Location: 📍 ${vehicle.pickup_city}` : "",
                   ``,
                   `✅ Includes GPS tracking & insurance`,
                   ``,
@@ -1533,10 +1532,11 @@ const handler = async (req: Request): Promise<Response> => {
                   data: {
                     vehicleId: vehicle.id,
                     vehicleName: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
-                    dailyRate: vehicle.daily_rate,
-                    currency: vehicle.currency,
+                    dailyRate: pricing?.daily ?? null,
+                    currency: pricing?.currency ?? null,
                     selectedFrom: "whatsapp_list",
                   },
+
                   completed: false,
                 });
 
