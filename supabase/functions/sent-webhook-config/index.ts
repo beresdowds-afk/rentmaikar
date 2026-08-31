@@ -60,7 +60,13 @@ Deno.serve(async (req) => {
       : undefined;
 
     if (action === "list") {
-      return json({ ok: true, canonical_url: url, configured: Boolean(match), webhooks: existing });
+      return json({
+        ok: true,
+        canonical_url: url,
+        configured: Boolean(match),
+        signing_secret_configured: Boolean(Deno.env.get("SENT_WEBHOOK_SECRET")),
+        webhooks: existing,
+      });
     }
 
     // Subscribe to every delivery-lifecycle event Sent exposes, plus inbound.
@@ -73,13 +79,20 @@ Deno.serve(async (req) => {
       : ["message"];
     const event_types = wanted.length ? wanted : available;
 
-    const payload = {
+    // Register OUR signing secret with Sent so status callbacks arrive signed
+    // with the same value `sent-status` / `sent-inbound` verify against.
+    const localSecret = Deno.env.get("SENT_WEBHOOK_SECRET") ?? "";
+    const payload: Record<string, unknown> = {
       display_name: "Rentmaikar delivery + inbound",
       endpoint_url: url,
       event_types,
       retry_count: 3,
       timeout_seconds: 15,
     };
+    if (localSecret) {
+      payload.signing_secret = localSecret;
+      payload.secret = localSecret;
+    }
 
     const result = match?.id
       ? await sentFetch(`/v3/webhooks/${match.id}`, { method: "PUT", body: JSON.stringify(payload) })
@@ -100,7 +113,13 @@ Deno.serve(async (req) => {
       webhook_id: data.id ?? match?.id ?? null,
       event_types: data.event_types ?? event_types,
       is_active: data.is_active ?? true,
-      // A freshly minted signing secret must be stored as SENT_WEBHOOK_SECRET.
+      // Signing secret state: `registered` means Sent now signs callbacks with
+      // the same SENT_WEBHOOK_SECRET the receivers verify against.
+      signing_secret_configured: Boolean(localSecret),
+      signing_secret_registered: Boolean(localSecret) &&
+        (data.signing_secret === localSecret || data.signing_secret === undefined
+          ? Boolean(localSecret)
+          : false),
       signing_secret_returned: Boolean(data.signing_secret),
     });
   } catch (e) {
