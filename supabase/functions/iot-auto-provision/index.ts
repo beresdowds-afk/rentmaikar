@@ -400,8 +400,10 @@ async function upsertState(
   if (existing) {
     // Never downgrade a vehicle that is already ready.
     if (existing.stage === "ready" && patch.stage !== "ready") return;
-    await supa.from("iot_provisioning_state").update(patch).eq("id", existing.id);
+    const { error } = await supa.from("iot_provisioning_state").update(patch).eq("id", existing.id);
+    if (error) console.error("state_update_failed", vehicleId, error.message);
   } else {
-    await supa.from("iot_provisioning_state").insert({ vehicle_id: vehicleId, ...patch });
+    const { error } = await supa.from("iot_provisioning_state").insert({ vehicle_id: vehicleId, ...patch });
+    if (error) console.error("state_insert_failed", vehicleId, error.message);
   }
 }
