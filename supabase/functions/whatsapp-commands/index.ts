@@ -942,7 +942,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         const { data: vehicle } = await supabase
           .from("vehicles")
-          .select("id, make, model, year, category, daily_rate, currency, region, description")
+          .select("id, make, model, year, color, pickup_city")
           .eq("id", vehicleId)
           .single();
 
@@ -950,16 +950,17 @@ const handler = async (req: Request): Promise<Response> => {
           .select("phone, full_name").eq("user_id", userId).single();
 
         if (vehicle && userProfile?.phone) {
-          const curr = vehicle.currency === "NGN" ? "₦" : "$";
-          const weeklyRate = vehicle.daily_rate * 7;
+          const vehicleRegion = userProfile.phone.startsWith("+234") ? "NIGERIA" : "USA";
+          const pricing = await resolveVehiclePricing(supabase, vehicle.year, vehicleRegion);
+          const curr = pricing?.currencySymbol ?? "$";
           const detailMsg = [
             `🚗 *${vehicle.year} ${vehicle.make} ${vehicle.model}*`,
             ``,
             `📋 *Vehicle Details*`,
-            `• Category: ${vehicle.category || "Standard"}`,
-            `• Daily Rate: ${curr}${vehicle.daily_rate.toLocaleString()}/day`,
-            `• Weekly Rate: ${curr}${weeklyRate.toLocaleString()}/week`,
-            vehicle.description ? `• Info: ${vehicle.description}` : "",
+            `• Category: ${pricing?.label ?? "Standard"}`,
+            pricing ? `• Daily Rate: ${curr}${pricing.daily.toLocaleString()}/day` : "",
+            pricing ? `• Weekly Rate: ${curr}${pricing.weekly.toLocaleString()}/week` : "",
+            vehicle.pickup_city ? `• Location: 📍 ${vehicle.pickup_city}` : "",
             ``,
             `✅ Includes GPS tracking & insurance`,
             ``,
@@ -980,9 +981,10 @@ const handler = async (req: Request): Promise<Response> => {
             data: {
               vehicleId,
               vehicleName: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
-              dailyRate: vehicle.daily_rate,
-              currency: vehicle.currency,
+              dailyRate: pricing?.daily ?? null,
+              currency: pricing?.currency ?? null,
             },
+
             completed: false,
           });
 
