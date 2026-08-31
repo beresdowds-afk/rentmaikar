@@ -5,6 +5,7 @@ import { Shield, Car, Users, DollarSign, AlertTriangle, CheckCircle, Clock, Eye,
 import { CallCenterPage } from "@/components/admin/voip/CallCenterPage";
 import { HardwareManagement } from "@/components/admin/HardwareManagement";
 import { IoTMonitoringHub } from "@/components/admin/IoTMonitoringHub";
+import { IoTProvisioningPanel } from "@/components/admin/IoTProvisioningPanel";
 import { HologramDashboard } from "@/components/admin/HologramDashboard";
 import { TraccarDashboard } from "@/components/admin/TraccarDashboard";
 import { SyncScheduleSettings } from "@/components/admin/SyncScheduleSettings";
@@ -708,6 +709,7 @@ const AdminDashboard = () => {
               {activeTab === 'catalogue' && <AdminVehicleCataloguePage embedded />}
               {activeTab === 'pickup-locations' && <VehiclePickupManagement />}
               {activeTab === 'iot-monitoring' && <IoTMonitoringHub />}
+              {activeTab === 'iot-provisioning' && <IoTProvisioningPanel />}
               {activeTab === 'hologram' && <HologramDashboard />}
               {activeTab === 'traccar' && <TraccarDashboard />}
               {activeTab === 'sync-schedule' && <SyncScheduleSettings />}

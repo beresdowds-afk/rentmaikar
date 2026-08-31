@@ -49,6 +49,7 @@ export const erpTabs: PortalTab[] = [
   { value: "catalogue", label: "Vehicle Catalogue", icon: <Car className="h-4 w-4" /> },
   { value: "pickup-locations", label: "Pickup Locations", icon: <MapPin className="h-4 w-4" /> },
   { value: "iot-monitoring", label: "IoT Monitoring Hub", icon: <Radio className="h-4 w-4" /> },
+  { value: "iot-provisioning", label: "Auto Provisioning", icon: <Cpu className="h-4 w-4" /> },
   { value: "hologram", label: "Hologram SIMs", icon: <Signal className="h-4 w-4" /> },
   { value: "traccar", label: "Traccar Tracking", icon: <Satellite className="h-4 w-4" /> },
   { value: "sync-schedule", label: "IoT Sync Schedule", icon: <Clock className="h-4 w-4" /> },
