@@ -25,10 +25,8 @@ interface CallRequest {
   receiverId?: string;
 }
 
-const OUTBOUND_NUMBERS = {
-  USA: Deno.env.get('TWILIO_PHONE_NUMBER') || '+16083843932',
-  Nigeria: Deno.env.get('TERMII_SENDER_ID') || 'Rentmaikar',
-};
+
+
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
