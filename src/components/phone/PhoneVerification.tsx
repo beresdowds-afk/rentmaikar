@@ -13,6 +13,7 @@ import { Phone, MessageSquare, CheckCircle, Loader2, RefreshCw, Shield } from 'l
 import { toast } from 'sonner';
 import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js';
+import { useResolvedPhoneCountry } from '@/hooks/useDefaultPhoneCountry';
 
 interface PhoneVerificationProps {
   onVerified?: () => void;
