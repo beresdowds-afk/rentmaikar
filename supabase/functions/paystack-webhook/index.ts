@@ -1,4 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
+import { notifyWithdrawalEvent } from "../_shared/withdrawal-notify.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHmac } from "node:crypto";
@@ -217,6 +218,16 @@ Deno.serve(async (req) => {
           description: success ? "Owner payout settled" : "Owner payout failed — funds returned",
         });
         if (!res.ok) console.error("[paystack-webhook] ledger payout error:", res.error);
+
+        await notifyWithdrawalEvent(supabase, {
+          event: success ? "completed" : "failed",
+          ownerId: payoutRow.owner_id,
+          amount: Number(payoutRow.amount),
+          currency: payoutRow.currency,
+          provider: "paystack",
+          payoutId: payoutRow.id,
+          reason: success ? null : (evt.data.reason ?? "transfer failed"),
+        });
       }
     }
   }

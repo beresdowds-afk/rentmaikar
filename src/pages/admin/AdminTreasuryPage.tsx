@@ -181,7 +181,13 @@ export default function AdminTreasuryPage() {
                         disabled={decide.isPending}
                         onClick={() =>
                           decide
-                            .mutateAsync({ id: row.id, decision: "approved" })
+                            .mutateAsync({
+                              id: row.id,
+                              decision: "approved",
+                              subjectUserId: row.subject_user_id,
+                              amount: row.amount,
+                              currency: row.currency,
+                            })
                             .then(() => toast.success("Withdrawal approved"))
                             .catch((e: Error) => toast.error(e.message))
                         }
@@ -198,6 +204,9 @@ export default function AdminTreasuryPage() {
                               id: row.id,
                               decision: "rejected",
                               reason: "Rejected by admin review",
+                              subjectUserId: row.subject_user_id,
+                              amount: row.amount,
+                              currency: row.currency,
                             })
                             .then(() => toast.success("Withdrawal rejected"))
                             .catch((e: Error) => toast.error(e.message))

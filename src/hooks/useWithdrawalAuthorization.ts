@@ -56,6 +56,34 @@ export const RISK_FLAG_LABELS: Record<string, string> = {
   PLATFORM_TREASURY: "Platform treasury movement",
 };
 
+/**
+ * Fire-and-forget lifecycle notification for a withdrawal.
+ * Failures never block the money-movement flow.
+ */
+export async function notifyWithdrawal(input: {
+  event: "requested" | "pending_approval" | "approved" | "rejected";
+  amount: number;
+  currency: string;
+  ownerId?: string | null;
+  authorizationId?: string | null;
+  reason?: string | null;
+}): Promise<void> {
+  try {
+    await supabase.functions.invoke("notify-withdrawal", {
+      body: {
+        event: input.event,
+        amount: input.amount,
+        currency: input.currency,
+        ownerId: input.ownerId ?? undefined,
+        authorizationId: input.authorizationId ?? undefined,
+        reason: input.reason ?? undefined,
+      },
+    });
+  } catch (error) {
+    console.warn("[withdrawal] notification failed", error);
+  }
+}
+
 /** Request a (possibly dual-authorized) withdrawal approval. */
 export function useRequestWithdrawalAuthorization() {
   const queryClient = useQueryClient();
@@ -81,12 +109,24 @@ export function useRequestWithdrawalAuthorization() {
         _metadata: (input.metadata ?? {}) as never,
       } as never);
       if (error) throw error;
-      return data as unknown as {
+      const authorization = data as unknown as {
         id: string;
         status: WithdrawalAuthStatus;
         requires_dual_auth: boolean;
         risk: WithdrawalRisk;
       };
+      // Lifecycle notification: initiation, and the extra "awaiting approval"
+      // step when the risk engine escalates to dual authorization.
+      void notifyWithdrawal({
+        event: authorization.requires_dual_auth && authorization.status === "pending"
+          ? "pending_approval"
+          : "requested",
+        amount: input.amount,
+        currency: input.currency,
+        ownerId: input.subjectUserId ?? undefined,
+        authorizationId: authorization.id,
+      });
+      return authorization;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["withdrawal-authorizations"] });
@@ -150,7 +190,14 @@ export function useWithdrawalAuthorizationQueue(status: WithdrawalAuthStatus | "
 export function useDecideWithdrawalAuthorization() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { id: string; decision: "approved" | "rejected"; reason?: string }) => {
+    mutationFn: async (input: {
+      id: string;
+      decision: "approved" | "rejected";
+      reason?: string;
+      subjectUserId?: string;
+      amount?: number;
+      currency?: string;
+    }) => {
       const { data, error } = await supabase.rpc("decide_withdrawal_authorization" as never, {
         _id: input.id,
         _decision: input.decision,
@@ -159,6 +206,16 @@ export function useDecideWithdrawalAuthorization() {
       if (error) throw error;
       const result = data as unknown as { ok: boolean; error?: string };
       if (!result?.ok) throw new Error(result?.error ?? "Decision failed");
+      if (input.subjectUserId && input.amount != null && input.currency) {
+        void notifyWithdrawal({
+          event: input.decision,
+          amount: input.amount,
+          currency: input.currency,
+          ownerId: input.subjectUserId,
+          authorizationId: input.id,
+          reason: input.reason ?? null,
+        });
+      }
       return result;
     },
     onSuccess: () => {
