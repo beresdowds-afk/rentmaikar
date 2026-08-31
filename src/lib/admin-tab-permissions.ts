@@ -74,12 +74,29 @@ export const TAB_PERMISSION_MAP: Record<AdminTabKey, PermissionKey | null> = {
   'voip-docs': null,
 };
 
+/**
+ * Quick-access surfaces that are not part of `PortalNavigation` but are still
+ * reachable from the admin dashboards (shortcut buttons). Kept separate from
+ * `TAB_PERMISSION_MAP` so the nav-drift checks stay accurate.
+ */
+export const QUICK_ACCESS_PERMISSION_MAP: Record<AdminTabKey, PermissionKey | null> = {
+  inbox: 'can_view_communications',
+};
+
+function requiredPermissionForTab(tab: string): PermissionKey | null | undefined {
+  if (tab in TAB_PERMISSION_MAP) return TAB_PERMISSION_MAP[tab];
+  return QUICK_ACCESS_PERMISSION_MAP[tab];
+}
+
 /** Compute the list of tabs an assistant is NOT allowed to see. */
 export function forbiddenTabsForAssistant(
   perms: Partial<Record<PermissionKey, boolean>> | null,
 ): string[] {
   const forbidden: string[] = [];
-  for (const [tab, required] of Object.entries(TAB_PERMISSION_MAP)) {
+  for (const [tab, required] of [
+    ...Object.entries(TAB_PERMISSION_MAP),
+    ...Object.entries(QUICK_ACCESS_PERMISSION_MAP),
+  ]) {
     if (required === null) continue;
     if (!perms?.[required]) forbidden.push(tab);
   }
@@ -91,8 +108,9 @@ export function assistantCanAccessTab(
   tab: string,
   perms: Partial<Record<PermissionKey, boolean>> | null,
 ): boolean {
-  const required = TAB_PERMISSION_MAP[tab];
+  const required = requiredPermissionForTab(tab);
   if (required === undefined) return false; // admin-only tab
   if (required === null) return true;
   return !!perms?.[required];
 }
+
