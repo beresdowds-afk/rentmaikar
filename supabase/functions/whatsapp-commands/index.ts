@@ -34,6 +34,60 @@ const KEYWORD_TEMPLATE_KEYS: Record<string, string> = {
   START: "kw_start",
 };
 
+/**
+ * Vehicle pricing helper.
+ *
+ * `public.vehicles` holds no pricing/category columns — the category is derived
+ * from the manufacture year (`vehicle_category_year_specs`) and the published
+ * weekly rate comes from `vehicle_category_prices` for the caller's region.
+ */
+interface VehiclePricing {
+  category: string;
+  label: string;
+  currency: string;
+  currencySymbol: string;
+  weekly: number;
+  daily: number;
+}
+
+async function resolveVehiclePricing(
+  supabase: any,
+  year: number | null,
+  region: string,
+): Promise<VehiclePricing | null> {
+  if (!year) return null;
+  const { data: spec } = await supabase
+    .from("vehicle_category_year_specs")
+    .select("category, label, min_year, max_year")
+    .eq("region", region)
+    .eq("is_active", true)
+    .lte("min_year", year)
+    .gte("max_year", year)
+    .limit(1)
+    .maybeSingle();
+  if (!spec) return null;
+
+  const { data: price } = await supabase
+    .from("vehicle_category_prices")
+    .select("price, currency")
+    .eq("region", region)
+    .eq("category", spec.category)
+    .limit(1)
+    .maybeSingle();
+  if (!price) return null;
+
+  const weekly = Number(price.price) || 0;
+  const currency = price.currency || (region === "NIGERIA" ? "NGN" : "USD");
+  return {
+    category: spec.category,
+    label: spec.label || spec.category,
+    currency,
+    currencySymbol: currency === "NGN" ? "₦" : "$",
+    weekly,
+    daily: Math.round(weekly / 7),
+  };
+}
+
 const supportPhoneFor = (region: string): string =>
   region === "NIGERIA"
     ? (Deno.env.get("TWILIO_PHONE_NUMBER_NG") ?? "")
