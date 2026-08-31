@@ -29,6 +29,9 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useCannedReplies } from '@/hooks/useCannedReplies';
+import { UseCaseDraftPicker } from '@/components/admin/UseCaseDraftPicker';
+import { renderPlaceholders, type PlaceholderValues } from '@/lib/reply-placeholders';
+
 import {
   useMessageDrafts,
   useRecipientSearch,
@@ -377,6 +380,15 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
             </div>
           )}
 
+          <UseCaseDraftPicker
+            channel={channel}
+            placeholderValues={livePlaceholders}
+            onApply={({ body: draftBody, subject: draftSubject }) => {
+              setBody(draftBody);
+              if (channel === 'email') setSubject(draftSubject);
+            }}
+          />
+
           {channelReplies.length > 0 && (
             <div className="space-y-2">
               <Label>Insert a saved reply</Label>
@@ -397,6 +409,7 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
               </Select>
             </div>
           )}
+
 
           <div className="space-y-2">
             <Label htmlFor="compose-body">Message</Label>

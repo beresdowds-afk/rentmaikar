@@ -3,6 +3,32 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
 import { toast } from 'sonner';
+import { renderPlaceholders, type PlaceholderValues } from '@/lib/reply-placeholders';
+
+/**
+ * Placeholder values we can resolve straight from the composer form. Anything
+ * that needs rental/vehicle context (vehicle, booking dates, rates) is resolved
+ * server-side from the conversation before dispatch.
+ */
+const composerPlaceholderValues = (
+  input: { recipientName?: string; email?: string; phone?: string },
+  region: string | null | undefined,
+): PlaceholderValues => {
+  const name = (input.recipientName || '').trim();
+  return {
+    customer_name: name || 'there',
+    first_name: name ? name.split(' ')[0] : 'there',
+    customer_email: input.email?.trim() || '',
+    customer_phone: input.phone?.trim() || '',
+    region: region || '',
+    today: new Date().toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }),
+  };
+};
+
 
 export type ComposerChannel = 'email' | 'sms' | 'whatsapp';
 
@@ -208,7 +234,14 @@ export const useSendComposedMessage = () => {
     };
 
 
-    const body = input.body.trim();
+    // Fill in every placeholder we can resolve from the recipient before the
+    // message is stored or handed to a provider. Unresolved tokens are left for
+    // the edge function to resolve from the conversation.
+    const placeholderValues = composerPlaceholderValues(input, country);
+    const body = renderPlaceholders(input.body.trim(), placeholderValues, { keepUnknown: true });
+    const renderedSubject = renderPlaceholders(input.subject?.trim() || '', placeholderValues, {
+      keepUnknown: true,
+    }).trim();
     if (!body) {
       notifyError('Write a message first');
       return { saved: false, delivered: false, reason: 'Empty message' };
@@ -253,7 +286,7 @@ export const useSendComposedMessage = () => {
             user_email: email || null,
             user_phone: phone || null,
             channel: input.channel,
-            subject: input.subject?.trim() || 'Message from Rentmaikar',
+            subject: renderedSubject || 'Message from Rentmaikar',
             status: 'pending',
             priority: 'normal',
             region: toConversationRegion(country, phone),
@@ -288,7 +321,7 @@ export const useSendComposedMessage = () => {
                 conversationId,
                 messageContent: body,
                 recipientEmail: email,
-                subject: input.subject?.trim() || undefined,
+                subject: renderedSubject || undefined,
               },
             })
           : await supabase.functions.invoke('send-inbox-reply', {
