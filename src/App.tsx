@@ -48,6 +48,9 @@ const DriverDashboard = lazy(() => import("./pages/DriverDashboard"));
 const DriverOnboarding = lazy(() => import("./pages/DriverOnboarding"));
 const OwnerOnboarding = lazy(() => import("./pages/OwnerOnboarding"));
 const OwnerDashboard = lazy(() => import("./pages/OwnerDashboard"));
+const OwnerSignIn = lazy(() => import("./pages/OwnerSignIn"));
+const AdminSignIn = lazy(() => import("./pages/AdminSignIn"));
+
 const Catalogue = lazy(() => import("./pages/Catalogue"));
 const VehicleDetails = lazy(() => import("./pages/VehicleDetails"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
@@ -179,6 +182,11 @@ const App = () => (
                     <Route path="/catalogue" element={<Navigate to="/catalogue/budget" replace />} />
                     <Route path="/vehicles/:id" element={<VehicleRedirect />} />
                     <Route path="/auth" element={<Auth />} />
+                    <Route path="/owner/sign-in" element={<OwnerSignIn />} />
+                    <Route path="/owner/signin" element={<Navigate to="/owner/sign-in" replace />} />
+                    <Route path="/admin/sign-in" element={<AdminSignIn />} />
+                    <Route path="/admin/signin" element={<Navigate to="/admin/sign-in" replace />} />
+
                 
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/referee-attest" element={<RefereeAttestation />} />
