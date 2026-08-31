@@ -5,7 +5,7 @@
 // https://staging.rentmaikar.com/api/webhooks/sent) which relays verified
 // events to the `sent-status` / `sent-inbound` edge functions.
 import { corsHeaders } from "../_shared/cors.ts";
-import { requireAdmin } from "../_shared/guard.ts";
+import { requireAdminCaller } from "../_shared/guard.ts";
 import { sentApiKey, sentEnabled } from "../_shared/sent-client.ts";
 
 const BASE = Deno.env.get("SENT_API_BASE_URL") || "https://api.sent.dm";
@@ -34,8 +34,8 @@ async function sentFetch(path: string, init: RequestInit = {}) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const denied = await requireAdmin(req);
-  if (denied) return denied;
+  const caller = await requireAdminCaller(req);
+  if (caller instanceof Response) return caller;
 
   const json = (payload: unknown, status = 200) =>
     new Response(JSON.stringify(payload), {
