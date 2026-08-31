@@ -64,15 +64,45 @@ function verifySentSignature(req: Request): { ok: boolean; reason?: string } {
   return { ok: false, reason: "Signature mismatch" };
 }
 
-/**
- * POST /api/webhooks/sent
- *
- * Inbound receiver for Sent.dm customer messages and delivery receipts.
- * Verified events are relayed to the `sent-inbound` routing function, which
- * logs the customer's original number and dispatches the outbound leg to the
- * Master Communications Endpoint. Relaying never blocks the 200 OK.
- */
-webhooksRouter.post("/sent", (req: Request, res: Response) => {
+/** Relay a verified Sent.dm payload to the given edge function (non-blocking). */
+function relayToEdgeFunction(fn: string, rawBody: string, req: Request) {
+  const url = process.env.SUPABASE_URL
+    ? `${process.env.SUPABASE_URL}/functions/v1/${fn}`
+    : null;
+  if (!url) {
+    console.warn(`[Webhook][Sent.dm] SUPABASE_URL not set — event not relayed to ${fn}`);
+    return;
+  }
+  const signature =
+    (req.headers["x-sent-signature"] as string | undefined) ||
+    (req.headers["x-webhook-signature"] as string | undefined);
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(signature ? { "x-sent-signature": signature } : {}),
+    },
+    body: rawBody,
+  })
+    .then(async (r) => {
+      if (!r.ok) {
+        console.error(`[Webhook][Sent.dm] Relay to ${fn} failed [${r.status}]:`, await r.text());
+      }
+    })
+    .catch((e) => console.error(`[Webhook][Sent.dm] Relay to ${fn} error:`, e));
+}
+
+/** True when the payload is a delivery receipt rather than a customer message. */
+function isStatusEvent(event: Record<string, any>): boolean {
+  const payload = event?.data ?? event?.message ?? event ?? {};
+  const type = String(event?.type ?? event?.event ?? "").toLowerCase();
+  if (type.includes("inbound") || type.includes("received")) return false;
+  if (type.includes("status") || type.includes("delivery") || type.includes("dlr")) return true;
+  const hasBody = Boolean(payload.text || payload.body || payload.message || payload.media_url);
+  return Boolean(payload.status ?? payload.state) && !hasBody;
+}
+
+function handleSentWebhook(req: Request, res: Response, force?: "status" | "inbound") {
   const verification = verifySentSignature(req);
 
   if (!verification.ok) {
@@ -89,39 +119,42 @@ webhooksRouter.post("/sent", (req: Request, res: Response) => {
   }
 
   const rawBody = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : JSON.stringify(req.body);
-  const event = JSON.parse(rawBody);
-
-  console.log("[Webhook][Sent.dm] Inbound event received:", event);
-
-  const routerUrl = process.env.SUPABASE_URL
-    ? `${process.env.SUPABASE_URL}/functions/v1/sent-inbound`
-    : null;
-
-  if (routerUrl) {
-    const signature =
-      (req.headers["x-sent-signature"] as string | undefined) ||
-      (req.headers["x-webhook-signature"] as string | undefined);
-    fetch(routerUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(signature ? { "x-sent-signature": signature } : {}),
-      },
-      body: rawBody,
-    })
-      .then(async (r) => {
-        if (!r.ok) {
-          console.error(`[Webhook][Sent.dm] Routing relay failed [${r.status}]:`, await r.text());
-        }
-      })
-      .catch((e) => console.error("[Webhook][Sent.dm] Routing relay error:", e));
-  } else {
-    console.warn("[Webhook][Sent.dm] SUPABASE_URL not set — event not relayed to router");
+  let event: Record<string, any> = {};
+  try {
+    event = rawBody ? JSON.parse(rawBody) : {};
+  } catch {
+    return res.status(400).json({ received: false, error: "Invalid JSON" });
   }
 
+  const kind = force ?? (isStatusEvent(event) ? "status" : "inbound");
+  console.log(`[Webhook][Sent.dm] ${kind} event received:`, event);
+
+  relayToEdgeFunction(kind === "status" ? "sent-status" : "sent-inbound", rawBody, req);
+
   // Acknowledge receipt immediately (200 OK)
-  return res.status(200).json({ received: true, timestamp: new Date().toISOString() });
-});
+  return res.status(200).json({ received: true, kind, timestamp: new Date().toISOString() });
+}
+
+/**
+ * POST /api/webhooks/sent
+ *
+ * Single Sent.dm endpoint for both customer messages and delivery receipts.
+ * Inbound messages are relayed to `sent-inbound` (routing to the Master
+ * Communications Endpoint); delivery/status callbacks are relayed to
+ * `sent-status`, which records them in `messaging_events` so the admin
+ * delivery log shows the final outcome. Relaying never blocks the 200 OK.
+ */
+webhooksRouter.post("/sent", (req: Request, res: Response) => handleSentWebhook(req, res));
+
+/**
+ * POST /api/webhooks/sent/status
+ * Explicit delivery-status endpoint, for providers configured with a separate
+ * status callback URL.
+ */
+webhooksRouter.post("/sent/status", (req: Request, res: Response) =>
+  handleSentWebhook(req, res, "status"),
+);
+
 
 
 /**
