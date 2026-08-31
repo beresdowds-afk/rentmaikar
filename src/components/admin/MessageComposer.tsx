@@ -92,6 +92,31 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
     [bulk, channel],
   );
 
+  /** Values we can already resolve for the selected recipient. */
+  const livePlaceholders = useMemo<PlaceholderValues>(() => {
+    const target = bulk.length === 1 ? bulk[0] : null;
+    const name = (target?.full_name || recipientName || '').trim();
+    if (!name && !email && !phone) return {};
+    return {
+      customer_name: name || undefined,
+      first_name: name ? name.split(' ')[0] : undefined,
+      customer_email: target?.email || email || undefined,
+      customer_phone: target?.phone || phone || undefined,
+      today: new Date().toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      }),
+    };
+  }, [bulk, recipientName, email, phone]);
+
+  /** What the recipient will actually read, with placeholders filled in. */
+  const renderedBody = useMemo(
+    () => renderPlaceholders(body, livePlaceholders, { keepUnknown: true }),
+    [body, livePlaceholders],
+  );
+
+
   const addRecipients = (people: RecipientOption[]) => {
     setBulk((prev) => {
       const map = new Map(prev.map((p) => [p.user_id, p]));
