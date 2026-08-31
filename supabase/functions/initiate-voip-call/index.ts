@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { outboundPausedResponse } from '../_shared/channel-guard.ts';
+import { twilioCredentialsConfigured, twilioRequest } from '../_shared/twilio-auth.ts';
+import { getMasterEndpointFor, publicSenderFor } from '../_shared/comms-endpoints.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
