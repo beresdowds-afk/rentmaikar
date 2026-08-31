@@ -14,7 +14,7 @@
 
 import { sendViaSent } from "./sent-client.ts";
 import { evaluateHop, formatTrace } from "./comms-correlation.ts";
-import { twilioMessagingEnabled } from "./twilio-messaging-guard.ts";
+import { twilioFallbackAllowed } from "./twilio-messaging-guard.ts";
 import {
   type CommsChannel,
   getMasterEndpointFor,
@@ -277,7 +277,7 @@ export async function forwardInboundMessage(
     console.error(`[forwarding] Sent.dm forward failed: ${sent.error ?? "unknown"}`);
 
     // ─── Twilio fallback (blocked unless messaging approval is granted) ───
-    if (!twilioMessagingEnabled()) {
+    if (!twilioFallbackAllowed(destination)) {
       return {
         forwarded: false,
         reason: `sent_failed:${sent.error ?? "unknown"}`,

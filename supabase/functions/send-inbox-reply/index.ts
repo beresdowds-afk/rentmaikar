@@ -6,6 +6,7 @@ import { manychat } from "../_shared/manychat-client.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
 import { outboundPausedResponse, outboundRegionFromPhone } from "../_shared/channel-guard.ts";
 import { sendViaSent } from "../_shared/sent-client.ts";
+import { twilioFallbackAllowed } from "../_shared/twilio-messaging-guard.ts";
 import { hasPlaceholders, renderPlaceholders, resolvePlaceholderValues } from "../_shared/reply-placeholders.ts";
 
 
