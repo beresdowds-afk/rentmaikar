@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { outboundPausedResponse } from '../_shared/channel-guard.ts';
+import { twilioCredentialsConfigured, twilioRequest } from '../_shared/twilio-auth.ts';
+import { getMasterEndpointFor, publicSenderFor } from '../_shared/comms-endpoints.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,10 +25,8 @@ interface CallRequest {
   receiverId?: string;
 }
 
-const OUTBOUND_NUMBERS = {
-  USA: Deno.env.get('TWILIO_PHONE_NUMBER') || '+16083843932',
-  Nigeria: Deno.env.get('TERMII_SENDER_ID') || 'Rentmaikar',
-};
+
+
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
@@ -128,17 +128,16 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Get Twilio credentials
-    const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
-    const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
-    const fromNumber = OUTBOUND_NUMBERS[region];
-
-    if (!accountSid || !authToken) {
+    // Twilio is the voice provider for EVERY region (Termii is SMS/OTP only —
+    // its /otp/call endpoint is not a dialable voice leg and returns 404).
+    if (!twilioCredentialsConfigured()) {
       return new Response(
-        JSON.stringify({ error: 'Twilio credentials not configured' }),
+        JSON.stringify({ error: 'Twilio voice credentials are not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    const masterEndpoint = await getMasterEndpointFor(supabase, 'call');
+
 
     // Create call record in database with role tracking
     const { data: callRecord, error: callError } = await supabase
@@ -169,109 +168,51 @@ const handler = async (req: Request): Promise<Response> => {
     const isConference = callType === 'group' || recipients.length > 1;
     const conferenceName = isConference ? `RentMaikar_${callRecord.id}` : null;
 
-    // Initiate calls to each recipient via Twilio (USA) or Termii (Nigeria)
+    // Every leg is dialled through Twilio (voice provider for all regions).
     const callResults = [];
-    const termiiApiKey = Deno.env.get('TERMII_API_KEY');
 
     for (const recipient of recipients) {
       try {
         const recipientRegion = recipient.phoneNumber.startsWith('+234') ? 'Nigeria' : 'USA';
 
-        // ─── TERMII (Nigeria) ───
-        if (recipientRegion === 'Nigeria') {
-          if (!termiiApiKey) {
-            callResults.push({
-              recipient: recipient.phoneNumber,
-              success: false,
-              error: 'Termii credentials not configured for Nigeria',
-            });
-            continue;
-          }
+        // Bridge the answered leg to the operator endpoint — never back to the
+        // recipient's own number (that self-dial made single calls drop).
+        const twiml = isConference
+          ? `<Response><Dial><Conference>${conferenceName}</Conference></Dial></Response>`
+          : `<Response><Say voice="alice">Connecting you to RentMaikar support.</Say>` +
+            `<Dial answerOnBridge="true" timeout="30"><Number>${masterEndpoint}</Number></Dial></Response>`;
 
-          const termiiSenderId = Deno.env.get('TERMII_SENDER_ID') || 'Rentmaikar';
-
-          // Termii voice call
-          const termiiResponse = await fetch('https://api.ng.termii.com/api/sms/otp/call', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            // Termii voice OTP accepts ONLY api_key, phone_number and code.
-            body: JSON.stringify({
-              api_key: termiiApiKey,
-              phone_number: recipient.phoneNumber.replace('+', ''),
-              code: 1234,
-            }),
-          });
-
-          const termiiData = await termiiResponse.json();
-
-          if (termiiResponse.ok && termiiData.pinId) {
-            // Add participant record
-            await supabase
-              .from('voip_call_participants')
-              .insert({
-                call_id: callRecord.id,
-                user_id: recipient.userId || null,
-                phone_number: recipient.phoneNumber,
-                participant_type: 'recipient',
-                display_name: recipient.displayName,
-                region: recipientRegion,
-                status: 'ringing',
-              });
-
-            callResults.push({
-              recipient: recipient.phoneNumber,
-              success: true,
-              callSid: termiiData.pinId,
-            });
-          } else {
-            console.error('Termii error:', termiiData);
-            callResults.push({
-              recipient: recipient.phoneNumber,
-              success: false,
-              error: termiiData.message || 'Termii call failed',
-            });
-          }
-          continue;
-        }
-
-        // ─── TWILIO (USA) ───
-        let twiml;
-        if (isConference) {
-          twiml = `<Response><Dial><Conference>${conferenceName}</Conference></Dial></Response>`;
-        } else {
-          twiml = `<Response><Say>Connecting you to RentMaikar support.</Say><Dial>${recipient.phoneNumber}</Dial></Response>`;
-        }
-
-        const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`;
         const formData = new URLSearchParams();
         formData.append('To', recipient.phoneNumber);
-        formData.append('From', fromNumber);
+        formData.append('From', publicSenderFor('call'));
         formData.append('Twiml', twiml);
         formData.append('Record', 'true');
         formData.append('RecordingStatusCallback', `${supabaseUrl}/functions/v1/recording-status-callback`);
         formData.append('RecordingStatusCallbackEvent', 'completed');
-        
+
         const callbackUrl = `${supabaseUrl}/functions/v1/voip-status-callback`;
         formData.append('StatusCallback', callbackUrl);
         formData.append('StatusCallbackEvent', 'initiated ringing answered completed');
 
-        const twilioResponse = await fetch(twilioUrl, {
+        // API key (SK.../secret) — the approved credential pair. The account
+        // auth token is deliberately not used for REST calls.
+        const twilioResult = await twilioRequest('/Calls.json', {
           method: 'POST',
-          headers: {
-            'Authorization': 'Basic ' + btoa(`${accountSid}:${authToken}`),
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
           body: formData,
         });
 
-        const twilioData = await twilioResponse.json();
-
-        if (!twilioResponse.ok) {
-          console.error('Twilio error:', twilioData);
+        if (!twilioResult.ok) {
+          const message = String(
+            (twilioResult.payload as { message?: string }).message || 'Twilio call failed',
+          );
+          console.error(`Twilio error [${twilioResult.status}] via ${twilioResult.credential}:`, twilioResult.payload);
           callResults.push({
             recipient: recipient.phoneNumber,
             success: false,
-            error: twilioData.message || 'Twilio call failed',
+            status: twilioResult.status,
+            error: twilioResult.status === 401
+              ? `${message} — Twilio rejected the API key credentials`
+              : message,
           });
           continue;
         }
@@ -292,8 +233,10 @@ const handler = async (req: Request): Promise<Response> => {
         callResults.push({
           recipient: recipient.phoneNumber,
           success: true,
-          callSid: twilioData.sid,
+          callSid: (twilioResult.payload as { sid?: string }).sid,
         });
+
+
 
       } catch (err: any) {
         console.error('Error calling recipient:', recipient.phoneNumber, err);
@@ -323,9 +266,14 @@ const handler = async (req: Request): Promise<Response> => {
         callId: callRecord.id,
         results: callResults,
         conferenceName,
+        // Surface the provider reason so the UI never shows a silent drop.
+        error: successfulCalls.length > 0
+          ? undefined
+          : callResults.map((r) => r.error).filter(Boolean).join('; ') || 'Call could not be placed',
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
 
   } catch (error: any) {
     console.error('Error in initiate-voip-call:', error);
