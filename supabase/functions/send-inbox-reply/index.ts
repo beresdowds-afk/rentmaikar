@@ -68,7 +68,7 @@ serve(async (req) => {
           .from("inbox_messages")
           .update({ content: outboundText })
           .eq("conversation_id", conversationId)
-          .eq("content", outboundText)
+          .eq("content", messageContent)
           .eq("sender_type", "admin");
       }
       if (!outboundText) outboundText = messageContent;
