@@ -10172,11 +10172,14 @@ export type Database = {
           center_lat: number
           center_lng: number
           created_at: string
+          created_by: string | null
           id: string
           last_checked_at: string | null
           last_distance_m: number | null
+          name: string | null
           radius_m: number
           updated_at: string
+          updated_by: string | null
           vehicle_id: string
         }
         Insert: {
@@ -10186,11 +10189,14 @@ export type Database = {
           center_lat: number
           center_lng: number
           created_at?: string
+          created_by?: string | null
           id?: string
           last_checked_at?: string | null
           last_distance_m?: number | null
+          name?: string | null
           radius_m?: number
           updated_at?: string
+          updated_by?: string | null
           vehicle_id: string
         }
         Update: {
@@ -10200,11 +10206,14 @@ export type Database = {
           center_lat?: number
           center_lng?: number
           created_at?: string
+          created_by?: string | null
           id?: string
           last_checked_at?: string | null
           last_distance_m?: number | null
+          name?: string | null
           radius_m?: number
           updated_at?: string
+          updated_by?: string | null
           vehicle_id?: string
         }
         Relationships: [
@@ -10452,6 +10461,51 @@ export type Database = {
             referencedColumns: ["id", "owner_id"]
           },
         ]
+      }
+      vehicle_mileage_logs: {
+        Row: {
+          created_at: string
+          driver_id: string | null
+          id: string
+          log_date: string
+          miles: number
+          odometer_end: number | null
+          odometer_start: number | null
+          owner_id: string | null
+          region: string | null
+          source: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          driver_id?: string | null
+          id?: string
+          log_date?: string
+          miles?: number
+          odometer_end?: number | null
+          odometer_start?: number | null
+          owner_id?: string | null
+          region?: string | null
+          source?: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string | null
+          id?: string
+          log_date?: string
+          miles?: number
+          odometer_end?: number | null
+          odometer_start?: number | null
+          owner_id?: string | null
+          region?: string | null
+          source?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: []
       }
       vehicle_mqtt_credentials: {
         Row: {
@@ -12255,6 +12309,17 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_mileage_monthly: {
+        Row: {
+          days_logged: number | null
+          driver_id: string | null
+          last_log_date: string | null
+          miles: number | null
+          month: string | null
+          vehicle_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _match_broadcast: {
@@ -13239,6 +13304,16 @@ export type Database = {
           _provider: string
           _provider_reference?: string
           _reason?: string
+        }
+        Returns: string
+      }
+      record_vehicle_mileage: {
+        Args: {
+          _driver_id: string
+          _log_date?: string
+          _miles: number
+          _source?: string
+          _vehicle_id: string
         }
         Returns: string
       }
