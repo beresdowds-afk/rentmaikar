@@ -10,6 +10,7 @@ import {
   transitionState,
 } from "../_shared/withdrawal-authorization.ts";
 import { notifyWithdrawalEvent } from "../_shared/withdrawal-notify.ts";
+import { requireVerifiedPhone } from "../_shared/verified-phone.ts";
 
 const BodySchema = z.object({
   amount: z.number().positive(),
@@ -35,6 +36,10 @@ Deno.serve(async (req) => {
     const { data: u } = await supabase.auth.getUser(auth.replace("Bearer ", ""));
     const owner = u?.user;
     if (!owner) return json({ error: "Unauthenticated" }, 401);
+
+    // Compulsory for withdrawals (but never for SMS/WhatsApp messaging).
+    const phoneCheck = await requireVerifiedPhone(supabase, owner.id);
+    if (!phoneCheck.ok) return json({ error: phoneCheck.error }, phoneCheck.status ?? 428);
 
     const rawBody = await req.json();
     const parsed = BodySchema.safeParse(rawBody);

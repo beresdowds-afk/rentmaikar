@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Banknote, CheckCircle2, Clock, Loader2, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { WithdrawalAuthorizationGate } from "@/components/payments/WithdrawalAuthorizationGate";
 import { useRegionSamples } from '@/hooks/useRegionSamples';
@@ -89,6 +90,9 @@ export const OwnerWithdrawalPanel = () => {
   // Payout provider readiness — a missing provider key is the single biggest
   // cause of "withdrawal failed" with no explanation.
   const [providerReady, setProviderReady] = useState<boolean | null>(null);
+  // Phone verification is compulsory for withdrawals (it is NOT required for
+  // sending or receiving SMS/WhatsApp messages).
+  const [phoneVerified, setPhoneVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,6 +130,12 @@ export const OwnerWithdrawalPanel = () => {
     setAccounts(list);
     setAccountId((prev) => prev || list.find((a) => a.currency === currency)?.id || list[0]?.id || "");
     setPayouts((hist.data ?? []) as Payout[]);
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("phone_verified")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    setPhoneVerified(!!profile?.phone_verified);
     setLoading(false);
   }, [user, currency]);
 
@@ -311,7 +321,21 @@ export const OwnerWithdrawalPanel = () => {
                 )}
               </div>
 
-              {inFlight ? (
+              {phoneVerified === false ? (
+                <Alert>
+                  <ShieldCheck className="h-4 w-4" />
+                  <AlertTitle>Verify your phone number to withdraw</AlertTitle>
+                  <AlertDescription className="space-y-2">
+                    <p>
+                      Phone verification is required before any payout can be released. It is not
+                      needed to receive SMS or WhatsApp messages.
+                    </p>
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/settings/profile">Verify phone number</Link>
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : inFlight ? (
                 <Alert>
                   <Clock className="h-4 w-4" />
                   <AlertTitle>A withdrawal is already in progress</AlertTitle>
