@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
             .update({
               vehicle_id: v.id,
               is_linked: true,
-              installation_status: "installed",
+              installation_status: "confirmed",
               installation_confirmed_at: new Date().toISOString(),
             })
             .eq("id", candidate.id)
