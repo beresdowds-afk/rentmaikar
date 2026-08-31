@@ -1573,6 +1573,124 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_vehicle_match_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          details: Json
+          id: string
+          match_id: string
+          message: string | null
+          stage: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          match_id: string
+          message?: string | null
+          stage: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          match_id?: string
+          message?: string | null
+          stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_vehicle_match_events_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "driver_vehicle_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_vehicle_matches: {
+        Row: {
+          accredited_at: string | null
+          agreement_id: string | null
+          agreement_initiated_at: string | null
+          agreement_signed_at: string | null
+          assigned_at: string
+          assigned_by: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          created_at: string
+          distance_miles: number | null
+          driver_id: string
+          id: string
+          licence_document_id: string | null
+          notes: string | null
+          owner_id: string | null
+          picked_up_at: string | null
+          referee_count: number
+          region: string | null
+          status: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          accredited_at?: string | null
+          agreement_id?: string | null
+          agreement_initiated_at?: string | null
+          agreement_signed_at?: string | null
+          assigned_at?: string
+          assigned_by?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          distance_miles?: number | null
+          driver_id: string
+          id?: string
+          licence_document_id?: string | null
+          notes?: string | null
+          owner_id?: string | null
+          picked_up_at?: string | null
+          referee_count?: number
+          region?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          accredited_at?: string | null
+          agreement_id?: string | null
+          agreement_initiated_at?: string | null
+          agreement_signed_at?: string | null
+          assigned_at?: string
+          assigned_by?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          distance_miles?: number | null
+          driver_id?: string
+          id?: string
+          licence_document_id?: string | null
+          notes?: string | null
+          owner_id?: string | null
+          picked_up_at?: string | null
+          referee_count?: number
+          region?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_vehicle_matches_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "legal_agreements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       elevenlabs_retention_settings: {
         Row: {
           audio_retention_days: number
@@ -12139,6 +12257,18 @@ export type Database = {
       }
     }
     Functions: {
+      _match_broadcast: {
+        Args: {
+          _driver_body: string
+          _match: Database["public"]["Tables"]["driver_vehicle_matches"]["Row"]
+          _owner_body: string
+          _stage: string
+          _subject: string
+          _task_description: string
+          _task_title: string
+        }
+        Returns: undefined
+      }
       _testkit_run_trigger_guard_tests: {
         Args: { _confirm: string }
         Returns: string
@@ -12151,6 +12281,20 @@ export type Database = {
           _user_id: string
         }
         Returns: string
+      }
+      admin_accredit_match: { Args: { _match_id: string }; Returns: Json }
+      admin_assign_driver_to_vehicle: {
+        Args: {
+          _distance_miles?: number
+          _driver_id: string
+          _notes?: string
+          _vehicle_id: string
+        }
+        Returns: string
+      }
+      admin_cancel_match: {
+        Args: { _match_id: string; _reason?: string }
+        Returns: undefined
       }
       admin_cancel_subscription: {
         Args: { _reason?: string; _subscription_id: string }
@@ -12173,6 +12317,10 @@ export type Database = {
       admin_generate_next_rental_invoice: {
         Args: { _period_end: string; _period_start: string; _rental_id: string }
         Returns: Json
+      }
+      admin_initiate_match_agreement: {
+        Args: { _agreement_id?: string; _match_id: string }
+        Returns: undefined
       }
       admin_list_disputes: {
         Args: { _limit?: number; _status?: string }
@@ -12227,6 +12375,14 @@ export type Database = {
       admin_list_withdrawal_authorizations: {
         Args: { _limit?: number; _status?: string }
         Returns: Json
+      }
+      admin_mark_match_agreement_signed: {
+        Args: { _match_id: string }
+        Returns: undefined
+      }
+      admin_mark_match_picked_up: {
+        Args: { _match_id: string }
+        Returns: undefined
       }
       admin_provider_billing_summary: {
         Args: { _end?: string; _start?: string }
@@ -12573,6 +12729,10 @@ export type Database = {
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
+      }
+      driver_accreditation_status: {
+        Args: { _driver_id: string }
+        Returns: Json
       }
       driver_request_rental_extension: {
         Args: { _rental_id: string }
