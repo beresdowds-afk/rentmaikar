@@ -446,7 +446,20 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
               className="min-h-[160px]"
             />
             <p className="text-xs text-muted-foreground">{body.length} characters</p>
+            {renderedBody !== body && (
+              <div className="space-y-1 rounded-md border bg-muted/40 p-2">
+                <p className="text-xs font-medium">Preview with recipient details</p>
+                <pre className="max-h-32 overflow-y-auto whitespace-pre-wrap text-xs">
+                  {renderedBody}
+                </pre>
+                <p className="text-[11px] text-muted-foreground">
+                  Remaining tokens are resolved from the recipient&apos;s rental record before
+                  sending.
+                </p>
+              </div>
+            )}
           </div>
+
 
           <div className="flex flex-wrap gap-2">
             <Button onClick={handleSend} disabled={isSending || !body.trim()}>
