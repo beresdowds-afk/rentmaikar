@@ -1,11 +1,71 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Activity, AlertTriangle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, Link2, Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
+
+/**
+ * Registers (or verifies) the Sent.dm webhook endpoint so SMS/WhatsApp
+ * delivery receipts arrive in the admin delivery log.
+ */
+const SentWebhookControl = () => {
+  const [busy, setBusy] = useState<null | 'list' | 'ensure'>(null);
+  const [result, setResult] = useState<Record<string, unknown> | null>(null);
+
+  const run = async (action: 'list' | 'ensure') => {
+    setBusy(action);
+    try {
+      const { data, error } = await supabase.functions.invoke('sent-webhook-config', {
+        body: { action },
+      });
+      if (error) throw error;
+      setResult(data as Record<string, unknown>);
+      if (action === 'ensure') toast.success('Sent.dm status callback configured');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Request failed';
+      setResult({ error: message });
+      toast.error(message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const url = (result?.canonical_url as string) ?? 'https://staging.rentmaikar.com/api/webhooks/sent';
+
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground">
+          Status callback: <code className="text-foreground">{url}</code>
+        </span>
+        <div className="flex gap-2">
+          <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => run('list')}>
+            {busy === 'list' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Check'}
+          </Button>
+          <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => run('ensure')}>
+            {busy === 'ensure' ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+            ) : (
+              <Link2 className="h-3.5 w-3.5 mr-1" />
+            )}
+            Point callback here
+          </Button>
+        </div>
+      </div>
+      {result && (
+        <pre className="mt-2 max-h-40 overflow-auto rounded bg-muted p-2 text-[11px] text-muted-foreground">
+          {JSON.stringify(result, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+};
+
 
 type ProviderKey = 'sent' | 'twilio' | 'termii' | 'resend';
 
