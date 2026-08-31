@@ -11,13 +11,18 @@ export default function MessagingCenterPage() {
         description="Draft, send, respond to and review email, SMS and WhatsApp messages from one place."
         path="/admin/messaging"
       />
-      <header className="space-y-1">
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <MessageSquare className="h-6 w-6 text-primary" /> Messaging Center
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          One place for every conversation — email, SMS and WhatsApp.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <MessageSquare className="h-6 w-6 text-primary" /> Messaging Center
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            One place for every conversation — email, SMS, WhatsApp and in-app.
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/admin/sms-delivery">SMS delivery monitoring</Link>
+        </Button>
       </header>
       <MessagingCenter />
     </div>
