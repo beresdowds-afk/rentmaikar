@@ -266,9 +266,14 @@ const handler = async (req: Request): Promise<Response> => {
         callId: callRecord.id,
         results: callResults,
         conferenceName,
+        // Surface the provider reason so the UI never shows a silent drop.
+        error: successfulCalls.length > 0
+          ? undefined
+          : callResults.map((r) => r.error).filter(Boolean).join('; ') || 'Call could not be placed',
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
 
   } catch (error: any) {
     console.error('Error in initiate-voip-call:', error);
