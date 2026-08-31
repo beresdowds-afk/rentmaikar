@@ -286,7 +286,7 @@ export const useSendComposedMessage = () => {
             user_email: email || null,
             user_phone: phone || null,
             channel: input.channel,
-            subject: input.subject?.trim() || 'Message from Rentmaikar',
+            subject: renderedSubject || 'Message from Rentmaikar',
             status: 'pending',
             priority: 'normal',
             region: toConversationRegion(country, phone),
@@ -321,7 +321,7 @@ export const useSendComposedMessage = () => {
                 conversationId,
                 messageContent: body,
                 recipientEmail: email,
-                subject: input.subject?.trim() || undefined,
+                subject: renderedSubject || undefined,
               },
             })
           : await supabase.functions.invoke('send-inbox-reply', {
