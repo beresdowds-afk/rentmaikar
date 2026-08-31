@@ -234,7 +234,14 @@ export const useSendComposedMessage = () => {
     };
 
 
-    const body = input.body.trim();
+    // Fill in every placeholder we can resolve from the recipient before the
+    // message is stored or handed to a provider. Unresolved tokens are left for
+    // the edge function to resolve from the conversation.
+    const placeholderValues = composerPlaceholderValues(input, country);
+    const body = renderPlaceholders(input.body.trim(), placeholderValues, { keepUnknown: true });
+    const renderedSubject = renderPlaceholders(input.subject?.trim() || '', placeholderValues, {
+      keepUnknown: true,
+    }).trim();
     if (!body) {
       notifyError('Write a message first');
       return { saved: false, delivered: false, reason: 'Empty message' };
