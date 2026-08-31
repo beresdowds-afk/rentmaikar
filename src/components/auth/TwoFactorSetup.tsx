@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Shield, CheckCircle, Loader2, AlertTriangle, PhoneCall } from 'lucide-react';
 import { toast } from 'sonner';
+import { useRegionSamples } from '@/hooks/useRegionSamples';
 import { PhoneNumberField } from '@/components/ui/phone-number-field';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
@@ -18,6 +19,7 @@ type VerifyChannel = 'sms' | 'whatsapp' | 'voice';
 
 export const TwoFactorSetup = () => {
   const { user, userRole } = useAuth();
+  const twoFaSamples = useRegionSamples();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
@@ -251,7 +253,7 @@ export const TwoFactorSetup = () => {
                 setPhoneIsValid(valid);
                 setNormalizedPhone(e164);
               }}
-              hint="Include your country code — e.g. +15551234567. This is the number Rentmaikar will dial or text with security codes."
+              hint={`Include your country code — e.g. ${twoFaSamples.phoneE164}. This is the number Rentmaikar will dial or text with security codes.`}
             />
 
             {/* Step 1: Verify the number */}

@@ -13,6 +13,7 @@ import { Phone, MessageSquare, CheckCircle, Loader2, RefreshCw, Shield } from 'l
 import { toast } from 'sonner';
 import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js';
+import { useResolvedPhoneCountry } from '@/hooks/useDefaultPhoneCountry';
 
 interface PhoneVerificationProps {
   onVerified?: () => void;
@@ -32,6 +33,9 @@ type Channel = 'sms' | 'whatsapp';
 
 export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerificationProps) => {
   const { user } = useAuth();
+  // Region-aware default: resolved from the user's own number/profile or a
+  // deliberately selected region. Never a hardcoded US flag or "+1" sample.
+  const resolvedCountry = useResolvedPhoneCountry();
   const [regions, setRegions] = useState<Region[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<CountryCode | undefined>();
   const [isLoading, setIsLoading] = useState(false);
@@ -237,7 +241,7 @@ export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerifi
             <PhoneNumberInput
               id="pv-phone"
               value={phoneNumber}
-              defaultCountry={selectedRegion}
+              defaultCountry={selectedRegion ?? resolvedCountry}
               onChange={(v) => {
                 setPhoneNumber(v);
                 const parsed = parsePhoneNumberFromString(v || '');
