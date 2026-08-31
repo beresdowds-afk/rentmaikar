@@ -103,7 +103,7 @@ serve(async (req) => {
       if (paused) return paused;
     }
 
-    const emailSubject = subject || 
+    const emailSubject = outboundSubject || 
       (conversation?.subject ? `Re: ${conversation.subject}` : "Reply from Rentmaikar Support");
 
     // Use DB-driven email config with fallback
