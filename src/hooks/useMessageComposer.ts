@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
 import { toast } from 'sonner';
 import { renderPlaceholders, type PlaceholderValues } from '@/lib/reply-placeholders';
+import { looksLikeOtpMessage, OTP_IN_APP_BLOCK_MESSAGE } from '@/lib/otp-guard';
 
 /**
  * Placeholder values we can resolve straight from the composer form. Anything
