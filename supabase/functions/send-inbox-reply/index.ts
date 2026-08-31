@@ -6,6 +6,7 @@ import { manychat } from "../_shared/manychat-client.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
 import { outboundPausedResponse, outboundRegionFromPhone } from "../_shared/channel-guard.ts";
 import { sendViaSent } from "../_shared/sent-client.ts";
+import { twilioFallbackAllowed } from "../_shared/twilio-messaging-guard.ts";
 import { hasPlaceholders, renderPlaceholders, resolvePlaceholderValues } from "../_shared/reply-placeholders.ts";
 
 
@@ -251,17 +252,15 @@ serve(async (req) => {
       messageStatus = "sent";
       console.log("Message sent via Termii:", messageSid);
     } else {
-      // ─── TWILIO (USA / Default) ───
-      // Twilio is approved for VOICE only. Messaging stays behind an explicit
-      // opt-in switch so a Sent.dm failure never silently re-routes SMS/WhatsApp
-      // through an unapproved carrier path.
-      const twilioMessagingEnabled =
-        (Deno.env.get("TWILIO_MESSAGING_ENABLED") ?? "false").toLowerCase() === "true";
-      if (!twilioMessagingEnabled) {
+      // ─── TWILIO (USA fallback) ───
+      // Sent.dm is the global CPaaS; Twilio only picks up USA (+1) traffic
+      // after Sent fails. Nigeria falls back to Termii above.
+      if (!twilioFallbackAllowed(recipientPhone)) {
         throw new Error(
-          "Sent.dm could not deliver this message and Twilio messaging is disabled (voice-only approval). Check the Sent provider health panel.",
+          "Sent.dm could not deliver this message and no fallback carrier is available for this destination. Check the Sent provider health panel.",
         );
       }
+
       const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
       const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
       const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
