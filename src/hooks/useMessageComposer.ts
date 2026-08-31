@@ -263,6 +263,11 @@ export const useSendComposedMessage = () => {
 
     // ── In-app messaging: stored in the user's app inbox + web push ──
     if (input.channel === 'in_app') {
+      // Never deliver one-time passcodes to an already-authenticated surface.
+      if (looksLikeOtpMessage(body) || looksLikeOtpMessage(renderedSubject)) {
+        notifyError(OTP_IN_APP_BLOCK_MESSAGE);
+        return { saved: false, delivered: false, reason: OTP_IN_APP_BLOCK_MESSAGE };
+      }
       setIsSending(true);
       try {
         const { data, error } = await supabase.functions.invoke('send-in-app-message', {
