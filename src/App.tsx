@@ -488,6 +488,14 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/admin/driver-matching"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
+                        <AdminDriverMatchingPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/vehicle-queue"
                     element={
                       <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
