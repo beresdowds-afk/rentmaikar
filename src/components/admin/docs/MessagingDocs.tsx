@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageSquare, Phone as PhoneIcon, Globe, Send, AlertTriangle, CheckCircle, Clock, ArrowRight } from "lucide-react";
+import { EventTemplateMatrix } from "./EventTemplateMatrix";
 
 const smsUseCases = [
   {
@@ -306,6 +307,7 @@ export const MessagingDocs = () => {
           <TabsList>
             <TabsTrigger value="sms">SMS Use Cases ({smsUseCases.length})</TabsTrigger>
             <TabsTrigger value="whatsapp">WhatsApp Use Cases ({whatsappUseCases.length})</TabsTrigger>
+            <TabsTrigger value="events">Event Mapping</TabsTrigger>
           </TabsList>
 
           <TabsContent value="sms" className="space-y-4">
@@ -348,6 +350,10 @@ export const MessagingDocs = () => {
                 </div>
               </Card>
             ))}
+          </TabsContent>
+
+          <TabsContent value="events">
+            <EventTemplateMatrix />
           </TabsContent>
         </Tabs>
       </Card>

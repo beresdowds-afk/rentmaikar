@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireCronSecretAsync } from "../_shared/cron-auth.ts";
+import { renderEventCopy, resolveEventTemplate } from "../_shared/event-template-map.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -99,13 +100,25 @@ serve(async (req) => {
       let status = "sent";
       let lastError: string | null = null;
 
+      const eventStatus = (row.payload?.status as string) ?? null;
+      const mapping = resolveEventTemplate(row.kind, eventStatus);
+
       try {
         if (row.channel === "email") {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("email, preferred_country")
+            .select(
+              "email, full_name, phone, preferred_country, notification_sms, notification_whatsapp",
+            )
             .eq("user_id", row.recipient_id)
             .maybeSingle();
+
+          const vars = {
+            first_name: (profile?.full_name ?? "").split(" ")[0] || "there",
+            status: eventStatus ?? "",
+            record_id: row.record_id ?? "",
+            deep_link: row.deep_link ?? "https://rentmaikar.com",
+          };
 
           const to = profile?.email;
           if (!to) {
@@ -121,16 +134,16 @@ serve(async (req) => {
               body: JSON.stringify({
                 action: "send",
                 to,
-                templateName: "event_notification",
+                templateName: mapping?.emailTemplate ?? "event_notification",
                 category: "notification",
                 country: profile?.preferred_country ?? undefined,
                 data: {
-                  title: row.title,
-                  body: row.body ?? "",
+                  title: mapping ? renderEventCopy(mapping.emailSubject, vars) : row.title,
+                  body: mapping ? renderEventCopy(mapping.emailBody, vars) : (row.body ?? ""),
                   category: row.category,
-                  status: (row.payload?.status as string) ?? undefined,
+                  status: eventStatus ?? undefined,
                   recordId: row.record_id ?? undefined,
-                  deepLink: row.deep_link ?? "https://rentmaikar.com",
+                  deepLink: vars.deep_link,
                 },
               }),
             });
@@ -139,7 +152,59 @@ serve(async (req) => {
               lastError = `[${res.status}] ${await res.text()}`;
             }
           }
+
+          // Companion SMS / WhatsApp leg (email stays mandatory, plus one
+          // messaging channel when the event map declares it).
+          if (mapping && profile?.phone) {
+            const wantsWhatsapp =
+              mapping.channels.includes("whatsapp") && profile.notification_whatsapp !== false;
+            const wantsSms =
+              mapping.channels.includes("sms") && profile.notification_sms !== false;
+            const channel = wantsWhatsapp ? "whatsapp" : wantsSms ? "sms" : null;
+
+            if (channel) {
+              try {
+                const copy = renderEventCopy(
+                  channel === "whatsapp" ? mapping.whatsapp : mapping.sms,
+                  vars,
+                );
+                const res = await fetchWithTimeout(
+                  `${supabaseUrl}/functions/v1/send-sms-notification`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${serviceKey}`,
+                    },
+                    body: JSON.stringify({
+                      phone: profile.phone,
+                      channel,
+                      notificationType: mapping.smsNotificationType,
+                      name: vars.first_name,
+                      customMessage: copy,
+                    }),
+                  },
+                );
+                if (!res.ok) {
+                  console.error(
+                    `event ${row.kind} ${channel} leg failed [${res.status}]: ${await res.text()}`,
+                  );
+                }
+              } catch (e) {
+                console.error(
+                  `event ${row.kind} messaging leg error:`,
+                  e instanceof Error ? e.message : String(e),
+                );
+              }
+            }
+          }
         } else if (row.channel === "push") {
+          const pushVars = {
+            first_name: "there",
+            status: eventStatus ?? "",
+            record_id: row.record_id ?? "",
+            deep_link: row.deep_link ?? "https://rentmaikar.com",
+          };
           const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push-notification`, {
             method: "POST",
             headers: {
@@ -149,15 +214,18 @@ serve(async (req) => {
             body: JSON.stringify({
               user_id: row.recipient_id,
               event: row.kind,
-              title: row.title,
-              body: row.body ?? row.title,
+              title: mapping ? renderEventCopy(mapping.pushTitle, pushVars) : row.title,
+              body: mapping
+                ? renderEventCopy(mapping.pushBody, pushVars)
+                : (row.body ?? row.title),
               data: {
                 category: row.category,
-                url: row.deep_link ?? "https://rentmaikar.com",
+                url: pushVars.deep_link,
                 record_id: row.record_id ?? "",
               },
             }),
           });
+
           if (!res.ok) {
             status = "failed";
             lastError = `[${res.status}] ${await res.text()}`;
