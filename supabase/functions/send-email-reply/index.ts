@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { hasPlaceholders, renderPlaceholders, resolvePlaceholderValues } from "../_shared/reply-placeholders.ts";
 import { requireServiceRoleOrRole } from "../_shared/auth-guards.ts";
 import { outboundPausedResponse } from "../_shared/channel-guard.ts";
 import { logOutboundDecision } from "../_shared/outbound-audit.ts";
@@ -65,6 +66,27 @@ serve(async (req) => {
       throw new Error("Missing required fields: conversationId, messageContent, recipientEmail");
     }
 
+    // ─── Resolve {{placeholders}} before the email leaves the platform ───
+    let outboundText: string = messageContent;
+    let outboundSubject: string | undefined = subject;
+    if (hasPlaceholders(messageContent) || (subject && hasPlaceholders(subject))) {
+      const values = await resolvePlaceholderValues(supabase, conversationId);
+      const rendered = renderPlaceholders(messageContent, values, { keepUnknown: false }).trim();
+      if (rendered) outboundText = rendered;
+      if (subject) {
+        outboundSubject =
+          renderPlaceholders(subject, values, { keepUnknown: false }).trim() || subject;
+      }
+      if (outboundText !== messageContent) {
+        await supabase
+          .from("inbox_messages")
+          .update({ content: outboundText })
+          .eq("conversation_id", conversationId)
+          .eq("content", messageContent)
+          .eq("sender_type", "admin");
+      }
+    }
+
     // Get conversation details for context
     const { data: conversation } = await supabase
       .from("inbox_conversations")
@@ -81,7 +103,7 @@ serve(async (req) => {
       if (paused) return paused;
     }
 
-    const emailSubject = subject || 
+    const emailSubject = outboundSubject || 
       (conversation?.subject ? `Re: ${conversation.subject}` : "Reply from Rentmaikar Support");
 
     // Use DB-driven email config with fallback
@@ -101,7 +123,7 @@ serve(async (req) => {
               <h1 style="color: white; margin: 0;">Rentmaikar</h1>
             </div>
             <div style="padding: 30px; background-color: #ffffff;">
-              <div style="white-space: pre-wrap; line-height: 1.6;">${messageContent.replace(/\n/g, '<br>')}</div>
+              <div style="white-space: pre-wrap; line-height: 1.6;">${outboundText.replace(/\n/g, '<br>')}</div>
               <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
               <p style="color: #666; font-size: 14px;">
                 This is a reply from Rentmaikar Support. Please reply to this email if you need further assistance.
@@ -113,7 +135,7 @@ serve(async (req) => {
             </div>
           </div>
         `,
-        text: messageContent,
+        text: outboundText,
         ...(attachmentList.length
           ? {
               attachments: attachmentList.map((a) => ({
@@ -163,7 +185,7 @@ serve(async (req) => {
         },
       })
       .eq("conversation_id", conversationId)
-      .eq("content", messageContent)
+      .eq("content", outboundText)
       .eq("sender_type", "admin")
       .is("external_id", null)
       .order("created_at", { ascending: false })

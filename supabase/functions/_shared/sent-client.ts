@@ -129,6 +129,14 @@ export async function sendViaSent(req: SentSendRequest): Promise<SentSendResult>
   if (!sentChannelEnabled(req.channel)) {
     return { ok: false, skipped: true, error: `Sent.dm channel '${req.channel}' disabled` };
   }
+  // Providers reject text containing unresolved {{placeholder}} tokens as
+  // invalid template variables — strip anything that survived rendering.
+  if (req.text && /\{\{\s*[a-z0-9_]+\s*\}\}/i.test(req.text)) {
+    req = {
+      ...req,
+      text: req.text.replace(/\{\{\s*[a-z0-9_]+\s*\}\}/gi, "").replace(/[ \t]{2,}/g, " ").trim(),
+    };
+  }
   if (!req.text && !req.template) {
     return { ok: false, skipped: true, error: "Either text or template is required" };
   }
