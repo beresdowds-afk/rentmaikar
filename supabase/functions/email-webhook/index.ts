@@ -5,12 +5,13 @@ import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import { maybeAutoReply } from "../_shared/auto-reply.ts";
 import { forwardInboundEmail } from "../_shared/forwarding.ts";
 import { resendSendEmail } from "../_shared/resend-gateway.ts";
+import { verifySvixSignature } from "../_shared/svix-verify.ts";
 
 
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, svix-id, svix-timestamp, svix-signature, webhook-id, webhook-timestamp, webhook-signature",
 };
 
 // ─── Attachment Validation ───
@@ -460,37 +461,19 @@ function getAcknowledgmentHtml(
   return { subject: t.subject, html };
 }
 
-// ─── Resend Webhook Signature Verification ───
+// ─── Inbound Email Webhook Signature Verification ───
+// Uses the shared Svix verifier so `svix-id`/`svix-timestamp` signed payloads
+// (Resend / Lovable email events) validate correctly, with a raw-body HMAC
+// fallback. Fails closed when RESEND_WEBHOOK_SECRET is not configured.
 const verifyResendSignature = async (req: Request): Promise<boolean> => {
   try {
-    const signature = req.headers.get('svix-signature') || req.headers.get('webhook-signature');
     const webhookSecret = Deno.env.get('RESEND_WEBHOOK_SECRET');
-    
-    // Fail closed: if no secret is configured, reject all requests.
     if (!webhookSecret) {
       console.error('RESEND_WEBHOOK_SECRET not configured - rejecting email webhook request');
       return false;
     }
-
-    
-    if (!signature) {
-      console.warn('Missing webhook signature header on email-webhook request');
-      return false;
-    }
-
     const body = await req.clone().text();
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(webhookSecret);
-    const msgData = encoder.encode(body);
-
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-    );
-    const sigBuffer = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
-    const computed = btoa(String.fromCharCode(...new Uint8Array(sigBuffer)));
-
-    // Signature may be prefixed like "v1,<base64>" - check any part
-    return signature.includes(computed);
+    return await verifySvixSignature(req, body, webhookSecret);
   } catch {
     return false;
   }
