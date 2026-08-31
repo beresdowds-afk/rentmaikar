@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Phone, Users, History, Settings, PhoneCall, Globe, Search, Radio, UserPlus, Volume2, Link2 } from 'lucide-react';
+import { Phone, Users, History, Settings, PhoneCall, Globe, Radio, UserPlus, Volume2, Link2 } from 'lucide-react';
 import { useVoIPCalls } from '@/hooks/useVoIPCalls';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { CallDialer } from './CallDialer';
@@ -9,7 +9,6 @@ import { CallHistory } from './CallHistory';
 import { CallGroups } from './CallGroups';
 import { ActiveCallPanel } from './ActiveCallPanel';
 import { VoIPFeatureSettings } from './VoIPFeatureSettings';
-import { UserCallSearch } from './UserCallSearch';
 import { OutreachContactsPanel } from './OutreachContactsPanel';
 import { ConferenceRoomPanel } from './ConferenceRoomPanel';
 import { CallRecordingsPanel } from './CallRecordingsPanel';
@@ -89,14 +88,10 @@ export const CallCenterPage = () => {
 
       {/* Main Content */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 lg:w-auto lg:inline-grid lg:grid-cols-9">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 lg:w-auto lg:inline-grid lg:grid-cols-8">
           <TabsTrigger value="dialer" className="flex items-center gap-2">
             <Phone className="h-4 w-4" />
             <span className="hidden sm:inline">Make Call</span>
-          </TabsTrigger>
-          <TabsTrigger value="search" className="flex items-center gap-2">
-            <Search className="h-4 w-4" />
-            <span className="hidden sm:inline">Search Users</span>
           </TabsTrigger>
           <TabsTrigger value="contacts" className="flex items-center gap-2">
             <UserPlus className="h-4 w-4" />
@@ -132,13 +127,6 @@ export const CallCenterPage = () => {
           <CallDialer 
             onInitiateCall={initiateCall}
             groups={groups}
-            isLoading={isLoading}
-          />
-        </TabsContent>
-
-        <TabsContent value="search">
-          <UserCallSearch
-            onInitiateCall={initiateCall}
             isLoading={isLoading}
           />
         </TabsContent>

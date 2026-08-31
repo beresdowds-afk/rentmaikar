@@ -25,9 +25,13 @@ interface UserCallSearchProps {
     recipients: { phoneNumber: string; displayName?: string; userId?: string }[]
   ) => Promise<any>;
   isLoading: boolean;
+  /** Render without the surrounding Card (when merged into the dialer). */
+  embedded?: boolean;
+  /** Fired right before the call is initiated so the dialer can prefill fields. */
+  onUserSelected?: (user: UserResult) => void;
 }
 
-export const UserCallSearch = ({ onInitiateCall, isLoading }: UserCallSearchProps) => {
+export const UserCallSearch = ({ onInitiateCall, isLoading, embedded = false, onUserSelected }: UserCallSearchProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [users, setUsers] = useState<UserResult[]>([]);
@@ -97,8 +101,13 @@ export const UserCallSearch = ({ onInitiateCall, isLoading }: UserCallSearchProp
     }
 
     setCallingUserId(user.user_id);
+    onUserSelected?.(user);
     try {
       const region: CallRegion = user.phone.startsWith('+234') ? 'Nigeria' : 'USA';
+      toast({
+        title: 'Calling…',
+        description: `Dialing ${user.full_name || user.phone}`,
+      });
       await onInitiateCall('individual', region, [
         { phoneNumber: user.phone, displayName: user.full_name || undefined, userId: user.user_id },
       ]);
@@ -116,18 +125,8 @@ export const UserCallSearch = ({ onInitiateCall, isLoading }: UserCallSearchProp
     }
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          Search Users to Call
-        </CardTitle>
-        <CardDescription>
-          Search drivers and owners by name, email, or phone number
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+  const body = (
+    <div className="space-y-4">
         {/* Search & Filter */}
         <div className="flex gap-3">
           <div className="relative flex-1">
@@ -178,7 +177,11 @@ export const UserCallSearch = ({ onInitiateCall, isLoading }: UserCallSearchProp
               </TableHeader>
               <TableBody>
                 {users.map((user) => (
-                  <TableRow key={user.user_id}>
+                  <TableRow
+                    key={user.user_id}
+                    className={user.phone ? 'cursor-pointer' : undefined}
+                    onClick={() => user.phone && !isLoading && callingUserId !== user.user_id && handleCallUser(user)}
+                  >
                     <TableCell className="font-medium">
                       {user.full_name || 'N/A'}
                     </TableCell>
@@ -196,7 +199,7 @@ export const UserCallSearch = ({ onInitiateCall, isLoading }: UserCallSearchProp
                     <TableCell className="text-right">
                       <Button
                         size="sm"
-                        onClick={() => handleCallUser(user)}
+                        onClick={(e) => { e.stopPropagation(); handleCallUser(user); }}
                         disabled={!user.phone || callingUserId === user.user_id || isLoading}
                       >
                         {callingUserId === user.user_id ? (
@@ -215,7 +218,23 @@ export const UserCallSearch = ({ onInitiateCall, isLoading }: UserCallSearchProp
             </Table>
           </div>
         )}
-      </CardContent>
+    </div>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          Search Users to Call
+        </CardTitle>
+        <CardDescription>
+          Search drivers and owners by name, email, or phone number — selecting a user dials them immediately
+        </CardDescription>
+      </CardHeader>
+      <CardContent>{body}</CardContent>
     </Card>
   );
 };
