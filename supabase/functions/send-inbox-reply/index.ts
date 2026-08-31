@@ -6,6 +6,7 @@ import { manychat } from "../_shared/manychat-client.ts";
 import { isOptedOut } from "../_shared/opt-out.ts";
 import { outboundPausedResponse, outboundRegionFromPhone } from "../_shared/channel-guard.ts";
 import { sendViaSent } from "../_shared/sent-client.ts";
+import { hasPlaceholders, renderPlaceholders, resolvePlaceholderValues } from "../_shared/reply-placeholders.ts";
 
 
 const corsHeaders = {
@@ -52,17 +53,38 @@ serve(async (req) => {
       .eq("id", conversationId)
       .single();
 
+    // ─── Resolve {{placeholders}} before anything reaches a provider ───
+    // Providers treat unresolved tokens as invalid template variables and
+    // reject the whole message, so the text is always rendered first.
+    let outboundText: string = messageContent;
+    if (hasPlaceholders(messageContent)) {
+      const values = await resolvePlaceholderValues(supabase, conversationId);
+      outboundText = renderPlaceholders(messageContent, values, { keepUnknown: false })
+        .replace(/[ \t]{2,}/g, " ")
+        .trim();
+      if (outboundText && outboundText !== messageContent) {
+        // Keep the stored thread copy identical to what the recipient reads.
+        await supabase
+          .from("inbox_messages")
+          .update({ content: outboundText })
+          .eq("conversation_id", conversationId)
+          .eq("content", outboundText)
+          .eq("sender_type", "admin");
+      }
+      if (!outboundText) outboundText = messageContent;
+    }
+
     // ─── Social channels (Instagram / Facebook Messenger) → ManyChat ───
     if (channel === "instagram" || channel === "facebook_messenger") {
       const subscriberId = (conversation?.metadata as Record<string, unknown> | null)?.manychat_subscriber_id as string | undefined;
       if (!subscriberId) throw new Error("ManyChat subscriber_id missing on conversation");
       if (!manychat.isConfigured()) throw new Error("ManyChat not configured (MANYCHAT_API_TOKEN missing)");
-      const result = await manychat.sendMessage(subscriberId, messageContent);
+      const result = await manychat.sendMessage(subscriberId, outboundText);
       if (!result.ok) throw new Error(`ManyChat send failed: ${JSON.stringify(result)}`);
       await supabase.from("inbox_messages").update({
         external_id: `manychat_${Date.now()}`,
         metadata: { provider: "manychat", sent_at: new Date().toISOString() },
-      }).eq("conversation_id", conversationId).eq("content", messageContent).eq("sender_type", "admin")
+      }).eq("conversation_id", conversationId).eq("content", outboundText).eq("sender_type", "admin")
         .is("external_id", null).order("created_at", { ascending: false }).limit(1);
       return new Response(JSON.stringify({ success: true, provider: "manychat" }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -107,14 +129,14 @@ serve(async (req) => {
     let messageStatus = "";
 
     if (channel === "whatsapp" && regionWhatsappProvider === "whatchimp" && whatchimp.isConfigured()) {
-      const result = await whatchimp.sendMessage({ to: recipientPhone, body: messageContent });
+      const result = await whatchimp.sendMessage({ to: recipientPhone, body: outboundText });
       if (!result.ok) throw new Error(`Whatchimp send failed: ${JSON.stringify(result)}`);
       messageSid = result.messageId;
       messageStatus = "sent";
       await supabase.from("inbox_messages").update({
         external_id: messageSid,
         metadata: { provider: "whatchimp", status: messageStatus, sent_at: new Date().toISOString() },
-      }).eq("conversation_id", conversationId).eq("content", messageContent).eq("sender_type", "admin")
+      }).eq("conversation_id", conversationId).eq("content", outboundText).eq("sender_type", "admin")
         .is("external_id", null).order("created_at", { ascending: false }).limit(1);
       return new Response(JSON.stringify({ success: true, provider: "whatchimp", messageSid }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -144,7 +166,7 @@ serve(async (req) => {
       const sentResult = await sendViaSent({
         to: recipientPhone,
         channel: sentChannel,
-        text: messageContent,
+        text: outboundText,
         mediaUrls: mediaUrls,
         senderId: forwardingFrom || undefined,
         metadata: { conversation_id: conversationId, region: conversation?.region ?? null },
@@ -163,7 +185,7 @@ serve(async (req) => {
             sandbox: sentResult.sandbox,
             ...(mediaList.length ? { attachments_detail: mediaList } : {}),
           },
-        }).eq("conversation_id", conversationId).eq("content", messageContent).eq("sender_type", "admin")
+        }).eq("conversation_id", conversationId).eq("content", outboundText).eq("sender_type", "admin")
           .is("external_id", null).order("created_at", { ascending: false }).limit(1);
 
         return new Response(
@@ -208,8 +230,8 @@ serve(async (req) => {
           to: recipientPhone.replace("+", ""),
           from: senderId,
           sms: mediaUrls.length
-            ? `${messageContent}\n\n${mediaUrls.join("\n")}`
-            : messageContent,
+            ? `${outboundText}\n\n${mediaUrls.join("\n")}`
+            : outboundText,
           type: "plain",
           channel: termiiChannel,
           api_key: termiiApiKey,
@@ -264,7 +286,7 @@ serve(async (req) => {
       const formData = new URLSearchParams();
       formData.append("To", toNumber);
       formData.append("From", fromNumber);
-      formData.append("Body", messageContent);
+      formData.append("Body", outboundText);
       for (const url of mediaUrls) formData.append("MediaUrl", url);
       formData.append("StatusCallback", `${supabaseUrl}/functions/v1/twilio-webhook`);
 
@@ -306,7 +328,7 @@ serve(async (req) => {
         },
       })
       .eq("conversation_id", conversationId)
-      .eq("content", messageContent)
+      .eq("content", outboundText)
       .eq("sender_type", "admin")
       .is("external_id", null)
       .order("created_at", { ascending: false })
