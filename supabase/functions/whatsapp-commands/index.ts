@@ -34,6 +34,60 @@ const KEYWORD_TEMPLATE_KEYS: Record<string, string> = {
   START: "kw_start",
 };
 
+/**
+ * Vehicle pricing helper.
+ *
+ * `public.vehicles` holds no pricing/category columns — the category is derived
+ * from the manufacture year (`vehicle_category_year_specs`) and the published
+ * weekly rate comes from `vehicle_category_prices` for the caller's region.
+ */
+interface VehiclePricing {
+  category: string;
+  label: string;
+  currency: string;
+  currencySymbol: string;
+  weekly: number;
+  daily: number;
+}
+
+async function resolveVehiclePricing(
+  supabase: any,
+  year: number | null,
+  region: string,
+): Promise<VehiclePricing | null> {
+  if (!year) return null;
+  const { data: spec } = await supabase
+    .from("vehicle_category_year_specs")
+    .select("category, label, min_year, max_year")
+    .eq("region", region)
+    .eq("is_active", true)
+    .lte("min_year", year)
+    .gte("max_year", year)
+    .limit(1)
+    .maybeSingle();
+  if (!spec) return null;
+
+  const { data: price } = await supabase
+    .from("vehicle_category_prices")
+    .select("price, currency")
+    .eq("region", region)
+    .eq("category", spec.category)
+    .limit(1)
+    .maybeSingle();
+  if (!price) return null;
+
+  const weekly = Number(price.price) || 0;
+  const currency = price.currency || (region === "NIGERIA" ? "NGN" : "USD");
+  return {
+    category: spec.category,
+    label: spec.label || spec.category,
+    currency,
+    currencySymbol: currency === "NGN" ? "₦" : "$",
+    weekly,
+    daily: Math.round(weekly / 7),
+  };
+}
+
 const supportPhoneFor = (region: string): string =>
   region === "NIGERIA"
     ? (Deno.env.get("TWILIO_PHONE_NUMBER_NG") ?? "")
@@ -888,7 +942,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         const { data: vehicle } = await supabase
           .from("vehicles")
-          .select("id, make, model, year, category, daily_rate, currency, region, description")
+          .select("id, make, model, year, color, pickup_city")
           .eq("id", vehicleId)
           .single();
 
@@ -896,16 +950,17 @@ const handler = async (req: Request): Promise<Response> => {
           .select("phone, full_name").eq("user_id", userId).single();
 
         if (vehicle && userProfile?.phone) {
-          const curr = vehicle.currency === "NGN" ? "₦" : "$";
-          const weeklyRate = vehicle.daily_rate * 7;
+          const vehicleRegion = userProfile.phone.startsWith("+234") ? "NIGERIA" : "USA";
+          const pricing = await resolveVehiclePricing(supabase, vehicle.year, vehicleRegion);
+          const curr = pricing?.currencySymbol ?? "$";
           const detailMsg = [
             `🚗 *${vehicle.year} ${vehicle.make} ${vehicle.model}*`,
             ``,
             `📋 *Vehicle Details*`,
-            `• Category: ${vehicle.category || "Standard"}`,
-            `• Daily Rate: ${curr}${vehicle.daily_rate.toLocaleString()}/day`,
-            `• Weekly Rate: ${curr}${weeklyRate.toLocaleString()}/week`,
-            vehicle.description ? `• Info: ${vehicle.description}` : "",
+            `• Category: ${pricing?.label ?? "Standard"}`,
+            pricing ? `• Daily Rate: ${curr}${pricing.daily.toLocaleString()}/day` : "",
+            pricing ? `• Weekly Rate: ${curr}${pricing.weekly.toLocaleString()}/week` : "",
+            vehicle.pickup_city ? `• Location: 📍 ${vehicle.pickup_city}` : "",
             ``,
             `✅ Includes GPS tracking & insurance`,
             ``,
@@ -926,9 +981,10 @@ const handler = async (req: Request): Promise<Response> => {
             data: {
               vehicleId,
               vehicleName: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
-              dailyRate: vehicle.daily_rate,
-              currency: vehicle.currency,
+              dailyRate: pricing?.daily ?? null,
+              currency: pricing?.currency ?? null,
             },
+
             completed: false,
           });
 
@@ -1360,21 +1416,25 @@ const handler = async (req: Request): Promise<Response> => {
         // Interactive vehicle list with selection flow
         const { data: vehicles } = await supabase
           .from("vehicles")
-          .select("id, make, model, year, category, daily_rate, currency, city")
+          .select("id, make, model, year, color, pickup_city")
           .eq("status", "available")
-          .eq("region", region === "NIGERIA" ? "nigeria" : "usa")
-          .order("daily_rate", { ascending: true })
+          .eq("is_public", true)
+          .order("year", { ascending: false })
           .limit(10);
 
         if (vehicles && vehicles.length > 0) {
-          const vehicleLines = vehicles.map((v, i) => {
-            const curr = v.currency === "NGN" ? "₦" : "$";
-            return [
+          const vehicleLines: string[] = [];
+          for (let i = 0; i < vehicles.length; i++) {
+            const v = vehicles[i];
+            const pricing = await resolveVehiclePricing(supabase, v.year, region);
+            const curr = pricing?.currencySymbol ?? "$";
+            vehicleLines.push([
               `${i + 1}️⃣ *${v.year} ${v.make} ${v.model}*`,
-              `   ${v.category || "Standard"} • ${curr}${v.daily_rate}/day`,
-              v.city ? `   📍 ${v.city}` : "",
-            ].filter(Boolean).join("\n");
-          });
+              `   ${pricing?.label ?? "Standard"}${pricing ? ` • ${curr}${pricing.daily.toLocaleString()}/day` : ""}`,
+              v.pickup_city ? `   📍 ${v.pickup_city}` : "",
+            ].filter(Boolean).join("\n"));
+          }
+
 
           responseMessage = [
             `🚗 *Available Vehicles (${vehicles.length})*`,
@@ -1439,22 +1499,21 @@ const handler = async (req: Request): Promise<Response> => {
               // Fetch full vehicle details
               const { data: vehicle } = await supabase
                 .from("vehicles")
-                .select("id, make, model, year, category, daily_rate, currency, city, description")
+                .select("id, make, model, year, color, pickup_city")
                 .eq("id", selectedVehicle.id)
                 .single();
 
               if (vehicle) {
-                const curr = vehicle.currency === "NGN" ? "₦" : "$";
-                const weeklyRate = vehicle.daily_rate * 7;
+                const pricing = await resolveVehiclePricing(supabase, vehicle.year, region);
+                const curr = pricing?.currencySymbol ?? "$";
                 responseMessage = [
                   `🚗 *${vehicle.year} ${vehicle.make} ${vehicle.model}*`,
                   ``,
                   `📋 *Vehicle Details*`,
-                  `• Category: ${vehicle.category || "Standard"}`,
-                  `• Daily Rate: ${curr}${vehicle.daily_rate.toLocaleString()}/day`,
-                  `• Weekly Rate: ${curr}${weeklyRate.toLocaleString()}/week`,
-                  vehicle.city ? `• Location: 📍 ${vehicle.city}` : "",
-                  vehicle.description ? `• Info: ${vehicle.description}` : "",
+                  `• Category: ${pricing?.label ?? "Standard"}`,
+                  pricing ? `• Daily Rate: ${curr}${pricing.daily.toLocaleString()}/day` : "",
+                  pricing ? `• Weekly Rate: ${curr}${pricing.weekly.toLocaleString()}/week` : "",
+                  vehicle.pickup_city ? `• Location: 📍 ${vehicle.pickup_city}` : "",
                   ``,
                   `✅ Includes GPS tracking & insurance`,
                   ``,
@@ -1473,10 +1532,11 @@ const handler = async (req: Request): Promise<Response> => {
                   data: {
                     vehicleId: vehicle.id,
                     vehicleName: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
-                    dailyRate: vehicle.daily_rate,
-                    currency: vehicle.currency,
+                    dailyRate: pricing?.daily ?? null,
+                    currency: pricing?.currency ?? null,
                     selectedFrom: "whatsapp_list",
                   },
+
                   completed: false,
                 });
 
