@@ -121,6 +121,23 @@ function normalizeRecipient(channel: SentChannel, to: string): string {
   return bare.startsWith("+") ? bare : `+${bare.replace(/[^0-9]/g, "")}`;
 }
 
+/**
+ * Free-form sends ride Sent's FREE_TEXT_SYS_TEMPLATE, whose parameter value
+ * may not contain newlines, carriage returns or tabs, nor runs of more than
+ * four spaces (VALIDATION_008 — "One or more template variables are invalid").
+ * Multi-line admin replies therefore have to be flattened before dispatch.
+ */
+export function sanitizeSentText(text: string): string {
+  return text
+    .replace(/\r\n?/g, "\n")
+    // Paragraph breaks read better as sentence separators than a bare space.
+    .replace(/\n{2,}/g, " — ")
+    .replace(/[\n\t]+/g, " ")
+    .replace(/ {2,}/g, " ")
+    .trim();
+}
+
+
 /** Dispatch a message through Sent.dm v3. Never throws. */
 export async function sendViaSent(req: SentSendRequest): Promise<SentSendResult> {
   if (!sentEnabled()) {
