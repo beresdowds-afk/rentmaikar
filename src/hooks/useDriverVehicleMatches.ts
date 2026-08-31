@@ -121,9 +121,11 @@ export const useDriverVehicleMatches = () => {
       if (profilesRes.error) throw profilesRes.error;
       if (eventsRes.error) throw eventsRes.error;
 
-      const vehicleById = new Map((vehiclesRes.data ?? []).map((v) => [v.id, v as MatchVehicle]));
-      const partyById = new Map(
-        (profilesRes.data ?? []).map((p) => [p.user_id, p as unknown as MatchParty]),
+      const vehicleById = new Map<string, MatchVehicle>(
+        (vehiclesRes.data ?? []).map((v) => [v.id, v as MatchVehicle] as const),
+      );
+      const partyById = new Map<string, MatchParty>(
+        (profilesRes.data ?? []).map((p) => [p.user_id, p as unknown as MatchParty] as const),
       );
 
       return {
