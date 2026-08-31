@@ -29,6 +29,9 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useCannedReplies } from '@/hooks/useCannedReplies';
+import { UseCaseDraftPicker } from '@/components/admin/UseCaseDraftPicker';
+import { renderPlaceholders, type PlaceholderValues } from '@/lib/reply-placeholders';
+
 import {
   useMessageDrafts,
   useRecipientSearch,
