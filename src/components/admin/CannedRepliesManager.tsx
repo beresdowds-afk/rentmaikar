@@ -18,6 +18,8 @@ import {
 } from '@/hooks/useCannedReplies';
 import { AutoReplyPreview } from '@/components/admin/AutoReplyPreview';
 import { PlaceholderPicker } from '@/components/admin/PlaceholderPicker';
+import { UseCaseDraftPicker } from '@/components/admin/UseCaseDraftPicker';
+import type { UseCaseChannel } from '@/lib/message-use-cases';
 import { AutoReplyPriorityEditor } from '@/components/admin/AutoReplyPriorityEditor';
 import { AutoReplyTestMode } from '@/components/admin/AutoReplyTestMode';
 
@@ -155,6 +157,10 @@ export const CannedRepliesManager = () => {
             <DialogTitle>{replyDraft?.id ? 'Edit canned reply' : 'New canned reply'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            <UseCaseDraftPicker
+              channel={(replyDraft?.channel as UseCaseChannel) || 'sms'}
+              onApply={({ body }) => setReplyDraft((d) => ({ ...d, body }))}
+            />
             <div>
               <Label>Title</Label>
               <Input
@@ -301,6 +307,17 @@ export const CannedRepliesManager = () => {
             </div>
             {!ruleDraft?.canned_reply_id && (
               <div className="space-y-2">
+                <UseCaseDraftPicker
+                  channel={(ruleDraft?.channel as UseCaseChannel) || 'sms'}
+                  label="Start from a use case draft"
+                  onApply={({ body, keywords }) =>
+                    setRuleDraft((d) => ({
+                      ...d,
+                      reply_body: body,
+                      keywordsText: d?.keywordsText?.trim() ? d.keywordsText : keywords.join(', '),
+                    }))
+                  }
+                />
                 <Label>Custom reply text</Label>
                 <Textarea
                   rows={4}
