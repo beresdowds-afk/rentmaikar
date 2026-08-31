@@ -113,6 +113,7 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
             
             {!isLoading && user ? (
               <>
+                <InAppMessagesBell />
                 <Link to={getDashboardLink()}>
                   <Button variant="outline" size="sm" className="gap-2">
                     <LayoutDashboard className="w-4 h-4" />
