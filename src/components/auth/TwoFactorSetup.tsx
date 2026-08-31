@@ -19,6 +19,7 @@ type VerifyChannel = 'sms' | 'whatsapp' | 'voice';
 
 export const TwoFactorSetup = () => {
   const { user, userRole } = useAuth();
+  const twoFaSamples = useRegionSamples();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
