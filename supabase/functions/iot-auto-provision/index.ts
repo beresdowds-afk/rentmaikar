@@ -202,6 +202,7 @@ Deno.serve(async (req) => {
       .eq("gps_tracking_enabled", true)
       .limit(batch);
     if (vehErr) errors.push({ step: "list_vehicles", message: vehErr.message });
+    console.log("published_vehicles", { count: publishedVehicles?.length ?? 0, err: vehErr?.message ?? null });
 
 
 
