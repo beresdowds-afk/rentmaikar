@@ -11870,6 +11870,66 @@ export type Database = {
           },
         ]
       }
+      device_identity_status: {
+        Row: {
+          bundle_level: number | null
+          created_at: string | null
+          driver_id: string | null
+          id: string | null
+          last_synced_at: string | null
+          owner_id: string | null
+          rental_id: string | null
+          status: string | null
+          telemetry_provider: string | null
+          updated_at: string | null
+          vehicle_id: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          bundle_level?: number | null
+          created_at?: string | null
+          driver_id?: string | null
+          id?: string | null
+          last_synced_at?: string | null
+          owner_id?: string | null
+          rental_id?: string | null
+          status?: string | null
+          telemetry_provider?: string | null
+          updated_at?: string | null
+          vehicle_id?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          bundle_level?: number | null
+          created_at?: string | null
+          driver_id?: string | null
+          id?: string | null
+          last_synced_at?: string | null
+          owner_id?: string | null
+          rental_id?: string | null
+          status?: string | null
+          telemetry_provider?: string | null
+          updated_at?: string | null
+          vehicle_id?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_identities_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_identities_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       latest_application_pipeline_status: {
         Row: {
           actor_id: string | null
