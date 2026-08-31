@@ -84,11 +84,16 @@ export const useVoIPCalls = () => {
       });
 
       if (error) throw error;
+      // The function returns 200 with success:false when the provider rejects.
+      if (data && data.success === false) {
+        throw new Error(data.error || 'The call provider rejected this call');
+      }
 
       toast({
         title: 'Call Initiated',
         description: `Calling ${recipients.length} recipient(s)...`,
       });
+
 
       await fetchCalls();
       return data;
