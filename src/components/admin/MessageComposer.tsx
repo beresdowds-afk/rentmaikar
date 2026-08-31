@@ -10,6 +10,7 @@ import {
   Send,
   Trash2,
   Users,
+  Bell,
   X,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,6 +47,7 @@ const CHANNELS: { value: ComposerChannel; label: string; icon: typeof Mail }[] =
   { value: 'email', label: 'Email', icon: Mail },
   { value: 'sms', label: 'SMS', icon: Phone },
   { value: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
+  { value: 'in_app', label: 'In-app', icon: Bell },
 ];
 
 const AUDIENCES: { value: string; label: string }[] = [
@@ -88,7 +90,10 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
   );
 
   const reachable = useMemo(
-    () => bulk.filter((r) => (channel === 'email' ? !!r.email : !!r.phone)).length,
+    () =>
+      bulk.filter((r) =>
+        channel === 'email' ? !!r.email : channel === 'in_app' ? !!r.user_id : !!r.phone,
+      ).length,
     [bulk, channel],
   );
 
@@ -316,7 +321,8 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
               <ScrollArea className="max-h-32">
                 <div className="flex flex-wrap gap-2 pr-2">
                   {bulk.map((r) => {
-                    const ok = channel === 'email' ? !!r.email : !!r.phone;
+                    const ok =
+                      channel === 'email' ? !!r.email : channel === 'in_app' ? !!r.user_id : !!r.phone;
                     return (
                       <Badge
                         key={r.user_id}
@@ -386,7 +392,7 @@ export function MessageComposer({ onSent }: { onSent?: () => void }) {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+2348012345678"
-                  disabled={channel === 'email'}
+                  disabled={channel === 'email' || channel === 'in_app'}
                 />
               </div>
             </div>

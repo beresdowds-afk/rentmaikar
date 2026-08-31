@@ -30,7 +30,7 @@ const composerPlaceholderValues = (
 };
 
 
-export type ComposerChannel = 'email' | 'sms' | 'whatsapp';
+export type ComposerChannel = 'email' | 'sms' | 'whatsapp' | 'in_app';
 
 export interface RecipientOption {
   user_id: string;
@@ -252,9 +252,44 @@ export const useSendComposedMessage = () => {
       notifyError('An email address is required');
       return { saved: false, delivered: false, reason: 'Missing email address' };
     }
-    if (input.channel !== 'email' && !phone) {
+    if (input.channel === 'in_app' && !input.recipientUserId) {
+      notifyError('Pick a registered user — in-app messages need an account');
+      return { saved: false, delivered: false, reason: 'Missing platform account' };
+    }
+    if (input.channel !== 'email' && input.channel !== 'in_app' && !phone) {
       notifyError('A phone number is required');
       return { saved: false, delivered: false, reason: 'Missing phone number' };
+    }
+
+    // ── In-app messaging: stored in the user's app inbox + web push ──
+    if (input.channel === 'in_app') {
+      setIsSending(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('send-in-app-message', {
+          body: {
+            recipient_ids: [input.recipientUserId],
+            subject: renderedSubject || undefined,
+            body,
+            category: 'support',
+          },
+        });
+        if (error || data?.ok === false) {
+          const reason =
+            (data as { error?: string } | null)?.error ||
+            (error as { message?: string } | null)?.message ||
+            'In-app delivery failed';
+          notifyError(`Could not deliver the in-app message: ${reason}`);
+          return { saved: false, delivered: false, reason };
+        }
+        if (!silent) toast.success('In-app message delivered');
+        return { saved: true, delivered: true };
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : 'Unknown error';
+        notifyError(`Could not deliver the in-app message: ${reason}`);
+        return { saved: false, delivered: false, reason };
+      } finally {
+        if (!silent) setIsSending(false);
+      }
     }
 
 
@@ -381,7 +416,11 @@ export const useSendComposedMessage = () => {
     input: Omit<SendComposedInput, 'recipientUserId' | 'recipientName' | 'email' | 'phone'>,
   ): Promise<BulkProgress> => {
     const usable = recipients.filter((r) =>
-      input.channel === 'email' ? !!r.email?.trim() : !!r.phone?.trim(),
+      input.channel === 'email'
+        ? !!r.email?.trim()
+        : input.channel === 'in_app'
+          ? !!r.user_id
+          : !!r.phone?.trim(),
     );
     const skipped = recipients.length - usable.length;
 
@@ -389,7 +428,9 @@ export const useSendComposedMessage = () => {
       toast.error(
         input.channel === 'email'
           ? 'None of the selected contacts have an email address'
-          : 'None of the selected contacts have a phone number',
+          : input.channel === 'in_app'
+            ? 'None of the selected contacts have a platform account'
+            : 'None of the selected contacts have a phone number',
       );
       return { total: recipients.length, completed: 0, sent: 0, failed: recipients.length };
     }
