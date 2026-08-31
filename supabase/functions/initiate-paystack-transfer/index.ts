@@ -9,6 +9,7 @@ import {
   requireWithdrawalAuthorization,
   transitionState,
 } from "../_shared/withdrawal-authorization.ts";
+import { notifyWithdrawalEvent } from "../_shared/withdrawal-notify.ts";
 
 const BodySchema = z.object({
   amount: z.number().positive(),
@@ -112,6 +113,11 @@ Deno.serve(async (req) => {
       authorization_id: authz.authorizationId,
     });
     await consumeWithdrawalAuthorization(supabase, authz.authorizationId!, payout.id);
+    await notifyWithdrawalEvent(supabase, {
+      event: "approved", ownerId: owner.id, amount: b.amount, currency: acc.currency,
+      provider: "paystack", payoutId: payout.id, authorizationId: authz.authorizationId,
+      destination: acc.bank_name ?? "your bank account",
+    });
 
     const resp = await fetch("https://api.paystack.co/transfer", {
       method: "POST",
@@ -128,6 +134,11 @@ Deno.serve(async (req) => {
         .update({ failure_reason: body?.message ?? "transfer failed", raw_payload: body ?? null })
         .eq("id", payout.id);
       await completeIdempotencyKey(supabase, idemKey, "failed");
+      await notifyWithdrawalEvent(supabase, {
+        event: "failed", ownerId: owner.id, amount: b.amount, currency: acc.currency,
+        provider: "paystack", payoutId: payout.id,
+        reason: body?.message ?? "transfer failed",
+      });
       return json({ error: body?.message ?? "transfer failed" }, 502);
     }
 
@@ -138,6 +149,17 @@ Deno.serve(async (req) => {
     if (body.data.status === "success") {
       await transitionState(supabase, "payout", payout.id, "settled", "Paystack reported success");
       await transitionState(supabase, "payout", payout.id, "completed", "payout complete");
+      await notifyWithdrawalEvent(supabase, {
+        event: "completed", ownerId: owner.id, amount: b.amount, currency: acc.currency,
+        provider: "paystack", payoutId: payout.id,
+        destination: acc.bank_name ?? "your bank account",
+      });
+    } else {
+      await notifyWithdrawalEvent(supabase, {
+        event: "submitted", ownerId: owner.id, amount: b.amount, currency: acc.currency,
+        provider: "paystack", payoutId: payout.id,
+        destination: acc.bank_name ?? "your bank account",
+      });
     }
 
     // Ledger: reserve the payout against the owner wallet immediately; the

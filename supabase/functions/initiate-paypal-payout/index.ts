@@ -12,6 +12,7 @@ import {
   requireWithdrawalAuthorization,
   transitionState,
 } from "../_shared/withdrawal-authorization.ts";
+import { notifyWithdrawalEvent } from "../_shared/withdrawal-notify.ts";
 
 
 const BodySchema = z.object({
@@ -113,6 +114,11 @@ Deno.serve(async (req) => {
       authorization_id: authz.authorizationId,
     });
     await consumeWithdrawalAuthorization(supabase, authz.authorizationId!, payout.id);
+    await notifyWithdrawalEvent(supabase, {
+      event: "approved", ownerId: owner.id, amount: b.amount, currency: "USD",
+      provider: "paypal", payoutId: payout.id, authorizationId: authz.authorizationId,
+      destination: acc.paypal_email,
+    });
 
     // `sender_batch_id` plus `PayPal-Request-Id` both carry the same unique
     // reference, so a retried request can never disburse the money twice.
@@ -153,6 +159,10 @@ Deno.serve(async (req) => {
         })
         .eq("id", payout.id);
       await completeIdempotencyKey(supabase, idemKey, "failed");
+      await notifyWithdrawalEvent(supabase, {
+        event: "failed", ownerId: owner.id, amount: b.amount, currency: "USD",
+        provider: "paypal", payoutId: payout.id, reason: message,
+      });
       return json({ error: message }, 502);
     }
 
@@ -168,8 +178,21 @@ Deno.serve(async (req) => {
     if (batchStatus === "SUCCESS") {
       await transitionState(supabase, "payout", payout.id, "settled", "PayPal batch success");
       await transitionState(supabase, "payout", payout.id, "completed", "payout complete");
+      await notifyWithdrawalEvent(supabase, {
+        event: "completed", ownerId: owner.id, amount: b.amount, currency: "USD",
+        provider: "paypal", payoutId: payout.id, destination: acc.paypal_email,
+      });
     } else if (batchStatus === "DENIED") {
       await transitionState(supabase, "payout", payout.id, "failed", "PayPal denied the batch");
+      await notifyWithdrawalEvent(supabase, {
+        event: "failed", ownerId: owner.id, amount: b.amount, currency: "USD",
+        provider: "paypal", payoutId: payout.id, reason: "PayPal denied the payout batch",
+      });
+    } else {
+      await notifyWithdrawalEvent(supabase, {
+        event: "submitted", ownerId: owner.id, amount: b.amount, currency: "USD",
+        provider: "paypal", payoutId: payout.id, destination: acc.paypal_email,
+      });
     }
 
     const led = await postLedgerEntry(supabase, {
