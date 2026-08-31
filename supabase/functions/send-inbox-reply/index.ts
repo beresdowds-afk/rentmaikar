@@ -7,6 +7,8 @@ import { isOptedOut } from "../_shared/opt-out.ts";
 import { outboundPausedResponse, outboundRegionFromPhone } from "../_shared/channel-guard.ts";
 import { sendViaSent } from "../_shared/sent-client.ts";
 import { twilioFallbackAllowed } from "../_shared/twilio-messaging-guard.ts";
+import { twilioCredentialsConfigured, twilioRequest } from "../_shared/twilio-auth.ts";
+
 import { hasPlaceholders, renderPlaceholders, resolvePlaceholderValues } from "../_shared/reply-placeholders.ts";
 
 
@@ -261,14 +263,11 @@ serve(async (req) => {
         );
       }
 
-      const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
-      const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
       const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
 
-      if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+      if (!twilioCredentialsConfigured() || !TWILIO_PHONE_NUMBER) {
         throw new Error("Twilio credentials not configured");
       }
-
 
       let toNumber = recipientPhone;
       // Use forwarding number as "from" if configured, otherwise default provider number
@@ -276,12 +275,11 @@ serve(async (req) => {
 
       if (channel === "whatsapp") {
         toNumber = recipientPhone.startsWith("whatsapp:") ? recipientPhone : `whatsapp:${recipientPhone}`;
-        fromNumber = `whatsapp:${forwardingFrom || TWILIO_PHONE_NUMBER}`;
+        fromNumber = `whatsapp:${(forwardingFrom || TWILIO_PHONE_NUMBER).replace(/^whatsapp:/i, "")}`;
       }
 
       console.log(`Sending ${channel} via Twilio to ${toNumber} from ${fromNumber}${forwardingFrom ? ' (forwarding)' : ''}`);
 
-      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
       const formData = new URLSearchParams();
       formData.append("To", toNumber);
       formData.append("From", fromNumber);
@@ -289,19 +287,14 @@ serve(async (req) => {
       for (const url of mediaUrls) formData.append("MediaUrl", url);
       formData.append("StatusCallback", `${supabaseUrl}/functions/v1/twilio-webhook`);
 
-
-      const twilioResponse = await fetch(twilioUrl, {
+      // Uses the approved API key SID/secret pair (auth token is set aside).
+      const twilioResult = await twilioRequest("/Messages.json", {
         method: "POST",
-        headers: {
-          "Authorization": `Basic ${btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`)}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData.toString(),
+        body: formData,
       });
+      const twilioData = twilioResult.payload as Record<string, any>;
 
-      const twilioData = await twilioResponse.json();
-
-      if (!twilioResponse.ok) {
+      if (!twilioResult.ok) {
         console.error("Twilio API error:", twilioData);
         throw new Error(`Twilio API error: ${twilioData.message || twilioData.error_message || "Unknown error"}`);
       }
@@ -309,6 +302,7 @@ serve(async (req) => {
       messageSid = twilioData.sid;
       messageStatus = twilioData.status;
       console.log("Message sent via Twilio:", messageSid);
+
     }
 
     // Update the message in the database with external_id
