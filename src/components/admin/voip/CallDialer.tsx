@@ -13,6 +13,8 @@ import type { CallRegion, CallType, VoIPCallGroup } from '@/types/voip';
 import { COUNTRY_CODES, validatePhoneNumber, formatPhoneForDisplay } from '@/types/voip';
 import { useRegion } from '@/contexts/RegionContext';
 import { regionToDefaultCountry } from '@/hooks/useDefaultPhoneCountry';
+import { UserCallSearch } from './UserCallSearch';
+import { Separator } from '@/components/ui/separator';
 
 
 interface CallDialerProps {
@@ -168,6 +170,32 @@ export const CallDialer = ({ onInitiateCall, groups, isLoading }: CallDialerProp
           </TabsList>
 
           <TabsContent value="individual" className="space-y-4 mt-4">
+            {/* Search a registered user — selecting one dials immediately */}
+            <div className="space-y-2 rounded-md border p-4">
+              <Label>Search users to call</Label>
+              <p className="text-xs text-muted-foreground">
+                Selecting a driver or owner starts the call right away.
+              </p>
+              <UserCallSearch
+                embedded
+                isLoading={isLoading || isCalling}
+                onInitiateCall={onInitiateCall}
+                onUserSelected={(user) => {
+                  if (user.phone) {
+                    setRegion(user.phone.startsWith('+234') ? 'Nigeria' : 'USA');
+                    setPhoneNumber(user.phone);
+                  }
+                  setDisplayName(user.full_name || '');
+                }}
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Separator className="flex-1" />
+              <span className="text-xs text-muted-foreground">or dial manually</span>
+              <Separator className="flex-1" />
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
