@@ -179,6 +179,11 @@ const App = () => (
                     <Route path="/catalogue" element={<Navigate to="/catalogue/budget" replace />} />
                     <Route path="/vehicles/:id" element={<VehicleRedirect />} />
                     <Route path="/auth" element={<Auth />} />
+                    <Route path="/owner/sign-in" element={<OwnerSignIn />} />
+                    <Route path="/owner/signin" element={<Navigate to="/owner/sign-in" replace />} />
+                    <Route path="/admin/sign-in" element={<AdminSignIn />} />
+                    <Route path="/admin/signin" element={<Navigate to="/admin/sign-in" replace />} />
+
                 
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/referee-attest" element={<RefereeAttestation />} />
