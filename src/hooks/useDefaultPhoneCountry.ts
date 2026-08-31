@@ -3,6 +3,7 @@ import type { Country } from 'react-phone-number-input';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useRegion } from '@/contexts/RegionContext';
+import { getManualPick, getStoredCountry } from '@/lib/region-cookie';
 
 /**
  * Region → default ISO country for the IDD (international dialing code)
