@@ -4,6 +4,7 @@ import { Menu, X, User, Building, Shield, LayoutDashboard, LogIn, LogOut, HelpCi
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import RegionSwitcher from "@/components/home/RegionSwitcher";
+import { InAppMessagesBell } from "@/components/notifications/InAppMessagesBell";
 import { useUserType } from "@/contexts/UserTypeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -113,6 +114,7 @@ const Header = ({ onRestartTour }: HeaderProps = {}) => {
             
             {!isLoading && user ? (
               <>
+                <InAppMessagesBell />
                 <Link to={getDashboardLink()}>
                   <Button variant="outline" size="sm" className="gap-2">
                     <LayoutDashboard className="w-4 h-4" />

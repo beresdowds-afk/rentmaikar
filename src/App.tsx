@@ -98,6 +98,8 @@ const AdminNotificationRetryPage = lazy(() => import("./pages/admin/AdminNotific
 const AdminSmsConsentAuditPage = lazy(() => import("./pages/admin/AdminSmsConsentAuditPage"));
 const AdminEmailDeliveryPage = lazy(() => import("./pages/admin/AdminEmailDeliveryPage"));
 const MessagingCenterPage = lazy(() => import("./pages/admin/MessagingCenterPage"));
+const AdminSmsDeliveryPage = lazy(() => import("./pages/admin/AdminSmsDeliveryPage"));
+const MessagesPage = lazy(() => import("./pages/MessagesPage"));
 
 const AdminVehicleQueuePage = lazy(() => import("./pages/admin/AdminVehicleQueuePage"));
 const AdminProximityMatchingPage = lazy(() => import("./pages/admin/AdminProximityMatchingPage"));
@@ -530,6 +532,22 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <AdminEmailDeliveryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/sms-delivery"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminSmsDeliveryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/messages"
+                    element={
+                      <ProtectedRoute>
+                        <MessagesPage />
                       </ProtectedRoute>
                     }
                   />
