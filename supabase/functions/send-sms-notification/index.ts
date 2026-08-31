@@ -458,16 +458,15 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // ─── TWILIO (USA / Default) ───
-    // Twilio is approved for VoIP voice only — messaging (SMS/WhatsApp) is NOT
-    // approved. USA messaging must go through Sent.dm. Keep the flag below
-    // false unless/until Twilio messaging is explicitly approved.
-    const twilioMessagingEnabled = (Deno.env.get("TWILIO_MESSAGING_ENABLED") ?? "false").toLowerCase() === "true";
-    if (!twilioMessagingEnabled) {
+    // ─── TWILIO (USA fallback) ───
+    // Sent.dm is the global default; Twilio only carries USA (+1) traffic once
+    // a Sent dispatch has failed or Sent is unavailable.
+    if (!twilioFallbackAllowed(body.phone)) {
       throw new Error(
-        "Twilio messaging is not enabled (voice-only approval). USA SMS/WhatsApp must route via Sent.dm.",
+        "Twilio fallback is not available for this destination. SMS/WhatsApp must route via Sent.dm.",
       );
     }
+
 
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
