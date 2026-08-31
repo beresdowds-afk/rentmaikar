@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import OwnerActivityPanel from '@/components/owner/OwnerActivityPanel';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -443,6 +444,7 @@ export default function OwnerDashboard() {
               </TabsTrigger>
               <TabsTrigger value="call-history">Call History</TabsTrigger>
               <TabsTrigger value="recalls">Recalls</TabsTrigger>
+              <TabsTrigger value="activity">Activity</TabsTrigger>
               <TabsTrigger value="messages">Messages</TabsTrigger>
               <TabsTrigger value="settings" data-tour="owner-settings">Settings</TabsTrigger>
             </TabsList>
@@ -718,6 +720,9 @@ export default function OwnerDashboard() {
             </TabsContent>
 
             {/* Settings Tab */}
+            <TabsContent value="activity" className="space-y-6">
+              <OwnerActivityPanel />
+            </TabsContent>
             <TabsContent value="messages" className="space-y-6">
               <UserMessagesPanel />
             </TabsContent>

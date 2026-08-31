@@ -53,10 +53,18 @@ const SentWebhookControl = () => {
             ) : (
               <Link2 className="h-3.5 w-3.5 mr-1" />
             )}
-            Point callback here
+            Register callback + secret
           </Button>
         </div>
       </div>
+      {result && typeof result.signing_secret_configured === 'boolean' && (
+        <p className="mt-2 text-xs">
+          Signing secret:{' '}
+          <strong className={result.signing_secret_configured ? 'text-foreground' : 'text-destructive'}>
+            {result.signing_secret_configured ? 'registered (SENT_WEBHOOK_SECRET)' : 'missing'}
+          </strong>
+        </p>
+      )}
       {result && (
         <pre className="mt-2 max-h-40 overflow-auto rounded bg-muted p-2 text-[11px] text-muted-foreground">
           {JSON.stringify(result, null, 2)}

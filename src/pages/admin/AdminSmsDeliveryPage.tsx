@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import LiveSmsTestPanel from '@/components/admin/LiveSmsTestPanel';
 
 interface SmsStats {
   queued?: number;
@@ -158,6 +159,10 @@ export default function AdminSmsDeliveryPage() {
           </Card>
         ))}
       </div>
+
+      <LiveSmsTestPanel onSent={load} />
+
+
 
       <Card>
         <CardHeader>
