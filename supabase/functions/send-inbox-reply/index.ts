@@ -45,28 +45,16 @@ serve(async (req) => {
       throw new Error("Missing required fields: conversationId, messageContent, channel");
     }
 
-    // ─── Look up conversation region (needed for routing) ───
+    // ─── Look up conversation region + metadata (needed for social routing) ───
     const { data: conversation } = await supabase
       .from("inbox_conversations")
-      .select("region, channel")
+      .select("region, metadata, channel")
       .eq("id", conversationId)
       .single();
 
     // ─── Social channels (Instagram / Facebook Messenger) → ManyChat ───
     if (channel === "instagram" || channel === "facebook_messenger") {
-      // The ManyChat subscriber id is stored on inbound message metadata.
-      const { data: inboundMessages } = await supabase
-        .from("inbox_messages")
-        .select("metadata")
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      const subscriberId = (inboundMessages ?? [])
-        .map((m: { metadata: Record<string, unknown> | null }) =>
-          (m.metadata as Record<string, unknown> | null)?.manychat_subscriber_id as string | undefined
-        )
-        .find((v) => typeof v === "string" && v);
-
+      const subscriberId = (conversation?.metadata as Record<string, unknown> | null)?.manychat_subscriber_id as string | undefined;
       if (!subscriberId) throw new Error("ManyChat subscriber_id missing on conversation");
       if (!manychat.isConfigured()) throw new Error("ManyChat not configured (MANYCHAT_API_TOKEN missing)");
       const result = await manychat.sendMessage(subscriberId, messageContent);
