@@ -7,6 +7,8 @@ import { CannedRepliesManager } from '@/components/admin/CannedRepliesManager';
 import TwilioTemplateManager from '@/components/admin/TwilioTemplateManager';
 import { InboxNotificationSettings } from '@/components/admin/InboxNotificationSettings';
 import OutboundDeliveryLogPanel from '@/components/admin/OutboundDeliveryLogPanel';
+import { useAssistantPermissions } from '@/hooks/useAssistantPermissions';
+
 
 
 /**
