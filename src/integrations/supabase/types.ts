@@ -2538,6 +2538,48 @@ export type Database = {
           },
         ]
       }
+      in_app_messages: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          id: string
+          link_url: string | null
+          metadata: Json
+          read_at: string | null
+          recipient_id: string
+          sender_id: string | null
+          sender_name: string
+          subject: string | null
+        }
+        Insert: {
+          body: string
+          category?: string
+          created_at?: string
+          id?: string
+          link_url?: string | null
+          metadata?: Json
+          read_at?: string | null
+          recipient_id: string
+          sender_id?: string | null
+          sender_name?: string
+          subject?: string | null
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          id?: string
+          link_url?: string | null
+          metadata?: Json
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string | null
+          sender_name?: string
+          subject?: string | null
+        }
+        Relationships: []
+      }
       inbox_attachment_access_log: {
         Row: {
           action: string
@@ -7936,6 +7978,60 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_dlq_retry_state: {
+        Row: {
+          attempts: number
+          body: string | null
+          channel: string
+          created_at: string
+          id: string
+          last_error: string | null
+          message_key: string
+          next_attempt_at: string
+          paused: boolean
+          recipient_phone: string
+          region: string | null
+          resolved_at: string | null
+          template_name: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          body?: string | null
+          channel?: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          message_key: string
+          next_attempt_at?: string
+          paused?: boolean
+          recipient_phone: string
+          region?: string | null
+          resolved_at?: string | null
+          template_name?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          body?: string | null
+          channel?: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          message_key?: string
+          next_attempt_at?: string
+          paused?: boolean
+          recipient_phone?: string
+          region?: string | null
+          resolved_at?: string | null
+          template_name?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       social_media_campaigns: {
         Row: {
           budget: number | null
@@ -12634,6 +12730,7 @@ export type Database = {
         Returns: string
       }
       mark_all_admin_notifications_read: { Args: never; Returns: number }
+      mark_in_app_messages_read: { Args: { _ids: string[] }; Returns: number }
       mask_secret_value: { Args: { _v: string }; Returns: string }
       move_to_dlq: {
         Args: {
@@ -12943,6 +13040,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      sms_delivery_stats: { Args: { _hours?: number }; Returns: Json }
       submit_booking_request: {
         Args: {
           _end_date: string
