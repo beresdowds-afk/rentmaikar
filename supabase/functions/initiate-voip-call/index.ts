@@ -128,17 +128,16 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Get Twilio credentials
-    const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
-    const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
-    const fromNumber = OUTBOUND_NUMBERS[region];
-
-    if (!accountSid || !authToken) {
+    // Twilio is the voice provider for EVERY region (Termii is SMS/OTP only —
+    // its /otp/call endpoint is not a dialable voice leg and returns 404).
+    if (!twilioCredentialsConfigured()) {
       return new Response(
-        JSON.stringify({ error: 'Twilio credentials not configured' }),
+        JSON.stringify({ error: 'Twilio voice credentials are not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    const masterEndpoint = await getMasterEndpointFor(supabase, 'call');
+
 
     // Create call record in database with role tracking
     const { data: callRecord, error: callError } = await supabase
