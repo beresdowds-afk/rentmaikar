@@ -77,7 +77,7 @@ export default function PortalSignInForm({
       }
 
       // Mandatory 2FA (admins/owners) is challenged on the main auth screen.
-      const status = await check2FAStatus?.();
+      const status = await check2FAStatus(userId);
       if (status?.requires_2fa) {
         rememberReturnTo(destination);
         navigate('/auth', { replace: true });
