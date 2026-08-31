@@ -241,7 +241,7 @@ export const PhoneVerification = ({ onVerified, showAsCard = true }: PhoneVerifi
             <PhoneNumberInput
               id="pv-phone"
               value={phoneNumber}
-              defaultCountry={selectedRegion}
+              defaultCountry={selectedRegion ?? resolvedCountry}
               onChange={(v) => {
                 setPhoneNumber(v);
                 const parsed = parsePhoneNumberFromString(v || '');
