@@ -161,12 +161,19 @@ export async function sendViaSent(req: SentSendRequest): Promise<SentSendResult>
   const media = (req.mediaUrls ?? []).filter(Boolean).slice(0, 10);
   if (media.length && req.channel === "sms") {
     // SMS has no native media on Sent.dm — append the links to the body instead.
-    req = { ...req, text: [req.text, ...media].filter(Boolean).join("\n"), mediaUrls: [] };
+    req = { ...req, text: [req.text, ...media].filter(Boolean).join(" "), mediaUrls: [] };
+  }
+
+  // Final guard: the free-text system template rejects newlines/tabs.
+  if (req.text) req = { ...req, text: sanitizeSentText(req.text) };
+  if (!req.text && !req.template) {
+    return { ok: false, skipped: true, error: "Message body is empty after sanitisation" };
   }
 
   const idempotencyKey =
     req.idempotencyKey ||
     `rm_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
 
   try {
     const res = await fetch(`${sentBaseUrl()}/v3/messages`, {
