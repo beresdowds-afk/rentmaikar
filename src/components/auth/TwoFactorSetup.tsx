@@ -251,7 +251,7 @@ export const TwoFactorSetup = () => {
                 setPhoneIsValid(valid);
                 setNormalizedPhone(e164);
               }}
-              hint={`Include your country code — e.g. ${twoFaSamples.phoneE164}.`} This is the number Rentmaikar will dial or text with security codes."
+              hint={`Include your country code — e.g. ${twoFaSamples.phoneE164}. This is the number Rentmaikar will dial or text with security codes.`}
             />
 
             {/* Step 1: Verify the number */}
