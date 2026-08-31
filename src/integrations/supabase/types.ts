@@ -12832,6 +12832,10 @@ export type Database = {
       normalize_country_label: { Args: { _v: string }; Returns: string }
       normalize_msisdn: { Args: { _phone: string }; Returns: string }
       notification_category_for: { Args: { _kind: string }; Returns: string }
+      notification_is_otp_like: {
+        Args: { _body: string; _kind: string; _title: string }
+        Returns: boolean
+      }
       notify_settlement_invoice_failure: {
         Args: { _payment_id: string; _reason: string }
         Returns: undefined
