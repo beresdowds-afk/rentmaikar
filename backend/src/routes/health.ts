@@ -19,6 +19,8 @@ healthRouter.get("/diagnostics", (req: Request, res: Response) => {
     cpaas_gateway: {
       sent_dm: Boolean(process.env.SENT_API_KEY),
       sent_webhook_url: process.env.SENT_WEBHOOK_URL || `${publicBackendUrl}/api/webhooks/sent`,
+      sent_status_webhook_url:
+        process.env.SENT_STATUS_WEBHOOK_URL || `${publicBackendUrl}/api/webhooks/sent/status`,
       twilio: Boolean(process.env.TWILIO_ACCOUNT_SID),
       termii: Boolean(process.env.TERMII_API_KEY),
     },
