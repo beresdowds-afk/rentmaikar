@@ -3463,6 +3463,154 @@ export type Database = {
           },
         ]
       }
+      iot_provisioning_control: {
+        Row: {
+          batch_size: number
+          created_at: string
+          id: boolean
+          last_run_at: string | null
+          lease_expires_at: string | null
+          lease_owner: string | null
+          pause_reason: string | null
+          paused: boolean
+          updated_at: string
+        }
+        Insert: {
+          batch_size?: number
+          created_at?: string
+          id?: boolean
+          last_run_at?: string | null
+          lease_expires_at?: string | null
+          lease_owner?: string | null
+          pause_reason?: string | null
+          paused?: boolean
+          updated_at?: string
+        }
+        Update: {
+          batch_size?: number
+          created_at?: string
+          id?: boolean
+          last_run_at?: string | null
+          lease_expires_at?: string | null
+          lease_owner?: string | null
+          pause_reason?: string | null
+          paused?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      iot_provisioning_runs: {
+        Row: {
+          created_at: string
+          devices_enabled: number
+          errors: Json
+          finished_at: string | null
+          id: string
+          sims_linked: number
+          started_at: string
+          status: string
+          vehicles_linked: number
+          vehicles_ready: number
+          vehicles_tested: number
+        }
+        Insert: {
+          created_at?: string
+          devices_enabled?: number
+          errors?: Json
+          finished_at?: string | null
+          id?: string
+          sims_linked?: number
+          started_at?: string
+          status?: string
+          vehicles_linked?: number
+          vehicles_ready?: number
+          vehicles_tested?: number
+        }
+        Update: {
+          created_at?: string
+          devices_enabled?: number
+          errors?: Json
+          finished_at?: string | null
+          id?: string
+          sims_linked?: number
+          started_at?: string
+          status?: string
+          vehicles_linked?: number
+          vehicles_ready?: number
+          vehicles_tested?: number
+        }
+        Relationships: []
+      }
+      iot_provisioning_state: {
+        Row: {
+          attempts: number
+          created_at: string
+          device_id: string | null
+          id: string
+          last_error: string | null
+          ready_at: string | null
+          sim_id: string | null
+          stage: string
+          test_details: Json
+          test_status: string
+          tested_at: string | null
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          last_error?: string | null
+          ready_at?: string | null
+          sim_id?: string | null
+          stage?: string
+          test_details?: Json
+          test_status?: string
+          tested_at?: string | null
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          last_error?: string | null
+          ready_at?: string | null
+          sim_id?: string | null
+          stage?: string
+          test_details?: Json
+          test_status?: string
+          tested_at?: string | null
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iot_provisioning_state_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "iot_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iot_provisioning_state_sim_id_fkey"
+            columns: ["sim_id"]
+            isOneToOne: false
+            referencedRelation: "iot_sim_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iot_provisioning_state_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: true
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       iot_sim_cards: {
         Row: {
           activated_at: string | null
