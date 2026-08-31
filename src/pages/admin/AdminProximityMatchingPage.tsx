@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,9 @@ const AdminProximityMatchingPage = () => {
           Automatic matches between vehicle pickup locations and driver home addresses. USA matching uses the
           radius below; Nigeria matching is bounded by the city's geographical boundary.
         </p>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/admin/driver-matching">Open matching pipeline</Link>
+        </Button>
       </header>
 
       <Card>
