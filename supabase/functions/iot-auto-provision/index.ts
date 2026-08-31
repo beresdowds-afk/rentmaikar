@@ -194,14 +194,16 @@ Deno.serve(async (req) => {
     }
 
     // ---- Step 3: link enabled devices to published vehicles -----------------
-    const { data: publishedVehicles } = await supa
+    const { data: publishedVehicles, error: vehErr } = await supa
       .from("vehicles")
       .select("id, make, model, license_plate, gps_tracking_enabled, is_public, review_status")
       .eq("is_public", true)
       .eq("review_status", "published")
       .eq("gps_tracking_enabled", true)
-      .order("published_at", { ascending: true })
       .limit(batch);
+    if (vehErr) errors.push({ step: "list_vehicles", message: vehErr.message });
+
+
 
     for (const v of publishedVehicles ?? []) {
       try {
