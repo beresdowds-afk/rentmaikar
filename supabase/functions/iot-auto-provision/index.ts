@@ -30,11 +30,19 @@ function json(body: Json, status = 200) {
 
 async function authorize(req: Request): Promise<{ ok: boolean; actor: string }> {
   const provided = req.headers.get("x-cron-secret") ?? "";
-  if (CRON_SECRET && provided === CRON_SECRET) return { ok: true, actor: "cron" };
+  if (provided) {
+    if (CRON_SECRET && provided === CRON_SECRET) return { ok: true, actor: "cron" };
+    // The environment copy of the cron token can drift from the stored one, so
+    // fall back to verifying against the value held in the database.
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    const { data: tokenOk } = await admin.rpc("verify_cron_token", { _token: provided });
+    if (tokenOk === true) return { ok: true, actor: "cron" };
+  }
 
   const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (bearer && bearer === SERVICE_KEY) return { ok: true, actor: "service" };
   if (!bearer) return { ok: false, actor: "anonymous" };
+
 
   const userClient = createClient(SUPABASE_URL, ANON_KEY, {
     global: { headers: { Authorization: `Bearer ${bearer}` } },
