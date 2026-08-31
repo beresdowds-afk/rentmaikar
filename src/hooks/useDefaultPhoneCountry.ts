@@ -82,3 +82,50 @@ export function useDefaultPhoneCountry(): Country | undefined {
 
   return iso;
 }
+
+/**
+ * Like {@link useDefaultPhoneCountry}, but never falls back to the app's
+ * safe-default region ("USA"). It only pre-selects a country when that choice
+ * is genuinely known:
+ *   1. Country encoded in the user's stored E.164 phone number
+ *   2. `profiles.preferred_country`
+ *   3. The active region — only when it was explicitly stored (auto-detected
+ *      for this visitor) or deliberately selected (e.g. by an admin)
+ *
+ * Otherwise it returns `undefined`, so verification phone fields render a
+ * neutral picker with no flag and no pre-filled dialing code.
+ */
+export function useResolvedPhoneCountry(): Country | undefined {
+  const { country, isDetecting } = useRegion();
+  const regionTrusted = !isDetecting && (getManualPick() || !!getStoredCountry());
+  const fallback = regionTrusted ? regionToDefaultCountry(country) : undefined;
+  const [iso, setIso] = useState<Country | undefined>(fallback);
+
+  useEffect(() => {
+    setIso(fallback);
+  }, [fallback]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('phone, preferred_country')
+        .eq('user_id', uid)
+        .maybeSingle();
+      if (cancelled) return;
+      const parsed = data?.phone ? parsePhoneNumberFromString(data.phone) : null;
+      if (parsed?.country) return setIso(parsed.country as Country);
+      const preferred = regionToDefaultCountry(data?.preferred_country);
+      if (preferred) return setIso(preferred);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fallback]);
+
+  return iso;
+}
