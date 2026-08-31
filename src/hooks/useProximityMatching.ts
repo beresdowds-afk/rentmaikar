@@ -213,5 +213,6 @@ export const useProximityMatching = (radiusMiles: number = PROXIMITY_DEFAULT_RAD
     ...query,
     vehiclesWithDrivers,
     driversWithVehicles,
+    readyVehicleCount: query.data?.readyVehicleCount ?? 0,
   };
 };
