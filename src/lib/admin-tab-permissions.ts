@@ -36,6 +36,7 @@ export const TAB_PERMISSION_MAP: Record<AdminTabKey, PermissionKey | null> = {
   catalogue: 'can_view_vehicles',
   'pickup-locations': 'can_view_vehicles',
   'iot-monitoring': 'can_view_iot',
+  'iot-provisioning': 'can_view_iot',
   hologram: 'can_view_iot',
   traccar: 'can_view_iot',
   'sync-schedule': 'can_manage_iot',
