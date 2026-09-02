@@ -497,6 +497,14 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/admin/vehicle-telemetry"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant', 'iot_support']}>
+                        <AdminVehicleTelemetryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/vehicle-queue"
                     element={
                       <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
