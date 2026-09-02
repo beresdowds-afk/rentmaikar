@@ -412,6 +412,7 @@ export default function OwnerDashboard() {
                 <MapPin className="h-4 w-4" />
                 Pickup Locations
               </TabsTrigger>
+              <TabsTrigger value="vehicle-status" data-tour="owner-vehicle-status">Vehicle Status</TabsTrigger>
               <TabsTrigger value="iot-device" data-tour="owner-iot">Vehicle Tracking</TabsTrigger>
               <TabsTrigger value="inspections" className="flex items-center gap-1" data-tour="owner-inspections">
                 <ImageIcon className="h-4 w-4" />
