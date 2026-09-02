@@ -470,6 +470,13 @@ export default function OwnerDashboard() {
             </TabsContent>
 
 
+            {/* Vehicle Status Tab */}
+            <TabsContent value="vehicle-status">
+              <PortalGate portal="Vehicle Status" require="verification">
+                <OwnerVehicleStatusPanel />
+              </PortalGate>
+            </TabsContent>
+
             {/* IoT Device Tab */}
             <TabsContent value="iot-device">
   <PortalGate portal="Vehicle Tracking" require="verification">
