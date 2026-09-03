@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
+import { EMAIL_CONFIG, INCOMING_EMAIL_CONFIG, formatSenderEmail, inboundLocalPart } from "../_shared/email-config.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import { maybeAutoReply } from "../_shared/auto-reply.ts";
 import { forwardInboundEmail } from "../_shared/forwarding.ts";
@@ -535,7 +535,7 @@ serve(async (req) => {
     }
 
     // ─── Queue routing by recipient ───
-    const queueInfo = EMAIL_QUEUES[recipientEmail] || { queue: "support", priority: "normal", category: "support_request" };
+    const queueInfo = routeForAddress(recipientEmail) || { queue: "support", priority: "normal", category: "support_request" };
 
     if (queueInfo.category === "auto_reply") {
       console.log("Ignoring noreply bounce from:", senderAddress);
@@ -547,7 +547,7 @@ serve(async (req) => {
     // ─── Multi-recipient routing (handle CC / multiple To) ───
     const allRecipients = Array.isArray(to) ? to.map((t: string) => t.toLowerCase()) : [recipientEmail];
     const queuesHit = allRecipients
-      .map((addr: string) => EMAIL_QUEUES[addr])
+      .map((addr: string) => routeForAddress(addr))
       .filter(Boolean);
     // Use highest priority queue if multiple matched
     const effectiveQueue = queuesHit.sort((a: typeof queueInfo, b: typeof queueInfo) => {
