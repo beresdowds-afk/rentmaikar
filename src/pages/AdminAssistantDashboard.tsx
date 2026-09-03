@@ -143,18 +143,36 @@ const AdminAssistantDashboard = () => {
     ? (['marketing', 'docs'] as PortalType[])
     : [];
 
+  // Quick-access shortcuts. Each entry is gated by its OWN permission so a
+  // missing/denied shortcut can never suppress a sibling shortcut's page.
+  const QUICK_ACCESS_ITEMS = useMemo(
+    () => ([
+      { tab: 'inbox', portal: 'support' as PortalType, label: 'Unified Inbox', icon: Inbox },
+      { tab: 'call-center', portal: 'support' as PortalType, label: 'Call Center', icon: Phone },
+      { tab: 'support-tasks', portal: 'support' as PortalType, label: 'Support Tasks', icon: Headphones },
+      { tab: 'attestation-review', portal: 'crm' as PortalType, label: 'Referee Reviews', icon: AlertTriangle },
+    ]),
+    [],
+  );
+
+  const quickAccess = useMemo(
+    () => (permsLoading ? [] : QUICK_ACCESS_ITEMS.filter((i) => canAccessTab(i.tab))),
+    [QUICK_ACCESS_ITEMS, canAccessTab, permsLoading],
+  );
+
   // Fallback: if the active tab is no longer permitted (e.g. permissions were
   // revoked), bounce the user to the first tab they still have access to.
   useEffect(() => {
     if (permsLoading) return;
     if (canAccessTab(activeTab)) return;
-    const fallback = ['inbox', 'expiry-notifications', 'contacts', 'approvals']
+    const fallback = ['inbox', 'call-center', 'expiry-notifications', 'contacts', 'approvals']
       .find((t) => canAccessTab(t));
-    if (fallback) {
+    if (fallback && fallback !== activeTab) {
       setActiveTab(fallback);
-      setPortalView('support');
+      setPortalView(fallback === 'attestation-review' ? 'crm' : 'support');
     }
   }, [activeTab, canAccessTab, permsLoading]);
+
 
   const activeTabAllowed = permsLoading || canAccessTab(activeTab);
   const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
