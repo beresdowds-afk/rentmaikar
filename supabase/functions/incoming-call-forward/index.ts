@@ -56,9 +56,68 @@ serve(async (req: Request): Promise<Response> => {
       ? await getForwardingDestination(supabase, "call", region)
       : null;
 
+    // Register the real Twilio inbound leg so it appears in the admin Call
+    // Queue (direction=inbound, status=ringing) instead of a simulated entry.
+    if (callSid) {
+      const { data: existing } = await supabase
+        .from("voip_calls")
+        .select("id")
+        .eq("call_sid", callSid)
+        .maybeSingle();
+
+      let callId = existing?.id as string | undefined;
+
+      if (!callId) {
+        const { data: inserted, error: insertError } = await supabase
+          .from("voip_calls")
+          .insert({
+            call_sid: callSid,
+            call_type: "individual",
+            direction: "inbound",
+            status: "ringing",
+            region,
+            started_at: new Date().toISOString(),
+          })
+          .select("id")
+          .maybeSingle();
+        if (insertError) {
+          console.error("[incoming-call-forward] voip_calls insert failed:", insertError.message);
+        }
+        callId = inserted?.id as string | undefined;
+      }
+
+      if (callId && from) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .eq("phone", from)
+          .maybeSingle();
+
+        const { error: participantError } = await supabase
+          .from("voip_call_participants")
+          .insert({
+            call_id: callId,
+            participant_type: "caller",
+            phone_number: from,
+            display_name: profile?.full_name ?? null,
+            user_id: profile?.id ?? null,
+            region,
+            status: "ringing",
+            joined_at: new Date().toISOString(),
+          });
+        if (participantError) {
+          console.error(
+            "[incoming-call-forward] participant insert failed:",
+            participantError.message,
+          );
+        }
+      }
+    }
+
     console.log(
       `[incoming-call-forward] region=${region} enabled=${enabled} destination=${destination ? "configured" : "none"}`,
     );
+
 
     await logMessagingEvent(supabase, {
       channel: "voip",
