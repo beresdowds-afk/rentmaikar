@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 /**
@@ -35,11 +35,18 @@ export function usePersistedTab(defaultTab: string, paramKey = 'tab') {
 
   const tab = fromUrl ?? remembered ?? defaultTab;
 
+  // Mirrors the params we have written this tick. Two `setTab` calls in one
+  // event handler (portal + tab) must merge instead of clobbering each other,
+  // and `location.search` has not re-rendered yet at that point.
+  const paramsRef = useRef<URLSearchParams>(new URLSearchParams(location.search));
+  paramsRef.current = new URLSearchParams(location.search);
+
   const writeUrl = useCallback(
     (next: string, replace: boolean) => {
-      const params = new URLSearchParams(window.location.search);
+      const params = paramsRef.current;
       if (params.get(paramKey) === next) return;
       params.set(paramKey, next);
+      pendingRef.current = new URLSearchParams(params);
       navigate(
         { pathname: location.pathname, search: `?${params.toString()}`, hash: location.hash },
         { replace },
