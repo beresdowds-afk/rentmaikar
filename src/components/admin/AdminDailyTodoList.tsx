@@ -181,14 +181,8 @@ export const AdminDailyTodoList = ({ embedded = false }: AdminDailyTodoListProps
   const totalCount = tasks.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-  const Shell = embedded
-    ? ({ children }: { children: React.ReactNode }) => (
-        <div className="bg-background text-foreground">{children}</div>
-      )
-    : Card;
-
   return (
-    <Shell>
+    <Card className={embedded ? 'border-0 shadow-none rounded-none bg-background' : undefined}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -327,7 +321,7 @@ export const AdminDailyTodoList = ({ embedded = false }: AdminDailyTodoListProps
           </Button>
         </div>
       </CardContent>
-    </Shell>
+    </Card>
   );
 };
 
