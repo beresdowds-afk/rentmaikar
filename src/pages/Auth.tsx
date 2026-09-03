@@ -21,6 +21,7 @@ import PhoneOtpPanel from '@/components/auth/PhoneOtpPanel';
 import { toast } from 'sonner';
 import rentmaikarLogo from '@/assets/rentmaikar-logo.jpg';
 import { TwoFactorChallenge } from '@/components/auth/TwoFactorChallenge';
+import { AuthenticatorChallenge } from '@/components/auth/AuthenticatorChallenge';
 import { PasswordInput } from '@/components/ui/password-input';
 import { EmailVerification } from '@/components/auth/EmailVerification';
 import { ResendButton } from '@/components/auth/ResendButton';
@@ -91,6 +92,7 @@ const Auth = () => {
   const [twoFAUserId, setTwoFAUserId] = useState<string>('');
   const [twoFAPhone, setTwoFAPhone] = useState<string>('');
   const [twoFAChannel, setTwoFAChannel] = useState<string>('sms');
+  const [totpFactorId, setTotpFactorId] = useState<string | null>(null);
 
   // Where to send the user after a successful sign-in. Router state is lost on a
   // hard refresh of /auth, so fall back to the sessionStorage copy written by
@@ -140,7 +142,7 @@ const Auth = () => {
   // IMPORTANT: wait until userRole has hydrated before navigating, otherwise
   // admin_assistant / support users race past the role check and land on `/`.
   useEffect(() => {
-    if (!user || authLoading || !twoFactorVerified || show2FA) return;
+    if (!user || authLoading || !twoFactorVerified || show2FA || totpFactorId) return;
     if (userRole === null) return; // still hydrating role
 
     const finishRedirect = (target: string) => {
@@ -183,7 +185,26 @@ const Auth = () => {
       );
       await routeWithCompletionCheck(target);
     })();
-  }, [user, authLoading, userRole, navigate, from, twoFactorVerified, show2FA]);
+  }, [user, authLoading, userRole, navigate, from, twoFactorVerified, show2FA, totpFactorId]);
+
+  // Authenticator-app (TOTP) step: required when the account is enrolled but
+  // the current session has not yet been elevated.
+  useEffect(() => {
+    if (!user || authLoading) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (cancelled || !aal || aal.currentLevel === aal.nextLevel) return;
+        const { data: factors } = await supabase.auth.mfa.listFactors();
+        const verified = (factors?.totp ?? []).find((f) => f.status === 'verified');
+        if (!cancelled && verified) setTotpFactorId(verified.id);
+      } catch (error) {
+        console.error('Error checking authenticator status:', error);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, authLoading]);
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -421,6 +442,23 @@ const Auth = () => {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  // Authenticator app (TOTP) challenge
+  if (totpFactorId) {
+    return (
+      <AuthenticatorChallenge
+        factorId={totpFactorId}
+        onVerified={() => {
+          setTotpFactorId(null);
+          toast.success('Welcome back!');
+        }}
+        onCancel={async () => {
+          setTotpFactorId(null);
+          await supabase.auth.signOut();
+        }}
+      />
     );
   }
 

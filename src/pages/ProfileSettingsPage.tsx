@@ -36,6 +36,8 @@ import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { normalizeToE164, PhoneValidationError } from '@/lib/phone-normalize';
 import { friendlyPhoneError } from '@/lib/phone-errors';
 import AddPhoneNumberCard from '@/components/auth/AddPhoneNumberCard';
+import TwoFactorSetup from '@/components/auth/TwoFactorSetup';
+import AuthenticatorAppSetup from '@/components/auth/AuthenticatorAppSetup';
 import { regionToDefaultCountry } from '@/hooks/useDefaultPhoneCountry';
 
 
@@ -523,6 +525,10 @@ export default function ProfileSettingsPage() {
           </Card>
 
           <AddPhoneNumberCard />
+
+          <TwoFactorSetup />
+
+          <AuthenticatorAppSetup />
 
           <RoleSwitchCard />
 
