@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Phone, Users, History, Settings, PhoneCall, Globe, Radio, UserPlus, Volume2, Link2 } from 'lucide-react';
+import { Phone, Users, History, Settings, PhoneCall, Globe, Radio, UserPlus, Volume2, Link2, Sparkles } from 'lucide-react';
 import { useVoIPCalls } from '@/hooks/useVoIPCalls';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { CallDialer } from './CallDialer';
@@ -17,12 +17,24 @@ import { IncomingCallAlerts } from '@/components/voice/IncomingCallAlerts';
 import { SoftphoneControls } from './SoftphoneControls';
 import { useVoiceDevice } from '@/hooks/useVoiceDevice';
 import { Badge } from '@/components/ui/badge';
+import { AccentConversionAgentPanel } from './AccentConversionAgentPanel';
+import { useAccentConversionAgent } from '@/hooks/useAccentConversionAgent';
 
 export const CallCenterPage = () => {
   const { calls, groups, isLoading, activeCall, initiateCall, endCall, createGroup, deleteGroup, refreshCalls } = useVoIPCalls();
   const { incomingRequests, acceptCallRequest, rejectCallRequest, escalateCallRequest } = useVoiceCall('admin');
   const [selectedTab, setSelectedTab] = useState('dialer');
   const voice = useVoiceDevice();
+
+  // Duck the raw microphone while the American-accent voice is speaking so the
+  // caller only hears the converted output.
+  const handleDuck = useCallback((ducked: boolean) => {
+    voice.setMuted?.(ducked);
+  }, [voice]);
+  const accentAgent = useAccentConversionAgent({
+    onDuckMicrophone: handleDuck,
+    callId: activeCall?.id ?? null,
+  });
 
   const activeCalls = calls.filter(c => ['ringing', 'in-progress'].includes(c.status));
   const usaCalls = calls.filter(c => c.region === 'USA');
@@ -94,6 +106,7 @@ export const CallCenterPage = () => {
           }}
           isMuted={voice.isMuted}
           onToggleMute={voice.toggleMute}
+          accentAgent={accentAgent}
           isSpeakerOn={voice.isSpeakerphone}
           onToggleSpeaker={() => void voice.toggleSpeakerphone()}
         />
@@ -101,7 +114,7 @@ export const CallCenterPage = () => {
 
       {/* Main Content */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 lg:w-auto lg:inline-grid lg:grid-cols-8">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 lg:w-auto lg:inline-grid lg:grid-cols-9">
           <TabsTrigger value="dialer" className="flex items-center gap-2">
             <Phone className="h-4 w-4" />
             <span className="hidden sm:inline">Make Call</span>
@@ -129,6 +142,10 @@ export const CallCenterPage = () => {
           <TabsTrigger value="twiml" className="flex items-center gap-2">
             <Link2 className="h-4 w-4" />
             <span className="hidden sm:inline">In-app Setup</span>
+          </TabsTrigger>
+          <TabsTrigger value="accent" className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            <span className="hidden sm:inline">Accent Agent</span>
           </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
@@ -178,6 +195,10 @@ export const CallCenterPage = () => {
 
         <TabsContent value="twiml">
           <TwiMLAppConfigPanel />
+        </TabsContent>
+
+        <TabsContent value="accent">
+          <AccentConversionAgentPanel agent={accentAgent} />
         </TabsContent>
 
         <TabsContent value="settings">

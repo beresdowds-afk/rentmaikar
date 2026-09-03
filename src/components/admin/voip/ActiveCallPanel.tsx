@@ -9,6 +9,8 @@ import type { VoIPCall } from '@/types/voip';
 import { formatPhoneForDisplay } from '@/types/voip';
 import { useCallTranscription } from '@/hooks/useCallTranscription';
 import { useRegion } from '@/contexts/RegionContext';
+import { InCallAccentMorphHUD } from './InCallAccentMorphHUD';
+import type { AccentConversionAgent } from '@/hooks/useAccentConversionAgent';
 
 
 interface ActiveCallPanelProps {
@@ -19,6 +21,8 @@ interface ActiveCallPanelProps {
   onToggleMute?: () => void;
   isSpeakerOn?: boolean;
   onToggleSpeaker?: () => void;
+  /** Live American-accent conversion agent for this call. */
+  accentAgent?: AccentConversionAgent;
 }
 
 export const ActiveCallPanel = ({
@@ -28,6 +32,7 @@ export const ActiveCallPanel = ({
   onToggleMute,
   isSpeakerOn: speakerProp,
   onToggleSpeaker,
+  accentAgent,
 }: ActiveCallPanelProps) => {
   const [duration, setDuration] = useState(0);
   const [localMuted, setLocalMuted] = useState(false);
@@ -224,6 +229,9 @@ export const ActiveCallPanel = ({
             )}
           </div>
         )}
+
+        {/* Real-time American accent conversion HUD */}
+        {accentAgent && <InCallAccentMorphHUD agent={accentAgent} />}
 
       </CardContent>
     </Card>
