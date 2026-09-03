@@ -766,6 +766,8 @@ const AdminAssistantDashboard = () => {
               {activeTab === 'api-endpoints' && <ApiEndpointManagement />}
               {activeTab === 'security' && <AdminSecurityDashboard />}
               {activeTab === 'cron-jobs' && <CronJobManagement />}
+              {activeTab === 'uuid-assignments' && <UserUuidAssignmentsPage />}
+
               {activeTab === 'tax' && <TaxManagement />}
               {activeTab === 'settings' && <RegionalOperationsManagement />}
               {activeTab === 'region-autobuild' && <RegionAutoBuildWorker />}
