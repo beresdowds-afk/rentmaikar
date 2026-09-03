@@ -35,20 +35,30 @@ const ATTACHMENT_CONFIG = {
 };
 
 // ─── Email Queue Routing ───
-const EMAIL_QUEUES: Record<string, { queue: string; priority: string; category: string }> = {
-  "support@rentmaikar.com":       { queue: "support",      priority: "normal",  category: "support_request" },
-  "payments@rentmaikar.com":      { queue: "payments",     priority: "high",    category: "payment_query" },
-  "documents@rentmaikar.com":     { queue: "documents",    priority: "normal",  category: "document_upload" },
-  "admin@rentmaikar.com":         { queue: "admin",        priority: "high",    category: "admin_inquiry" },
-  "legal@rentmaikar.com":         { queue: "legal",        priority: "high",    category: "legal" },
-  "privacy@rentmaikar.com":       { queue: "legal",        priority: "high",    category: "legal" },
-  "dpo@rentmaikar.com":           { queue: "legal",        priority: "high",    category: "legal" },
-  "nigeria@rentmaikar.com":       { queue: "support",      priority: "normal",  category: "support_request" },
-  "usa@rentmaikar.com":           { queue: "support",      priority: "normal",  category: "support_request" },
-  "negotiations@rentmaikar.com":  { queue: "negotiations", priority: "high",    category: "negotiation" },
-  "pricing@rentmaikar.com":       { queue: "negotiations", priority: "high",    category: "negotiation" },
-  "noreply@rentmaikar.com":       { queue: "automated",    priority: "low",     category: "auto_reply" },
+// Inbound mail is addressed to the incoming mail domain (backend.rentmaikar.com).
+// Routing is keyed by mailbox local part so legacy rentmaikar.com aliases and the
+// notify.rentmaikar.com sending domain still resolve to the same queues.
+type QueueRoute = { queue: string; priority: string; category: string };
+
+const MAILBOX_ROUTES: Record<string, QueueRoute> = {
+  support:      { queue: "support",      priority: "normal",  category: "support_request" },
+  payments:     { queue: "payments",     priority: "high",    category: "payment_query" },
+  documents:    { queue: "documents",    priority: "normal",  category: "document_upload" },
+  admin:        { queue: "admin",        priority: "high",    category: "admin_inquiry" },
+  legal:        { queue: "legal",        priority: "high",    category: "legal" },
+  privacy:      { queue: "legal",        priority: "high",    category: "legal" },
+  dpo:          { queue: "legal",        priority: "high",    category: "legal" },
+  nigeria:      { queue: "support",      priority: "normal",  category: "support_request" },
+  usa:          { queue: "support",      priority: "normal",  category: "support_request" },
+  negotiations: { queue: "negotiations", priority: "high",    category: "negotiation" },
+  pricing:      { queue: "negotiations", priority: "high",    category: "negotiation" },
+  noreply:      { queue: "automated",    priority: "low",     category: "auto_reply" },
 };
+
+const routeForAddress = (address: string): QueueRoute | undefined =>
+  MAILBOX_ROUTES[inboundLocalPart(address)];
+
+
 
 // ─── Weighted Classification Engine ───
 interface ClassificationResult {
