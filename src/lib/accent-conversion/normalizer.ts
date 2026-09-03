@@ -72,7 +72,8 @@ const SPELLING_RULES: Rule[] = [
   { pattern: /\bcancelled\b/gi, replacement: 'canceled' },
   { pattern: /\bcentre\b/gi, replacement: 'center' },
   { pattern: /\bcolour\b/gi, replacement: 'color' },
-  { pattern: /\bfavour(ite)?\b/gi, replacement: (m: string) => m } as unknown as Rule,
+  { pattern: /\bfavourite\b/gi, replacement: 'favorite' },
+  { pattern: /\bfavour\b/gi, replacement: 'favor' },
   { pattern: /\blicence\b/gi, replacement: 'license' },
   { pattern: /\bapologise\b/gi, replacement: 'apologize' },
   { pattern: /\borganise\b/gi, replacement: 'organize' },
@@ -84,11 +85,6 @@ const SPELLING_RULES: Rule[] = [
   { pattern: /\bkilometres?\b/gi, replacement: 'miles' },
   { pattern: /\bmobile phone\b/gi, replacement: 'cell phone' },
 ];
-
-// The favourite entry above is a guard against accidental edits; replace it
-// with the correct simple rule.
-SPELLING_RULES[3] = { pattern: /\bfavourite\b/gi, replacement: 'favorite' };
-SPELLING_RULES.splice(4, 0, { pattern: /\bfavour\b/gi, replacement: 'favor' });
 
 const ALL_RULES: Rule[] = [...PHRASE_RULES, ...SPELLING_RULES];
 
@@ -110,7 +106,6 @@ export function normalizeToAmerican(input: string): NormalizationResult {
   const replacements: string[] = [];
 
   for (const rule of ALL_RULES) {
-    if (typeof rule.replacement !== 'string') continue;
     text = text.replace(rule.pattern, (match) => {
       replacements.push(`${match.trim()} → ${rule.replacement}`);
       return matchCase(match, rule.replacement);
