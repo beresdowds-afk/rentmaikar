@@ -161,6 +161,44 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_assistant_vehicle_assignments: {
+        Row: {
+          assigned_by: string | null
+          assistant_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          assistant_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          assistant_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_assistant_vehicle_assignments_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_audit_log: {
         Row: {
           action: string
@@ -12725,6 +12763,10 @@ export type Database = {
         Returns: string
       }
       assistant_can_access_user: { Args: { _target: string }; Returns: boolean }
+      assistant_can_access_vehicle: {
+        Args: { _vehicle: string }
+        Returns: boolean
+      }
       can_delete_user_account: {
         Args: { _target_user_id: string }
         Returns: boolean
