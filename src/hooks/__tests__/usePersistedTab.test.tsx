@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
@@ -40,6 +40,8 @@ const renderAt = (path: string) =>
   );
 
 describe('usePersistedTab navigation', () => {
+  beforeEach(() => sessionStorage.clear());
+
   it('shows exactly one active feature when switching siblings', async () => {
     const user = userEvent.setup();
     renderAt('/admin');
