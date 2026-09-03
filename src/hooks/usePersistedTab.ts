@@ -1,50 +1,69 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 /**
- * Keeps a tab selection in the URL (?tab=...) so a page refresh, a shared link,
- * or back/forward navigation restores the exact view the user was on.
- * Falls back to sessionStorage (scoped per route) when no param is present.
+ * Single source of truth for a page-level tab/feature selection: the URL.
+ *
+ * The active destination is *derived* from `?tab=...` rather than mirrored into
+ * component state. Mirroring it caused a race — a click set local state, an
+ * effect then read the not-yet-updated `location.search` and reset the
+ * selection back to the previous feature (which is why the dashboard snapped
+ * back to the Unified Inbox). Deriving removes the second source of truth, so
+ * refresh, deep links and browser back/forward all stay correct.
+ *
+ * sessionStorage is only a fallback for the very first visit with no param.
  */
 export function usePersistedTab(defaultTab: string, paramKey = 'tab') {
   const location = useLocation();
   const navigate = useNavigate();
   const storageKey = `tab:${location.pathname}:${paramKey}`;
 
-  const readInitial = () => {
-    const fromUrl = new URLSearchParams(location.search).get(paramKey);
-    if (fromUrl) return fromUrl;
+  const fromUrl = useMemo(
+    () => new URLSearchParams(location.search).get(paramKey),
+    [location.search, paramKey],
+  );
+
+  const remembered = useMemo(() => {
+    if (fromUrl) return null;
     try {
-      return sessionStorage.getItem(storageKey) || defaultTab;
+      return sessionStorage.getItem(storageKey);
     } catch {
-      return defaultTab;
+      return null;
     }
-  };
+    // storageKey changes with the route, which is exactly when we want to re-read.
+  }, [fromUrl, storageKey]);
 
-  const [tab, setTabState] = useState<string>(readInitial);
+  const tab = fromUrl ?? remembered ?? defaultTab;
 
-  // Keep state in sync when the URL changes (back/forward, in-app links).
+  const writeUrl = useCallback(
+    (next: string, replace: boolean) => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get(paramKey) === next) return;
+      params.set(paramKey, next);
+      navigate(
+        { pathname: location.pathname, search: `?${params.toString()}`, hash: location.hash },
+        { replace },
+      );
+    },
+    [navigate, location.pathname, location.hash, paramKey],
+  );
+
+  // Make the implicit default explicit in the URL (replace: never adds history).
   useEffect(() => {
-    const fromUrl = new URLSearchParams(location.search).get(paramKey);
-    if (fromUrl && fromUrl !== tab) setTabState(fromUrl);
-  }, [location.search, paramKey, tab]);
+    if (!fromUrl) writeUrl(tab, true);
+  }, [fromUrl, tab, writeUrl]);
 
-  // Make sure the URL always reflects the active tab (including on first load).
+  // Remember the last destination for the next visit to this route.
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get(paramKey) !== tab) {
-      params.set(paramKey, tab);
-      navigate({ pathname: location.pathname, search: `?${params.toString()}`, hash: location.hash }, { replace: true });
-    }
     try {
       sessionStorage.setItem(storageKey, tab);
     } catch {
-      /* storage unavailable — URL still carries the state */
+      /* storage unavailable — the URL still carries the state */
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
+  }, [storageKey, tab]);
 
-  const setTab = useCallback((next: string) => setTabState(next), []);
+  // Push, so browser Back walks the feature history instead of leaving the page.
+  const setTab = useCallback((next: string) => writeUrl(next, false), [writeUrl]);
 
   return [tab, setTab] as const;
 }
