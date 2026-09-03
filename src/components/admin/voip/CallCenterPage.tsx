@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Phone, Users, History, Settings, PhoneCall, Globe, Radio, UserPlus, Volume2, Link2, Sparkles } from 'lucide-react';
+import { Phone, Users, History, Settings, PhoneCall, Globe, Radio, UserPlus, Volume2, Link2, Sparkles, PhoneOff } from 'lucide-react';
 import { useVoIPCalls } from '@/hooks/useVoIPCalls';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { CallDialer } from './CallDialer';
@@ -18,6 +18,8 @@ import { SoftphoneControls } from './SoftphoneControls';
 import { useVoiceDevice } from '@/hooks/useVoiceDevice';
 import { Badge } from '@/components/ui/badge';
 import { AccentConversionAgentPanel } from './AccentConversionAgentPanel';
+import { AudioHardwareTester } from './AudioHardwareTester';
+import { Button } from '@/components/ui/button';
 import { useAccentConversionAgent } from '@/hooks/useAccentConversionAgent';
 
 export const CallCenterPage = () => {
@@ -37,6 +39,17 @@ export const CallCenterPage = () => {
   });
 
   const activeCalls = calls.filter(c => ['ringing', 'in-progress'].includes(c.status));
+
+  // Hangs up the browser audio session and asks the provider to terminate the call.
+  const terminateCall = useCallback(async (callId: string) => {
+    if (activeCall?.id === callId) voice.hangUp();
+    await endCall(callId);
+  }, [activeCall?.id, endCall, voice]);
+
+  const endAllCalls = useCallback(async () => {
+    voice.hangUp();
+    await Promise.allSettled(activeCalls.map(c => endCall(c.id)));
+  }, [activeCalls, endCall, voice]);
   const usaCalls = calls.filter(c => c.region === 'USA');
   const nigeriaCalls = calls.filter(c => c.region === 'Nigeria');
 
@@ -57,7 +70,13 @@ export const CallCenterPage = () => {
             Manage calls to users across USA (+1) and Nigeria (+234)
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {activeCalls.length > 1 && (
+            <Button variant="destructive" size="sm" className="gap-2" onClick={() => void endAllCalls()}>
+              <PhoneOff className="h-4 w-4" />
+              End all calls ({activeCalls.length})
+            </Button>
+          )}
           <Badge variant="outline" className="flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-blue-500" />
             USA: +1
@@ -71,6 +90,9 @@ export const CallCenterPage = () => {
 
       {/* Live audio controls: microphone, mute, speaker and end call */}
       <SoftphoneControls voice={voice} />
+
+      {/* Microphone / speaker diagnostics */}
+      <AudioHardwareTester />
 
       {/* Incoming Call Alerts */}
       <IncomingCallAlerts
@@ -100,10 +122,7 @@ export const CallCenterPage = () => {
       {activeCall && (
         <ActiveCallPanel
           call={activeCall}
-          onEndCall={() => {
-            voice.hangUp();
-            void endCall(activeCall.id);
-          }}
+          onEndCall={() => { void terminateCall(activeCall.id); }}
           isMuted={voice.isMuted}
           onToggleMute={voice.toggleMute}
           accentAgent={accentAgent}
@@ -158,6 +177,8 @@ export const CallCenterPage = () => {
             onInitiateCall={initiateCall}
             groups={groups}
             isLoading={isLoading}
+            activeCall={activeCall ? { id: activeCall.id, status: activeCall.status } : null}
+            onEndCall={activeCall ? () => terminateCall(activeCall.id) : undefined}
           />
         </TabsContent>
 
@@ -168,7 +189,7 @@ export const CallCenterPage = () => {
         <TabsContent value="conferences">
           <ConferenceRoomPanel
             activeCalls={activeCalls}
-            onEndCall={endCall}
+            onEndCall={terminateCall}
           />
         </TabsContent>
 
@@ -186,6 +207,7 @@ export const CallCenterPage = () => {
             calls={calls}
             onRefresh={refreshCalls}
             isLoading={isLoading}
+            onEndCall={terminateCall}
           />
         </TabsContent>
 
