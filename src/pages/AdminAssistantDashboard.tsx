@@ -455,41 +455,25 @@ const AdminAssistantDashboard = () => {
               <div className="ml-auto"><AdminNotificationsBell /></div>
 
             </div>
-            {/* Independent Quick Access Buttons */}
-            <ScrollableStrip ariaLabel="Quick access shortcuts">
-              <Button
-                variant={activeTab === 'inbox' ? 'default' : 'outline'}
-                className="gap-2 shrink-0"
-                onClick={() => { setPortalView('support'); setActiveTab('inbox'); }}
-              >
-                <Inbox className="h-4 w-4" />
-                Unified Inbox
-              </Button>
-              <Button
-                variant={activeTab === 'call-center' ? 'default' : 'outline'}
-                className="gap-2 shrink-0"
-                onClick={() => { setPortalView('support'); setActiveTab('call-center'); }}
-              >
-                <Phone className="h-4 w-4" />
-                Call Center
-              </Button>
-              <Button
-                variant={activeTab === 'support-tasks' ? 'default' : 'outline'}
-                className="gap-2 shrink-0"
-                onClick={() => { setPortalView('support'); setActiveTab('support-tasks'); }}
-              >
-                <Headphones className="h-4 w-4" />
-                Support Tasks
-              </Button>
-              <Button
-                variant={activeTab === 'attestation-review' ? 'default' : 'outline'}
-                className="gap-2 shrink-0"
-                onClick={() => { setPortalView('crm'); setActiveTab('attestation-review'); }}
-              >
-                <AlertTriangle className="h-4 w-4" />
-                Referee Reviews
-              </Button>
-            </ScrollableStrip>
+            {/* Independent Quick Access Buttons — each shortcut owns its own
+                tab and permission; none of them depends on another. */}
+            {quickAccess.length > 0 && (
+              <ScrollableStrip ariaLabel="Quick access shortcuts">
+                {quickAccess.map(({ tab, portal, label, icon: Icon }) => (
+                  <Button
+                    key={tab}
+                    variant={activeTab === tab ? 'default' : 'outline'}
+                    className="gap-2 shrink-0"
+                    aria-current={activeTab === tab ? 'page' : undefined}
+                    onClick={() => { setPortalView(portal); setActiveTab(tab); }}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </Button>
+                ))}
+              </ScrollableStrip>
+            )}
+
 
           </div>
 
