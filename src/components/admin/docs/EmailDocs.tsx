@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, Send, BarChart3, Shield, Clock, ArrowRight, CheckCircle, AlertTriangle } from "lucide-react";
+import { Mail, Send, BarChart3, Shield, Clock, ArrowRight, CheckCircle, AlertTriangle , Globe } from "lucide-react";
 
 const transactionalEmails = [
   {
@@ -348,6 +348,37 @@ export const EmailDocs = () => {
             <div className="p-3 rounded-lg bg-background">
               <p className="font-medium mb-1">📊 Tracking</p>
               <p className="text-muted-foreground">email-tracking edge function → Pixel opens, click redirects, bounce/complaint webhooks</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Domain Topology */}
+        <div className="mb-8 p-4 rounded-lg border border-border">
+          <h3 className="font-semibold mb-3 flex items-center gap-2">
+            <Globe className="h-4 w-4" /> Domain Topology
+          </h3>
+          <div className="grid md:grid-cols-2 gap-3 text-sm">
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="font-medium mb-1">Frontend — rentmaikar.com</p>
+              <p className="text-muted-foreground">Public web app for drivers and vehicle owners.</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="font-medium mb-1">Backend — staging.rentmaikar.com</p>
+              <p className="text-muted-foreground">Canonical API gateway and provider webhooks.</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="font-medium mb-1">📥 Incoming mail — backend.rentmaikar.com</p>
+              <p className="text-muted-foreground">
+                support@, payments@, documents@, admin@, legal@ route to their inbox queues;
+                unknown mailboxes fall back to support.
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="font-medium mb-1">📤 Outgoing mail — notify.rentmaikar.com</p>
+              <p className="text-muted-foreground">
+                Verified Resend sending domain for auth and transactional email; replies are
+                addressed back to backend.rentmaikar.com.
+              </p>
             </div>
           </div>
         </div>
