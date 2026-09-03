@@ -66,7 +66,7 @@ export const CallCenterPage = () => {
     }
     await acceptCallRequest(call.recordId);
     if (call.phoneNumber) {
-      await initiateCall('support', call.region === 'Nigeria' ? 'Nigeria' : 'USA', [
+      await initiateCall('individual', call.region === 'Nigeria' ? 'Nigeria' : 'USA', [
         { phoneNumber: call.phoneNumber, displayName: call.displayName },
       ]);
     }
