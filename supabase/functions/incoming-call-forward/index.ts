@@ -86,7 +86,7 @@ serve(async (req: Request): Promise<Response> => {
         callId = inserted?.id as string | undefined;
       }
 
-      if (callId && from) {
+      if (!existing?.id && callId && from) {
         const { data: profile } = await supabase
           .from("profiles")
           .select("id, full_name")
