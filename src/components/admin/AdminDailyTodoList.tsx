@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { 
   ListTodo, RefreshCw, Calendar, Clock, CheckCircle2, 
   AlertTriangle, FileText, Users, MessageSquare, Car,
-  Shield, Handshake, DollarSign, Wrench, Plus
+  Shield, Handshake, DollarSign, Wrench, Plus, Trash2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -47,7 +47,16 @@ const priorityColors: Record<string, string> = {
   low: 'bg-muted text-muted-foreground',
 };
 
-export const AdminDailyTodoList = () => {
+/** Height (px) of one task row — the viewport shows exactly 6 rows. */
+const TASK_ROW_HEIGHT = 64;
+const VISIBLE_TASKS = 6;
+
+interface AdminDailyTodoListProps {
+  /** Renders without the outer card chrome (used by the standalone embed view). */
+  embedded?: boolean;
+}
+
+export const AdminDailyTodoList = ({ embedded = false }: AdminDailyTodoListProps) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,6 +136,23 @@ export const AdminDailyTodoList = () => {
     }
   };
 
+  const removeTask = async (task: DailyTask) => {
+    const previous = tasks;
+    setTasks(prev => prev.filter(t => t.id !== task.id));
+    try {
+      const { error } = await supabase
+        .from('admin_daily_tasks')
+        .delete()
+        .eq('id', task.id);
+      if (error) throw error;
+      toast.success('Task removed');
+    } catch (err) {
+      console.error('Error removing task:', err);
+      setTasks(previous);
+      toast.error('Failed to remove task');
+    }
+  };
+
   const addCustomTask = async () => {
     if (!customTask.trim()) return;
     try {
@@ -156,7 +182,7 @@ export const AdminDailyTodoList = () => {
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
-    <Card>
+    <Card className={embedded ? 'border-0 shadow-none rounded-none bg-background' : undefined}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -217,7 +243,12 @@ export const AdminDailyTodoList = () => {
             </Button>
           </div>
         ) : (
-          <div className="space-y-1">
+          <div
+            className="todo-scroll-viewport space-y-1 overflow-y-auto pr-1"
+            style={{ maxHeight: TASK_ROW_HEIGHT * VISIBLE_TASKS }}
+            role="list"
+            aria-label="Daily tasks"
+          >
             {tasks.map((task) => (
               <div
                 key={task.id}
@@ -246,14 +277,32 @@ export const AdminDailyTodoList = () => {
                     <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{task.description}</p>
                   )}
                 </div>
-                {task.is_completed && task.completed_at && (
-                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                    ✓ {new Date(task.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                )}
+                <div className="flex items-center gap-1 shrink-0">
+                  {task.is_completed && task.completed_at && (
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                      ✓ {new Date(task.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                    aria-label={`Remove task: ${task.title}`}
+                    title="Remove task"
+                    onClick={() => removeTask(task)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
+        )}
+
+        {tasks.length > VISIBLE_TASKS && (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Showing 6 of {tasks.length} tasks — scroll inside the list for the rest.
+          </p>
         )}
 
         <Separator className="my-3" />

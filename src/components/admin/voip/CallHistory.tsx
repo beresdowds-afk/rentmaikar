@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { History, RefreshCw, Phone, Users, PhoneIncoming, PhoneOutgoing, Loader2, Play, Volume2, FileText } from 'lucide-react';
+import { History, RefreshCw, Phone, Users, PhoneIncoming, PhoneOutgoing, Loader2, Play, Volume2, FileText, PhoneOff } from 'lucide-react';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import type { VoIPCall, CallRegion } from '@/types/voip';
@@ -16,6 +16,8 @@ interface CallHistoryProps {
   calls: VoIPCall[];
   onRefresh: () => void;
   isLoading: boolean;
+  /** Ends a live (ringing / in-progress) call directly from the history table. */
+  onEndCall?: (callId: string) => void | Promise<void>;
 }
 
 const statusColors: Record<string, string> = {
@@ -35,7 +37,18 @@ const recordingStatusIcons: Record<string, { icon: typeof Volume2; color: string
   recording: { icon: Volume2, color: 'text-red-500' },
 };
 
-export const CallHistory = ({ calls, onRefresh, isLoading }: CallHistoryProps) => {
+export const CallHistory = ({ calls, onRefresh, isLoading, onEndCall }: CallHistoryProps) => {
+  const [endingCallId, setEndingCallId] = useState<string | null>(null);
+
+  const handleEndCall = async (callId: string) => {
+    if (!onEndCall) return;
+    setEndingCallId(callId);
+    try {
+      await onEndCall(callId);
+    } finally {
+      setEndingCallId(null);
+    }
+  };
   const [regionFilter, setRegionFilter] = useState<CallRegion | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'individual' | 'group'>('all');
   const [selectedCall, setSelectedCall] = useState<VoIPCall | null>(null);
@@ -115,12 +128,13 @@ export const CallHistory = ({ calls, onRefresh, isLoading }: CallHistoryProps) =
                 <TableHead>Duration</TableHead>
                 <TableHead>Recording</TableHead>
                 <TableHead>Date/Time</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredCalls.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     No calls found
                   </TableCell>
                 </TableRow>
@@ -207,6 +221,27 @@ export const CallHistory = ({ calls, onRefresh, isLoading }: CallHistoryProps) =
                           {format(new Date(call.created_at), 'h:mm a')}
                         </span>
                       </div>
+                    </TableCell>
+
+                    <TableCell className="text-right">
+                      {['ringing', 'in-progress'].includes(call.status) ? (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="gap-1"
+                          disabled={!onEndCall || endingCallId === call.id}
+                          onClick={() => void handleEndCall(call.id)}
+                        >
+                          {endingCallId === call.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <PhoneOff className="h-3.5 w-3.5" />
+                          )}
+                          End
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

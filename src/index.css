@@ -249,3 +249,23 @@
     box-shadow: 0 0 30px -5px hsla(174 62% 47% / 0.5);
   }
 }
+
+/* Slim, themed scrollbar used by the admin daily to-do viewport */
+.todo-scroll-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary) / 0.45) transparent;
+}
+.todo-scroll-viewport::-webkit-scrollbar {
+  width: 8px;
+}
+.todo-scroll-viewport::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.4);
+  border-radius: 9999px;
+}
+.todo-scroll-viewport::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.45);
+  border-radius: 9999px;
+}
+.todo-scroll-viewport::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.7);
+}

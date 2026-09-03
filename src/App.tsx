@@ -50,6 +50,7 @@ const OwnerOnboarding = lazy(() => import("./pages/OwnerOnboarding"));
 const OwnerDashboard = lazy(() => import("./pages/OwnerDashboard"));
 const OwnerSignIn = lazy(() => import("./pages/OwnerSignIn"));
 const AdminSignIn = lazy(() => import("./pages/AdminSignIn"));
+const TodoListEmbedPage = lazy(() => import("./pages/admin/TodoListEmbedPage"));
 
 const Catalogue = lazy(() => import("./pages/Catalogue"));
 const VehicleDetails = lazy(() => import("./pages/VehicleDetails"));
@@ -445,6 +446,14 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <AuditLogPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/embed/todo-list"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <TodoListEmbedPage />
                       </ProtectedRoute>
                     }
                   />
