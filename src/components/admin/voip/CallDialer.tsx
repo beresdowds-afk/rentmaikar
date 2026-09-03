@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Users, Plus, X, Loader2 } from 'lucide-react';
+import { Phone, Users, Plus, X, Loader2, PhoneOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { CallRegion, CallType, VoIPCallGroup } from '@/types/voip';
 import { COUNTRY_CODES, validatePhoneNumber, formatPhoneForDisplay } from '@/types/voip';
@@ -25,9 +25,13 @@ interface CallDialerProps {
   ) => Promise<any>;
   groups: VoIPCallGroup[];
   isLoading: boolean;
+  /** Live call currently in progress, if any. */
+  activeCall?: { id: string; status: string } | null;
+  /** Terminates the live call from the dialer surface. */
+  onEndCall?: () => void | Promise<void>;
 }
 
-export const CallDialer = ({ onInitiateCall, groups, isLoading }: CallDialerProps) => {
+export const CallDialer = ({ onInitiateCall, groups, isLoading, activeCall, onEndCall }: CallDialerProps) => {
   // Seed the dial region from RegionContext so admins start on their active
   // region instead of a hard-coded USA default.
   const { country: activeCountry } = useRegion();
@@ -133,6 +137,19 @@ export const CallDialer = ({ onInitiateCall, groups, isLoading }: CallDialerProp
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {activeCall && onEndCall && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-destructive" aria-hidden="true" />
+              <span className="font-medium">Call in progress</span>
+              <Badge variant="outline" className="capitalize">{activeCall.status.replace('-', ' ')}</Badge>
+            </div>
+            <Button variant="destructive" size="sm" className="gap-2" onClick={() => void onEndCall()}>
+              <PhoneOff className="h-4 w-4" />
+              End call
+            </Button>
+          </div>
+        )}
         {/* Region Selection */}
         <div className="space-y-2">
           <Label>Select Region</Label>
@@ -316,6 +333,13 @@ export const CallDialer = ({ onInitiateCall, groups, isLoading }: CallDialerProp
             </>
           )}
         </Button>
+
+        {activeCall && onEndCall && (
+          <Button variant="destructive" className="w-full gap-2" size="lg" onClick={() => void onEndCall()}>
+            <PhoneOff className="h-5 w-5" />
+            End current call
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
