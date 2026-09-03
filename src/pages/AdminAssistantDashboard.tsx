@@ -650,6 +650,9 @@ const AdminAssistantDashboard = () => {
               {activeTab === 'subscriptions' && <SubscriptionManagement />}
               {activeTab === 'training' && <TrainingModuleManagement />}
               {activeTab === 'roadside-partners' && <RoadsidePartnerManagement />}
+              {activeTab === 'billing' && <BillingDashboard />}
+              {activeTab === 'proxy-billing' && <ProxyBillingPortal />}
+
             </div>
           )}
 
