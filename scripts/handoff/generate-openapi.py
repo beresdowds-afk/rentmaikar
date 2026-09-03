@@ -1,7 +1,6 @@
 import os, json, re, yaml, importlib.util, sys
 
-sys.path.insert(0, "/tmp/handoff")
-spec_src = open("/tmp/handoff/gen.py").read()
+spec_src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "generate-handoff-docs.py")).read()
 
 ROOT = "/dev-server"
 OUT = os.path.join(ROOT, "docs/handoff")
