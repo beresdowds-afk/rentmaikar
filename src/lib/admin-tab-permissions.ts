@@ -82,7 +82,13 @@ export const TAB_PERMISSION_MAP: Record<AdminTabKey, PermissionKey | null> = {
  */
 export const QUICK_ACCESS_PERMISSION_MAP: Record<AdminTabKey, PermissionKey | null> = {
   inbox: 'can_view_communications',
+  // Call Center is its own surface — it must never depend on the Unified Inbox
+  // shortcut being permitted/selected.
+  'call-center': 'can_view_communications',
+  'support-tasks': 'can_view_support_tasks',
+  'attestation-review': 'can_manage_users',
 };
+
 
 function requiredPermissionForTab(tab: string): PermissionKey | null | undefined {
   if (tab in TAB_PERMISSION_MAP) return TAB_PERMISSION_MAP[tab];

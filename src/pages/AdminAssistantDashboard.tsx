@@ -86,6 +86,16 @@ import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 import { StaffSignOutButton } from '@/components/staff/StaffSignOutButton';
 import { StaffOnboardingDownloads } from '@/components/staff/StaffOnboardingDownloads';
 import { ScrollableStrip } from '@/components/ui/scrollable-strip';
+import { IoTProvisioningPanel } from "@/components/admin/IoTProvisioningPanel";
+import { HologramDashboard } from "@/components/admin/HologramDashboard";
+import { TraccarDashboard } from "@/components/admin/TraccarDashboard";
+import { SyncScheduleSettings } from "@/components/admin/SyncScheduleSettings";
+import BillingReconciliationPage from "@/pages/admin/BillingReconciliationPage";
+import AdminVehicleCataloguePage from "@/pages/admin/AdminVehicleCataloguePage";
+import UserUuidAssignmentsPage from "@/pages/admin/UserUuidAssignmentsPage";
+import { BillingDashboard } from "@/components/admin/BillingDashboard";
+import { ProxyBillingPortal } from "@/components/admin/ProxyBillingPortal";
+
 
 
 import { useAdminFinancials, useAdminFleetCounts } from "@/hooks/useAdminFinancials";
@@ -133,18 +143,36 @@ const AdminAssistantDashboard = () => {
     ? (['marketing', 'docs'] as PortalType[])
     : [];
 
+  // Quick-access shortcuts. Each entry is gated by its OWN permission so a
+  // missing/denied shortcut can never suppress a sibling shortcut's page.
+  const QUICK_ACCESS_ITEMS = useMemo(
+    () => ([
+      { tab: 'inbox', portal: 'support' as PortalType, label: 'Unified Inbox', icon: Inbox },
+      { tab: 'call-center', portal: 'support' as PortalType, label: 'Call Center', icon: Phone },
+      { tab: 'support-tasks', portal: 'support' as PortalType, label: 'Support Tasks', icon: Headphones },
+      { tab: 'attestation-review', portal: 'crm' as PortalType, label: 'Referee Reviews', icon: AlertTriangle },
+    ]),
+    [],
+  );
+
+  const quickAccess = useMemo(
+    () => (permsLoading ? [] : QUICK_ACCESS_ITEMS.filter((i) => canAccessTab(i.tab))),
+    [QUICK_ACCESS_ITEMS, canAccessTab, permsLoading],
+  );
+
   // Fallback: if the active tab is no longer permitted (e.g. permissions were
   // revoked), bounce the user to the first tab they still have access to.
   useEffect(() => {
     if (permsLoading) return;
     if (canAccessTab(activeTab)) return;
-    const fallback = ['inbox', 'expiry-notifications', 'contacts', 'approvals']
+    const fallback = ['inbox', 'call-center', 'expiry-notifications', 'contacts', 'approvals']
       .find((t) => canAccessTab(t));
-    if (fallback) {
+    if (fallback && fallback !== activeTab) {
       setActiveTab(fallback);
-      setPortalView('support');
+      setPortalView(fallback === 'attestation-review' ? 'crm' : 'support');
     }
   }, [activeTab, canAccessTab, permsLoading]);
+
 
   const activeTabAllowed = permsLoading || canAccessTab(activeTab);
   const { isOpen: isTourOpen, completeTour, resetTour } = useAdminOnboardingTour();
@@ -445,41 +473,25 @@ const AdminAssistantDashboard = () => {
               <div className="ml-auto"><AdminNotificationsBell /></div>
 
             </div>
-            {/* Independent Quick Access Buttons */}
-            <ScrollableStrip ariaLabel="Quick access shortcuts">
-              <Button
-                variant={activeTab === 'inbox' ? 'default' : 'outline'}
-                className="gap-2 shrink-0"
-                onClick={() => { setPortalView('support'); setActiveTab('inbox'); }}
-              >
-                <Inbox className="h-4 w-4" />
-                Unified Inbox
-              </Button>
-              <Button
-                variant={activeTab === 'call-center' ? 'default' : 'outline'}
-                className="gap-2 shrink-0"
-                onClick={() => { setPortalView('support'); setActiveTab('call-center'); }}
-              >
-                <Phone className="h-4 w-4" />
-                Call Center
-              </Button>
-              <Button
-                variant={activeTab === 'support-tasks' ? 'default' : 'outline'}
-                className="gap-2 shrink-0"
-                onClick={() => { setPortalView('support'); setActiveTab('support-tasks'); }}
-              >
-                <Headphones className="h-4 w-4" />
-                Support Tasks
-              </Button>
-              <Button
-                variant={activeTab === 'attestation-review' ? 'default' : 'outline'}
-                className="gap-2 shrink-0"
-                onClick={() => { setPortalView('crm'); setActiveTab('attestation-review'); }}
-              >
-                <AlertTriangle className="h-4 w-4" />
-                Referee Reviews
-              </Button>
-            </ScrollableStrip>
+            {/* Independent Quick Access Buttons — each shortcut owns its own
+                tab and permission; none of them depends on another. */}
+            {quickAccess.length > 0 && (
+              <ScrollableStrip ariaLabel="Quick access shortcuts">
+                {quickAccess.map(({ tab, portal, label, icon: Icon }) => (
+                  <Button
+                    key={tab}
+                    variant={activeTab === tab ? 'default' : 'outline'}
+                    className="gap-2 shrink-0"
+                    aria-current={activeTab === tab ? 'page' : undefined}
+                    onClick={() => { setPortalView(portal); setActiveTab(tab); }}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </Button>
+                ))}
+              </ScrollableStrip>
+            )}
+
 
           </div>
 
@@ -638,6 +650,9 @@ const AdminAssistantDashboard = () => {
               {activeTab === 'subscriptions' && <SubscriptionManagement />}
               {activeTab === 'training' && <TrainingModuleManagement />}
               {activeTab === 'roadside-partners' && <RoadsidePartnerManagement />}
+              {activeTab === 'billing' && <BillingDashboard />}
+              {activeTab === 'proxy-billing' && <ProxyBillingPortal />}
+
             </div>
           )}
 
@@ -656,8 +671,15 @@ const AdminAssistantDashboard = () => {
               )}
               {activeTab === 'assets' && <AssetsRegistry />}
               {activeTab === 'authorizations' && <VehicleAuthorizationLogManagement />}
+              {activeTab === 'catalogue' && <AdminVehicleCataloguePage embedded />}
               {activeTab === 'pickup-locations' && <VehiclePickupManagement />}
               {activeTab === 'iot-monitoring' && <IoTMonitoringHub />}
+              {activeTab === 'iot-provisioning' && <IoTProvisioningPanel />}
+              {activeTab === 'hologram' && <HologramDashboard />}
+              {activeTab === 'traccar' && <TraccarDashboard />}
+              {activeTab === 'sync-schedule' && <SyncScheduleSettings />}
+              {activeTab === 'reconciliation' && <BillingReconciliationPage />}
+
               {activeTab === 'hardware' && <HardwareManagement />}
               {activeTab === 'mqtt-credentials' && <VehicleMqttCredentials readOnly={false} />}
               {activeTab === 'driver-behavior' && <DriverBehaviorLogs />}
@@ -744,6 +766,8 @@ const AdminAssistantDashboard = () => {
               {activeTab === 'api-endpoints' && <ApiEndpointManagement />}
               {activeTab === 'security' && <AdminSecurityDashboard />}
               {activeTab === 'cron-jobs' && <CronJobManagement />}
+              {activeTab === 'uuid-assignments' && <UserUuidAssignmentsPage />}
+
               {activeTab === 'tax' && <TaxManagement />}
               {activeTab === 'settings' && <RegionalOperationsManagement />}
               {activeTab === 'region-autobuild' && <RegionAutoBuildWorker />}
