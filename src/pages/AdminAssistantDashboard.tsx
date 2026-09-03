@@ -671,8 +671,15 @@ const AdminAssistantDashboard = () => {
               )}
               {activeTab === 'assets' && <AssetsRegistry />}
               {activeTab === 'authorizations' && <VehicleAuthorizationLogManagement />}
+              {activeTab === 'catalogue' && <AdminVehicleCataloguePage embedded />}
               {activeTab === 'pickup-locations' && <VehiclePickupManagement />}
               {activeTab === 'iot-monitoring' && <IoTMonitoringHub />}
+              {activeTab === 'iot-provisioning' && <IoTProvisioningPanel />}
+              {activeTab === 'hologram' && <HologramDashboard />}
+              {activeTab === 'traccar' && <TraccarDashboard />}
+              {activeTab === 'sync-schedule' && <SyncScheduleSettings />}
+              {activeTab === 'reconciliation' && <BillingReconciliationPage />}
+
               {activeTab === 'hardware' && <HardwareManagement />}
               {activeTab === 'mqtt-credentials' && <VehicleMqttCredentials readOnly={false} />}
               {activeTab === 'driver-behavior' && <DriverBehaviorLogs />}
