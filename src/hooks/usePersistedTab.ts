@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 /**
@@ -13,6 +13,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
  *
  * sessionStorage is only a fallback for the very first visit with no param.
  */
+
+/**
+ * Search string written during the current tick, before React has re-rendered
+ * with the new location. Shared across hook instances so a handler that sets
+ * two params (portal + tab) merges them instead of clobbering the first write.
+ */
+const pendingSearch = new Map<string, string>();
+
 export function usePersistedTab(defaultTab: string, paramKey = 'tab') {
   const location = useLocation();
   const navigate = useNavigate();
@@ -35,25 +43,26 @@ export function usePersistedTab(defaultTab: string, paramKey = 'tab') {
 
   const tab = fromUrl ?? remembered ?? defaultTab;
 
-  // Mirrors the params we have written this tick. Two `setTab` calls in one
-  // event handler (portal + tab) must merge instead of clobbering each other,
-  // and `location.search` has not re-rendered yet at that point.
-  const paramsRef = useRef<URLSearchParams>(new URLSearchParams(location.search));
-  paramsRef.current = new URLSearchParams(location.search);
-
   const writeUrl = useCallback(
     (next: string, replace: boolean) => {
-      const params = paramsRef.current;
+      const base = pendingSearch.get(location.pathname) ?? location.search;
+      const params = new URLSearchParams(base);
       if (params.get(paramKey) === next) return;
       params.set(paramKey, next);
-      pendingRef.current = new URLSearchParams(params);
-      navigate(
-        { pathname: location.pathname, search: `?${params.toString()}`, hash: location.hash },
-        { replace },
-      );
+      const search = `?${params.toString()}`;
+      pendingSearch.set(location.pathname, search);
+      navigate({ pathname: location.pathname, search, hash: location.hash }, { replace });
     },
-    [navigate, location.pathname, location.hash, paramKey],
+    [navigate, location.pathname, location.search, location.hash, paramKey],
   );
+
+  // Once the router has applied our write, stop shadowing the real location so
+  // browser back/forward and external links stay authoritative.
+  useEffect(() => {
+    if (pendingSearch.get(location.pathname) === location.search) {
+      pendingSearch.delete(location.pathname);
+    }
+  }, [location.pathname, location.search]);
 
   // Make the implicit default explicit in the URL (replace: never adds history).
   useEffect(() => {
