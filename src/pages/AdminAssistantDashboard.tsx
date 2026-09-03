@@ -86,6 +86,16 @@ import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 import { StaffSignOutButton } from '@/components/staff/StaffSignOutButton';
 import { StaffOnboardingDownloads } from '@/components/staff/StaffOnboardingDownloads';
 import { ScrollableStrip } from '@/components/ui/scrollable-strip';
+import { IoTProvisioningPanel } from "@/components/admin/IoTProvisioningPanel";
+import { HologramDashboard } from "@/components/admin/HologramDashboard";
+import { TraccarDashboard } from "@/components/admin/TraccarDashboard";
+import { SyncScheduleSettings } from "@/components/admin/SyncScheduleSettings";
+import BillingReconciliationPage from "@/pages/admin/BillingReconciliationPage";
+import AdminVehicleCataloguePage from "@/pages/admin/AdminVehicleCataloguePage";
+import UserUuidAssignmentsPage from "@/pages/admin/UserUuidAssignmentsPage";
+import { BillingDashboard } from "@/components/admin/BillingDashboard";
+import { ProxyBillingPortal } from "@/components/admin/ProxyBillingPortal";
+
 
 
 import { useAdminFinancials, useAdminFleetCounts } from "@/hooks/useAdminFinancials";
