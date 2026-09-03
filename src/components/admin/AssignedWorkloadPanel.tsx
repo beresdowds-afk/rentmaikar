@@ -85,7 +85,7 @@ export const AssignedWorkloadPanel = ({ isFullAdmin, onOpenCallCenter }: Assigne
               <CardDescription>
                 {queueLoading
                   ? 'Loading live queue…'
-                  : `${metrics.waiting} waiting · longest wait ${metrics.longestWaitLabel} · ${metrics.usa} 🇺🇸 / ${metrics.nigeria} 🇳🇬`}
+                  : `${metrics.waiting} waiting · longest wait ${fmtWait(metrics.longestWaitMs)} · ${metrics.usa} 🇺🇸 / ${metrics.nigeria} 🇳🇬`}
               </CardDescription>
             </div>
             <Button onClick={onOpenCallCenter} className="gap-2">
