@@ -6,7 +6,7 @@ import Footer from "@/components/layout/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRegion, type Country } from "@/contexts/RegionContext";
 import { usePublishedCompanyInfo } from "@/hooks/usePublishedCompanyInfo";
-import { EMAIL_CONFIG } from "@/lib/email-config";
+import { INCOMING_EMAIL_CONFIG } from "@/lib/email-config";
 import { buildWhatsAppLink } from "@/lib/contact-links";
 
 /**
@@ -70,20 +70,20 @@ const Contact = () => {
           <CardContent className="space-y-2 text-sm">
             <p>
               General support:{" "}
-              <a href={`mailto:${EMAIL_CONFIG.support}`} className="text-primary hover:underline font-medium">
-                {EMAIL_CONFIG.support}
+              <a href={`mailto:${INCOMING_EMAIL_CONFIG.support}`} className="text-primary hover:underline font-medium">
+                {INCOMING_EMAIL_CONFIG.support}
               </a>
             </p>
             <p>
               Privacy requests:{" "}
-              <a href={`mailto:${EMAIL_CONFIG.privacy}`} className="text-primary hover:underline font-medium">
-                {EMAIL_CONFIG.privacy}
+              <a href={`mailto:${INCOMING_EMAIL_CONFIG.privacy}`} className="text-primary hover:underline font-medium">
+                {INCOMING_EMAIL_CONFIG.privacy}
               </a>
             </p>
             <p>
               Legal notices:{" "}
-              <a href={`mailto:${EMAIL_CONFIG.legal}`} className="text-primary hover:underline font-medium">
-                {EMAIL_CONFIG.legal}
+              <a href={`mailto:${INCOMING_EMAIL_CONFIG.legal}`} className="text-primary hover:underline font-medium">
+                {INCOMING_EMAIL_CONFIG.legal}
               </a>
             </p>
           </CardContent>
