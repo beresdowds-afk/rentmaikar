@@ -17,6 +17,14 @@ interface AssignedWorkloadPanelProps {
 const fmtDate = (value: string | null) =>
   value ? new Date(value).toLocaleDateString() : '—';
 
+/** Renders a queue wait duration (ms) as m:ss. */
+const fmtWait = (ms: number) => {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(total / 60)}m ${String(total % 60).padStart(2, '0')}s`;
+};
+
+
+
 /**
  * Dashboard home for admins and admin assistants: assigned drivers, owners,
  * vehicles and active agreements, plus a live portal into the Call Center queue.
@@ -77,7 +85,7 @@ export const AssignedWorkloadPanel = ({ isFullAdmin, onOpenCallCenter }: Assigne
               <CardDescription>
                 {queueLoading
                   ? 'Loading live queue…'
-                  : `${metrics.waiting} waiting · longest wait ${metrics.longestWaitLabel} · ${metrics.usa} 🇺🇸 / ${metrics.nigeria} 🇳🇬`}
+                  : `${metrics.waiting} waiting · longest wait ${fmtWait(metrics.longestWaitMs)} · ${metrics.usa} 🇺🇸 / ${metrics.nigeria} 🇳🇬`}
               </CardDescription>
             </div>
             <Button onClick={onOpenCallCenter} className="gap-2">
