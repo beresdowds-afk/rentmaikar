@@ -84,3 +84,37 @@ export const formatSenderEmail = (type: keyof typeof EMAIL_CONFIG): string => {
 };
 
 export type EmailType = keyof typeof EMAIL_CONFIG;
+
+/**
+ * ── Domain topology ──────────────────────────────────────────────────────────
+ * Frontend  : rentmaikar.com          (public web app)
+ * Backend   : staging.rentmaikar.com  (API gateway / webhooks)
+ * Inbound   : backend.rentmaikar.com  (incoming mail / mailbox routing)
+ * Outbound  : notify.rentmaikar.com   (Resend verified sending domain)
+ */
+export const DOMAINS = {
+  frontend: "rentmaikar.com",
+  backend: "staging.rentmaikar.com",
+  incomingMail: "backend.rentmaikar.com",
+  outgoingMail: "notify.rentmaikar.com",
+} as const;
+
+/** Inbound mailbox addresses — replies and user inquiries land here. */
+export const INCOMING_EMAIL_CONFIG = {
+  support: `support@${DOMAINS.incomingMail}`,
+  payments: `payments@${DOMAINS.incomingMail}`,
+  documents: `documents@${DOMAINS.incomingMail}`,
+  admin: `admin@${DOMAINS.incomingMail}`,
+  legal: `legal@${DOMAINS.incomingMail}`,
+  privacy: `privacy@${DOMAINS.incomingMail}`,
+  dpo: `dpo@${DOMAINS.incomingMail}`,
+  nigeria: `nigeria@${DOMAINS.incomingMail}`,
+  usa: `usa@${DOMAINS.incomingMail}`,
+  negotiations: `negotiations@${DOMAINS.incomingMail}`,
+} as const;
+
+export type IncomingEmailType = keyof typeof INCOMING_EMAIL_CONFIG;
+
+/** Reply-to address for outbound mail so responses reach the inbound domain. */
+export const replyToFor = (type: IncomingEmailType = "support"): string =>
+  INCOMING_EMAIL_CONFIG[type];

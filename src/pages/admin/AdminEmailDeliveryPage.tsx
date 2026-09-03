@@ -254,6 +254,18 @@ export default function AdminEmailDeliveryPage() {
         </p>
       </header>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="outline" className="gap-1.5">
+          <MailCheck className="h-3.5 w-3.5" /> Outbound · notify.rentmaikar.com
+        </Badge>
+        <Badge variant="outline" className="gap-1.5">
+          <Activity className="h-3.5 w-3.5" /> Inbound · backend.rentmaikar.com
+        </Badge>
+        <Badge variant="outline" className="gap-1.5">
+          Backend API · staging.rentmaikar.com
+        </Badge>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">

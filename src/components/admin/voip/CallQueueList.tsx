@@ -219,9 +219,13 @@ export const CallQueueList = ({ queueState, onAnswer, onEscalate, onDismiss }: C
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Inbound simulation</CardTitle>
-          <CardDescription>Test queue timers, routing and chimes without a live caller.</CardDescription>
+          <CardTitle className="text-sm">Diagnostics · inbound simulation</CardTitle>
+          <CardDescription>
+            Live Twilio inbound calls now ring this queue automatically. These local test
+            entries only exercise timers, routing and chimes — they never touch call records.
+          </CardDescription>
         </CardHeader>
+
         <CardContent className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => simulateInbound('USA', 'USA driver')}>
             🇺🇸 Driver

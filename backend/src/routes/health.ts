@@ -29,6 +29,12 @@ healthRouter.get("/diagnostics", (req: Request, res: Response) => {
       paystack: Boolean(process.env.PAYSTACK_SECRET_KEY),
       opay: Boolean(process.env.OPAY_SECRET_KEY),
     },
+    domains: {
+      frontend: "https://rentmaikar.com",
+      backend: publicBackendUrl,
+      incoming_mail: "backend.rentmaikar.com",
+      outgoing_mail: "notify.rentmaikar.com",
+    },
     iot_telematics: {
       hologram_cellular: true,
       traccar_gps: true,

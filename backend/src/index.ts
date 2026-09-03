@@ -40,6 +40,17 @@ app.use(express.json());
 app.use("/api/health", healthRouter);
 app.use("/api/cpaas", cpaasRouter);
 
+// Active domain topology (frontend / backend / inbound mail / outbound mail)
+app.get("/api/domains", (_req, res) => {
+  res.json({
+    frontend: "https://rentmaikar.com",
+    frontend_aliases: DEFAULT_ALLOWED_ORIGINS,
+    backend: PUBLIC_BACKEND_URL,
+    incoming_mail_domain: "backend.rentmaikar.com",
+    outgoing_mail_domain: "notify.rentmaikar.com",
+  });
+});
+
 // Global 404 Handler
 app.use((req, res) => {
   res.status(404).json({

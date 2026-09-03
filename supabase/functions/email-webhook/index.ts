@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { EMAIL_CONFIG, formatSenderEmail } from "../_shared/email-config.ts";
+import { EMAIL_CONFIG, INCOMING_EMAIL_CONFIG, formatSenderEmail, inboundLocalPart } from "../_shared/email-config.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
 import { maybeAutoReply } from "../_shared/auto-reply.ts";
 import { forwardInboundEmail } from "../_shared/forwarding.ts";
@@ -35,20 +35,30 @@ const ATTACHMENT_CONFIG = {
 };
 
 // ─── Email Queue Routing ───
-const EMAIL_QUEUES: Record<string, { queue: string; priority: string; category: string }> = {
-  "support@rentmaikar.com":       { queue: "support",      priority: "normal",  category: "support_request" },
-  "payments@rentmaikar.com":      { queue: "payments",     priority: "high",    category: "payment_query" },
-  "documents@rentmaikar.com":     { queue: "documents",    priority: "normal",  category: "document_upload" },
-  "admin@rentmaikar.com":         { queue: "admin",        priority: "high",    category: "admin_inquiry" },
-  "legal@rentmaikar.com":         { queue: "legal",        priority: "high",    category: "legal" },
-  "privacy@rentmaikar.com":       { queue: "legal",        priority: "high",    category: "legal" },
-  "dpo@rentmaikar.com":           { queue: "legal",        priority: "high",    category: "legal" },
-  "nigeria@rentmaikar.com":       { queue: "support",      priority: "normal",  category: "support_request" },
-  "usa@rentmaikar.com":           { queue: "support",      priority: "normal",  category: "support_request" },
-  "negotiations@rentmaikar.com":  { queue: "negotiations", priority: "high",    category: "negotiation" },
-  "pricing@rentmaikar.com":       { queue: "negotiations", priority: "high",    category: "negotiation" },
-  "noreply@rentmaikar.com":       { queue: "automated",    priority: "low",     category: "auto_reply" },
+// Inbound mail is addressed to the incoming mail domain (backend.rentmaikar.com).
+// Routing is keyed by mailbox local part so legacy rentmaikar.com aliases and the
+// notify.rentmaikar.com sending domain still resolve to the same queues.
+type QueueRoute = { queue: string; priority: string; category: string };
+
+const MAILBOX_ROUTES: Record<string, QueueRoute> = {
+  support:      { queue: "support",      priority: "normal",  category: "support_request" },
+  payments:     { queue: "payments",     priority: "high",    category: "payment_query" },
+  documents:    { queue: "documents",    priority: "normal",  category: "document_upload" },
+  admin:        { queue: "admin",        priority: "high",    category: "admin_inquiry" },
+  legal:        { queue: "legal",        priority: "high",    category: "legal" },
+  privacy:      { queue: "legal",        priority: "high",    category: "legal" },
+  dpo:          { queue: "legal",        priority: "high",    category: "legal" },
+  nigeria:      { queue: "support",      priority: "normal",  category: "support_request" },
+  usa:          { queue: "support",      priority: "normal",  category: "support_request" },
+  negotiations: { queue: "negotiations", priority: "high",    category: "negotiation" },
+  pricing:      { queue: "negotiations", priority: "high",    category: "negotiation" },
+  noreply:      { queue: "automated",    priority: "low",     category: "auto_reply" },
 };
+
+const routeForAddress = (address: string): QueueRoute | undefined =>
+  MAILBOX_ROUTES[inboundLocalPart(address)];
+
+
 
 // ─── Weighted Classification Engine ───
 interface ClassificationResult {
@@ -525,7 +535,7 @@ serve(async (req) => {
     }
 
     // ─── Queue routing by recipient ───
-    const queueInfo = EMAIL_QUEUES[recipientEmail] || { queue: "support", priority: "normal", category: "support_request" };
+    const queueInfo = routeForAddress(recipientEmail) || { queue: "support", priority: "normal", category: "support_request" };
 
     if (queueInfo.category === "auto_reply") {
       console.log("Ignoring noreply bounce from:", senderAddress);
@@ -537,7 +547,7 @@ serve(async (req) => {
     // ─── Multi-recipient routing (handle CC / multiple To) ───
     const allRecipients = Array.isArray(to) ? to.map((t: string) => t.toLowerCase()) : [recipientEmail];
     const queuesHit = allRecipients
-      .map((addr: string) => EMAIL_QUEUES[addr])
+      .map((addr: string) => routeForAddress(addr))
       .filter(Boolean);
     // Use highest priority queue if multiple matched
     const effectiveQueue = queuesHit.sort((a: typeof queueInfo, b: typeof queueInfo) => {
@@ -819,10 +829,14 @@ serve(async (req) => {
 
           const ackResponse = await resendSendEmail({
               from: formatSenderEmail(fromType as keyof typeof EMAIL_CONFIG),
+              // Replies must land on the incoming mail domain, not the sending domain.
+              reply_to: INCOMING_EMAIL_CONFIG[fromType as keyof typeof INCOMING_EMAIL_CONFIG]
+                ?? INCOMING_EMAIL_CONFIG.support,
               to: [senderAddress],
               subject: ack.subject,
               html: ack.html,
             }, RESEND_API_KEY);
+
 
           if (ackResponse.ok) {
             const ackResult = await ackResponse.json();
