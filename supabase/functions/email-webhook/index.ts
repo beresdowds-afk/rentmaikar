@@ -829,10 +829,14 @@ serve(async (req) => {
 
           const ackResponse = await resendSendEmail({
               from: formatSenderEmail(fromType as keyof typeof EMAIL_CONFIG),
+              // Replies must land on the incoming mail domain, not the sending domain.
+              reply_to: INCOMING_EMAIL_CONFIG[fromType as keyof typeof INCOMING_EMAIL_CONFIG]
+                ?? INCOMING_EMAIL_CONFIG.support,
               to: [senderAddress],
               subject: ack.subject,
               html: ack.html,
             }, RESEND_API_KEY);
+
 
           if (ackResponse.ok) {
             const ackResult = await ackResponse.json();
