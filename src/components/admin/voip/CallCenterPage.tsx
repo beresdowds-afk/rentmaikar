@@ -14,12 +14,15 @@ import { ConferenceRoomPanel } from './ConferenceRoomPanel';
 import { CallRecordingsPanel } from './CallRecordingsPanel';
 import { TwiMLAppConfigPanel } from './TwiMLAppConfigPanel';
 import { IncomingCallAlerts } from '@/components/voice/IncomingCallAlerts';
+import { SoftphoneControls } from './SoftphoneControls';
+import { useVoiceDevice } from '@/hooks/useVoiceDevice';
 import { Badge } from '@/components/ui/badge';
 
 export const CallCenterPage = () => {
   const { calls, groups, isLoading, activeCall, initiateCall, endCall, createGroup, deleteGroup, refreshCalls } = useVoIPCalls();
   const { incomingRequests, acceptCallRequest, rejectCallRequest, escalateCallRequest } = useVoiceCall('admin');
   const [selectedTab, setSelectedTab] = useState('dialer');
+  const voice = useVoiceDevice();
 
   const activeCalls = calls.filter(c => ['ringing', 'in-progress'].includes(c.status));
   const usaCalls = calls.filter(c => c.region === 'USA');
@@ -54,6 +57,9 @@ export const CallCenterPage = () => {
         </div>
       </div>
 
+      {/* Live audio controls: microphone, mute, speaker and end call */}
+      <SoftphoneControls voice={voice} />
+
       {/* Incoming Call Alerts */}
       <IncomingCallAlerts
         requests={incomingRequests}
@@ -80,9 +86,16 @@ export const CallCenterPage = () => {
 
       {/* Active Call Panel */}
       {activeCall && (
-        <ActiveCallPanel 
-          call={activeCall} 
-          onEndCall={() => endCall(activeCall.id)} 
+        <ActiveCallPanel
+          call={activeCall}
+          onEndCall={() => {
+            voice.hangUp();
+            void endCall(activeCall.id);
+          }}
+          isMuted={voice.isMuted}
+          onToggleMute={voice.toggleMute}
+          isSpeakerOn={voice.isSpeakerphone}
+          onToggleSpeaker={() => void voice.toggleSpeakerphone()}
         />
       )}
 

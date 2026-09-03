@@ -14,12 +14,26 @@ import { useRegion } from '@/contexts/RegionContext';
 interface ActiveCallPanelProps {
   call: VoIPCall;
   onEndCall: () => void;
+  /** Live device state — supplied by the call centre softphone when available. */
+  isMuted?: boolean;
+  onToggleMute?: () => void;
+  isSpeakerOn?: boolean;
+  onToggleSpeaker?: () => void;
 }
 
-export const ActiveCallPanel = ({ call, onEndCall }: ActiveCallPanelProps) => {
+export const ActiveCallPanel = ({
+  call,
+  onEndCall,
+  isMuted: mutedProp,
+  onToggleMute,
+  isSpeakerOn: speakerProp,
+  onToggleSpeaker,
+}: ActiveCallPanelProps) => {
   const [duration, setDuration] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
+  const [localMuted, setLocalMuted] = useState(false);
+  const [localSpeakerOn, setLocalSpeakerOn] = useState(true);
+  const isMuted = mutedProp ?? localMuted;
+  const isSpeakerOn = speakerProp ?? localSpeakerOn;
   const [isRecording, setIsRecording] = useState(false);
   const [saveVoiceLog, setSaveVoiceLog] = useState(false);
   const { country } = useRegion();
@@ -156,14 +170,18 @@ export const ActiveCallPanel = ({ call, onEndCall }: ActiveCallPanelProps) => {
               <Button
                 variant={isMuted ? 'destructive' : 'outline'}
                 size="icon"
-                onClick={() => setIsMuted(!isMuted)}
+                aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+                aria-pressed={isMuted}
+                onClick={() => (onToggleMute ? onToggleMute() : setLocalMuted(!isMuted))}
               >
                 {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
               </Button>
               <Button
                 variant={isSpeakerOn ? 'outline' : 'secondary'}
                 size="icon"
-                onClick={() => setIsSpeakerOn(!isSpeakerOn)}
+                aria-label={isSpeakerOn ? 'Switch to earpiece' : 'Switch to speaker'}
+                aria-pressed={isSpeakerOn}
+                onClick={() => (onToggleSpeaker ? onToggleSpeaker() : setLocalSpeakerOn(!isSpeakerOn))}
               >
                 {isSpeakerOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
               </Button>
