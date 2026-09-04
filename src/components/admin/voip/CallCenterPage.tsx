@@ -14,6 +14,8 @@ import { OutreachContactsPanel } from './OutreachContactsPanel';
 import { ConferenceRoomPanel } from './ConferenceRoomPanel';
 import { CallRecordingsPanel } from './CallRecordingsPanel';
 import { TwiMLAppConfigPanel } from './TwiMLAppConfigPanel';
+import { OutboundNumberRouting } from './OutboundNumberRouting';
+
 import { IncomingCallAlerts } from '@/components/voice/IncomingCallAlerts';
 import { SoftphoneControls } from './SoftphoneControls';
 import { useVoiceDevice } from '@/hooks/useVoiceDevice';
