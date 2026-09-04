@@ -12,11 +12,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const BASE = Deno.env.get("SENT_API_BASE_URL") || "https://api.sent.dm";
 
 function canonicalWebhookUrl(): string {
-  return (
+  const base = (
     Deno.env.get("SENT_WEBHOOK_URL") ||
     `${(Deno.env.get("PUBLIC_BACKEND_URL") || "https://staging.rentmaikar.com").replace(/\/+$/, "")}/api/webhooks/sent`
-  );
+  ).split("?")[0];
+  // Sent.dm mints its own signing secret, so we authenticate callbacks with a
+  // shared token carried in the endpoint URL instead.
+  const token = Deno.env.get("SENT_WEBHOOK_SECRET");
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
 }
+
 
 async function sentFetch(path: string, init: RequestInit = {}) {
   const res = await fetch(`${BASE}${path}`, {
