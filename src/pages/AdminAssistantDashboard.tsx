@@ -453,9 +453,12 @@ const AdminAssistantDashboard = () => {
           </div>
 
           {/* Daily To-Do List */}
-          <div className="mb-8">
-            <AdminDailyTodoList />
-          </div>
+          {canAccessTab('daily-plans') && (
+            <div className="mb-8">
+              <AdminDailyTodoList />
+            </div>
+          )}
+
 
           {/* Portal Navigation */}
           <div className="flex flex-col gap-4 mb-6">
