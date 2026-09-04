@@ -48,8 +48,8 @@ export const PERMISSION_GROUPS: Array<{
     items: [
       { key: 'can_view_support_tasks', label: 'View support tasks', description: 'Read the support task portal.' },
       { key: 'can_manage_support_tasks', label: 'Manage support tasks', description: 'Assign or resolve support tasks.' },
-      { key: 'can_view_iot', label: 'View IoT hub', description: 'Read telemetry, alerts, fleet health.' },
-      { key: 'can_manage_iot', label: 'Manage IoT hub', description: 'Configure alert rules & retention.' },
+      { key: 'can_view_iot', label: 'View tracking devices', description: 'Read tracking-device telemetry, alerts, fleet health.' },
+      { key: 'can_manage_iot', label: 'Manage tracking devices', description: 'Configure tracking devices, commands, alert rules & retention.' },
     ],
   },
   {
