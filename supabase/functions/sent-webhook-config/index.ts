@@ -106,6 +106,27 @@ Deno.serve(async (req) => {
     }
 
     const data = (result.body as any)?.data ?? {};
+
+    // Sent.dm mints its own signing secret when it will not accept ours. Persist
+    // whatever it actually signs with so the receivers can verify callbacks.
+    const providerSecret: string | undefined =
+      typeof data.signing_secret === "string" ? data.signing_secret : undefined;
+    let providerSecretStored = false;
+    if (providerSecret && providerSecret !== localSecret) {
+      const admin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const { error: kvError } = await admin
+        .from("platform_kv_settings")
+        .upsert(
+          { key: "sent_webhook_signing_secret", value: providerSecret },
+          { onConflict: "key" },
+        );
+      if (kvError) console.error("[sent-webhook-config] secret persist failed:", kvError.message);
+      else providerSecretStored = true;
+    }
+
     return json({
       ok: true,
       action: match ? "updated" : "created",
@@ -113,15 +134,15 @@ Deno.serve(async (req) => {
       webhook_id: data.id ?? match?.id ?? null,
       event_types: data.event_types ?? event_types,
       is_active: data.is_active ?? true,
-      // Signing secret state: `registered` means Sent now signs callbacks with
-      // the same SENT_WEBHOOK_SECRET the receivers verify against.
+      // Signing state: either Sent accepted our secret, or we stored the one it
+      // generated so inbound callbacks still verify.
       signing_secret_configured: Boolean(localSecret),
-      signing_secret_registered: Boolean(localSecret) &&
-        (data.signing_secret === localSecret || data.signing_secret === undefined
-          ? Boolean(localSecret)
-          : false),
-      signing_secret_returned: Boolean(data.signing_secret),
+      signing_secret_registered:
+        Boolean(providerSecret && providerSecret === localSecret) || providerSecretStored,
+      provider_secret_stored: providerSecretStored,
+      signing_secret_returned: Boolean(providerSecret),
     });
+
   } catch (e) {
     return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500);
   }
