@@ -264,6 +264,9 @@ export default function AdminEmailDeliveryPage() {
         <Badge variant="outline" className="gap-1.5">
           Backend API · staging.rentmaikar.com
         </Badge>
+        <Button asChild variant="outline" size="sm">
+          <a href="/admin/email-routing">Email routing</a>
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
