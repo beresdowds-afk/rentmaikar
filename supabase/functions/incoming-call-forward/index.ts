@@ -56,6 +56,20 @@ serve(async (req: Request): Promise<Response> => {
       ? await getForwardingDestination(supabase, "call", region)
       : null;
 
+    // ── Stage 2: the browser agents did not pick up ──────────────────────
+    // Twilio re-posts here with DialCallStatus once the <Client> dial ends.
+    const stage = new URL(req.url).searchParams.get("stage");
+    if (stage === "agents") {
+      const dialStatus = (form.get("DialCallStatus")?.toString() || "").toLowerCase();
+      if (dialStatus === "completed" || dialStatus === "answered") {
+        return xml(`<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>`);
+      }
+      // Nobody in-app answered: fall back to the regional forwarding number
+      // or voicemail, exactly as before.
+      return xml(buildCallForwardTwiml(destination, publicSenderFor("call", to)));
+    }
+
+
     // Register the real Twilio inbound leg so it appears in the admin Call
     // Queue (direction=inbound, status=ringing) instead of a simulated entry.
     if (callSid) {
@@ -139,9 +153,41 @@ serve(async (req: Request): Promise<Response> => {
       },
     }).catch((e) => console.error("[incoming-call-forward] event log failed:", e));
 
+    // ── Stage 1: ring the staff who have the call centre open ────────────
+    // Any agent registered in the browser softphone in the last 90 seconds
+    // and marked "available" rings simultaneously. If none answer, Twilio
+    // re-posts to this function with stage=agents and we fall back to the
+    // regional forwarding number / voicemail.
+    const { data: agents } = await supabase
+      .from("voip_agent_presence")
+      .select("identity, region, last_seen_at")
+      .eq("status", "available")
+      .gte("last_seen_at", new Date(Date.now() - 90_000).toISOString())
+      .in("region", [region, "All"])
+      .limit(8);
+
+    const identities = (agents ?? [])
+      .map((a: { identity: string }) => a.identity)
+      .filter((i) => /^[A-Za-z0-9_.-]+$/.test(i));
+
+    if (identities.length > 0) {
+      const base = Deno.env.get("VOICE_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
+      const action = `${base}/functions/v1/incoming-call-forward?stage=agents`;
+      const clients = identities.map((i) => `<Client>${i}</Client>`).join("");
+      console.log(`[incoming-call-forward] ringing ${identities.length} in-app agent(s)`);
+      return xml(
+        `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">Please hold while we connect you to a Rent My Car support agent.</Say>
+  <Dial timeout="25" answerOnBridge="true" action="${action}" method="POST">${clients}</Dial>
+</Response>`,
+      );
+    }
+
     // Present a published RentMaikar number as caller ID (never the
     // dial-out-only number, never the master endpoint).
     return xml(buildCallForwardTwiml(destination, publicSenderFor("call", to)));
+
 
   } catch (error) {
     console.error("[incoming-call-forward] error:", error);

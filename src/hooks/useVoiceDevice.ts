@@ -437,14 +437,35 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
     return stop;
   }, [applyAudio]);
 
+  // Presence heartbeat: tells the call router that this browser is registered
+  // and can be rung directly for incoming customer calls.
+  useEffect(() => {
+    const presence =
+      status === "on-call" || status === "connecting"
+        ? "busy"
+        : status === "ready"
+          ? "available"
+          : "offline";
+
+    const push = () => {
+      void supabase.rpc("voip_set_presence", { _status: presence, _region: "All" });
+    };
+    push();
+    if (presence === "offline") return;
+    const timer = window.setInterval(push, 30_000);
+    return () => window.clearInterval(timer);
+  }, [status]);
+
   useEffect(() => {
     return () => {
       callRef.current?.disconnect();
       deviceRef.current?.destroy();
       deviceRef.current = null;
       setDiagnosticsCallId(null);
+      void supabase.rpc("voip_set_presence", { _status: "offline", _region: "All" });
     };
   }, []);
+
 
   return {
     status,
