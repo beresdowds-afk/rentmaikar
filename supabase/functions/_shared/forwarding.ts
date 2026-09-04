@@ -22,6 +22,7 @@ import {
   RENTMAIKAR_NUMBERS,
 } from "./comms-endpoints.ts";
 import { resendSendEmail } from "./resend-gateway.ts";
+import { getEmailRoutingTable, resolveDestinations } from "./email-routing.ts";
 
 export { evaluateHop, formatTrace, getLoopPolicy, LOOP_POLICY_KEY, parseTrace, stripTrace } from "./comms-correlation.ts";
 
