@@ -55,7 +55,9 @@ serve(async (req) => {
       statusCallbackUrl: `${supabaseUrl}/functions/v1/voip-status-callback`,
       recordingCallbackUrl: `${supabaseUrl}/functions/v1/recording-status-callback`,
       accessTokenUrl: `${supabaseUrl}/functions/v1/voice-access-token`,
+      incomingCallUrl: `${supabaseUrl}/functions/v1/incoming-call-forward`,
     };
+
 
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
