@@ -40,13 +40,6 @@ serve(async (req) => {
     const from = String(form.get("From") ?? "").trim();
     const callSid = String(form.get("CallSid") ?? "");
     const region = String(form.get("Region") ?? form.get("region") ?? "USA");
-    // Outgoing legs present the admin-facing dial-out number as caller ID;
-    // the public inbound number stays reserved for customers calling us.
-    const callerId =
-      Deno.env.get("TWILIO_VOICE_FROM") ||
-      Deno.env.get("TWILIO_OUTBOUND_NUMBER") ||
-      Deno.env.get("TWILIO_PHONE_NUMBER") ||
-      "";
 
     if (!to) return say("No destination was provided for this call.");
 
@@ -54,6 +47,27 @@ serve(async (req) => {
     const callerUserId = from.startsWith("client:user_")
       ? from.replace("client:user_", "")
       : null;
+
+    // Outgoing legs present an admin-facing dial-out number as caller ID; the
+    // exact number is chosen from the admin-managed routing table by the
+    // staff member's role and region, with the secrets as a fallback.
+    let callerId = "";
+    if (callerUserId) {
+      const { data: routed, error: routeError } = await supabase.rpc(
+        "voip_resolve_outbound_number",
+        { _user_id: callerUserId, _region: region },
+      );
+      if (routeError) console.error("voip_resolve_outbound_number failed", routeError.message);
+      if (typeof routed === "string") callerId = routed;
+    }
+    if (!callerId) {
+      callerId =
+        Deno.env.get("TWILIO_VOICE_FROM") ||
+        Deno.env.get("TWILIO_OUTBOUND_NUMBER") ||
+        Deno.env.get("TWILIO_PHONE_NUMBER") ||
+        "";
+    }
+
 
     let dialTarget: string;
 
