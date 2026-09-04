@@ -33,6 +33,7 @@ serve(async (req) => {
     if (denied) return denied;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const voiceBaseUrl = Deno.env.get("VOICE_SUPABASE_URL") || supabaseUrl;
     const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const to = String(form.get("To") ?? "").trim();
@@ -84,8 +85,8 @@ serve(async (req) => {
       });
     }
 
-    const statusCallback = `${supabaseUrl}/functions/v1/voip-status-callback`;
-    const recordingCallback = `${supabaseUrl}/functions/v1/recording-status-callback`;
+    const statusCallback = `${voiceBaseUrl}/functions/v1/voip-status-callback`;
+    const recordingCallback = `${voiceBaseUrl}/functions/v1/recording-status-callback`;
 
     return xml(
       `<Response><Dial answerOnBridge="true" timeout="30"` +
