@@ -56,6 +56,20 @@ serve(async (req: Request): Promise<Response> => {
       ? await getForwardingDestination(supabase, "call", region)
       : null;
 
+    // ── Stage 2: the browser agents did not pick up ──────────────────────
+    // Twilio re-posts here with DialCallStatus once the <Client> dial ends.
+    const stage = new URL(req.url).searchParams.get("stage");
+    if (stage === "agents") {
+      const dialStatus = (form.get("DialCallStatus")?.toString() || "").toLowerCase();
+      if (dialStatus === "completed" || dialStatus === "answered") {
+        return xml(`<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>`);
+      }
+      // Nobody in-app answered: fall back to the regional forwarding number
+      // or voicemail, exactly as before.
+      return xml(buildCallForwardTwiml(destination, publicSenderFor("call", to)));
+    }
+
+
     // Register the real Twilio inbound leg so it appears in the admin Call
     // Queue (direction=inbound, status=ringing) instead of a simulated entry.
     if (callSid) {
