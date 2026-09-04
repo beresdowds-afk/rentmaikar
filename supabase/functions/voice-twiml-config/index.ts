@@ -55,7 +55,9 @@ serve(async (req) => {
       statusCallbackUrl: `${supabaseUrl}/functions/v1/voip-status-callback`,
       recordingCallbackUrl: `${supabaseUrl}/functions/v1/recording-status-callback`,
       accessTokenUrl: `${supabaseUrl}/functions/v1/voice-access-token`,
+      incomingCallUrl: `${supabaseUrl}/functions/v1/incoming-call-forward`,
     };
+
 
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
@@ -215,7 +217,91 @@ serve(async (req) => {
       twimlApp.voiceUrl === expected.voiceUrl &&
       String(twimlApp.voiceMethod).toUpperCase() === "POST";
 
-    return json(200, { expected, secrets, twimlApp, matches, applied: action === "apply" });
+    // ---- Inbound number: the "A call comes in" webhook must hit
+    // incoming-call-forward, otherwise nobody answers real calls.
+    const phoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER") || "";
+    let incomingNumber:
+      | {
+          sid: string;
+          phoneNumber: string;
+          friendlyName: string;
+          voiceUrl: string;
+          voiceMethod: string;
+          matches: boolean;
+        }
+      | null = null;
+    let incomingNumberError: string | undefined;
+
+    if (phoneNumber) {
+      const listUrl =
+        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/IncomingPhoneNumbers.json?PhoneNumber=${encodeURIComponent(phoneNumber)}`;
+      const listRes = await fetch(listUrl, { headers: { Authorization: basicAuth } });
+      const listText = await listRes.text();
+      if (!listRes.ok) {
+        console.error(`Twilio number lookup failed [${listRes.status}]: ${listText}`);
+        incomingNumberError = `Could not read the phone number configuration (status ${listRes.status}).`;
+      } else {
+        const found = (JSON.parse(listText).incoming_phone_numbers ?? [])[0];
+        if (!found) {
+          incomingNumberError = `${phoneNumber} was not found on this Twilio account.`;
+        } else {
+          let record = found;
+          if (
+            action === "apply-number" &&
+            (record.voice_url !== expected.incomingCallUrl ||
+              String(record.voice_method).toUpperCase() !== "POST")
+          ) {
+            const upd = await fetch(
+              `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/IncomingPhoneNumbers/${record.sid}.json`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: basicAuth,
+                  "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: new URLSearchParams({
+                  VoiceUrl: expected.incomingCallUrl,
+                  VoiceMethod: "POST",
+                  StatusCallback: expected.statusCallbackUrl,
+                  StatusCallbackMethod: "POST",
+                }),
+              },
+            );
+            const updText = await upd.text();
+            if (!upd.ok) {
+              console.error(`Twilio number update failed [${upd.status}]: ${updText}`);
+              incomingNumberError = `Failed to update the number webhook (status ${upd.status}).`;
+            } else {
+              record = JSON.parse(updText);
+            }
+          }
+
+          incomingNumber = {
+            sid: record.sid,
+            phoneNumber: record.phone_number,
+            friendlyName: record.friendly_name,
+            voiceUrl: record.voice_url,
+            voiceMethod: record.voice_method,
+            matches:
+              record.voice_url === expected.incomingCallUrl &&
+              String(record.voice_method).toUpperCase() === "POST",
+          };
+        }
+      }
+    } else {
+      incomingNumberError = "TWILIO_PHONE_NUMBER is not configured.";
+    }
+
+    return json(200, {
+      expected,
+      secrets,
+      twimlApp,
+      matches,
+      incomingNumber,
+      incomingNumberError,
+      applied: action === "apply" || action === "apply-number",
+    });
+
   } catch (e) {
     console.error("voice-twiml-config error", e);
     return json(500, { error: e instanceof Error ? e.message : "Unknown error" });
