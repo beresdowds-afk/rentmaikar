@@ -523,8 +523,16 @@ const AdminAssistantDashboard = () => {
           {activeTabAllowed && portalView === 'support' && (
             <div className="space-y-6">
               {activeTab === 'task-portal' && <AdminTaskPortal />}
-              {activeTab === 'inbox' && <MessagingCenter />}
-              {activeTab === 'call-center' && <CallCenterPage />}
+              {activeTab === 'inbox' && (
+                <ErrorBoundary key="inbox">
+                  <MessagingCenter />
+                </ErrorBoundary>
+              )}
+              {activeTab === 'call-center' && (
+                <ErrorBoundary key="call-center">
+                  <CallCenterPage />
+                </ErrorBoundary>
+              )}
               {activeTab === 'contacts' && <AdminContactSettings />}
               {activeTab === 'support-tasks' && <AdminSupportTaskManagement />}
               {activeTab === 'insurance' && <InsuranceSupportDashboard />}
