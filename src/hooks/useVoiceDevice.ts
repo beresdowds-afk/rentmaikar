@@ -458,11 +458,25 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
 
   useEffect(() => {
     return () => {
-      callRef.current?.disconnect();
-      deviceRef.current?.destroy();
+      // Teardown must never throw: an error here happens during React's commit
+      // phase and would tear down the whole dashboard, so the sibling feature
+      // the user just clicked (e.g. the Unified Inbox) would never render.
+      try {
+        callRef.current?.disconnect();
+      } catch {
+        /* the call was already gone */
+      }
+      try {
+        deviceRef.current?.destroy();
+      } catch {
+        /* the device was already destroyed or never registered */
+      }
       deviceRef.current = null;
-      setDiagnosticsCallId(null);
-      void supabase.rpc("voip_set_presence", { _status: "offline", _region: "All" });
+      try {
+        void supabase.rpc("voip_set_presence", { _status: "offline", _region: "All" });
+      } catch {
+        /* presence is best-effort */
+      }
     };
   }, []);
 
