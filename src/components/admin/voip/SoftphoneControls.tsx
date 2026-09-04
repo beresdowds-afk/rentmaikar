@@ -51,6 +51,10 @@ export function SoftphoneControls({ voice }: { voice: VoiceDevice }) {
 
   const onCall = status === 'on-call' || status === 'connecting';
   const busy = status === 'initializing';
+  // Once the softphone is ready the audio controls stay usable between calls:
+  // mute sets how the next call starts, speaker switches the output route,
+  // and End call clears a ringing/stale call and returns to ready.
+  const audioActive = onCall || status === 'ready';
 
   return (
     <Card>
