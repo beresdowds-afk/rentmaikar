@@ -70,6 +70,39 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Pull the signing secret Sent.dm actually signs callbacks with and store
+    // it so the receivers can verify them.
+    if (action === "sync-secret") {
+      if (!match?.id) return json({ ok: false, error: "Webhook not registered yet" }, 404);
+      const detail = await sentFetch(`/v3/webhooks/${match.id}`, { method: "GET" });
+      const d = (detail.body as any)?.data ?? {};
+      const secret: string | undefined =
+        d.signing_secret ?? d.secret ?? d.webhook_secret ?? undefined;
+      if (!secret) {
+        return json({
+          ok: false,
+          error: "Sent.dm did not return a signing secret for this webhook",
+          status: detail.status,
+          keys: Object.keys(d),
+        }, 200);
+      }
+      const admin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const { error: kvError } = await admin
+        .from("platform_kv_settings")
+        .upsert({ key: "sent_webhook_signing_secret", value: secret }, { onConflict: "key" });
+      return json({
+        ok: !kvError,
+        stored: !kvError,
+        error: kvError?.message,
+        matches_env: secret === (Deno.env.get("SENT_WEBHOOK_SECRET") ?? ""),
+      });
+    }
+
+
+
     // Subscribe to every delivery-lifecycle event Sent exposes, plus inbound.
     const types = await sentFetch("/v3/webhooks/event-types", { method: "GET" });
     const available: string[] = ((types.body as any)?.data?.event_types ?? [])
