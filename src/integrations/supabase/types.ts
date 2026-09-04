@@ -1002,6 +1002,85 @@ export type Database = {
         }
         Relationships: []
       }
+      case_events: {
+        Row: {
+          actor_id: string | null
+          case_id: string
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          metadata: Json
+        }
+        Insert: {
+          actor_id?: string | null
+          case_id: string
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json
+        }
+        Update: {
+          actor_id?: string | null
+          case_id?: string
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "support_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_notes: {
+        Row: {
+          author_id: string | null
+          author_name: string | null
+          author_role: string
+          body: string
+          case_id: string
+          created_at: string
+          id: string
+          is_internal: boolean
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string | null
+          author_role?: string
+          body: string
+          case_id: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string | null
+          author_role?: string
+          body?: string
+          case_id?: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_notes_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "support_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communication_providers: {
         Row: {
           country_code_prefix: string
@@ -2940,6 +3019,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           assigned_to: string | null
+          case_id: string | null
           channel: string
           created_at: string
           id: string
@@ -2958,6 +3038,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           assigned_to?: string | null
+          case_id?: string | null
           channel: string
           created_at?: string
           id?: string
@@ -2976,6 +3057,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           assigned_to?: string | null
+          case_id?: string | null
           channel?: string
           created_at?: string
           id?: string
@@ -2991,7 +3073,15 @@ export type Database = {
           user_name?: string | null
           user_phone?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "inbox_conversations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "support_cases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inbox_messages: {
         Row: {
@@ -8548,6 +8638,90 @@ export type Database = {
         }
         Relationships: []
       }
+      support_cases: {
+        Row: {
+          assigned_to: string | null
+          call_id: string | null
+          case_number: string
+          conversation_id: string | null
+          created_at: string
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          customer_user_id: string | null
+          description: string | null
+          id: string
+          last_activity_at: string
+          metadata: Json
+          origin_channel: string
+          priority: string
+          region: string
+          resolved_at: string | null
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          call_id?: string | null
+          case_number?: string
+          conversation_id?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          customer_user_id?: string | null
+          description?: string | null
+          id?: string
+          last_activity_at?: string
+          metadata?: Json
+          origin_channel?: string
+          priority?: string
+          region?: string
+          resolved_at?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          call_id?: string | null
+          case_number?: string
+          conversation_id?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          customer_user_id?: string | null
+          description?: string | null
+          id?: string
+          last_activity_at?: string
+          metadata?: Json
+          origin_channel?: string
+          priority?: string
+          region?: string
+          resolved_at?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_cases_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "voip_calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_cases_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "inbox_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_staff: {
         Row: {
           assigned_city: string
@@ -11446,6 +11620,7 @@ export type Database = {
           call_sid: string | null
           call_type: string
           caller_role: string | null
+          case_id: string | null
           created_at: string
           direction: string
           duration_seconds: number | null
@@ -11469,6 +11644,7 @@ export type Database = {
           call_sid?: string | null
           call_type: string
           caller_role?: string | null
+          case_id?: string | null
           created_at?: string
           direction?: string
           duration_seconds?: number | null
@@ -11492,6 +11668,7 @@ export type Database = {
           call_sid?: string | null
           call_type?: string
           caller_role?: string | null
+          case_id?: string | null
           created_at?: string
           direction?: string
           duration_seconds?: number | null
@@ -11511,6 +11688,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "voip_calls_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "support_cases"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "voip_calls_initiated_by_fkey"
             columns: ["initiated_by"]
@@ -12848,6 +13032,18 @@ export type Database = {
         Args: { p_by_name?: string; p_reason?: string; p_token: string }
         Returns: Json
       }
+      case_for_call: {
+        Args: { p_call_id: string; p_subject?: string }
+        Returns: string
+      }
+      case_for_conversation: {
+        Args: {
+          p_channel?: string
+          p_conversation_id: string
+          p_subject?: string
+        }
+        Returns: string
+      }
       check_auth_rate_limit: {
         Args: {
           _endpoint: string
@@ -12897,6 +13093,10 @@ export type Database = {
       consume_withdrawal_authorization: {
         Args: { _id: string; _reference?: string }
         Returns: Json
+      }
+      customer_reply_to_case: {
+        Args: { p_body: string; p_case_id: string }
+        Returns: string
       }
       decide_withdrawal_authorization: {
         Args: { _decision: string; _id: string; _reason?: string }
