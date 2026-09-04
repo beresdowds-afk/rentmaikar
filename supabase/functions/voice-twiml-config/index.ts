@@ -218,79 +218,107 @@ serve(async (req) => {
       twimlApp.voiceUrl === expected.voiceUrl &&
       String(twimlApp.voiceMethod).toUpperCase() === "POST";
 
-    // ---- Inbound number: the "A call comes in" webhook must hit
-    // incoming-call-forward, otherwise nobody answers real calls.
-    const phoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER") || "";
-    let incomingNumber:
-      | {
-          sid: string;
-          phoneNumber: string;
-          friendlyName: string;
-          voiceUrl: string;
-          voiceMethod: string;
-          matches: boolean;
-        }
-      | null = null;
-    let incomingNumberError: string | undefined;
+    // ---- Phone numbers.
+    //  * Inbound  (TWILIO_PHONE_NUMBER)  — public customer-facing number; its
+    //    "A call comes in" webhook must hit incoming-call-forward.
+    //  * Outbound (TWILIO_VOICE_FROM)    — admin-facing dial-out caller ID; any
+    //    return call to it is also routed into the call centre.
+    interface NumberRecord {
+      sid: string;
+      phoneNumber: string;
+      friendlyName: string;
+      voiceUrl: string;
+      voiceMethod: string;
+      matches: boolean;
+      role: "inbound" | "outbound";
+    }
 
-    if (phoneNumber) {
+    const loadNumber = async (
+      number: string,
+      role: "inbound" | "outbound",
+    ): Promise<{ record: NumberRecord | null; error?: string }> => {
       const listUrl =
-        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/IncomingPhoneNumbers.json?PhoneNumber=${encodeURIComponent(phoneNumber)}`;
+        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/IncomingPhoneNumbers.json?PhoneNumber=${encodeURIComponent(number)}`;
       const listRes = await fetch(listUrl, { headers: { Authorization: basicAuth } });
       const listText = await listRes.text();
       if (!listRes.ok) {
         console.error(`Twilio number lookup failed [${listRes.status}]: ${listText}`);
-        incomingNumberError = `Could not read the phone number configuration (status ${listRes.status}).`;
-      } else {
-        const found = (JSON.parse(listText).incoming_phone_numbers ?? [])[0];
-        if (!found) {
-          incomingNumberError = `${phoneNumber} was not found on this Twilio account.`;
-        } else {
-          let record = found;
-          if (
-            action === "apply-number" &&
-            (record.voice_url !== expected.incomingCallUrl ||
-              String(record.voice_method).toUpperCase() !== "POST")
-          ) {
-            const upd = await fetch(
-              `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/IncomingPhoneNumbers/${record.sid}.json`,
-              {
-                method: "POST",
-                headers: {
-                  Authorization: basicAuth,
-                  "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: new URLSearchParams({
-                  VoiceUrl: expected.incomingCallUrl,
-                  VoiceMethod: "POST",
-                  StatusCallback: expected.statusCallbackUrl,
-                  StatusCallbackMethod: "POST",
-                }),
-              },
-            );
-            const updText = await upd.text();
-            if (!upd.ok) {
-              console.error(`Twilio number update failed [${upd.status}]: ${updText}`);
-              incomingNumberError = `Failed to update the number webhook (status ${upd.status}).`;
-            } else {
-              record = JSON.parse(updText);
-            }
-          }
+        return { record: null, error: `Could not read ${number} (status ${listRes.status}).` };
+      }
+      const found = (JSON.parse(listText).incoming_phone_numbers ?? [])[0];
+      if (!found) return { record: null, error: `${number} was not found on this Twilio account.` };
 
-          incomingNumber = {
-            sid: record.sid,
-            phoneNumber: record.phone_number,
-            friendlyName: record.friendly_name,
-            voiceUrl: record.voice_url,
-            voiceMethod: record.voice_method,
-            matches:
-              record.voice_url === expected.incomingCallUrl &&
-              String(record.voice_method).toUpperCase() === "POST",
-          };
+      let record = found;
+      let error: string | undefined;
+      const needsUpdate =
+        record.voice_url !== expected.incomingCallUrl ||
+        String(record.voice_method).toUpperCase() !== "POST";
+
+      if (action === "apply-number" && needsUpdate) {
+        const upd = await fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/IncomingPhoneNumbers/${record.sid}.json`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: basicAuth,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              VoiceUrl: expected.incomingCallUrl,
+              VoiceMethod: "POST",
+              StatusCallback: expected.statusCallbackUrl,
+              StatusCallbackMethod: "POST",
+            }),
+          },
+        );
+        const updText = await upd.text();
+        if (!upd.ok) {
+          console.error(`Twilio number update failed [${upd.status}]: ${updText}`);
+          error = `Failed to update ${number} (status ${upd.status}).`;
+        } else {
+          record = JSON.parse(updText);
         }
       }
+
+      return {
+        error,
+        record: {
+          sid: record.sid,
+          phoneNumber: record.phone_number,
+          friendlyName: record.friendly_name,
+          voiceUrl: record.voice_url,
+          voiceMethod: record.voice_method,
+          role,
+          matches:
+            record.voice_url === expected.incomingCallUrl &&
+            String(record.voice_method).toUpperCase() === "POST",
+        },
+      };
+    };
+
+    const inboundNumberValue = Deno.env.get("TWILIO_PHONE_NUMBER") || "";
+    const outboundNumberValue =
+      Deno.env.get("TWILIO_VOICE_FROM") || Deno.env.get("TWILIO_OUTBOUND_NUMBER") || "";
+
+    let incomingNumber: NumberRecord | null = null;
+    let incomingNumberError: string | undefined;
+    let outgoingNumber: NumberRecord | null = null;
+    let outgoingNumberError: string | undefined;
+
+    if (inboundNumberValue) {
+      const res = await loadNumber(inboundNumberValue, "inbound");
+      incomingNumber = res.record;
+      incomingNumberError = res.error;
     } else {
       incomingNumberError = "TWILIO_PHONE_NUMBER is not configured.";
+    }
+
+    if (outboundNumberValue && outboundNumberValue !== inboundNumberValue) {
+      const res = await loadNumber(outboundNumberValue, "outbound");
+      outgoingNumber = res.record;
+      outgoingNumberError = res.error;
+    } else if (!outboundNumberValue) {
+      outgoingNumberError = "TWILIO_VOICE_FROM is not configured.";
     }
 
     return json(200, {
@@ -300,8 +328,12 @@ serve(async (req) => {
       matches,
       incomingNumber,
       incomingNumberError,
+      outgoingNumber,
+      outgoingNumberError,
+      callerId: outboundNumberValue || inboundNumberValue,
       applied: action === "apply" || action === "apply-number",
     });
+
 
   } catch (e) {
     console.error("voice-twiml-config error", e);
