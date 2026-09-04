@@ -891,7 +891,7 @@ serve(async (req) => {
       subject: subject || "",
       body: messageContent,
       htmlBody: htmlBody || null,
-      mailbox: inboundLocalPart(recipientAddress),
+      mailbox: inboundLocalPart(recipientEmail),
     });
     if (emailForward.forwarded) {
       await logMessagingEvent(supabase, {
@@ -899,13 +899,13 @@ serve(async (req) => {
         provider: "resend",
         event_type: "forwarded",
         direction: "outbound",
-        sender: recipientAddress,
+        sender: recipientEmail,
         region,
         conversation_id: conversationId,
         user_id: userId,
         metadata: {
           forwarded_from: senderAddress,
-          mailbox: inboundLocalPart(recipientAddress),
+          mailbox: inboundLocalPart(recipientEmail),
           destinations: emailForward.destinations ?? [],
           matched_rule: emailForward.matched ?? null,
         },
@@ -919,7 +919,7 @@ serve(async (req) => {
       provider: 'resend',
       event_type: 'received',
       direction: 'inbound',
-      recipient: recipientAddress,
+      recipient: recipientEmail,
       sender: senderAddress,
       region,
       conversation_id: conversationId,
