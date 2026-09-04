@@ -556,6 +556,22 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/admin/cases"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
+                        <AdminCasesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/support/cases"
+                    element={
+                      <ProtectedRoute>
+                        <CustomerCasesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/messaging"
                     element={
                       <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
