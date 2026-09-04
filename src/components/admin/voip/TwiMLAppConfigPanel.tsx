@@ -26,15 +26,11 @@ interface TwiMLConfigResponse {
     statusCallbackMethod: string | null;
   } | null;
   matches: boolean;
-  incomingNumber: {
-    sid: string;
-    phoneNumber: string;
-    friendlyName: string;
-    voiceUrl: string;
-    voiceMethod: string;
-    matches: boolean;
-  } | null;
+  incomingNumber: TwilioNumber | null;
   incomingNumberError?: string;
+  outgoingNumber?: TwilioNumber | null;
+  outgoingNumberError?: string;
+  callerId?: string;
   error?: string;
   applied?: boolean;
 }
