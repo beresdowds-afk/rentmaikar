@@ -3,16 +3,27 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROLE_HOME, type AppRole } from "@/lib/role-home";
 import { rememberReturnTo } from "@/lib/return-to";
+import { useAssistantPermissions } from "@/hooks/useAssistantPermissions";
+import type { PermissionKey } from "@/components/admin/AdminAssistantManagement";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: AppRole[];
+  /**
+   * Extra gate on top of the role check: non-admin staff (assistants and
+   * support staff) must have this permission explicitly granted by the
+   * administrator in the role management portal.
+   */
+  requiredPermission?: PermissionKey;
 }
 
 export const ProtectedRoute = ({
   children,
   allowedRoles,
+  requiredPermission,
 }: ProtectedRouteProps) => {
+  const { isFullAdmin, perms, loading: permsLoading } = useAssistantPermissions();
+
   const {
     user,
     session,
@@ -25,7 +36,7 @@ export const ProtectedRoute = ({
 
   const location = useLocation();
 
-  const loading = isLoading || isRoleLoading;
+  const loading = isLoading || isRoleLoading || (!!requiredPermission && permsLoading);
 
   if (loading) {
     return (
@@ -61,6 +72,13 @@ export const ProtectedRoute = ({
     return <Navigate to={(userRole && ROLE_HOME[userRole]) ?? "/"} replace />;
   }
 
+  // Capability gate: only the administrator has inherent access. Assistants
+  // and support staff need the permission granted in the role management
+  // portal.
+  if (requiredPermission && !isFullAdmin && !perms?.[requiredPermission]) {
+    return <Navigate to={(userRole && ROLE_HOME[userRole]) ?? "/"} replace />;
+  }
 
   return <>{children}</>;
+
 };

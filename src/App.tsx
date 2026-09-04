@@ -275,7 +275,7 @@ const App = () => (
                   <Route 
                     path="/support/iot" 
                     element={
-                      <ProtectedRoute allowedRoles={['iot_support', 'admin']}>
+                      <ProtectedRoute allowedRoles={['iot_support', 'admin']} requiredPermission="can_view_iot">
                         <IoTSupportDashboard />
                       </ProtectedRoute>
                     } 
@@ -396,7 +396,7 @@ const App = () => (
                   <Route
                     path="/stream"
                     element={
-                      <ProtectedRoute allowedRoles={['admin', 'iot_support']}>
+                      <ProtectedRoute allowedRoles={['admin', 'iot_support']} requiredPermission="can_view_iot">
                         <TelemetryStreamPage />
                       </ProtectedRoute>
                     }
@@ -404,7 +404,7 @@ const App = () => (
                   <Route
                     path="/admin/stream"
                     element={
-                      <ProtectedRoute allowedRoles={['admin', 'iot_support']}>
+                      <ProtectedRoute allowedRoles={['admin', 'iot_support']} requiredPermission="can_view_iot">
                         <TelemetryStreamPage />
                       </ProtectedRoute>
                     }
@@ -509,7 +509,7 @@ const App = () => (
                   <Route
                     path="/admin/vehicle-telemetry"
                     element={
-                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant', 'iot_support']}>
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant', 'iot_support']} requiredPermission="can_view_iot">
                         <AdminVehicleTelemetryPage />
                       </ProtectedRoute>
                     }
@@ -534,7 +534,7 @@ const App = () => (
                   <Route
                     path="/admin/hologram/devices/:deviceId"
                     element={
-                      <ProtectedRoute allowedRoles={['admin', 'iot_support']}>
+                      <ProtectedRoute allowedRoles={['admin', 'iot_support']} requiredPermission="can_view_iot">
                         <HologramDeviceDetailPage />
                       </ProtectedRoute>
                     }
@@ -617,7 +617,8 @@ const App = () => (
                   <Route
                     path="/admin/traccar-commands"
                     element={
-                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']} requiredPermission="can_view_iot">
+
                         <TraccarCommandAuditPage />
                       </ProtectedRoute>
                     }
