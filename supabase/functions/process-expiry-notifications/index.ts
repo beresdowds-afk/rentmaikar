@@ -96,7 +96,7 @@ const getTierUrgency = (days: number): 'standard' | 'priority' | 'urgent' | 'cri
 const generateExpiryTwiML = (
   item: ExpiringItem,
   recipientName: string,
-  supabaseUrl: string,
+  voiceBaseUrl: string,
   tier: NotificationTier
 ): string => {
   const typeLabel = item.type.replace('_', ' ');
