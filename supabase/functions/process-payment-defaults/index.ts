@@ -198,7 +198,8 @@ const initiateDefaultCall = async (
 
   try {
     const driverName = profile.full_name || 'Driver';
-    const twiml = generateCallTwiml(paymentDefault, notificationNumber, driverName, supabaseUrl);
+    const voiceBaseUrl = Deno.env.get('VOICE_SUPABASE_URL') || supabaseUrl;
+    const twiml = generateCallTwiml(paymentDefault, notificationNumber, driverName, voiceBaseUrl);
 
     // Create call record
     const { data: callRecord, error: callErr } = await supabase
@@ -228,7 +229,7 @@ const initiateDefaultCall = async (
       To: profile.phone,
       From: twilioPhone,
       Twiml: twiml,
-      StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
+      StatusCallback: `${voiceBaseUrl}/functions/v1/voip-status-callback`,
       StatusCallbackEvent: 'initiated ringing answered completed',
       MachineDetection: 'DetectMessageEnd',
       MachineDetectionTimeout: '10',
@@ -237,7 +238,7 @@ const initiateDefaultCall = async (
     // Set fallback voicemail TwiML URL for answering machines
     const voicemailTwiml = generateVoicemailTwiml(paymentDefault, notificationNumber, driverName);
     formData.append('AsyncAmd', 'true');
-    formData.append('AsyncAmdStatusCallback', `${supabaseUrl}/functions/v1/voip-status-callback`);
+    formData.append('AsyncAmdStatusCallback', `${voiceBaseUrl}/functions/v1/voip-status-callback`);
 
     const callResponse = await fetch(twilioUrl, {
       method: 'POST',
