@@ -519,8 +519,14 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const payload = await req.json();
-    console.log("Email webhook received:", JSON.stringify(payload).slice(0, 500));
+    const rawPayload = await req.json();
+    console.log("Email webhook received:", JSON.stringify(rawPayload).slice(0, 500));
+
+    // Resend native inbound events only carry an email_id; fetch the full
+    // message and normalise to the flat payload the rest of this function uses.
+    const payload = isResendInboundEvent(rawPayload)
+      ? await fetchResendInboundEmail(rawPayload.data.email_id)
+      : rawPayload;
 
     const { from, to, subject, text, html: htmlBody, headers: emailHeaders, attachments } = payload;
 
