@@ -82,7 +82,7 @@ export const CallLogPage = () => {
     const { data, error } = await supabase
       .from('voip_calls')
       .select(
-        'id, call_sid, status, direction, region, call_type, duration_seconds, started_at, ended_at, created_at, initiated_by, answered_by, receiver_id',
+        'id, call_sid, status, direction, region, call_type, duration_seconds, started_at, ended_at, created_at, initiated_by, answered_by, receiver_id, case_id',
       )
       .order('created_at', { ascending: false })
       .limit(500);
