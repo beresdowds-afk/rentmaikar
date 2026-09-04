@@ -41,26 +41,59 @@ async function hmacHex(secret: string, body: string): Promise<string> {
     .join("");
 }
 
-/** Token, hex-HMAC, or `t=...,v1=...` signature modes. */
+/** URL token, hex-HMAC, or `t=...,v1=...` signature modes. */
 async function verifySignature(req: Request, raw: string): Promise<boolean> {
-  const secret = Deno.env.get("SENT_WEBHOOK_SECRET") ?? "";
-  if (!secret) {
-    console.warn("[sent-inbound] SENT_WEBHOOK_SECRET not set — accepting unverified");
+  const envSecret = Deno.env.get("SENT_WEBHOOK_SECRET") ?? "";
+
+  // Primary check: shared token carried in the registered endpoint URL. Sent.dm
+  // signs with a secret it mints itself, so the URL token is what we control.
+  if (envSecret) {
+    try {
+      if (new URL(req.url).searchParams.get("token") === envSecret) return true;
+    } catch { /* ignore malformed URL */ }
+  }
+
+  const secrets = [envSecret];
+
+  // Sent.dm sometimes mints its own signing secret; sent-webhook-config stores
+  // that value so callbacks still verify.
+  try {
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const { data } = await admin
+      .from("platform_kv_settings")
+      .select("value")
+      .eq("key", "sent_webhook_signing_secret")
+      .maybeSingle();
+    const stored = typeof data?.value === "string" ? data.value : null;
+    if (stored) secrets.push(stored);
+  } catch (e) {
+    console.error("[sent-inbound] stored signing secret lookup failed:", e);
+  }
+
+  const candidates = secrets.filter(Boolean);
+  if (!candidates.length) {
+    console.warn("[sent-inbound] no signing secret configured — accepting unverified");
     return true;
   }
   const signature =
     req.headers.get("x-sent-signature") || req.headers.get("x-webhook-signature");
   if (!signature) return false;
-  if (signature === secret) return true;
-
-  const expected = await hmacHex(secret, raw);
-  if (signature === expected) return true;
 
   const parts = Object.fromEntries(
     signature.split(",").map((p) => p.split("=").map((s) => s.trim())),
   ) as Record<string, string>;
-  return parts.v1 === expected;
+
+  for (const secret of candidates) {
+    if (signature === secret) return true;
+    const expected = await hmacHex(secret, raw);
+    if (signature === expected || parts.v1 === expected) return true;
+  }
+  return false;
 }
+
 
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -68,7 +101,14 @@ serve(async (req: Request): Promise<Response> => {
   try {
     const raw = await req.text();
     if (!(await verifySignature(req, raw))) {
+      console.warn(
+        `[sent-inbound] rejected unsigned/mismatched callback (sig=${
+          (req.headers.get("x-sent-signature") || req.headers.get("x-webhook-signature") || "none")
+            .slice(0, 12)
+        }…)`,
+      );
       return json({ received: false, error: "Invalid signature" }, 401);
+
     }
 
     // deno-lint-ignore no-explicit-any
