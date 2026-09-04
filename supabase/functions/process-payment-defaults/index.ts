@@ -97,7 +97,7 @@ const generateCallTwiml = (
   paymentDefault: PaymentDefault,
   notificationNumber: number,
   driverName: string,
-  supabaseUrl: string
+  voiceBaseUrl: string
 ): string => {
   const config = CONFIG[paymentDefault.payment_frequency];
   const hoursRemaining = config.lockdownAfterHours - paymentDefault.hours_overdue;
@@ -106,7 +106,7 @@ const generateCallTwiml = (
   const isDaily = paymentDefault.payment_frequency === 'daily';
 
   // IVR action URL for keypress handling
-  const actionUrl = `${supabaseUrl}/functions/v1/payment-default-ivr?defaultId=${paymentDefault.id}&stage=${notificationNumber}`;
+  const actionUrl = `${voiceBaseUrl}/functions/v1/payment-default-ivr?defaultId=${paymentDefault.id}&stage=${notificationNumber}`;
 
   const stageMessages: Record<number, string> = {
     1: `Hello ${driverName}. This is Rentmaikar regarding your payment. Your payment of ${amount} is now overdue. You have ${hoursRemaining} hours before vehicle lockdown. Press 1 to make a payment now, or press 2 to speak with support.`,
