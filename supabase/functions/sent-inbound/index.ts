@@ -41,9 +41,19 @@ async function hmacHex(secret: string, body: string): Promise<string> {
     .join("");
 }
 
-/** Token, hex-HMAC, or `t=...,v1=...` signature modes. */
+/** URL token, hex-HMAC, or `t=...,v1=...` signature modes. */
 async function verifySignature(req: Request, raw: string): Promise<boolean> {
-  const secrets = [Deno.env.get("SENT_WEBHOOK_SECRET") ?? ""];
+  const envSecret = Deno.env.get("SENT_WEBHOOK_SECRET") ?? "";
+
+  // Primary check: shared token carried in the registered endpoint URL. Sent.dm
+  // signs with a secret it mints itself, so the URL token is what we control.
+  if (envSecret) {
+    try {
+      if (new URL(req.url).searchParams.get("token") === envSecret) return true;
+    } catch { /* ignore malformed URL */ }
+  }
+
+  const secrets = [envSecret];
 
   // Sent.dm sometimes mints its own signing secret; sent-webhook-config stores
   // that value so callbacks still verify.
