@@ -7,6 +7,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireAdminCaller } from "../_shared/guard.ts";
 import { sentApiKey, sentEnabled } from "../_shared/sent-client.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const BASE = Deno.env.get("SENT_API_BASE_URL") || "https://api.sent.dm";
 
