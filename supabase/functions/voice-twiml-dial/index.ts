@@ -33,6 +33,7 @@ serve(async (req) => {
     if (denied) return denied;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const voiceBaseUrl = Deno.env.get("VOICE_SUPABASE_URL") || supabaseUrl;
     const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const to = String(form.get("To") ?? "").trim();
