@@ -24,12 +24,14 @@ const ROLES = [
 
 const REGIONS = ['All', 'USA', 'Nigeria'] as const;
 
+type StaffRole = (typeof ROLES)[number];
+
 interface OutboundNumber {
   id: string;
   phone_number: string;
   label: string;
   region: string;
-  role: string | null;
+  role: StaffRole | null;
   priority: number;
   is_active: boolean;
   is_default: boolean;
@@ -77,13 +79,13 @@ export const OutboundNumberRouting = () => {
       return;
     }
     setIsSaving(true);
-    const { error } = await supabase.from('voip_outbound_numbers').insert({
+    const { error } = await supabase.from('voip_outbound_numbers').insert([{
       phone_number: phone,
       label: draft.label.trim() || phone,
       region: draft.region,
-      role: draft.role === ANY_ROLE ? null : (draft.role as OutboundNumber['role']),
+      role: draft.role === ANY_ROLE ? null : (draft.role as StaffRole),
       priority: Number(draft.priority) || 100,
-    });
+    }]);
     setIsSaving(false);
     if (error) {
       toast({ title: 'Could not save', description: error.message, variant: 'destructive' });
