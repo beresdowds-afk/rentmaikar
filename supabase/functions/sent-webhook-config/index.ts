@@ -61,8 +61,9 @@ Deno.serve(async (req) => {
     }
     const existing: any[] =
       (list.body as any)?.data?.webhooks ?? (list.body as any)?.data ?? [];
+    const bare = (u: string) => (u ?? "").split("?")[0].replace(/\/+$/, "");
     const match = Array.isArray(existing)
-      ? existing.find((w) => (w?.endpoint_url ?? "").replace(/\/+$/, "") === url.replace(/\/+$/, ""))
+      ? existing.find((w) => bare(w?.endpoint_url) === bare(url))
       : undefined;
 
     if (action === "list") {
