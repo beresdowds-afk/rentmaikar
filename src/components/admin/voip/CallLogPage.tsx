@@ -39,10 +39,11 @@ const statusColors: Record<string, string> = {
 const formatDuration = (call: CallLogRow) => {
   let seconds = call.duration_seconds ?? 0;
   if (!seconds && call.started_at && call.ended_at) {
-    seconds = Math.max(
-      0,
-      Math.round((new Date(call.ended_at).getTime() - new Date(call.started_at).getTime()) / 1000),
+    const diff = Math.round(
+      (new Date(call.ended_at).getTime() - new Date(call.started_at).getTime()) / 1000,
     );
+    // Ignore implausible gaps from records that were closed long after the call.
+    seconds = diff > 0 && diff < 6 * 60 * 60 ? diff : 0;
   }
   if (!seconds) return '—';
   const mins = Math.floor(seconds / 60);
