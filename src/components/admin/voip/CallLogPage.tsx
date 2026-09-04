@@ -5,7 +5,19 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ClipboardList, Loader2, PhoneIncoming, PhoneOutgoing, RefreshCw } from 'lucide-react';
+import { ClipboardList, Loader2, PhoneIncoming, PhoneOutgoing, RefreshCw, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -62,6 +74,7 @@ export const CallLogPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [directionFilter, setDirectionFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [isClearing, setIsClearing] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -112,6 +125,18 @@ export const CallLogPage = () => {
     void load();
   }, [load]);
 
+  const clearLog = useCallback(async () => {
+    setIsClearing(true);
+    const { data, error } = await supabase.rpc('clear_voip_call_log' as never);
+    setIsClearing(false);
+    if (error) {
+      toast.error(error.message || 'Could not clear the call log');
+      return;
+    }
+    toast.success(`Cleared ${data ?? 0} finished call${data === 1 ? '' : 's'} from the log`);
+    void load();
+  }, [load]);
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return rows.filter((call) => {
@@ -143,12 +168,50 @@ export const CallLogPage = () => {
             </CardTitle>
             <CardDescription>
               Every call with its length, outcome and the staff member who answered
-              {filtered.length > 0 ? ` · ${answeredCount} of ${filtered.length} answered by staff` : ''}
+              {filtered.length > 0
+              ? ` · ${answeredCount} of ${filtered.length} answered by staff · scroll for more`
+              : ''}
             </CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={isLoading}>
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={isClearing || rows.length === 0}
+                  className="gap-2"
+                >
+                  {isClearing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  Clear log
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear the call log?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This removes every finished call record for good. Calls that are still ringing
+                    or connected are kept.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep records</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => void clearLog()}>Clear log</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -184,9 +247,9 @@ export const CallLogPage = () => {
           />
         </div>
 
-        <div className="rounded-md border">
+        <div className="max-h-[26rem] overflow-y-auto rounded-md border">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow>
                 <TableHead>Date / time</TableHead>
                 <TableHead>Direction</TableHead>
