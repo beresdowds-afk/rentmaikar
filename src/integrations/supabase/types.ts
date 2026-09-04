@@ -11187,6 +11187,33 @@ export type Database = {
         }
         Relationships: []
       }
+      voip_agent_presence: {
+        Row: {
+          identity: string
+          last_seen_at: string
+          region: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          identity: string
+          last_seen_at?: string
+          region?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          identity?: string
+          last_seen_at?: string
+          region?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       voip_call_groups: {
         Row: {
           created_at: string
@@ -11540,6 +11567,48 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      voip_outbound_numbers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          label: string
+          phone_number: string
+          priority: number
+          region: string
+          role: Database["public"]["Enums"]["app_role"] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          label: string
+          phone_number: string
+          priority?: number
+          region?: string
+          role?: Database["public"]["Enums"]["app_role"] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          label?: string
+          phone_number?: string
+          priority?: number
+          region?: string
+          role?: Database["public"]["Enums"]["app_role"] | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       voip_settings: {
         Row: {
@@ -13745,6 +13814,14 @@ export type Database = {
       verify_payment_settlement: {
         Args: { _payment_id: string }
         Returns: Json
+      }
+      voip_resolve_outbound_number: {
+        Args: { _region?: string; _user_id: string }
+        Returns: string
+      }
+      voip_set_presence: {
+        Args: { _region?: string; _status: string }
+        Returns: undefined
       }
     }
     Enums: {
