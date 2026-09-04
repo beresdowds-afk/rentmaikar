@@ -111,6 +111,7 @@ import { InstallAppBanner } from '@/components/pwa/InstallAppBanner';
 import { StaffSignOutButton } from '@/components/staff/StaffSignOutButton';
 import { StaffOnboardingDownloads } from '@/components/staff/StaffOnboardingDownloads';
 import { ScrollableStrip } from '@/components/ui/scrollable-strip';
+import ErrorBoundary from "@/components/errors/ErrorBoundary";
 import { usePersistedTab } from '@/hooks/usePersistedTab';
 
 
@@ -531,8 +532,16 @@ const AdminDashboard = () => {
           {portalView === 'support' && (
             <div className="space-y-6">
               {activeTab === 'task-portal' && <AdminTaskPortal />}
-              {activeTab === 'inbox' && <MessagingCenter />}
-              {activeTab === 'call-center' && <CallCenterPage />}
+              {activeTab === 'inbox' && (
+                <ErrorBoundary key="inbox">
+                  <MessagingCenter />
+                </ErrorBoundary>
+              )}
+              {activeTab === 'call-center' && (
+                <ErrorBoundary key="call-center">
+                  <CallCenterPage />
+                </ErrorBoundary>
+              )}
               {activeTab === 'contacts' && <AdminContactSettings />}
               {activeTab === 'support-tasks' && <AdminSupportTaskManagement />}
               {activeTab === 'insurance' && <InsuranceSupportDashboard />}
