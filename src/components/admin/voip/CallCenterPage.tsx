@@ -137,6 +137,28 @@ export const CallCenterPage = () => {
       {/* Live audio controls: microphone, mute, speaker and end call */}
       <SoftphoneControls voice={voice} />
 
+      {/* Live inbound call ringing this browser — answer with mic + speaker */}
+      {voice.incomingCall && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-green-500/40 bg-green-500/10 p-4">
+          <PhoneIncoming className="h-5 w-5 animate-pulse text-green-600" />
+          <span className="text-sm font-medium">
+            Incoming call
+            {voice.incomingCall.parameters?.From ? ` from ${voice.incomingCall.parameters.From}` : ''}
+          </span>
+          <div className="ml-auto flex gap-2">
+            <Button size="sm" className="gap-2" onClick={() => voice.acceptIncoming()}>
+              <PhoneCall className="h-4 w-4" />
+              Answer
+            </Button>
+            <Button size="sm" variant="destructive" className="gap-2" onClick={() => voice.rejectIncoming()}>
+              <PhoneOff className="h-4 w-4" />
+              Decline
+            </Button>
+          </div>
+        </div>
+      )}
+
+
       {/* Microphone / speaker diagnostics */}
       <AudioHardwareTester />
 
