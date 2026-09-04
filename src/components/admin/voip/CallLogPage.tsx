@@ -35,6 +35,7 @@ interface CallLogRow {
   initiated_by: string | null;
   answered_by: string | null;
   receiver_id: string | null;
+  case_id: string | null;
 }
 
 const statusColors: Record<string, string> = {
