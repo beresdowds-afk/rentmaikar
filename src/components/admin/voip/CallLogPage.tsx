@@ -77,6 +77,8 @@ export const CallLogPage = () => {
   const [directionFilter, setDirectionFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [isClearing, setIsClearing] = useState(false);
+  const [creatingFor, setCreatingFor] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const load = useCallback(async () => {
     setIsLoading(true);
