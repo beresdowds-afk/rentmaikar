@@ -330,14 +330,14 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
     // Neither: clear any stale call state and return the softphone to ready.
     callRef.current?.disconnect();
     callRef.current = null;
-    setIncomingCall((pending) => {
-      pending?.reject();
-      return null;
-    });
+    if (incomingCall) {
+      incomingCall.reject();
+      setIncomingCall(null);
+    }
     setStatus(deviceRef.current ? "ready" : "idle");
     setDiagnosticsCallId(null);
     logAudioEvent("call", "Call ended by agent");
-  }, []);
+  }, [incomingCall]);
 
   const setMuted = useCallback((muted: boolean) => {
     const call = callRef.current;
