@@ -113,8 +113,13 @@ serve(async (req) => {
     console.log(`Sending email to ${recipientEmail} from ${supportConfig.email}`);
 
     // Send email using Resend API directly
+    // Replies must come back to the inbound mailbox (Cloudflare Email Worker →
+    // email-webhook → this inbox), not to the display-only support@rentmaikar.com.
+    const replyToMailbox = "support@backend.rentmaikar.com";
+
     const emailResponse = await resendSendEmail({
         from: fromEmail,
+        reply_to: replyToMailbox,
         to: [recipientEmail],
         subject: emailSubject,
         html: `
