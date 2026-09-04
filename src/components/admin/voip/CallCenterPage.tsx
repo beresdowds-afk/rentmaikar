@@ -311,9 +311,11 @@ export const CallCenterPage = () => {
           <AccentConversionAgentPanel agent={accentAgent} />
         </TabsContent>
 
-        <TabsContent value="settings">
+        <TabsContent value="settings" className="space-y-4">
+          <OutboundNumberRouting />
           <VoIPFeatureSettings />
         </TabsContent>
+
       </Tabs>
     </div>
   );
