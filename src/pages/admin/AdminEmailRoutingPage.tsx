@@ -164,6 +164,7 @@ export default function AdminEmailRoutingPage() {
       <Seo
         title="Email Routing | Rentmaikar Admin"
         description="Route inbound Rentmaikar mailboxes to external delivery addresses."
+        path="/admin/email-routing"
       />
 
       <header className="space-y-1">
