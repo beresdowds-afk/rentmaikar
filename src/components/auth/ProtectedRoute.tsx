@@ -72,6 +72,13 @@ export const ProtectedRoute = ({
     return <Navigate to={(userRole && ROLE_HOME[userRole]) ?? "/"} replace />;
   }
 
+  // Capability gate: only the administrator has inherent access. Assistants
+  // and support staff need the permission granted in the role management
+  // portal.
+  if (requiredPermission && !isFullAdmin && !perms?.[requiredPermission]) {
+    return <Navigate to={(userRole && ROLE_HOME[userRole]) ?? "/"} replace />;
+  }
 
   return <>{children}</>;
+
 };
