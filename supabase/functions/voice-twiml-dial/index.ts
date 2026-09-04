@@ -85,8 +85,8 @@ serve(async (req) => {
       });
     }
 
-    const statusCallback = `${supabaseUrl}/functions/v1/voip-status-callback`;
-    const recordingCallback = `${supabaseUrl}/functions/v1/recording-status-callback`;
+    const statusCallback = `${voiceBaseUrl}/functions/v1/voip-status-callback`;
+    const recordingCallback = `${voiceBaseUrl}/functions/v1/recording-status-callback`;
 
     return xml(
       `<Response><Dial answerOnBridge="true" timeout="30"` +
