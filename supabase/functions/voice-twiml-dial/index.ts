@@ -40,7 +40,13 @@ serve(async (req) => {
     const from = String(form.get("From") ?? "").trim();
     const callSid = String(form.get("CallSid") ?? "");
     const region = String(form.get("Region") ?? form.get("region") ?? "USA");
-    const callerId = Deno.env.get("TWILIO_PHONE_NUMBER") || "";
+    // Outgoing legs present the admin-facing dial-out number as caller ID;
+    // the public inbound number stays reserved for customers calling us.
+    const callerId =
+      Deno.env.get("TWILIO_VOICE_FROM") ||
+      Deno.env.get("TWILIO_OUTBOUND_NUMBER") ||
+      Deno.env.get("TWILIO_PHONE_NUMBER") ||
+      "";
 
     if (!to) return say("No destination was provided for this call.");
 
