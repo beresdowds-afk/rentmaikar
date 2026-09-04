@@ -36,7 +36,7 @@ export const ProtectedRoute = ({
 
   const location = useLocation();
 
-  const loading = isLoading || isRoleLoading;
+  const loading = isLoading || isRoleLoading || (!!requiredPermission && permsLoading);
 
   if (loading) {
     return (
