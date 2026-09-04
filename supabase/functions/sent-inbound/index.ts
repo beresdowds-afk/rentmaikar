@@ -14,6 +14,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { forwardInboundMessage, regionFromPhone } from "../_shared/forwarding.ts";
 import { parseTrace } from "../_shared/comms-correlation.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
+import { intakeCaseMessage } from "../_shared/case-intake.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
