@@ -138,6 +138,28 @@ export const CallLogPage = () => {
     void load();
   }, [load]);
 
+  const openCase = useCallback(
+    async (call: CallLogRow) => {
+      if (call.case_id) {
+        navigate(`/admin/cases?case=${call.case_id}`);
+        return;
+      }
+      setCreatingFor(call.id);
+      const { data, error } = await supabase.rpc('case_for_call', {
+        p_call_id: call.id,
+        p_subject: undefined,
+      } as never);
+      setCreatingFor(null);
+      if (error || !data) {
+        toast.error(error?.message || 'Could not open a case for this call');
+        return;
+      }
+      toast.success('Case opened for this call');
+      navigate(`/admin/cases?case=${data as string}`);
+    },
+    [navigate],
+  );
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return rows.filter((call) => {
