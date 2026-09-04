@@ -386,7 +386,12 @@ export function AdminAssistantManagement() {
                         .map(u => (
                           <SelectItem key={u.user_id} value={u.user_id}>
                             {u.full_name || u.email} — {u.email}
-                            {u.hasRole ? '' : ' (will be elevated to Admin Assistant)'}
+                            {u.staffRole
+                              ? ` (support staff — keeps ${u.staffRole.replace('_', ' ')})`
+                              : u.hasRole
+                                ? ''
+                                : ' (will be elevated to Admin Assistant)'}
+
                           </SelectItem>
                         ))}
                     </SelectContent>
