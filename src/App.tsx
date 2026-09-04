@@ -617,7 +617,8 @@ const App = () => (
                   <Route
                     path="/admin/traccar-commands"
                     element={
-                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']} requiredPermission="can_view_iot">
+
                         <TraccarCommandAuditPage />
                       </ProtectedRoute>
                     }
