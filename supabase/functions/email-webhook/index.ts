@@ -6,6 +6,7 @@ import { maybeAutoReply } from "../_shared/auto-reply.ts";
 import { forwardInboundEmail } from "../_shared/forwarding.ts";
 import { resendSendEmail } from "../_shared/resend-gateway.ts";
 import { verifySvixSignature } from "../_shared/svix-verify.ts";
+import { fetchResendInboundEmail, isResendInboundEvent } from "../_shared/resend-inbound.ts";
 
 
 
@@ -477,13 +478,21 @@ function getAcknowledgmentHtml(
 // fallback. Fails closed when RESEND_WEBHOOK_SECRET is not configured.
 const verifyResendSignature = async (req: Request): Promise<boolean> => {
   try {
-    const webhookSecret = Deno.env.get('RESEND_WEBHOOK_SECRET');
-    if (!webhookSecret) {
-      console.error('RESEND_WEBHOOK_SECRET not configured - rejecting email webhook request');
+    // Two webhooks exist in Resend: delivery events (RESEND_WEBHOOK_SECRET) and
+    // native inbound email (RESEND_INBOUND_WEBHOOK_SECRET). Accept either.
+    const secrets = [
+      Deno.env.get('RESEND_INBOUND_WEBHOOK_SECRET'),
+      Deno.env.get('RESEND_WEBHOOK_SECRET'),
+    ].filter((s): s is string => !!s);
+    if (!secrets.length) {
+      console.error('No RESEND webhook secret configured - rejecting email webhook request');
       return false;
     }
     const body = await req.clone().text();
-    return await verifySvixSignature(req, body, webhookSecret);
+    for (const secret of secrets) {
+      if (await verifySvixSignature(req, body, secret)) return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -510,8 +519,14 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const payload = await req.json();
-    console.log("Email webhook received:", JSON.stringify(payload).slice(0, 500));
+    const rawPayload = await req.json();
+    console.log("Email webhook received:", JSON.stringify(rawPayload).slice(0, 500));
+
+    // Resend native inbound events only carry an email_id; fetch the full
+    // message and normalise to the flat payload the rest of this function uses.
+    const payload = isResendInboundEvent(rawPayload)
+      ? await fetchResendInboundEmail(rawPayload.data.email_id)
+      : rawPayload;
 
     const { from, to, subject, text, html: htmlBody, headers: emailHeaders, attachments } = payload;
 
