@@ -478,13 +478,21 @@ function getAcknowledgmentHtml(
 // fallback. Fails closed when RESEND_WEBHOOK_SECRET is not configured.
 const verifyResendSignature = async (req: Request): Promise<boolean> => {
   try {
-    const webhookSecret = Deno.env.get('RESEND_WEBHOOK_SECRET');
-    if (!webhookSecret) {
-      console.error('RESEND_WEBHOOK_SECRET not configured - rejecting email webhook request');
+    // Two webhooks exist in Resend: delivery events (RESEND_WEBHOOK_SECRET) and
+    // native inbound email (RESEND_INBOUND_WEBHOOK_SECRET). Accept either.
+    const secrets = [
+      Deno.env.get('RESEND_INBOUND_WEBHOOK_SECRET'),
+      Deno.env.get('RESEND_WEBHOOK_SECRET'),
+    ].filter((s): s is string => !!s);
+    if (!secrets.length) {
+      console.error('No RESEND webhook secret configured - rejecting email webhook request');
       return false;
     }
     const body = await req.clone().text();
-    return await verifySvixSignature(req, body, webhookSecret);
+    for (const secret of secrets) {
+      if (await verifySvixSignature(req, body, secret)) return true;
+    }
+    return false;
   } catch {
     return false;
   }
