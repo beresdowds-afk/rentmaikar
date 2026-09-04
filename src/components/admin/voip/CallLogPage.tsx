@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ClipboardList, Loader2, PhoneIncoming, PhoneOutgoing, RefreshCw, Trash2 } from 'lucide-react';
+import { Briefcase, ClipboardList, Loader2, PhoneIncoming, PhoneOutgoing, RefreshCw, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -281,18 +282,19 @@ export const CallLogPage = () => {
                 <TableHead>Status</TableHead>
                 <TableHead>Answered by</TableHead>
                 <TableHead>Started by</TableHead>
+                <TableHead>Case</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                     <Loader2 className="mx-auto h-4 w-4 animate-spin" />
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                     No calls logged yet
                   </TableCell>
                 </TableRow>
@@ -338,6 +340,21 @@ export const CallLogPage = () => {
                       ) : (
                         <span className="text-muted-foreground">Caller</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant={call.case_id ? 'secondary' : 'outline'}
+                        size="sm"
+                        onClick={() => void openCase(call)}
+                        disabled={creatingFor === call.id}
+                      >
+                        {creatingFor === call.id ? (
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        ) : (
+                          <Briefcase className="mr-2 h-3 w-3" />
+                        )}
+                        {call.case_id ? 'View case' : 'Create case'}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
