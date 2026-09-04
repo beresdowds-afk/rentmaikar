@@ -6,6 +6,7 @@ import { maybeAutoReply } from "../_shared/auto-reply.ts";
 import { forwardInboundEmail } from "../_shared/forwarding.ts";
 import { resendSendEmail } from "../_shared/resend-gateway.ts";
 import { verifySvixSignature } from "../_shared/svix-verify.ts";
+import { fetchResendInboundEmail, isResendInboundEvent } from "../_shared/resend-inbound.ts";
 
 
 
