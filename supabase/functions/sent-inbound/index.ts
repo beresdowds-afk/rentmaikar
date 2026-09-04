@@ -168,6 +168,21 @@ serve(async (req: Request): Promise<Response> => {
       },
     }).catch((e) => console.error("[sent-inbound] inbound log failed:", e));
 
+    // Thread the message into the customer's case so the admin panel and the
+    // customer portal both show it.
+    const intake = await intakeCaseMessage(supabase, {
+      channel,
+      region,
+      from,
+      to,
+      body,
+      mediaUrl,
+      providerMessageId: messageId ?? null,
+    });
+    if (intake.caseId) {
+      console.log(`[sent-inbound] linked to case ${intake.caseId}`);
+    }
+
     const forwarded = await forwardInboundMessage(supabase, {
       channel,
       region,
