@@ -326,17 +326,25 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
   );
 
   const hangUp = useCallback(() => {
+    // Live call: hang it up. Ringing inbound call: reject it.
+    // Neither: clear any stale call state and return the softphone to ready.
     callRef.current?.disconnect();
     callRef.current = null;
+    if (incomingCall) {
+      incomingCall.reject();
+      setIncomingCall(null);
+    }
     setStatus(deviceRef.current ? "ready" : "idle");
     setDiagnosticsCallId(null);
-  }, []);
+    logAudioEvent("call", "Call ended by agent");
+  }, [incomingCall]);
 
   const setMuted = useCallback((muted: boolean) => {
     const call = callRef.current;
-    if (!call) return;
-    call.mute(muted);
-    const applied = call.isMuted();
+    // Without a live call this still stores the preference, so the next
+    // call starts muted/unmuted as chosen.
+    call?.mute(muted);
+    const applied = call ? call.isMuted() : muted;
     setIsMuted(applied);
     setPreferences(saveAudioPreferences({ muted: applied }));
     prefsRef.current = { ...prefsRef.current, muted: applied };
@@ -345,8 +353,7 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
 
   const toggleMute = useCallback(() => {
     const call = callRef.current;
-    if (!call) return;
-    setMuted(!call.isMuted());
+    setMuted(call ? !call.isMuted() : !prefsRef.current.muted);
   }, [setMuted]);
 
   const selectOutputRoute = useCallback(

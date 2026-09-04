@@ -13019,6 +13019,28 @@ export type Database = {
           value: string
         }[]
       }
+      get_assigned_mqtt_credentials: {
+        Args: never
+        Returns: {
+          broker_port: number
+          broker_url: string
+          client_id: string
+          created_at: string
+          id: string
+          installed_at: string
+          iot_device_id: string
+          is_active: boolean
+          jwt_expires_at: string
+          last_connected_at: string
+          mqtt_username: string
+          publish_topics: string[]
+          subscribe_topics: string[]
+          tls_enabled: boolean
+          topic_prefix: string
+          updated_at: string
+          vehicle_id: string
+        }[]
+      }
       get_authorization_by_token: { Args: { p_token: string }; Returns: Json }
       get_ledger_balance: {
         Args: {

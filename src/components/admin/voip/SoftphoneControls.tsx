@@ -51,6 +51,10 @@ export function SoftphoneControls({ voice }: { voice: VoiceDevice }) {
 
   const onCall = status === 'on-call' || status === 'connecting';
   const busy = status === 'initializing';
+  // Once the softphone is ready the audio controls stay usable between calls:
+  // mute sets how the next call starts, speaker switches the output route,
+  // and End call clears a ringing/stale call and returns to ready.
+  const audioActive = onCall || status === 'ready';
 
   return (
     <Card>
@@ -97,8 +101,9 @@ export function SoftphoneControls({ voice }: { voice: VoiceDevice }) {
             size="icon"
             aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
             aria-pressed={isMuted}
+            title={onCall ? (isMuted ? 'Unmute microphone' : 'Mute microphone') : 'Start calls muted or unmuted'}
             onClick={toggleMute}
-            disabled={!onCall}
+            disabled={!audioActive}
           >
             {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </Button>
@@ -108,7 +113,9 @@ export function SoftphoneControls({ voice }: { voice: VoiceDevice }) {
             size="icon"
             aria-label={isSpeakerphone ? 'Switch to earpiece' : 'Switch to speaker'}
             aria-pressed={isSpeakerphone}
+            title={isSpeakerphone ? 'Switch to earpiece' : 'Switch to speaker'}
             onClick={() => void toggleSpeakerphone()}
+            disabled={busy}
           >
             {isSpeakerphone ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </Button>
@@ -123,7 +130,7 @@ export function SoftphoneControls({ voice }: { voice: VoiceDevice }) {
             <RefreshCw className="h-4 w-4" />
           </Button>
 
-          <Button variant="destructive" size="sm" className="gap-2" onClick={hangUp} disabled={!onCall}>
+          <Button variant="destructive" size="sm" className="gap-2" onClick={hangUp} disabled={!audioActive}>
             <PhoneOff className="h-4 w-4" />
             End call
           </Button>
