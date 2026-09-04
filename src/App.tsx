@@ -103,6 +103,8 @@ const AdminSmsConsentAuditPage = lazy(() => import("./pages/admin/AdminSmsConsen
 const AdminEmailDeliveryPage = lazy(() => import("./pages/admin/AdminEmailDeliveryPage"));
 const AdminEmailRoutingPage = lazy(() => import("./pages/admin/AdminEmailRoutingPage"));
 const MessagingCenterPage = lazy(() => import("./pages/admin/MessagingCenterPage"));
+const AdminCasesPage = lazy(() => import("./pages/admin/AdminCasesPage"));
+const CustomerCasesPage = lazy(() => import("./pages/CustomerCasesPage"));
 const AdminSmsDeliveryPage = lazy(() => import("./pages/admin/AdminSmsDeliveryPage"));
 const MessagesPage = lazy(() => import("./pages/MessagesPage"));
 
