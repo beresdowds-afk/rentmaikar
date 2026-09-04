@@ -7,6 +7,16 @@ import { Copy, Check, RefreshCw, Loader2, AlertTriangle, CheckCircle2, Wrench } 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface TwilioNumber {
+  sid: string;
+  phoneNumber: string;
+  friendlyName: string;
+  voiceUrl: string;
+  voiceMethod: string;
+  matches: boolean;
+  role?: 'inbound' | 'outbound';
+}
+
 interface TwiMLConfigResponse {
   expected: {
     voiceUrl: string;
