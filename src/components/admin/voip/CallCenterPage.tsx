@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Phone, Users, History, Settings, PhoneCall, Globe, Radio, UserPlus, Volume2, Link2, Sparkles, PhoneOff, PhoneIncoming } from 'lucide-react';
+import { Phone, Users, History, Settings, PhoneCall, Globe, Radio, UserPlus, Volume2, Link2, Sparkles, PhoneOff, PhoneIncoming, ClipboardList } from 'lucide-react';
 import { useVoIPCalls } from '@/hooks/useVoIPCalls';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { CallDialer } from './CallDialer';
 import { CallHistory } from './CallHistory';
+import { CallLogPage } from './CallLogPage';
 import { CallGroups } from './CallGroups';
 import { ActiveCallPanel } from './ActiveCallPanel';
 import { VoIPFeatureSettings } from './VoIPFeatureSettings';
@@ -194,7 +195,7 @@ export const CallCenterPage = () => {
 
       {/* Main Content */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 lg:w-auto lg:inline-grid lg:grid-cols-10">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 lg:w-auto lg:inline-grid lg:grid-cols-11">
           <TabsTrigger value="queue" className="flex items-center gap-2">
             <PhoneIncoming className="h-4 w-4" />
             <span className="hidden sm:inline">Queue</span>
@@ -223,6 +224,10 @@ export const CallCenterPage = () => {
           <TabsTrigger value="history" className="flex items-center gap-2">
             <History className="h-4 w-4" />
             <span className="hidden sm:inline">History</span>
+          </TabsTrigger>
+          <TabsTrigger value="call-log" className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" />
+            <span className="hidden sm:inline">Call Log</span>
           </TabsTrigger>
           <TabsTrigger value="recordings" className="flex items-center gap-2">
             <Volume2 className="h-4 w-4" />
@@ -288,6 +293,10 @@ export const CallCenterPage = () => {
             isLoading={isLoading}
             onEndCall={terminateCall}
           />
+        </TabsContent>
+
+        <TabsContent value="call-log">
+          <CallLogPage />
         </TabsContent>
 
         <TabsContent value="recordings">
