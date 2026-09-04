@@ -73,6 +73,7 @@ serve(async (req) => {
       TWILIO_API_KEY_SID: !!apiKeySid,
       TWILIO_API_SECRET: !!apiKeySecret,
       TWILIO_PHONE_NUMBER: !!Deno.env.get("TWILIO_PHONE_NUMBER"),
+      TWILIO_VOICE_FROM: !!(Deno.env.get("TWILIO_VOICE_FROM") || Deno.env.get("TWILIO_OUTBOUND_NUMBER")),
     };
 
     // RentMaikar authenticates Twilio REST with the API key/secret pair first;
