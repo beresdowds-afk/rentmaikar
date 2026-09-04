@@ -12806,6 +12806,7 @@ export type Database = {
         Returns: Json
       }
       classify_onboarding_error: { Args: { _msg: string }; Returns: string }
+      clear_voip_call_log: { Args: never; Returns: number }
       complete_idempotency_key: {
         Args: { _key: string; _response?: Json; _status: string }
         Returns: undefined
