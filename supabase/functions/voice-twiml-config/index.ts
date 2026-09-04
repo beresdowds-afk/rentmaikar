@@ -24,6 +24,7 @@ serve(async (req) => {
     if (!authHeader) return json(401, { error: "Missing authorization header" });
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const voiceBaseUrl = Deno.env.get("VOICE_SUPABASE_URL") || supabaseUrl;
     const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: { user }, error: userError } = await supabase.auth.getUser(
@@ -50,12 +51,12 @@ serve(async (req) => {
     }
 
     const expected = {
-      voiceUrl: `${supabaseUrl}/functions/v1/voice-twiml-dial`,
+      voiceUrl: `${voiceBaseUrl}/functions/v1/voice-twiml-dial`,
       voiceMethod: "POST",
-      statusCallbackUrl: `${supabaseUrl}/functions/v1/voip-status-callback`,
-      recordingCallbackUrl: `${supabaseUrl}/functions/v1/recording-status-callback`,
-      accessTokenUrl: `${supabaseUrl}/functions/v1/voice-access-token`,
-      incomingCallUrl: `${supabaseUrl}/functions/v1/incoming-call-forward`,
+      statusCallbackUrl: `${voiceBaseUrl}/functions/v1/voip-status-callback`,
+      recordingCallbackUrl: `${voiceBaseUrl}/functions/v1/recording-status-callback`,
+      accessTokenUrl: `${voiceBaseUrl}/functions/v1/voice-access-token`,
+      incomingCallUrl: `${voiceBaseUrl}/functions/v1/incoming-call-forward`,
     };
 
 
