@@ -27,6 +27,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const voiceBaseUrl = Deno.env.get("VOICE_SUPABASE_URL") || supabaseUrl;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
@@ -101,7 +102,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         // Generate TwiML with IVR
         const twiml = `<Response>
-          <Gather numDigits="1" action="${supabaseUrl}/functions/v1/vehicle-return-ivr?rentalId=${rental.id}&vehicleId=${rental.vehicle_id}&driverId=${rental.driver_id}" method="POST" timeout="10">
+          <Gather numDigits="1" action="${voiceBaseUrl}/functions/v1/vehicle-return-ivr?rentalId=${rental.id}&vehicleId=${rental.vehicle_id}&driverId=${rental.driver_id}" method="POST" timeout="10">
             <Say voice="alice">
               Hello ${driverProfile.full_name || 'Driver'}. This is Rentmaikar reminding you that your rental of ${vehicleInfo} ends tomorrow at ${returnTime}.
               Press 1 to confirm your return time.
@@ -166,7 +167,7 @@ const handler = async (req: Request): Promise<Response> => {
               To: driverProfile.phone,
               From: twilioPhoneNumber,
               Twiml: twiml,
-              StatusCallback: `${supabaseUrl}/functions/v1/voip-status-callback`,
+              StatusCallback: `${voiceBaseUrl}/functions/v1/voip-status-callback`,
               MachineDetection: 'DetectMessageEnd',
               AsyncAmd: 'true',
             }),
