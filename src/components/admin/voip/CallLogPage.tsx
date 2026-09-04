@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ClipboardList, Loader2, PhoneIncoming, PhoneOutgoing, RefreshCw, Trash2 } from 'lucide-react';
+import { Briefcase, ClipboardList, Loader2, PhoneIncoming, PhoneOutgoing, RefreshCw, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +36,7 @@ interface CallLogRow {
   initiated_by: string | null;
   answered_by: string | null;
   receiver_id: string | null;
+  case_id: string | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -75,13 +77,15 @@ export const CallLogPage = () => {
   const [directionFilter, setDirectionFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [isClearing, setIsClearing] = useState(false);
+  const [creatingFor, setCreatingFor] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const load = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('voip_calls')
       .select(
-        'id, call_sid, status, direction, region, call_type, duration_seconds, started_at, ended_at, created_at, initiated_by, answered_by, receiver_id',
+        'id, call_sid, status, direction, region, call_type, duration_seconds, started_at, ended_at, created_at, initiated_by, answered_by, receiver_id, case_id',
       )
       .order('created_at', { ascending: false })
       .limit(500);
@@ -136,6 +140,28 @@ export const CallLogPage = () => {
     toast.success(`Cleared ${data ?? 0} finished call${data === 1 ? '' : 's'} from the log`);
     void load();
   }, [load]);
+
+  const openCase = useCallback(
+    async (call: CallLogRow) => {
+      if (call.case_id) {
+        navigate(`/admin/cases?case=${call.case_id}`);
+        return;
+      }
+      setCreatingFor(call.id);
+      const { data, error } = await supabase.rpc('case_for_call', {
+        p_call_id: call.id,
+        p_subject: undefined,
+      } as never);
+      setCreatingFor(null);
+      if (error || !data) {
+        toast.error(error?.message || 'Could not open a case for this call');
+        return;
+      }
+      toast.success('Case opened for this call');
+      navigate(`/admin/cases?case=${data as string}`);
+    },
+    [navigate],
+  );
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -258,18 +284,19 @@ export const CallLogPage = () => {
                 <TableHead>Status</TableHead>
                 <TableHead>Answered by</TableHead>
                 <TableHead>Started by</TableHead>
+                <TableHead>Case</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                     <Loader2 className="mx-auto h-4 w-4 animate-spin" />
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                     No calls logged yet
                   </TableCell>
                 </TableRow>
@@ -315,6 +342,21 @@ export const CallLogPage = () => {
                       ) : (
                         <span className="text-muted-foreground">Caller</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant={call.case_id ? 'secondary' : 'outline'}
+                        size="sm"
+                        onClick={() => void openCase(call)}
+                        disabled={creatingFor === call.id}
+                      >
+                        {creatingFor === call.id ? (
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        ) : (
+                          <Briefcase className="mr-2 h-3 w-3" />
+                        )}
+                        {call.case_id ? 'View case' : 'Create case'}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))

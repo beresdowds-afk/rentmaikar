@@ -14,6 +14,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { forwardInboundMessage, regionFromPhone } from "../_shared/forwarding.ts";
 import { parseTrace } from "../_shared/comms-correlation.ts";
 import { logMessagingEvent } from "../_shared/messaging-events.ts";
+import { intakeCaseMessage } from "../_shared/case-intake.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -166,6 +167,21 @@ serve(async (req: Request): Promise<Response> => {
         inbound_hop: inheritedTrace?.hop ?? 0,
       },
     }).catch((e) => console.error("[sent-inbound] inbound log failed:", e));
+
+    // Thread the message into the customer's case so the admin panel and the
+    // customer portal both show it.
+    const intake = await intakeCaseMessage(supabase, {
+      channel,
+      region,
+      from,
+      to,
+      body,
+      mediaUrl,
+      providerMessageId: messageId ?? null,
+    });
+    if (intake.caseId) {
+      console.log(`[sent-inbound] linked to case ${intake.caseId}`);
+    }
 
     const forwarded = await forwardInboundMessage(supabase, {
       channel,

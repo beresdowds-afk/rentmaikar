@@ -103,6 +103,8 @@ const AdminSmsConsentAuditPage = lazy(() => import("./pages/admin/AdminSmsConsen
 const AdminEmailDeliveryPage = lazy(() => import("./pages/admin/AdminEmailDeliveryPage"));
 const AdminEmailRoutingPage = lazy(() => import("./pages/admin/AdminEmailRoutingPage"));
 const MessagingCenterPage = lazy(() => import("./pages/admin/MessagingCenterPage"));
+const AdminCasesPage = lazy(() => import("./pages/admin/AdminCasesPage"));
+const CustomerCasesPage = lazy(() => import("./pages/CustomerCasesPage"));
 const AdminSmsDeliveryPage = lazy(() => import("./pages/admin/AdminSmsDeliveryPage"));
 const MessagesPage = lazy(() => import("./pages/MessagesPage"));
 
@@ -552,6 +554,22 @@ const App = () => (
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <AdminNotificationRetryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/cases"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'admin_assistant']}>
+                        <AdminCasesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/support/cases"
+                    element={
+                      <ProtectedRoute>
+                        <CustomerCasesPage />
                       </ProtectedRoute>
                     }
                   />
