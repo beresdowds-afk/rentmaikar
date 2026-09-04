@@ -11415,6 +11415,7 @@ export type Database = {
       }
       voip_calls: {
         Row: {
+          answered_by: string | null
           call_sid: string | null
           call_type: string
           caller_role: string | null
@@ -11437,6 +11438,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          answered_by?: string | null
           call_sid?: string | null
           call_type: string
           caller_role?: string | null
@@ -11459,6 +11461,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          answered_by?: string | null
           call_sid?: string | null
           call_type?: string
           caller_role?: string | null
@@ -13228,6 +13231,10 @@ export type Database = {
       }
       mark_all_admin_notifications_read: { Args: never; Returns: number }
       mark_in_app_messages_read: { Args: { _ids: string[] }; Returns: number }
+      mark_voip_call_answered: {
+        Args: { _call_sid: string }
+        Returns: undefined
+      }
       mask_secret_value: { Args: { _v: string }; Returns: string }
       move_to_dlq: {
         Args: {

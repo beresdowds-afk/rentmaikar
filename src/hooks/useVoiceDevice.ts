@@ -180,6 +180,16 @@ export function useVoiceDevice(): UseVoiceDeviceResult {
     call.on("accept", () => {
       setStatus("on-call");
       logAudioEvent("call", "Call accepted");
+      // Record which staff member answered so the admin call log can show it.
+      const answeredSid = (call as unknown as { parameters?: { CallSid?: string } }).parameters
+        ?.CallSid;
+      if (answeredSid) {
+        void supabase
+          .rpc("mark_voip_call_answered", { _call_sid: answeredSid })
+          .then(({ error }) => {
+            if (error) console.error("mark_voip_call_answered failed:", error.message);
+          });
+      }
       // Re-assert routing at connect time: some platforms reset the sink.
       void enableAudioDevices(deviceRef.current, routeRef.current);
       if (prefsRef.current.muted) {
