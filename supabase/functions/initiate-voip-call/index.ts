@@ -43,6 +43,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const voiceBaseUrl = Deno.env.get('VOICE_SUPABASE_URL') || supabaseUrl;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
