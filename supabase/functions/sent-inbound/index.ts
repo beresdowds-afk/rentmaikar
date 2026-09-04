@@ -91,7 +91,14 @@ serve(async (req: Request): Promise<Response> => {
   try {
     const raw = await req.text();
     if (!(await verifySignature(req, raw))) {
+      console.warn(
+        `[sent-inbound] rejected unsigned/mismatched callback (sig=${
+          (req.headers.get("x-sent-signature") || req.headers.get("x-webhook-signature") || "none")
+            .slice(0, 12)
+        }…)`,
+      );
       return json({ received: false, error: "Invalid signature" }, 401);
+
     }
 
     // deno-lint-ignore no-explicit-any
