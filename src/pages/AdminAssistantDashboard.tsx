@@ -94,6 +94,7 @@ import BillingReconciliationPage from "@/pages/admin/BillingReconciliationPage";
 import AdminVehicleCataloguePage from "@/pages/admin/AdminVehicleCataloguePage";
 import UserUuidAssignmentsPage from "@/pages/admin/UserUuidAssignmentsPage";
 import { BillingDashboard } from "@/components/admin/BillingDashboard";
+import ErrorBoundary from "@/components/errors/ErrorBoundary";
 import { ProxyBillingPortal } from "@/components/admin/ProxyBillingPortal";
 
 
